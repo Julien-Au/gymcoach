@@ -4,8 +4,8 @@ import { handleApiError, requireApiUserId } from '@/lib/api';
 import { effectiveWeight, estimate1RM, setVolume } from '@/lib/stats';
 
 // GET /api/history/csv?programId=...&month=YYYY-MM
-// Renvoie un CSV (UTF-8 + BOM pour Excel) avec une ligne par série
-// non-warmup. Mêmes filtres que la page /history.
+// Returns a CSV (UTF-8 + BOM for Excel) with one row per non-warmup set.
+// Same filters as the /history page.
 export async function GET(req: Request) {
   try {
     const userId = await requireApiUserId();
@@ -64,14 +64,14 @@ export async function GET(req: Request) {
       'muscle_group',
       'uses_bodyweight',
       'set_number',
-      'external_load_kg', // valeur saisie (lest pour les exos PdC, charge totale sinon)
-      'effective_weight_kg', // = bodyweight + external pour les exos PdC, sinon = external
+      'external_load_kg', // entered value (added weight for bodyweight exercises, total load otherwise)
+      'effective_weight_kg', // = bodyweight + external for bodyweight exercises, otherwise = external
       'reps',
       'rir',
       'is_warmup',
       'is_drop_set',
-      'volume_kg', // basé sur effective weight
-      'estimated_1rm_kg', // basé sur effective weight
+      'volume_kg', // based on effective weight
+      'estimated_1rm_kg', // based on effective weight
       'set_notes',
     ];
 
@@ -116,7 +116,7 @@ export async function GET(req: Request) {
       }
     }
 
-    // BOM UTF-8 pour qu'Excel détecte l'encodage et affiche les accents.
+    // UTF-8 BOM so Excel detects the encoding and displays accents correctly.
     const body = '﻿' + lines.join('\n');
     const filename = buildFilename(month, programId);
     return new NextResponse(body, {
@@ -130,8 +130,8 @@ export async function GET(req: Request) {
   }
 }
 
-// Échappement RFC 4180 : guillemets doubles + escape interne, sur tout
-// champ contenant , " \n ou \r.
+// RFC 4180 escaping: double quotes + internal escape, on any field
+// containing , " \n or \r.
 function csvEscape(value: string): string {
   if (/[",\n\r]/.test(value)) {
     return `"${value.replace(/"/g, '""')}"`;

@@ -10,7 +10,7 @@ interface Params {
 async function ensureOwnership(id: string, userId: string) {
   const exercise = await db.exercise.findUnique({ where: { id } });
   if (!exercise || exercise.userId !== userId) {
-    throw new ApiError(404, 'Exercice introuvable.');
+    throw new ApiError(404, 'Exercise not found.');
   }
   return exercise;
 }
@@ -45,9 +45,9 @@ export async function DELETE(_req: Request, { params }: Params) {
     const userId = await requireApiUserId();
     await ensureOwnership(params.id, userId);
 
-    // Vérifier si l'exo est utilisé dans un programme actif ou des séries.
-    // Si oui, on refuse pour éviter de casser les données. L'utilisateur
-    // doit d'abord retirer l'exo des programmes ou créer une variante.
+    // Check whether the exercise is used in an active program or in sets.
+    // If so, we refuse to avoid breaking the data. The user must first remove
+    // the exercise from the programs or create a variant.
     const usage = await db.exercise.findUnique({
       where: { id: params.id },
       select: {
@@ -57,7 +57,7 @@ export async function DELETE(_req: Request, { params }: Params) {
     if (usage && (usage._count.programExercises > 0 || usage._count.sets > 0)) {
       throw new ApiError(
         409,
-        'Exercice utilisé dans un programme ou un historique. Retire-le d\'abord.',
+        'Exercise used in a program or in history. Remove it first.',
       );
     }
 

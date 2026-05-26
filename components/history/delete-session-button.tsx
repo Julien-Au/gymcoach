@@ -27,7 +27,7 @@ export function DeleteSessionButton({ sessionId, workoutName, startedAt }: Props
   const router = useRouter();
   const [pending, setPending] = useState(false);
 
-  const formatted = new Intl.DateTimeFormat('fr-FR', {
+  const formatted = new Intl.DateTimeFormat('en-US', {
     day: '2-digit',
     month: 'long',
     year: 'numeric',
@@ -39,13 +39,13 @@ export function DeleteSessionButton({ sessionId, workoutName, startedAt }: Props
       const res = await fetch(`/api/sessions/${sessionId}`, { method: 'DELETE' });
       if (!res.ok) {
         const j = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(j.error ?? `Erreur ${res.status}`);
+        throw new Error(j.error ?? `Error ${res.status}`);
       }
-      toast.success('Séance supprimée.');
+      toast.success('Session deleted.');
       router.push('/history');
       router.refresh();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Échec de la suppression.');
+      toast.error(e instanceof Error ? e.message : 'Failed to delete.');
       setPending(false);
     }
   }
@@ -59,20 +59,20 @@ export function DeleteSessionButton({ sessionId, workoutName, startedAt }: Props
           className="text-rose-600 hover:bg-rose-500/10 hover:text-rose-600"
         >
           <Trash2 className="size-4" />
-          <span className="ml-1">Supprimer</span>
+          <span className="ml-1">Delete</span>
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Supprimer cette séance ?</AlertDialogTitle>
+          <AlertDialogTitle>Delete this session?</AlertDialogTitle>
           <AlertDialogDescription>
-            La séance <strong>{workoutName ?? 'libre'}</strong> du {formatted} et
-            toutes ses séries seront supprimées définitivement. Action
-            irréversible.
+            The <strong>{workoutName ?? 'free'}</strong> session from {formatted} and
+            all its sets will be permanently deleted. This action cannot be
+            undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={pending}>Annuler</AlertDialogCancel>
+          <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleDelete}
             disabled={pending}
@@ -81,10 +81,10 @@ export function DeleteSessionButton({ sessionId, workoutName, startedAt }: Props
             {pending ? (
               <>
                 <Loader2 className="size-4 animate-spin" />
-                <span className="ml-2">Suppression...</span>
+                <span className="ml-2">Deleting...</span>
               </>
             ) : (
-              'Oui, supprimer'
+              'Yes, delete'
             )}
           </AlertDialogAction>
         </AlertDialogFooter>

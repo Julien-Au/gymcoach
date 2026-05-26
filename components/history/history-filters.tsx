@@ -19,21 +19,21 @@ interface Props {
 }
 
 const MONTH_NAMES = [
-  'Janvier',
-  'Février',
-  'Mars',
-  'Avril',
-  'Mai',
-  'Juin',
-  'Juillet',
-  'Août',
-  'Septembre',
-  'Octobre',
-  'Novembre',
-  'Décembre',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ];
 
-// Génère les 12 derniers mois (incluant le mois courant) au format YYYY-MM.
+// Generates the last 12 months (including the current month) in YYYY-MM format.
 function recentMonths(): { value: string; label: string }[] {
   const now = new Date();
   const out: { value: string; label: string }[] = [];
@@ -70,7 +70,7 @@ export function HistoryFilters({
     <div className="flex flex-wrap items-center gap-2">
       <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
         <Filter className="size-4" />
-        <span>Filtres :</span>
+        <span>Filters:</span>
       </div>
 
       <Select
@@ -78,10 +78,10 @@ export function HistoryFilters({
         onValueChange={(v) => update('programId', v === 'all' ? undefined : v)}
       >
         <SelectTrigger className="h-9 w-auto min-w-[10rem]">
-          <SelectValue placeholder="Programme" />
+          <SelectValue placeholder="Program" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">Tous les programmes</SelectItem>
+          <SelectItem value="all">All programs</SelectItem>
           {programs.map((p) => (
             <SelectItem key={p.id} value={p.id}>
               {p.name}
@@ -95,10 +95,10 @@ export function HistoryFilters({
         onValueChange={(v) => update('month', v === 'all' ? undefined : v)}
       >
         <SelectTrigger className="h-9 w-auto min-w-[9rem]">
-          <SelectValue placeholder="Mois" />
+          <SelectValue placeholder="Month" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">Tous les mois</SelectItem>
+          <SelectItem value="all">All months</SelectItem>
           {months.map((m) => (
             <SelectItem key={m.value} value={m.value}>
               {m.label}
@@ -115,7 +115,7 @@ export function HistoryFilters({
           disabled={isPending}
         >
           <X className="size-4" />
-          <span className="ml-1">Effacer</span>
+          <span className="ml-1">Clear</span>
         </Button>
       )}
 
@@ -124,7 +124,7 @@ export function HistoryFilters({
         size="sm"
         asChild
         className="ml-auto"
-        title="Télécharger le CSV des séries pour les filtres actifs"
+        title="Download the CSV of sets for the active filters"
       >
         <a href={buildCsvHref(selectedProgramId, selectedMonth)} download>
           <Download className="size-4" />

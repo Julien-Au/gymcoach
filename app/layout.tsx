@@ -5,7 +5,7 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: 'GymCoach',
-  description: 'Suivi de musculation et coach IA personnel.',
+  description: 'Strength training tracker and personal AI coach.',
   applicationName: 'GymCoach',
   manifest: '/manifest.json',
   appleWebApp: {
@@ -31,10 +31,10 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  // Mode sombre par défaut (vestiaires), togglable via next-themes (page /settings
-  // ou bouton dans le header).
+  // Dark mode by default (locker rooms), togglable via next-themes (/settings page
+  // or button in the header).
   return (
-    <html lang="fr" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen bg-background font-sans text-foreground antialiased">
         <ThemeProvider>
           {children}

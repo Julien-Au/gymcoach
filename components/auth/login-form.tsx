@@ -17,8 +17,8 @@ import {
 } from '@/components/ui/card';
 
 const schema = z.object({
-  email: z.string().email('Email invalide'),
-  password: z.string().min(1, 'Mot de passe requis'),
+  email: z.string().email('Invalid email'),
+  password: z.string().min(1, 'Password required'),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -51,14 +51,14 @@ export function LoginForm() {
     }
 
     const data = (await res.json().catch(() => null)) as { error?: string } | null;
-    setServerError(data?.error ?? 'Erreur de connexion.');
+    setServerError(data?.error ?? 'Login error.');
   }
 
   return (
     <Card className="w-full max-w-sm">
       <CardHeader>
-        <CardTitle>Connexion</CardTitle>
-        <CardDescription>Accède à ton suivi d&apos;entraînement.</CardDescription>
+        <CardTitle>Sign in</CardTitle>
+        <CardDescription>Access your training log.</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
@@ -80,7 +80,7 @@ export function LoginForm() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="password">Mot de passe</Label>
+            <Label htmlFor="password">Password</Label>
             <Input
               id="password"
               type="password"
@@ -104,7 +104,7 @@ export function LoginForm() {
             className="min-h-tap w-full text-base"
             disabled={isSubmitting}
           >
-            {isSubmitting ? 'Connexion...' : 'Se connecter'}
+            {isSubmitting ? 'Signing in...' : 'Sign in'}
           </Button>
         </form>
       </CardContent>

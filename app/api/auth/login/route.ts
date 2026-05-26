@@ -15,16 +15,16 @@ export async function POST(req: Request) {
     const body = (await req.json()) as unknown;
     const parsed = loginSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json({ error: 'Email ou mot de passe invalide.' }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid email or password.' }, { status: 400 });
     }
 
     const { email, password } = parsed.data;
     const user = await db.user.findUnique({ where: { email } });
 
-    // Message volontairement identique pour user inconnu et mauvais password
-    // (évite l'énumération d'emails, même si on a 1 seul user).
+    // Message intentionally identical for an unknown user and a wrong password
+    // (avoids email enumeration, even though we only have 1 user).
     const invalid = NextResponse.json(
-      { error: 'Identifiants invalides.' },
+      { error: 'Invalid credentials.' },
       { status: 401 },
     );
 
@@ -38,6 +38,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error('[login] error:', err);
-    return NextResponse.json({ error: 'Erreur serveur.' }, { status: 500 });
+    return NextResponse.json({ error: 'Server error.' }, { status: 500 });
   }
 }

@@ -91,8 +91,8 @@ export function ProgramExerciseFormDialog(props: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.open, initial]);
 
-  // Quand on sélectionne un exo dans le catalogue, on pré-remplit restSec
-  // avec son defaultRestSec (uniquement en mode create).
+  // When an exercise is selected from the catalog, we pre-fill restSec
+  // with its defaultRestSec (only in create mode).
   function handleExerciseChange(exerciseId: string) {
     form.setValue('exerciseId', exerciseId, { shouldValidate: true });
     if (props.mode === 'create') {
@@ -119,15 +119,15 @@ export function ProgramExerciseFormDialog(props: Props) {
     });
     if (!res.ok) {
       const data = (await res.json().catch(() => null)) as { error?: string } | null;
-      toast.error(data?.error ?? 'Erreur');
+      toast.error(data?.error ?? 'Error');
       return;
     }
-    toast.success(props.mode === 'edit' ? 'Exercice modifié.' : 'Exercice ajouté.');
+    toast.success(props.mode === 'edit' ? 'Exercise updated.' : 'Exercise added.');
     props.onOpenChange(false);
     router.refresh();
   }
 
-  // Groupement du catalogue par muscleGroup pour la liste déroulante.
+  // Group the catalog by muscleGroup for the dropdown list.
   const grouped = useMemo(() => {
     const out = new Map<string, Exercise[]>();
     for (const ex of props.catalog) {
@@ -143,16 +143,16 @@ export function ProgramExerciseFormDialog(props: Props) {
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {props.mode === 'edit' ? 'Modifier l\'exercice programmé' : 'Ajouter un exercice'}
+            {props.mode === 'edit' ? 'Edit programmed exercise' : 'Add an exercise'}
           </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
           <div className="space-y-2">
-            <Label htmlFor="exerciseId">Exercice</Label>
+            <Label htmlFor="exerciseId">Exercise</Label>
             <Select value={form.watch('exerciseId')} onValueChange={handleExerciseChange}>
               <SelectTrigger id="exerciseId">
-                <SelectValue placeholder="Choisir dans le catalogue" />
+                <SelectValue placeholder="Choose from the catalog" />
               </SelectTrigger>
               <SelectContent>
                 {grouped.map(([group, list]) => (
@@ -178,7 +178,7 @@ export function ProgramExerciseFormDialog(props: Props) {
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label htmlFor="targetSets">Séries</Label>
+              <Label htmlFor="targetSets">Sets</Label>
               <Input
                 id="targetSets"
                 type="number"
@@ -233,7 +233,7 @@ export function ProgramExerciseFormDialog(props: Props) {
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label htmlFor="restSec">Repos (s)</Label>
+              <Label htmlFor="restSec">Rest (s)</Label>
               <Input
                 id="restSec"
                 type="number"
@@ -244,13 +244,13 @@ export function ProgramExerciseFormDialog(props: Props) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="tempo">Tempo (optionnel)</Label>
+              <Label htmlFor="tempo">Tempo (optional)</Label>
               <Input id="tempo" placeholder="3-1-1-0" {...form.register('tempo')} />
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="notes">Notes (optionnel)</Label>
+            <Label htmlFor="notes">Notes (optional)</Label>
             <Textarea id="notes" rows={2} {...form.register('notes')} />
           </div>
 
@@ -261,14 +261,14 @@ export function ProgramExerciseFormDialog(props: Props) {
               onClick={() => props.onOpenChange(false)}
               disabled={form.formState.isSubmitting}
             >
-              Annuler
+              Cancel
             </Button>
             <Button type="submit" disabled={form.formState.isSubmitting}>
               {form.formState.isSubmitting
-                ? 'Enregistrement...'
+                ? 'Saving...'
                 : props.mode === 'edit'
-                  ? 'Enregistrer'
-                  : 'Ajouter'}
+                  ? 'Save'
+                  : 'Add'}
             </Button>
           </DialogFooter>
         </form>

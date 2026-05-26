@@ -1,11 +1,11 @@
 import { isVibrationEnabled } from './preferences';
 
-// Wrapper vibration API. Sans support : no-op. Désactivable via la
-// préférence utilisateur (page /settings).
-// Patterns standards :
-// - VALIDATE: 50ms (validation rapide série)
-// - REST_END: 300/100/300 (fin de chrono, plus marqué)
-// - WARNING: 100/50/100 (avertissement avant fin)
+// Vibration API wrapper. Without support: no-op. Can be disabled via the
+// user preference (page /settings).
+// Standard patterns:
+// - VALIDATE: 50ms (quick set validation)
+// - REST_END: 300/100/300 (timer end, more pronounced)
+// - WARNING: 100/50/100 (warning before the end)
 
 export const VIBRATION_PATTERNS = {
   validate: 50,
@@ -19,6 +19,6 @@ export function vibrate(pattern: number | number[]): void {
   try {
     navigator.vibrate(pattern);
   } catch {
-    // Ignore : la vibration est un nice-to-have.
+    // Ignore: vibration is a nice-to-have.
   }
 }

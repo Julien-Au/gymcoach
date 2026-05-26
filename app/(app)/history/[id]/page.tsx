@@ -49,7 +49,7 @@ export default async function HistorySessionPage({ params }: Params) {
   }
   const bodyweight = user?.bodyweight ?? null;
 
-  // Regroupe les séries par exercice (en conservant l'ordre du premier set par exo).
+  // Group sets by exercise (keeping the order of the first set per exercise).
   const exerciseOrder: string[] = [];
   const setsByExercise = new Map<
     string,
@@ -65,8 +65,8 @@ export default async function HistorySessionPage({ params }: Params) {
     entry.sets.push(s);
   }
 
-  // Pour le tonnage, on enrichit les sets avec leur usesBodyweight + le
-  // bodyweight du user. Les exos non-flaggés ne changent pas.
+  // For tonnage, we enrich the sets with their usesBodyweight + the user's
+  // bodyweight. Exercises that are not flagged stay unchanged.
   const enrichedAllSets = applyBodyweight(
     session.sets.map((s) => ({
       weight: s.weight,
@@ -90,7 +90,7 @@ export default async function HistorySessionPage({ params }: Params) {
           <Button asChild variant="ghost" size="sm" className="-ml-2">
             <Link href="/history">
               <ArrowLeft className="size-4" />
-              <span className="ml-1">Historique</span>
+              <span className="ml-1">History</span>
             </Link>
           </Button>
           <DeleteSessionButton
@@ -103,7 +103,7 @@ export default async function HistorySessionPage({ params }: Params) {
         <Card>
           <CardHeader className="pb-3">
             <h1 className="text-2xl font-bold tracking-tight">
-              {session.workout?.name ?? 'Séance libre'}
+              {session.workout?.name ?? 'Free session'}
             </h1>
             <div className="mt-1 flex flex-wrap gap-1.5">
               {session.program && (
@@ -111,7 +111,7 @@ export default async function HistorySessionPage({ params }: Params) {
               )}
               <Badge variant="outline" className="gap-1">
                 <Calendar className="size-3" />
-                {new Intl.DateTimeFormat('fr-FR', {
+                {new Intl.DateTimeFormat('en-US', {
                   day: '2-digit',
                   month: 'long',
                   year: 'numeric',
@@ -128,11 +128,11 @@ export default async function HistorySessionPage({ params }: Params) {
             </div>
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-3 pt-0 text-sm sm:grid-cols-3">
-            <Stat label="Séries" value={String(workingSetCount)} />
-            <Stat label="Exercices" value={String(setsByExercise.size)} />
+            <Stat label="Sets" value={String(workingSetCount)} />
+            <Stat label="Exercises" value={String(setsByExercise.size)} />
             <Stat
-              label="Volume total"
-              value={`${Math.round(volume).toLocaleString('fr-FR')} kg`}
+              label="Total volume"
+              value={`${Math.round(volume).toLocaleString('en-US')} kg`}
             />
           </CardContent>
         </Card>
@@ -151,7 +151,7 @@ export default async function HistorySessionPage({ params }: Params) {
         {exerciseOrder.length === 0 ? (
           <Card>
             <CardContent className="py-8 text-center text-sm text-muted-foreground">
-              Aucune série enregistrée.
+              No set recorded.
             </CardContent>
           </Card>
         ) : (
@@ -181,8 +181,8 @@ export default async function HistorySessionPage({ params }: Params) {
                         </Badge>
                       </div>
                       <div className="mt-1 flex gap-3 text-xs text-muted-foreground">
-                        <span>Volume : {Math.round(exoVolume)} kg</span>
-                        {e1rm > 0 && <span>1RM est. : {e1rm.toFixed(1)} kg</span>}
+                        <span>Volume: {Math.round(exoVolume)} kg</span>
+                        {e1rm > 0 && <span>Est. 1RM: {e1rm.toFixed(1)} kg</span>}
                       </div>
                     </CardHeader>
                     <CardContent className="pt-0">
@@ -190,7 +190,7 @@ export default async function HistorySessionPage({ params }: Params) {
                         <thead>
                           <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
                             <th className="py-1.5 font-medium">#</th>
-                            <th className="py-1.5 font-medium">Charge</th>
+                            <th className="py-1.5 font-medium">Load</th>
                             <th className="py-1.5 font-medium">Reps</th>
                             <th className="py-1.5 font-medium">RIR</th>
                             <th className="py-1.5 font-medium">Type</th>
@@ -220,7 +220,7 @@ export default async function HistorySessionPage({ params }: Params) {
                                       </span>
                                     </span>
                                   ) : effective === 0 ? (
-                                    'PdC'
+                                    'BW'
                                   ) : (
                                     `${effective} kg`
                                   )}
@@ -229,10 +229,10 @@ export default async function HistorySessionPage({ params }: Params) {
                                 <td className="py-1.5">{s.rir ?? '-'}</td>
                                 <td className="py-1.5 text-xs">
                                   {s.isWarmup
-                                    ? 'Échauffement'
+                                    ? 'Warmup'
                                     : s.isDropSet
                                       ? 'Drop set'
-                                      : 'Travail'}
+                                      : 'Working'}
                                 </td>
                               </tr>
                             );
@@ -245,7 +245,7 @@ export default async function HistorySessionPage({ params }: Params) {
                             .filter((s) => s.notes)
                             .map((s) => (
                               <p key={s.id}>
-                                <span className="font-medium">Série {s.setNumber} : </span>
+                                <span className="font-medium">Set {s.setNumber}: </span>
                                 {s.notes}
                               </p>
                             ))}

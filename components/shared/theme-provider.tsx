@@ -3,8 +3,8 @@
 import { ThemeProvider as NextThemesProvider } from 'next-themes';
 import type { ComponentProps } from 'react';
 
-// Wrapper next-themes (client-only). On laisse le user choisir clair / sombre /
-// système, mais on garde sombre comme défaut (vestiaires).
+// next-themes wrapper (client-only). We let the user choose light / dark /
+// system, but keep dark as the default (locker rooms).
 export function ThemeProvider({ children, ...props }: ComponentProps<typeof NextThemesProvider>) {
   return (
     <NextThemesProvider

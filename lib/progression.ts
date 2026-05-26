@@ -1,22 +1,22 @@
 import type { Exercise, ProgramExercise, Set } from '@prisma/client';
 
 // ============================================================
-// Suggestion de charge - double progression
+// Load suggestion - double progression
 // ============================================================
-// Règle : si toutes les séries de travail de la dernière séance ont atteint le
-// haut de la fourchette de reps cible, on monte la charge (+2.5 kg composé,
-// +1 kg isolation). Sinon on garde la charge et on bat les reps.
+// Rule: if every working set of the last session reached the top of the
+// target rep range, we increase the load (+2.5 kg compound, +1 kg isolation).
+// Otherwise we keep the load and beat the reps.
 
 export type SuggestionReason = 'no-history' | 'same-as-last' | 'progression';
 
 export interface SuggestionResult {
   weight: number | null;
   reason: SuggestionReason;
-  // Charge de référence prise dans la dernière séance (max weight non-warmup).
+  // Reference load taken from the last session (max non-warmup weight).
   workingWeight?: number;
-  // Incrément appliqué quand on progresse (kg).
+  // Increment applied when progressing (kg).
   delta?: number;
-  // Haut de la fourchette de reps utilisé comme seuil de progression.
+  // Top of the rep range used as the progression threshold.
   targetRepsMax?: number;
 }
 
@@ -31,9 +31,8 @@ export function suggestNextWeight(
   const targetRepsMax = programExercise.targetRepsMax;
   const workingWeight = Math.max(...lastSets.map((s) => s.weight));
 
-  // On ne considère que les séries effectuées à la charge de travail. Les drop
-  // sets éventuels (charges plus légères) sont ignorés pour décider de la
-  // progression.
+  // We only consider the sets performed at the working load. Any drop sets
+  // (lighter loads) are ignored when deciding on progression.
   const workingSets = lastSets.filter((s) => s.weight === workingWeight);
   const allHitTopRange = workingSets.every((s) => s.reps >= targetRepsMax);
 
@@ -56,8 +55,8 @@ export function suggestNextWeight(
   };
 }
 
-// Incrément standard pour les boutons +/- selon la catégorie d'exercice.
-// Composés : 2.5 kg, isolation : 1 kg.
+// Standard increment for the +/- buttons depending on the exercise category.
+// Compound: 2.5 kg, isolation: 1 kg.
 export function weightIncrement(category: Exercise['category']): number {
   return category === 'COMPOUND' ? 2.5 : 1;
 }

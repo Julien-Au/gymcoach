@@ -9,22 +9,22 @@ import {
 import { COACH_SYSTEM_PROMPT } from '@/lib/prompts/coach-system-prompt';
 
 // ============================================================
-// Payload structuré envoyé au coach
+// Structured payload sent to the coach
 // ============================================================
-// Toutes les agrégations sont calculées côté serveur pour éviter de
-// surcharger le modèle avec des centaines de lignes de sets bruts.
+// All aggregations are computed server-side to avoid overloading the
+// model with hundreds of rows of raw sets.
 
 export interface CoachPayload {
   generatedAt: string;
-  // Profil : poids du corps en kg, utilisé pour les exos `usesBodyweight`.
-  // Toutes les charges et volumes du payload incluent déjà le bodyweight
-  // quand applicable - le coach peut s'y fier directement.
+  // Profile: bodyweight in kg, used for `usesBodyweight` exercises.
+  // All loads and volumes in the payload already include the bodyweight
+  // when applicable - the coach can rely on them directly.
   userBodyweight: number | null;
   weekCurrent: WeekSummary;
   weekPrevious: WeekSummary | null;
   activeProgram: ProgramSummary | null;
-  // Pour chaque exercice du programme : la progression sur les 8 dernières
-  // semaines (charges max + 1RM par séance, valeurs effectives PdC inclus).
+  // For each program exercise: the progression over the last 8 weeks
+  // (max loads + 1RM per session, effective values with bodyweight included).
   recentProgress: Array<{
     exerciseId: string;
     exerciseName: string;
@@ -88,7 +88,7 @@ interface ProgramSummary {
 }
 
 // ============================================================
-// Construction du payload
+// Building the payload
 // ============================================================
 
 export async function buildCoachPayload(userId: string): Promise<CoachPayload> {
@@ -99,8 +99,8 @@ export async function buildCoachPayload(userId: string): Promise<CoachPayload> {
   const eightWeeksAgo = new Date(currentWeekStart);
   eightWeeksAgo.setUTCDate(eightWeeksAgo.getUTCDate() - 7 * 8);
 
-  // On récupère le bodyweight en premier (1 row, négligeable) pour pouvoir le
-  // passer à weekSummary qui en dépend pour calculer les volumes effectifs.
+  // We fetch the bodyweight first (1 row, negligible) so we can pass it to
+  // weekSummary, which depends on it to compute the effective volumes.
   const user = await db.user.findUnique({
     where: { id: userId },
     select: { bodyweight: true },
@@ -137,7 +137,7 @@ export async function buildCoachPayload(userId: string): Promise<CoachPayload> {
     }),
   ]);
 
-  // Charge actuelle par exercice = workingWeight de la dernière séance.
+  // Current load per exercise = workingWeight of the last session.
   const currentLoadByExercise = new Map<string, number>();
   const setsByExercise = new Map<string, typeof recentSets>();
   for (const s of recentSets) {
@@ -147,7 +147,7 @@ export async function buildCoachPayload(userId: string): Promise<CoachPayload> {
   }
 
   const recentProgress: CoachPayload['recentProgress'] = [];
-  // On enrichit avec target reps depuis le programme actif (si l'exo est dedans).
+  // We enrich with target reps from the active program (if the exercise is in it).
   const programTargets = new Map<string, { min: number; max: number }>();
   if (activeProgram) {
     for (const w of activeProgram.workouts) {
@@ -286,7 +286,7 @@ async function weekSummary(
           volume: totalVolume(eff),
         };
       });
-      // Volume total semaine = somme des volumes effectifs par exercice.
+      // Weekly total volume = sum of the effective volumes per exercise.
       const sessionTotalVolume = exercises.reduce((acc, e) => acc + e.volume, 0);
       const durationMin =
         s.finishedAt && s.startedAt
@@ -341,7 +341,7 @@ async function fetchActiveProgram(userId: string): Promise<ProgramSummary | null
 }
 
 // ============================================================
-// Appel OpenRouter (API compatible Chat Completions)
+// OpenRouter call (Chat Completions-compatible API)
 // ============================================================
 
 export class CoachError extends Error {
@@ -370,13 +370,13 @@ interface OpenRouterResponse {
 export interface CoachCompletion {
   markdown: string;
   modelUsed: string;
-  promptText: string; // payload JSON envoyé, pour audit
+  promptText: string; // JSON payload sent, for auditing
 }
 
 export async function callCoach(payload: CoachPayload): Promise<CoachCompletion> {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) {
-    throw new CoachError(503, 'OPENROUTER_API_KEY non configurée.');
+    throw new CoachError(503, 'OPENROUTER_API_KEY is not configured.');
   }
   const model = process.env.OPENROUTER_MODEL ?? 'anthropic/claude-sonnet-4.5';
   const appName = process.env.OPENROUTER_APP_NAME ?? 'GymCoach';
@@ -411,7 +411,7 @@ export async function callCoach(payload: CoachPayload): Promise<CoachCompletion>
   } catch (err) {
     throw new CoachError(
       502,
-      `Échec réseau vers OpenRouter : ${err instanceof Error ? err.message : 'inconnu'}`,
+      `Network failure to OpenRouter: ${err instanceof Error ? err.message : 'unknown'}`,
     );
   }
 
@@ -419,7 +419,7 @@ export async function callCoach(payload: CoachPayload): Promise<CoachCompletion>
     const text = await res.text();
     throw new CoachError(
       res.status,
-      `OpenRouter ${res.status} : ${text.slice(0, 500)}`,
+      `OpenRouter ${res.status}: ${text.slice(0, 500)}`,
     );
   }
 
@@ -429,7 +429,7 @@ export async function callCoach(payload: CoachPayload): Promise<CoachCompletion>
   }
   const markdown = json.choices[0]?.message?.content?.trim();
   if (!markdown) {
-    throw new CoachError(502, 'Réponse vide du coach.');
+    throw new CoachError(502, 'Empty response from the coach.');
   }
 
   return {

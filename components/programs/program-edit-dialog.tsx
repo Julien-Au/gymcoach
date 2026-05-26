@@ -54,10 +54,10 @@ export function ProgramEditDialog({ open, onOpenChange, program }: Props) {
     });
     if (!res.ok) {
       const data = (await res.json().catch(() => null)) as { error?: string } | null;
-      toast.error(data?.error ?? 'Erreur');
+      toast.error(data?.error ?? 'Error');
       return;
     }
-    toast.success('Programme mis à jour.');
+    toast.success('Program updated.');
     onOpenChange(false);
     router.refresh();
   }
@@ -66,11 +66,11 @@ export function ProgramEditDialog({ open, onOpenChange, program }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Modifier le programme</DialogTitle>
+          <DialogTitle>Edit program</DialogTitle>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
           <div className="space-y-2">
-            <Label htmlFor="name">Nom</Label>
+            <Label htmlFor="name">Name</Label>
             <Input id="name" {...form.register('name')} />
             {form.formState.errors.name && (
               <p className="text-sm text-destructive">{form.formState.errors.name.message}</p>
@@ -89,10 +89,10 @@ export function ProgramEditDialog({ open, onOpenChange, program }: Props) {
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Annuler
+              Cancel
             </Button>
             <Button type="submit" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? 'Enregistrement...' : 'Enregistrer'}
+              {form.formState.isSubmitting ? 'Saving...' : 'Save'}
             </Button>
           </DialogFooter>
         </form>

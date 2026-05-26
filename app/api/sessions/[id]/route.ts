@@ -10,7 +10,7 @@ interface Params {
 async function ensureOwnership(id: string, userId: string) {
   const session = await db.session.findUnique({ where: { id } });
   if (!session || session.userId !== userId) {
-    throw new ApiError(404, 'Session introuvable.');
+    throw new ApiError(404, 'Session not found.');
   }
   return session;
 }

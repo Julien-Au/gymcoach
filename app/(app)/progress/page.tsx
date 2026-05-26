@@ -23,12 +23,12 @@ export default async function ProgressPage({
 }) {
   const auth = await requireSession();
 
-  // Borne basse : 12 semaines avant aujourd'hui (lundi 00:00).
+  // Lower bound: 12 weeks before today (Monday 00:00).
   const since = new Date();
   since.setUTCHours(0, 0, 0, 0);
   since.setUTCDate(since.getUTCDate() - RECENT_WEEKS * 7);
 
-  // Tous les exercices ayant au moins une série non-warmup dans la période.
+  // All exercises with at least one non-warmup set in the period.
   const [exercisesWithSets, user] = await Promise.all([
     db.exercise.findMany({
       where: {
@@ -57,7 +57,7 @@ export default async function ProgressPage({
   const selectedExerciseId =
     searchParams.exerciseId ?? exercisesWithSets[0]?.id;
 
-  // Charge max + 1RM pour l'exo sélectionné, sur tout l'historique disponible.
+  // Max load + 1RM for the selected exercise, over all available history.
   const exerciseSets = selectedExerciseId
     ? await db.set.findMany({
         where: {
@@ -94,7 +94,7 @@ export default async function ProgressPage({
     ),
   );
 
-  // Volume hebdo par groupe musculaire sur la période (12 semaines).
+  // Weekly volume by muscle group over the period (12 weeks).
   const weeklySetsRaw = await db.set.findMany({
     where: {
       isWarmup: false,
@@ -124,8 +124,8 @@ export default async function ProgressPage({
     ),
   );
 
-  // Tableau récap : par exercice, première et dernière séance dans la période,
-  // delta de la charge max et du 1RM.
+  // Recap table: per exercise, first and last session in the period,
+  // delta of the max load and the 1RM.
   const recapRows = await Promise.all(
     exercisesWithSets.map(async (exo) => {
       const sets = await db.set.findMany({
@@ -185,14 +185,13 @@ export default async function ProgressPage({
       <div className="mx-auto flex max-w-3xl flex-col gap-6">
         <div className="flex items-center gap-3">
           <TrendingUp className="size-6" />
-          <h1 className="text-2xl font-bold tracking-tight">Progression</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Progress</h1>
         </div>
 
         {exercisesWithSets.length === 0 ? (
           <Card>
             <CardContent className="py-8 text-center text-sm text-muted-foreground">
-              Pas encore de séries enregistrées sur les {RECENT_WEEKS} dernières
-              semaines.
+              No sets recorded yet over the last {RECENT_WEEKS} weeks.
             </CardContent>
           </Card>
         ) : (

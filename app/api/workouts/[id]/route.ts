@@ -13,7 +13,7 @@ async function ensureOwnership(workoutId: string, userId: string) {
     include: { program: { select: { userId: true } } },
   });
   if (!workout || workout.program.userId !== userId) {
-    throw new ApiError(404, 'Séance introuvable.');
+    throw new ApiError(404, 'Session not found.');
   }
   return workout;
 }

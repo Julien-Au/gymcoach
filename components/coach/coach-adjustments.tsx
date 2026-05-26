@@ -65,7 +65,7 @@ export function CoachAdjustments({
   async function applyAll() {
     const selected = rows.filter((r) => r.selected).map((r) => r.data);
     if (selected.length === 0) {
-      setError('Sélectionne au moins un ajustement.');
+      setError('Select at least one adjustment.');
       return;
     }
     setPending(true);
@@ -79,7 +79,7 @@ export function CoachAdjustments({
       });
       if (!res.ok) {
         const j = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(j.error ?? `Erreur ${res.status}`);
+        throw new Error(j.error ?? `Error ${res.status}`);
       }
       const j = (await res.json()) as {
         appliedAt: string;
@@ -88,14 +88,14 @@ export function CoachAdjustments({
       };
       const skippedMsg =
         j.skipped.length > 0
-          ? ` (${j.skipped.length} ignoré${j.skipped.length > 1 ? 's' : ''} : ${j.skipped.map((s) => s.exerciseName).join(', ')})`
+          ? ` (${j.skipped.length} skipped: ${j.skipped.map((s) => s.exerciseName).join(', ')})`
           : '';
       setFeedback(
-        `${j.applied.length} ajustement${j.applied.length > 1 ? 's' : ''} appliqué${j.applied.length > 1 ? 's' : ''}${skippedMsg}.`,
+        `${j.applied.length} adjustment${j.applied.length > 1 ? 's' : ''} applied${skippedMsg}.`,
       );
       onApplied(j.appliedAt);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erreur inconnue');
+      setError(e instanceof Error ? e.message : 'Unknown error');
     } finally {
       setPending(false);
     }
@@ -109,15 +109,15 @@ export function CoachAdjustments({
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <SlidersHorizontal className="size-5" />
-            <h2 className="text-base font-semibold">Ajustements proposés</h2>
+            <h2 className="text-base font-semibold">Suggested adjustments</h2>
           </div>
           {alreadyApplied && (
-            <Badge variant="secondary">Déjà appliqué</Badge>
+            <Badge variant="secondary">Already applied</Badge>
           )}
         </div>
         <p className="text-xs text-muted-foreground">
-          Coche ce que tu veux appliquer au programme actif. Tu peux ajuster les
-          valeurs avant de valider.
+          Check what you want to apply to the active program. You can tweak the
+          values before confirming.
         </p>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
@@ -143,7 +143,7 @@ export function CoachAdjustments({
                   checked={row.selected}
                   onCheckedChange={(v) => toggleRow(i, v)}
                   disabled={pending}
-                  aria-label={`Appliquer l'ajustement sur ${row.data.exerciseName}`}
+                  aria-label={`Apply the adjustment to ${row.data.exerciseName}`}
                 />
               </div>
 
@@ -161,7 +161,7 @@ export function CoachAdjustments({
                   disabled={!row.selected || pending}
                 />
                 <NumberField
-                  label="Séries"
+                  label="Sets"
                   value={row.data.suggestedSets ?? null}
                   onChange={(v) => patchRow(i, { suggestedSets: v })}
                   disabled={!row.selected || pending}
@@ -173,7 +173,7 @@ export function CoachAdjustments({
                   disabled={!row.selected || pending}
                 />
                 <NumberField
-                  label="Repos (s)"
+                  label="Rest (s)"
                   value={row.data.suggestedRestSec ?? null}
                   onChange={(v) => patchRow(i, { suggestedRestSec: v })}
                   disabled={!row.selected || pending}
@@ -181,7 +181,7 @@ export function CoachAdjustments({
                 {row.data.suggestedLoad != null && (
                   <div className="flex flex-col gap-1">
                     <span className="text-xs uppercase tracking-wide text-muted-foreground">
-                      Charge cible
+                      Target load
                     </span>
                     <span className="text-sm font-medium">
                       {row.data.suggestedLoad} kg
@@ -207,13 +207,13 @@ export function CoachAdjustments({
             {pending ? (
               <>
                 <Loader2 className="size-5 animate-spin" />
-                <span className="ml-2">Application...</span>
+                <span className="ml-2">Applying...</span>
               </>
             ) : (
               <>
                 <Check className="size-5" />
                 <span className="ml-2">
-                  Appliquer {selectedCount} ajustement
+                  Apply {selectedCount} adjustment
                   {selectedCount > 1 ? 's' : ''}
                 </span>
               </>

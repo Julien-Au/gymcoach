@@ -7,25 +7,25 @@ interface Params {
   params: { id: string };
 }
 
-// POST /api/sessions/[id]/sets : enregistre une série dans une session.
+// POST /api/sessions/[id]/sets: records a set in a session.
 export async function POST(req: Request, { params }: Params) {
   try {
     const userId = await requireApiUserId();
 
     const session = await db.session.findUnique({ where: { id: params.id } });
     if (!session || session.userId !== userId) {
-      throw new ApiError(404, 'Session introuvable.');
+      throw new ApiError(404, 'Session not found.');
     }
     if (session.finishedAt) {
-      throw new ApiError(400, 'Session déjà clôturée.');
+      throw new ApiError(400, 'Session already finished.');
     }
 
     const data = await parseJsonBody(req, setInputSchema);
 
-    // Validation : l'exercice doit appartenir au user.
+    // Validation: the exercise must belong to the user.
     const exercise = await db.exercise.findUnique({ where: { id: data.exerciseId } });
     if (!exercise || exercise.userId !== userId) {
-      throw new ApiError(400, 'Exercice invalide.');
+      throw new ApiError(400, 'Invalid exercise.');
     }
 
     const created = await db.set.create({

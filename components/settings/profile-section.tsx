@@ -26,7 +26,7 @@ export function ProfileSection({ initialBodyweight }: Props) {
 
   async function save() {
     if (!isValid) {
-      toast.error('Saisie invalide (20-300 kg).');
+      toast.error('Invalid input (20-300 kg).');
       return;
     }
     setPending(true);
@@ -38,11 +38,11 @@ export function ProfileSection({ initialBodyweight }: Props) {
       });
       if (!res.ok) {
         const j = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(j.error ?? `Erreur ${res.status}`);
+        throw new Error(j.error ?? `Error ${res.status}`);
       }
-      toast.success('Profil mis à jour. Volumes recalculés.');
+      toast.success('Profile updated. Volumes recalculated.');
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Échec.');
+      toast.error(e instanceof Error ? e.message : 'Failed.');
     } finally {
       setPending(false);
     }
@@ -53,18 +53,18 @@ export function ProfileSection({ initialBodyweight }: Props) {
       <CardHeader className="pb-3">
         <div className="flex items-center gap-2">
           <User className="size-5" />
-          <h2 className="text-base font-semibold">Profil</h2>
+          <h2 className="text-base font-semibold">Profile</h2>
         </div>
         <p className="text-xs text-muted-foreground">
-          Ton poids du corps est utilisé pour calculer le tonnage effectif sur
-          les exos au PdC (tractions, dips...). La valeur est globale : si tu la
-          changes, l&apos;historique passé est recalculé en conséquence.
+          Your bodyweight is used to compute the effective tonnage on bodyweight
+          exercises (pull-ups, dips...). The value is global: if you change it,
+          past history is recalculated accordingly.
         </p>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         <div className="space-y-1.5">
           <Label htmlFor="bodyweight" className="text-sm">
-            Poids du corps (kg)
+            Bodyweight (kg)
           </Label>
           <Input
             id="bodyweight"
@@ -75,11 +75,11 @@ export function ProfileSection({ initialBodyweight }: Props) {
             max="300"
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            placeholder="ex. 70"
+            placeholder="e.g. 70"
             className="max-w-[10rem]"
           />
           {!isValid && (
-            <p className="text-xs text-rose-600">Doit être entre 20 et 300 kg.</p>
+            <p className="text-xs text-rose-600">Must be between 20 and 300 kg.</p>
           )}
         </div>
         <div>
@@ -94,7 +94,7 @@ export function ProfileSection({ initialBodyweight }: Props) {
             ) : (
               <Save className="size-4" />
             )}
-            <span className="ml-2">Enregistrer</span>
+            <span className="ml-2">Save</span>
           </Button>
         </div>
       </CardContent>

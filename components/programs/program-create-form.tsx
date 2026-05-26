@@ -15,7 +15,7 @@ export function ProgramCreateForm() {
   const router = useRouter();
   const form = useForm<ProgramInput>({
     resolver: zodResolver(programInputSchema),
-    defaultValues: { name: '', phase: 'Hypertrophie', description: '' },
+    defaultValues: { name: '', phase: 'Hypertrophy', description: '' },
   });
 
   async function onSubmit(values: ProgramInput) {
@@ -26,11 +26,11 @@ export function ProgramCreateForm() {
     });
     if (!res.ok) {
       const data = (await res.json().catch(() => null)) as { error?: string } | null;
-      toast.error(data?.error ?? 'Erreur');
+      toast.error(data?.error ?? 'Error');
       return;
     }
     const created = (await res.json()) as { id: string };
-    toast.success('Programme créé.');
+    toast.success('Program created.');
     router.push(`/programs/${created.id}`);
     router.refresh();
   }
@@ -40,10 +40,10 @@ export function ProgramCreateForm() {
       <CardContent className="pt-6">
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
           <div className="space-y-2">
-            <Label htmlFor="name">Nom du programme</Label>
+            <Label htmlFor="name">Program name</Label>
             <Input
               id="name"
-              placeholder="ex. Hypertrophie 2026 - Phase 1"
+              placeholder="e.g. Hypertrophy 2026 - Phase 1"
               {...form.register('name')}
             />
             {form.formState.errors.name && (
@@ -55,7 +55,7 @@ export function ProgramCreateForm() {
             <Label htmlFor="phase">Phase</Label>
             <Input
               id="phase"
-              placeholder="ex. Hypertrophie, Force, Stress métabolique"
+              placeholder="e.g. Hypertrophy, Strength, Metabolic stress"
               {...form.register('phase')}
             />
             {form.formState.errors.phase && (
@@ -64,13 +64,13 @@ export function ProgramCreateForm() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Description (optionnel)</Label>
+            <Label htmlFor="description">Description (optional)</Label>
             <Textarea id="description" rows={3} {...form.register('description')} />
           </div>
 
           <div className="flex justify-end">
             <Button type="submit" className="min-h-tap" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? 'Création...' : 'Créer le programme'}
+              {form.formState.isSubmitting ? 'Creating...' : 'Create program'}
             </Button>
           </div>
         </form>

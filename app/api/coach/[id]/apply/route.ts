@@ -8,11 +8,11 @@ interface Params {
 }
 
 // POST /api/coach/[id]/apply
-// Applique les ajustements validés à l'utilisateur sur le programme actif :
-// - update les `ProgramExercise` correspondants par nom d'exercice
-// - append les notes éventuelles à `ProgramExercise.notes` (préfixées par la
-//   date pour traçabilité)
-// - marque la `CoachSession` comme appliquée (`appliedAt`).
+// Applies the adjustments validated by the user to the active program:
+// - updates the matching `ProgramExercise` records by exercise name
+// - appends any notes to `ProgramExercise.notes` (prefixed with the date for
+//   traceability)
+// - marks the `CoachSession` as applied (`appliedAt`).
 export async function POST(req: Request, { params }: Params) {
   try {
     const userId = await requireApiUserId();
@@ -22,7 +22,7 @@ export async function POST(req: Request, { params }: Params) {
       where: { id: params.id },
     });
     if (!coachSession || coachSession.userId !== userId) {
-      throw new ApiError(404, 'Debrief introuvable.');
+      throw new ApiError(404, 'Debrief not found.');
     }
 
     const activeProgram = await db.program.findFirst({
@@ -38,11 +38,11 @@ export async function POST(req: Request, { params }: Params) {
       },
     });
     if (!activeProgram) {
-      throw new ApiError(400, 'Aucun programme actif pour appliquer les ajustements.');
+      throw new ApiError(400, 'No active program to apply the adjustments to.');
     }
 
-    // Index des ProgramExercise par nom d'exercice (en cas de doublon, on
-    // collecte toutes les occurrences pour appliquer partout dans le programme).
+    // Index of ProgramExercise by exercise name (in case of duplicates, we
+    // collect every occurrence to apply everywhere in the program).
     const byExerciseName = new Map<string, typeof activeProgram.workouts[number]['exercises']>();
     for (const w of activeProgram.workouts) {
       for (const pe of w.exercises) {
@@ -62,12 +62,12 @@ export async function POST(req: Request, { params }: Params) {
       if (!matches || matches.length === 0) {
         skipped.push({
           exerciseName: adj.exerciseName,
-          reason: 'Exercice introuvable dans le programme actif.',
+          reason: 'Exercise not found in the active program.',
         });
         continue;
       }
 
-      // Construit l'objet de mise à jour à partir des champs présents.
+      // Build the update object from the fields that are present.
       const data: {
         targetRepsMin?: number;
         targetRepsMax?: number;
@@ -82,8 +82,8 @@ export async function POST(req: Request, { params }: Params) {
       if (adj.suggestedRIR != null) data.targetRIR = adj.suggestedRIR;
       if (adj.suggestedRestSec != null) data.restSec = adj.suggestedRestSec;
 
-      // Garde-fou : si min > max après update, on inverse silencieusement (l'IA
-      // peut se tromper, on évite une violation de règle métier silencieuse).
+      // Safeguard: if min > max after the update, we swap them silently (the AI
+      // can be wrong, we avoid a silent business-rule violation).
       if (
         data.targetRepsMin != null &&
         data.targetRepsMax != null &&
@@ -96,8 +96,8 @@ export async function POST(req: Request, { params }: Params) {
 
       const ids: string[] = [];
       for (const pe of matches) {
-        // Construit le bloc de notes : on ajoute une ligne datée par-dessus
-        // les notes existantes, plutôt que d'écraser l'historique.
+        // Build the notes block: we add a dated line on top of the existing
+        // notes, rather than overwriting the history.
         const noteLine = buildNoteLine(today, adj.note, adj.summary, adj.suggestedLoad);
         const nextNotes = noteLine
           ? pe.notes
@@ -142,7 +142,7 @@ function buildNoteLine(
   const parts: string[] = [];
   if (note?.trim()) parts.push(note.trim());
   else parts.push(summary.trim());
-  if (suggestedLoad != null) parts.push(`Cible : ${suggestedLoad} kg`);
+  if (suggestedLoad != null) parts.push(`Target: ${suggestedLoad} kg`);
   if (parts.length === 0) return null;
   return `[Coach ${today}] ${parts.join(' · ')}`;
 }

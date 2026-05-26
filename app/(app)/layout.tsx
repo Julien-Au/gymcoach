@@ -6,7 +6,7 @@ import { SyncBootstrap } from '@/components/shared/sync-bootstrap';
 import { ThemeToggle } from '@/components/shared/theme-toggle';
 import Link from 'next/link';
 
-// Layout des routes protégées (post-login).
+// Layout for protected routes (post-login).
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col">

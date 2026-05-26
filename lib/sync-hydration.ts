@@ -1,10 +1,10 @@
-// Hydrate IndexedDB avec les sets fetchés depuis le serveur.
-// Idempotent : utilise localId = "srv_${serverId}" comme clé primaire,
-// donc relancer la fonction ne crée pas de doublons.
+// Hydrates IndexedDB with the sets fetched from the server.
+// Idempotent: uses localId = "srv_${serverId}" as the primary key,
+// so re-running the function does not create duplicates.
 //
-// Stratégie : à chaque mount du SessionRunner, on appelle hydrate avec
-// les sets server-side. IndexedDB devient ainsi la source de vérité unique
-// pour l'affichage (les composants utilisent useLiveQuery sur Dexie).
+// Strategy: on every SessionRunner mount, we call hydrate with the
+// server-side sets. IndexedDB thus becomes the single source of truth
+// for display (the components use useLiveQuery on Dexie).
 
 import type { Set as PrismaSet } from '@prisma/client';
 import { getDB, type PendingSet } from '@/lib/indexeddb';
@@ -32,6 +32,6 @@ export async function hydrateFromServerSets(
     attempts: 0,
     lastError: null,
   }));
-  // bulkPut est idempotent par localId.
+  // bulkPut is idempotent by localId.
   await db.pendingSets.bulkPut(records);
 }

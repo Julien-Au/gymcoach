@@ -1,8 +1,8 @@
 import { isRestTimerSoundEnabled } from './preferences';
 
-// Beep synthétique via Web Audio API : pas de fichier à embarquer, pas de
-// permission spéciale, fonctionne sur iOS Safari après une interaction user.
-// Désactivable via la préférence utilisateur (page /settings).
+// Synthetic beep via the Web Audio API: no file to bundle, no special
+// permission, works on iOS Safari after a user interaction.
+// Can be disabled via the user preference (page /settings).
 
 let cachedCtx: AudioContext | null = null;
 
@@ -21,7 +21,7 @@ function getAudioContext(): AudioContext | null {
   }
 }
 
-// Joue un bref bip à 880 Hz si la préférence est activée. Fail silently.
+// Plays a short 880 Hz beep if the preference is enabled. Fails silently.
 export function playRestEndBeep(): void {
   if (!isRestTimerSoundEnabled()) return;
   const ctx = getAudioContext();
@@ -39,6 +39,6 @@ export function playRestEndBeep(): void {
     osc.start(now);
     osc.stop(now + 0.45);
   } catch {
-    // Ignore : son est nice-to-have.
+    // Ignore: the sound is a nice-to-have.
   }
 }

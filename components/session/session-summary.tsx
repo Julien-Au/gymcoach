@@ -42,7 +42,7 @@ export function SessionSummary({ session, sets, programExercises, onBack, onFini
   });
 
   async function handleClose() {
-    // Sauvegarde des notes avant clôture si elles ont changé.
+    // Save the notes before closing if they changed.
     if (notes && notes !== (session.notes ?? '')) {
       const res = await fetch(`/api/sessions/${session.id}`, {
         method: 'PUT',
@@ -50,7 +50,7 @@ export function SessionSummary({ session, sets, programExercises, onBack, onFini
         body: JSON.stringify({ notes }),
       });
       if (!res.ok) {
-        toast.error('Impossible d\'enregistrer les notes.');
+        toast.error('Could not save the notes.');
         return;
       }
     }
@@ -62,24 +62,24 @@ export function SessionSummary({ session, sets, programExercises, onBack, onFini
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 py-6">
         <Button variant="ghost" size="sm" onClick={onBack} className="self-start">
           <ChevronLeft className="size-4" />
-          <span className="ml-1">Retour à la séance</span>
+          <span className="ml-1">Back to the session</span>
         </Button>
 
-        <h1 className="text-2xl font-bold tracking-tight">Résumé de la séance</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Session summary</h1>
 
         <div className="grid grid-cols-3 gap-3">
-          <Stat label="Durée" value={`${durationMin} min`} />
-          <Stat label="Séries" value={totalSets} />
-          <Stat label="Volume" value={`${Math.round(totalVolume).toLocaleString('fr-FR')} kg`} />
+          <Stat label="Duration" value={`${durationMin} min`} />
+          <Stat label="Sets" value={totalSets} />
+          <Stat label="Volume" value={`${Math.round(totalVolume).toLocaleString('en-US')} kg`} />
         </div>
         <p className="text-xs text-muted-foreground">
-          Volume = Σ (charge × reps), {totalReps} répétitions au total.
+          Volume = Σ (load × reps), {totalReps} reps total.
         </p>
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Exercices</CardTitle>
-            <CardDescription>Progression par exercice</CardDescription>
+            <CardTitle className="text-base">Exercises</CardTitle>
+            <CardDescription>Progress per exercise</CardDescription>
           </CardHeader>
           <CardContent className="pt-0">
             <ul className="divide-y divide-border">
@@ -97,7 +97,7 @@ export function SessionSummary({ session, sets, programExercises, onBack, onFini
                     <span className="truncate">{s.pe.exercise.name}</span>
                   </div>
                   <span className="flex-shrink-0 text-xs text-muted-foreground">
-                    {s.doneSets}/{s.targetSets} séries
+                    {s.doneSets}/{s.targetSets} sets
                     {s.maxWeight > 0 ? ` · max ${s.maxWeight} kg` : ''}
                   </span>
                 </li>
@@ -107,13 +107,13 @@ export function SessionSummary({ session, sets, programExercises, onBack, onFini
         </Card>
 
         <div className="space-y-2">
-          <Label htmlFor="session-notes">Note de séance (optionnel)</Label>
+          <Label htmlFor="session-notes">Session note (optional)</Label>
           <Textarea
             id="session-notes"
             rows={3}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Ressenti général, douleurs, points à retravailler..."
+            placeholder="Overall feel, pain, points to work on..."
           />
         </div>
 
@@ -122,7 +122,7 @@ export function SessionSummary({ session, sets, programExercises, onBack, onFini
           disabled={finishing}
           className="h-16 w-full text-base font-semibold"
         >
-          {finishing ? 'Clôture en cours...' : 'Clôturer la séance'}
+          {finishing ? 'Finishing...' : 'Finish the session'}
         </Button>
       </div>
     </main>

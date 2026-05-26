@@ -1,19 +1,19 @@
 import { cookies } from 'next/headers';
 import { SignJWT, jwtVerify, type JWTPayload } from 'jose';
 
-// Helpers JWT côté serveur (jose, edge-compatible).
-// Le middleware tourne sur l'edge runtime donc Prisma est inutilisable
-// directement : la vérif de session ne fait que valider la signature
-// et lit les claims (userId, email). Toute lookup en DB se fait côté
+// Server-side JWT helpers (jose, edge-compatible).
+// The middleware runs on the edge runtime so Prisma cannot be used
+// directly: session verification only validates the signature
+// and reads the claims (userId, email). Any DB lookup happens in
 // server components / API routes (Node runtime).
 
 export const SESSION_COOKIE = 'gymcoach-session';
-const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30; // 30 jours
+const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30; // 30 days
 
 function getSecret(): Uint8Array {
   const secret = process.env.JWT_SECRET;
   if (!secret || secret.length < 32) {
-    throw new Error('JWT_SECRET manquant ou trop court (min 32 chars).');
+    throw new Error('JWT_SECRET missing or too short (min 32 chars).');
   }
   return new TextEncoder().encode(secret);
 }
@@ -43,7 +43,7 @@ export async function verifySession(token: string): Promise<SessionClaims | null
   }
 }
 
-// À appeler dans les server components / API routes (Node runtime).
+// To be called in server components / API routes (Node runtime).
 export async function getCurrentSession(): Promise<SessionClaims | null> {
   const token = cookies().get(SESSION_COOKIE)?.value;
   if (!token) return null;
@@ -58,10 +58,11 @@ export async function requireSession(): Promise<SessionClaims> {
   return session;
 }
 
-// Raccourci utile dans les API routes : retourne le userId ou null.
-// Le middleware bloque déjà les routes protégées avec un 401 JSON,
-// mais on garde cette défense côté handler pour les cas edge (token expiré
-// entre la vérif middleware et l'arrivée ici, ou route oubliée du matcher).
+// Handy shortcut in the API routes: returns the userId or null.
+// The middleware already blocks protected routes with a 401 JSON,
+// but we keep this handler-side guard for edge cases (token expired
+// between the middleware check and arriving here, or a route missing
+// from the matcher).
 export async function getCurrentUserId(): Promise<string | null> {
   const session = await getCurrentSession();
   return session?.userId ?? null;

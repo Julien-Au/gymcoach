@@ -7,14 +7,14 @@ import { getDB } from '@/lib/indexeddb';
 import { flushPendingSets } from '@/lib/sync';
 import { Button } from '@/components/ui/button';
 
-// Indicateur global online/offline + queue de sync.
-// 3 états visuels :
-// - Online + 0 pending : rien (silencieux pour ne pas polluer la nav).
-// - Online + N pending : badge "Synchro N..." avec bouton retry manuel.
-// - Offline (avec ou sans pending) : badge orange "Hors ligne · N en attente".
+// Global online/offline indicator + sync queue.
+// 3 visual states:
+// - Online + 0 pending: nothing (silent to avoid cluttering the nav).
+// - Online + N pending: "Syncing N..." badge with a manual retry button.
+// - Offline (with or without pending): orange "Offline · N pending" badge.
 //
-// Le composant est silencieux pendant l'hydratation initiale (avant que
-// IndexedDB ait été ouvert) pour éviter un flash "0 pending".
+// The component is silent during initial hydration (before IndexedDB has been
+// opened) to avoid a "0 pending" flash.
 
 export function OfflineIndicator() {
   const [online, setOnline] = useState<boolean | null>(null);
@@ -47,7 +47,7 @@ export function OfflineIndicator() {
 
   if (online === null) return null;
 
-  // Online + queue vide : invisible.
+  // Online + empty queue: invisible.
   if (online && pendingCount === 0) return null;
 
   async function handleManualSync() {
@@ -64,13 +64,13 @@ export function OfflineIndicator() {
       <div className="flex items-center gap-1.5 rounded-md bg-amber-500/15 px-2 py-1 text-xs font-medium text-amber-600 dark:text-amber-400">
         <CloudOff className="size-3.5" />
         <span>
-          Hors ligne{pendingCount > 0 ? ` · ${pendingCount} en attente` : ''}
+          Offline{pendingCount > 0 ? ` · ${pendingCount} pending` : ''}
         </span>
       </div>
     );
   }
 
-  // Online avec queue résiduelle : on affiche en mode info, avec retry manuel.
+  // Online with a residual queue: show in info mode, with manual retry.
   return (
     <Button
       variant="ghost"
@@ -78,14 +78,14 @@ export function OfflineIndicator() {
       onClick={handleManualSync}
       disabled={flushing}
       className="h-7 gap-1.5 px-2 text-xs"
-      aria-label="Synchroniser maintenant"
+      aria-label="Sync now"
     >
       {flushing ? (
         <RotateCw className="size-3.5 animate-spin" />
       ) : (
         <Wifi className="size-3.5" />
       )}
-      <span>Synchro {pendingCount}...</span>
+      <span>Syncing {pendingCount}...</span>
     </Button>
   );
 }

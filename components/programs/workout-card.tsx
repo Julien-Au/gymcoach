@@ -40,16 +40,16 @@ export function WorkoutCard({ workout, catalog }: Props) {
   const [deleting, setDeleting] = useState(false);
 
   async function handleDelete() {
-    if (!confirm(`Supprimer la séance "${workout.name}" et tous ses exercices ?`)) return;
+    if (!confirm(`Delete the session "${workout.name}" and all its exercises?`)) return;
     setDeleting(true);
     try {
       const res = await fetch(`/api/workouts/${workout.id}`, { method: 'DELETE' });
       if (!res.ok) {
         const data = (await res.json().catch(() => null)) as { error?: string } | null;
-        toast.error(data?.error ?? 'Suppression impossible.');
+        toast.error(data?.error ?? 'Could not delete.');
         return;
       }
-      toast.success('Séance supprimée.');
+      toast.success('Session deleted.');
       router.refresh();
     } finally {
       setDeleting(false);
@@ -68,7 +68,7 @@ export function WorkoutCard({ workout, catalog }: Props) {
             <div className="mt-1 flex flex-wrap gap-1.5 text-xs text-muted-foreground">
               {dayLabel && <Badge variant="secondary">{dayLabel}</Badge>}
               <span>
-                {workout.exercises.length} exercice{workout.exercises.length > 1 ? 's' : ''}
+                {workout.exercises.length} exercise{workout.exercises.length > 1 ? 's' : ''}
               </span>
             </div>
           </div>
@@ -78,7 +78,7 @@ export function WorkoutCard({ workout, catalog }: Props) {
                 variant="ghost"
                 size="icon"
                 className="min-h-tap min-w-tap"
-                aria-label="Actions séance"
+                aria-label="Session actions"
               >
                 <MoreHorizontal className="size-4" />
               </Button>
@@ -86,7 +86,7 @@ export function WorkoutCard({ workout, catalog }: Props) {
             <DropdownMenuContent align="end">
               <DropdownMenuItem onSelect={() => setEditOpen(true)}>
                 <Pencil className="mr-2 size-4" />
-                Modifier
+                Edit
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
@@ -95,7 +95,7 @@ export function WorkoutCard({ workout, catalog }: Props) {
                 className="text-destructive focus:text-destructive"
               >
                 <Trash2 className="mr-2 size-4" />
-                Supprimer
+                Delete
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -105,7 +105,7 @@ export function WorkoutCard({ workout, catalog }: Props) {
       <CardContent className="flex flex-col gap-2 pt-0">
         {workout.exercises.length === 0 ? (
           <p className="text-xs text-muted-foreground">
-            Aucun exercice programmé. Utilise le bouton ci-dessous pour en ajouter.
+            No programmed exercises. Use the button below to add some.
           </p>
         ) : (
           <ul className="flex flex-col gap-2">
@@ -125,11 +125,11 @@ export function WorkoutCard({ workout, catalog }: Props) {
           disabled={catalog.length === 0}
         >
           <Plus className="size-4" />
-          <span className="ml-2">Ajouter un exercice</span>
+          <span className="ml-2">Add an exercise</span>
         </Button>
         {catalog.length === 0 && (
           <p className="text-xs text-muted-foreground">
-            Le catalogue est vide. Ajoute d&apos;abord un exercice dans Catalogue.
+            The catalog is empty. Add an exercise in Catalog first.
           </p>
         )}
       </CardContent>

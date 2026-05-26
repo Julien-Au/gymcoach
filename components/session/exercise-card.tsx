@@ -27,7 +27,7 @@ export function ExerciseCard({ programExercise, lastPerformance }: Props) {
 
   const suggestion = suggestNextWeight(programExercise, lastPerformance?.sets ?? []);
   const lastDate = lastPerformance
-    ? new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: '2-digit' }).format(
+    ? new Intl.DateTimeFormat('en-US', { day: '2-digit', month: '2-digit' }).format(
         new Date(lastPerformance.sessionStartedAt),
       )
     : null;
@@ -44,19 +44,19 @@ export function ExerciseCard({ programExercise, lastPerformance }: Props) {
 
       <CardContent className="flex flex-col gap-3 pt-0">
         <p className="text-sm font-medium">
-          {programExercise.targetSets} séries × {repsLabel} reps · RIR{' '}
-          {programExercise.targetRIR} · Repos {programExercise.restSec}s
+          {programExercise.targetSets} sets × {repsLabel} reps · RIR{' '}
+          {programExercise.targetRIR} · Rest {programExercise.restSec}s
           {programExercise.tempo && ` · Tempo ${programExercise.tempo}`}
         </p>
 
         {lastPerformance && (
           <div className="rounded-md bg-secondary/50 p-3 text-sm">
             <div className="flex items-center gap-2 text-muted-foreground">
-              <span className="text-xs">Dernière séance ({lastDate})</span>
+              <span className="text-xs">Last session ({lastDate})</span>
             </div>
             <p className="font-medium">
               {lastPerformance.maxWeight === 0
-                ? `${lastPerformance.repsAtMaxWeight} reps poids du corps`
+                ? `${lastPerformance.repsAtMaxWeight} reps bodyweight`
                 : `${lastPerformance.maxWeight} kg × ${lastPerformance.repsAtMaxWeight} reps`}
             </p>
           </div>
@@ -71,10 +71,10 @@ export function ExerciseCard({ programExercise, lastPerformance }: Props) {
                 <Lightbulb className="size-4 text-primary" />
               )}
               <span className="flex-1">
-                Suggestion :{' '}
+                Suggestion:{' '}
                 <span className="font-medium">
                   {suggestion.weight === 0
-                    ? 'poids du corps'
+                    ? 'bodyweight'
                     : `${suggestion.weight} kg`}
                 </span>
                 {suggestion.reason === 'progression' && suggestion.delta && (
@@ -86,7 +86,7 @@ export function ExerciseCard({ programExercise, lastPerformance }: Props) {
               <button
                 type="button"
                 onClick={() => setHelpOpen((v) => !v)}
-                aria-label="Comment la suggestion est calculée"
+                aria-label="How the suggestion is calculated"
                 aria-expanded={helpOpen}
                 className="text-muted-foreground hover:text-foreground"
               >
@@ -96,8 +96,8 @@ export function ExerciseCard({ programExercise, lastPerformance }: Props) {
             {helpOpen && (
               <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
                 {suggestion.reason === 'progression'
-                  ? `Toutes les séries de travail ont atteint ${suggestion.targetRepsMax} reps à ${suggestion.workingWeight} kg : on monte de ${suggestion.delta} kg pour repartir vers le bas de la fourchette (double progression).`
-                  : `Garde la même charge et essaie de battre tes reps. La progression débloquera quand toutes les séries de travail atteindront ${suggestion.targetRepsMax} reps.`}
+                  ? `All working sets reached ${suggestion.targetRepsMax} reps at ${suggestion.workingWeight} kg: load goes up by ${suggestion.delta} kg to drop back to the bottom of the rep range (double progression).`
+                  : `Keep the same load and try to beat your reps. Progression unlocks once all working sets reach ${suggestion.targetRepsMax} reps.`}
               </p>
             )}
           </div>
@@ -119,7 +119,7 @@ export function ExerciseCard({ programExercise, lastPerformance }: Props) {
                 {programExercise.notes && <p className="whitespace-pre-line">{programExercise.notes}</p>}
                 {exo.notes && (
                   <p className="whitespace-pre-line">
-                    <span className="font-medium text-foreground">Technique : </span>
+                    <span className="font-medium text-foreground">Technique: </span>
                     {exo.notes}
                   </p>
                 )}

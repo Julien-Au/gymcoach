@@ -1,5 +1,5 @@
-// Préférences utilisateur stockées localement (pas en DB).
-// Tout est mono-utilisateur, donc localStorage suffit. Lecture safe SSR.
+// User preferences stored locally (not in the DB).
+// Everything is single-user, so localStorage is enough. SSR-safe reads.
 
 const STORAGE_KEY = 'gymcoach.prefs.v1';
 
@@ -30,11 +30,11 @@ export function savePreferences(prefs: UserPreferences): void {
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
   } catch {
-    // localStorage indisponible : on accepte silencieusement.
+    // localStorage unavailable: silently accept.
   }
 }
 
-// Helpers ciblés (lecture sans rendre la signature complète obligatoire).
+// Targeted helpers (read without requiring the full signature).
 export function isVibrationEnabled(): boolean {
   return loadPreferences().vibration;
 }

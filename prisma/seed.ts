@@ -1,15 +1,15 @@
 /**
- * Seed de démo pour GymCoach (édition open-source).
+ * Demo seed for GymCoach (open-source edition).
  *
- * Charge un jeu de données neutre permettant de découvrir l'application :
- * - Un compte de démo (email/mot de passe configurables via .env)
- * - Un catalogue d'exercices avec muscleGroup, category et repères techniques
- * - Un programme de démo "Hypertrophie - Phase 1" (Upper / Lower / Full Body)
- * - Une séance d'exemple, pour que les graphiques et suggestions aient des données
+ * Loads a neutral dataset to help you explore the application:
+ * - A demo account (email/password configurable via .env)
+ * - An exercise catalog with muscleGroup, category and technique cues
+ * - A demo program "Hypertrophy - Phase 1" (Upper / Lower / Full Body)
+ * - A sample session, so the charts and suggestions have data
  *
- * Aucune donnée personnelle ici : adaptez librement le catalogue et le programme.
+ * No personal data here: feel free to adapt the catalog and the program.
  *
- * Usage : npm run db:seed
+ * Usage: npm run db:seed
  */
 
 import { PrismaClient, MuscleGroup, ExerciseCategory } from '@prisma/client';
@@ -18,10 +18,10 @@ import bcrypt from 'bcrypt';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('Seed: démarrage...');
+  console.log('Seed: starting...');
 
   // ============================================================
-  // 1. COMPTE DE DÉMO
+  // 1. DEMO ACCOUNT
   // ============================================================
   const passwordHash = await bcrypt.hash(
     process.env.USER_PASSWORD || 'change-me-immediately',
@@ -38,218 +38,218 @@ async function main() {
     },
   });
 
-  console.log(`Seed: compte de démo -> ${user.email}`);
+  console.log(`Seed: demo account -> ${user.email}`);
 
   // ============================================================
-  // 2. CATALOGUE D'EXERCICES (repères techniques génériques)
+  // 2. EXERCISE CATALOG (generic technique cues)
   // ============================================================
   const exercisesData = [
-    // Pectoraux
+    // Chest
     {
-      name: 'Développé couché barre',
+      name: 'Barbell bench press',
       muscleGroup: MuscleGroup.CHEST,
       category: ExerciseCategory.COMPOUND,
       defaultRestSec: 150,
-      notes: 'Barre dans le creux de la paume, poignet aligné avec l\'avant-bras. Coudes à 45 degrés du buste. Toucher la poitrine.',
+      notes: 'Bar in the heel of the palm, wrist aligned with the forearm. Elbows at 45 degrees from the torso. Touch the chest.',
     },
     {
-      name: 'Développé incliné haltères (30°)',
+      name: 'Incline dumbbell press (30 deg)',
       muscleGroup: MuscleGroup.CHEST,
       category: ExerciseCategory.COMPOUND,
       defaultRestSec: 120,
-      notes: 'Banc à 30 degrés. Tempo 3-0-1-0. Ne pas verrouiller les coudes en haut. Focus pectoral supérieur.',
+      notes: 'Bench at 30 degrees. Tempo 3-0-1-0. Do not lock the elbows at the top. Upper-chest focus.',
     },
     {
-      name: 'Pec deck (ou butterfly poulies)',
+      name: 'Pec deck (or cable fly)',
       muscleGroup: MuscleGroup.CHEST,
       category: ExerciseCategory.ISOLATION,
       defaultRestSec: 75,
-      notes: 'Coudes 5 à 10 degrés sous la ligne des épaules. Conduit par les coudes. Pause en étirement et en contraction.',
+      notes: 'Elbows 5 to 10 degrees below the shoulder line. Driven by the elbows. Pause at the stretch and at the contraction.',
     },
 
-    // Dos
+    // Back
     {
-      name: 'Tractions pronation (lestées si possible)',
+      name: 'Pronated pull-ups (weighted if possible)',
       muscleGroup: MuscleGroup.BACK_WIDTH,
       category: ExerciseCategory.COMPOUND,
       defaultRestSec: 120,
       usesBodyweight: true,
-      notes: 'Pronation, largeur épaules + 10 cm. Tempo strict. Tirer avec les coudes vers les hanches. Lester quand 4x10 est atteint.',
+      notes: 'Pronated grip, shoulder width + 10 cm. Strict tempo. Pull with the elbows toward the hips. Add load once 4x10 is reached.',
     },
     {
-      name: 'Tirage poulie haute (prise large)',
+      name: 'Lat pulldown (wide grip)',
       muscleGroup: MuscleGroup.BACK_WIDTH,
       category: ExerciseCategory.COMPOUND,
       defaultRestSec: 120,
-      notes: 'Prise large pronation. Tirer aux clavicules, omoplates basses. Buste légèrement penché.',
+      notes: 'Wide pronated grip. Pull to the collarbones, shoulder blades down. Torso slightly leaned back.',
     },
     {
-      name: 'Rowing barre buste penché',
+      name: 'Bent-over barbell row',
       muscleGroup: MuscleGroup.BACK_THICKNESS,
       category: ExerciseCategory.COMPOUND,
       defaultRestSec: 120,
-      notes: 'Buste 30 à 45 degrés, dos plat. Tirer vers le nombril. Coudes le long du corps.',
+      notes: 'Torso 30 to 45 degrees, flat back. Pull toward the navel. Elbows close to the body.',
     },
     {
-      name: 'Tirage horizontal poulie (poignées étroites)',
+      name: 'Seated cable row (close handles)',
       muscleGroup: MuscleGroup.BACK_THICKNESS,
       category: ExerciseCategory.COMPOUND,
       defaultRestSec: 90,
-      notes: 'Poignées parallèles. Tirer vers le nombril. Squeeze des omoplates. Coudes le long du corps.',
+      notes: 'Parallel handles. Pull toward the navel. Squeeze the shoulder blades. Elbows close to the body.',
     },
 
-    // Épaules
+    // Shoulders
     {
-      name: 'Développé militaire haltères assis',
+      name: 'Seated dumbbell overhead press',
       muscleGroup: MuscleGroup.SHOULDERS_FRONT,
       category: ExerciseCategory.COMPOUND,
       defaultRestSec: 120,
-      notes: 'Banc à 90 degrés avec dossier. Pas de cambrure lombaire. Descente jusqu\'aux oreilles.',
+      notes: 'Bench at 90 degrees with a backrest. No lower-back arch. Lower down to the ears.',
     },
     {
-      name: 'Élévations latérales poulie',
+      name: 'Cable lateral raises',
       muscleGroup: MuscleGroup.SHOULDERS_LATERAL,
       category: ExerciseCategory.ISOLATION,
       defaultRestSec: 60,
-      notes: 'Câble devant le corps. Coude légèrement fléchi. Mener par le coude. Stop à hauteur épaule. Descente lente.',
+      notes: 'Cable in front of the body. Elbow slightly bent. Lead with the elbow. Stop at shoulder height. Slow descent.',
     },
     {
-      name: 'Oiseau machine (rear delt fly)',
+      name: 'Machine rear delt fly',
       muscleGroup: MuscleGroup.SHOULDERS_REAR,
       category: ExerciseCategory.ISOLATION,
       defaultRestSec: 60,
-      notes: 'Pec deck inversé. Conduit par les coudes vers l\'arrière. Paumes face au sol. Squeeze 1s.',
+      notes: 'Reverse pec deck. Driven by the elbows toward the back. Palms facing the floor. Squeeze 1s.',
     },
 
     // Biceps
     {
-      name: 'Curl barre EZ',
+      name: 'EZ-bar curl',
       muscleGroup: MuscleGroup.BICEPS,
       category: ExerciseCategory.ISOLATION,
       defaultRestSec: 75,
-      notes: 'Pas de balancement. Squeeze 1s en haut. Coudes près du corps.',
+      notes: 'No swinging. Squeeze 1s at the top. Elbows close to the body.',
     },
     {
-      name: 'Curl incliné haltères (banc 60°)',
+      name: 'Incline dumbbell curl (bench 60 deg)',
       muscleGroup: MuscleGroup.BICEPS,
       category: ExerciseCategory.ISOLATION,
       defaultRestSec: 75,
-      notes: 'Banc à 60 degrés. Coudes en arrière du buste, fixes. Supination en montant. Étirement complet en bas (Maeo 2021).',
+      notes: 'Bench at 60 degrees. Elbows behind the torso, fixed. Supinate on the way up. Full stretch at the bottom (Maeo 2021).',
     },
 
     // Triceps
     {
-      name: 'Dips machine ou barres parallèles',
+      name: 'Machine dips or parallel bars',
       muscleGroup: MuscleGroup.TRICEPS,
       category: ExerciseCategory.COMPOUND,
       defaultRestSec: 75,
       usesBodyweight: true,
-      notes: 'Buste vertical pour focus triceps. Sur machine assistée, saisir le poids d\'assistance en négatif.',
+      notes: 'Vertical torso for triceps focus. On an assisted machine, enter the assistance weight as negative.',
     },
     {
-      name: 'Extension triceps poulie (corde)',
+      name: 'Triceps pushdown (rope)',
       muscleGroup: MuscleGroup.TRICEPS,
       category: ExerciseCategory.ISOLATION,
       defaultRestSec: 60,
-      notes: 'Coudes collés au corps. Écarter la corde en bas. Ne pas verrouiller le coude brutalement (95% extension max).',
+      notes: 'Elbows pinned to the body. Spread the rope at the bottom. Do not snap the elbow into lockout (95% max extension).',
     },
 
-    // Quadriceps
+    // Quads
     {
-      name: 'Squat machine (ou Hack squat)',
+      name: 'Machine squat (or Hack squat)',
       muscleGroup: MuscleGroup.QUADS,
       category: ExerciseCategory.COMPOUND,
       defaultRestSec: 150,
-      notes: 'Profondeur cuisses parallèles. Descente contrôlée 3s.',
+      notes: 'Depth to parallel thighs. Controlled 3s descent.',
     },
     {
       name: 'Leg extension',
       muscleGroup: MuscleGroup.QUADS,
       category: ExerciseCategory.ISOLATION,
       defaultRestSec: 75,
-      notes: 'Pause 1s en haut. Pieds neutres.',
+      notes: 'Pause 1s at the top. Neutral feet.',
     },
     {
-      name: 'Fentes marchées avec haltères',
+      name: 'Walking lunges with dumbbells',
       muscleGroup: MuscleGroup.QUADS,
       category: ExerciseCategory.COMPOUND,
       defaultRestSec: 90,
-      notes: 'Genou à 1 cm du sol, pas de rebond.',
+      notes: 'Knee to 1 cm from the floor, no bounce.',
     },
 
-    // Ischios
+    // Hamstrings
     {
-      name: 'Romanian Deadlift haltères',
+      name: 'Dumbbell Romanian Deadlift',
       muscleGroup: MuscleGroup.HAMSTRINGS,
       category: ExerciseCategory.COMPOUND,
       defaultRestSec: 120,
-      notes: 'Pousser les hanches en arrière, dos plat. Genoux légèrement fléchis. Étirement ischios maximal.',
+      notes: 'Push the hips back, flat back. Knees slightly bent. Maximal hamstring stretch.',
     },
     {
-      name: 'Leg curl assis',
+      name: 'Seated leg curl',
       muscleGroup: MuscleGroup.HAMSTRINGS,
       category: ExerciseCategory.ISOLATION,
       defaultRestSec: 75,
-      notes: 'Pause 1s en contraction. Amplitude complète.',
+      notes: 'Pause 1s at the contraction. Full range of motion.',
     },
 
-    // Fessiers
+    // Glutes
     {
-      name: 'Hip thrust barre (ou machine)',
+      name: 'Barbell hip thrust (or machine)',
       muscleGroup: MuscleGroup.GLUTES,
       category: ExerciseCategory.COMPOUND,
       defaultRestSec: 120,
-      notes: 'Pause 1s en haut, neutralité cervicale. Verrouiller les fessiers en haut.',
+      notes: 'Pause 1s at the top, neutral neck. Lock the glutes at the top.',
     },
 
-    // Adducteurs
+    // Adductors
     {
-      name: 'Adducteurs machine',
-      muscleGroup: MuscleGroup.QUADS, // approximation, pas de groupe dédié
+      name: 'Hip adduction machine',
+      muscleGroup: MuscleGroup.QUADS, // approximation, no dedicated group
       category: ExerciseCategory.ISOLATION,
       defaultRestSec: 60,
-      notes: 'Pause 1s en contraction.',
+      notes: 'Pause 1s at the contraction.',
     },
 
-    // Mollets
+    // Calves
     {
-      name: 'Mollets debout (ou machine)',
+      name: 'Standing calf raise (or machine)',
       muscleGroup: MuscleGroup.CALVES,
       category: ExerciseCategory.ISOLATION,
       defaultRestSec: 60,
-      notes: 'Gastrocnémien (jambes tendues). Amplitude max, pause 1s en bas. Pas de rebond.',
+      notes: 'Gastrocnemius (legs straight). Full range, pause 1s at the bottom. No bounce.',
     },
     {
-      name: 'Mollets assis machine',
+      name: 'Seated calf raise machine',
       muscleGroup: MuscleGroup.CALVES,
       category: ExerciseCategory.ISOLATION,
       defaultRestSec: 60,
-      notes: 'Soléaire (jambes pliées 90 degrés). Pause en étirement bas. Tempo 3-1-1-1. Pas de rebond.',
+      notes: 'Soleus (legs bent 90 degrees). Pause at the bottom stretch. Tempo 3-1-1-1. No bounce.',
     },
 
-    // Abdos
+    // Abs
     {
-      name: 'Crunch poulie haute (à genoux)',
+      name: 'Cable crunch (kneeling)',
       muscleGroup: MuscleGroup.ABS,
       category: ExerciseCategory.ISOLATION,
       defaultRestSec: 60,
-      notes: 'Hanches verrouillées. Enrouler la colonne. Approcher les côtes du bassin.',
+      notes: 'Hips locked. Roll the spine. Bring the ribs toward the pelvis.',
     },
     {
-      name: 'Relevés jambes suspendu',
+      name: 'Hanging leg raises',
       muscleGroup: MuscleGroup.ABS,
       category: ExerciseCategory.ISOLATION,
       defaultRestSec: 60,
       usesBodyweight: true,
-      notes: 'Contrôle 2s à la descente. Pas de balancement.',
+      notes: 'Control 2s on the way down. No swinging.',
     },
     {
-      name: 'Gainage planche + side plank',
+      name: 'Plank + side plank',
       muscleGroup: MuscleGroup.ABS,
       category: ExerciseCategory.ISOLATION,
       defaultRestSec: 45,
       usesBodyweight: true,
-      notes: 'Stabilité du tronc. 1 tour en finisher.',
+      notes: 'Core stability. 1 round as a finisher.',
     },
   ];
 
@@ -262,10 +262,10 @@ async function main() {
     });
     exerciseMap.set(data.name, exercise.id);
   }
-  console.log(`Seed: ${exercisesData.length} exercices`);
+  console.log(`Seed: ${exercisesData.length} exercises`);
 
   // ============================================================
-  // 3. PROGRAMME DE DÉMO
+  // 3. DEMO PROGRAM
   // ============================================================
   await prisma.program.updateMany({
     where: { userId: user.id, isActive: true },
@@ -275,17 +275,17 @@ async function main() {
   const program = await prisma.program.create({
     data: {
       userId: user.id,
-      name: 'Hypertrophie - Phase 1',
+      name: 'Hypertrophy - Phase 1',
       description:
-        'Split Upper / Lower / Full Body, fréquence 2x par groupe musculaire et par semaine. Phase hypertrophie (8 à 12 reps, RIR 2 à 3).',
-      phase: 'Hypertrophie',
+        'Upper / Lower / Full Body split, frequency 2x per muscle group per week. Hypertrophy phase (8 to 12 reps, RIR 2 to 3).',
+      phase: 'Hypertrophy',
       isActive: true,
       startDate: new Date('2026-01-06'),
     },
   });
-  console.log(`Seed: programme -> ${program.name}`);
+  console.log(`Seed: program -> ${program.name}`);
 
-  // Définition compacte des 3 séances.
+  // Compact definition of the 3 sessions.
   const workouts: Array<{
     name: string;
     dayOfWeek: number;
@@ -301,49 +301,49 @@ async function main() {
     }>;
   }> = [
     {
-      name: 'Upper - Haut du corps',
+      name: 'Upper - Upper body',
       dayOfWeek: 1,
       order: 1,
       exercises: [
-        { name: 'Tractions pronation (lestées si possible)', targetSets: 4, targetRepsMin: 6, targetRepsMax: 10, targetRIR: 2, restSec: 120, tempo: '2-1-2-0' },
-        { name: 'Développé incliné haltères (30°)', targetSets: 4, targetRepsMin: 8, targetRepsMax: 10, targetRIR: 2, restSec: 120, tempo: '3-0-1-0' },
-        { name: 'Rowing barre buste penché', targetSets: 4, targetRepsMin: 8, targetRepsMax: 10, targetRIR: 2, restSec: 120, tempo: '2-0-1-1' },
-        { name: 'Développé militaire haltères assis', targetSets: 3, targetRepsMin: 8, targetRepsMax: 10, targetRIR: 2, restSec: 90, tempo: '2-0-1-0' },
-        { name: 'Élévations latérales poulie', targetSets: 3, targetRepsMin: 10, targetRepsMax: 12, targetRIR: 1, restSec: 60, tempo: '1-1-3-0' },
-        { name: 'Curl barre EZ', targetSets: 3, targetRepsMin: 8, targetRepsMax: 10, targetRIR: 2, restSec: 75, tempo: '2-0-1-1' },
-        { name: 'Dips machine ou barres parallèles', targetSets: 3, targetRepsMin: 8, targetRepsMax: 10, targetRIR: 2, restSec: 75, tempo: '2-0-1-0' },
-        { name: 'Crunch poulie haute (à genoux)', targetSets: 3, targetRepsMin: 12, targetRepsMax: 15, targetRIR: 1, restSec: 60, tempo: '2-2-2-0' },
+        { name: 'Pronated pull-ups (weighted if possible)', targetSets: 4, targetRepsMin: 6, targetRepsMax: 10, targetRIR: 2, restSec: 120, tempo: '2-1-2-0' },
+        { name: 'Incline dumbbell press (30 deg)', targetSets: 4, targetRepsMin: 8, targetRepsMax: 10, targetRIR: 2, restSec: 120, tempo: '3-0-1-0' },
+        { name: 'Bent-over barbell row', targetSets: 4, targetRepsMin: 8, targetRepsMax: 10, targetRIR: 2, restSec: 120, tempo: '2-0-1-1' },
+        { name: 'Seated dumbbell overhead press', targetSets: 3, targetRepsMin: 8, targetRepsMax: 10, targetRIR: 2, restSec: 90, tempo: '2-0-1-0' },
+        { name: 'Cable lateral raises', targetSets: 3, targetRepsMin: 10, targetRepsMax: 12, targetRIR: 1, restSec: 60, tempo: '1-1-3-0' },
+        { name: 'EZ-bar curl', targetSets: 3, targetRepsMin: 8, targetRepsMax: 10, targetRIR: 2, restSec: 75, tempo: '2-0-1-1' },
+        { name: 'Machine dips or parallel bars', targetSets: 3, targetRepsMin: 8, targetRepsMax: 10, targetRIR: 2, restSec: 75, tempo: '2-0-1-0' },
+        { name: 'Cable crunch (kneeling)', targetSets: 3, targetRepsMin: 12, targetRepsMax: 15, targetRIR: 1, restSec: 60, tempo: '2-2-2-0' },
       ],
     },
     {
-      name: 'Lower - Bas du corps',
+      name: 'Lower - Lower body',
       dayOfWeek: 3,
       order: 2,
       exercises: [
-        { name: 'Hip thrust barre (ou machine)', targetSets: 4, targetRepsMin: 8, targetRepsMax: 10, targetRIR: 2, restSec: 120, tempo: '1-1-1-0' },
-        { name: 'Squat machine (ou Hack squat)', targetSets: 4, targetRepsMin: 8, targetRepsMax: 10, targetRIR: 2, restSec: 150, tempo: '3-0-1-0' },
-        { name: 'Romanian Deadlift haltères', targetSets: 3, targetRepsMin: 8, targetRepsMax: 10, targetRIR: 2, restSec: 120, tempo: '3-1-1-0' },
+        { name: 'Barbell hip thrust (or machine)', targetSets: 4, targetRepsMin: 8, targetRepsMax: 10, targetRIR: 2, restSec: 120, tempo: '1-1-1-0' },
+        { name: 'Machine squat (or Hack squat)', targetSets: 4, targetRepsMin: 8, targetRepsMax: 10, targetRIR: 2, restSec: 150, tempo: '3-0-1-0' },
+        { name: 'Dumbbell Romanian Deadlift', targetSets: 3, targetRepsMin: 8, targetRepsMax: 10, targetRIR: 2, restSec: 120, tempo: '3-1-1-0' },
         { name: 'Leg extension', targetSets: 3, targetRepsMin: 10, targetRepsMax: 12, targetRIR: 1, restSec: 75, tempo: '1-1-2-0' },
-        { name: 'Adducteurs machine', targetSets: 3, targetRepsMin: 12, targetRepsMax: 15, targetRIR: 1, restSec: 60, tempo: '2-1-1-0' },
-        { name: 'Mollets debout (ou machine)', targetSets: 4, targetRepsMin: 10, targetRepsMax: 12, targetRIR: 1, restSec: 60, tempo: '2-1-1-1' },
-        { name: 'Relevés jambes suspendu', targetSets: 3, targetRepsMin: 10, targetRepsMax: 12, targetRIR: 1, restSec: 60, tempo: '2-0-1-0' },
+        { name: 'Hip adduction machine', targetSets: 3, targetRepsMin: 12, targetRepsMax: 15, targetRIR: 1, restSec: 60, tempo: '2-1-1-0' },
+        { name: 'Standing calf raise (or machine)', targetSets: 4, targetRepsMin: 10, targetRepsMax: 12, targetRIR: 1, restSec: 60, tempo: '2-1-1-1' },
+        { name: 'Hanging leg raises', targetSets: 3, targetRepsMin: 10, targetRepsMax: 12, targetRIR: 1, restSec: 60, tempo: '2-0-1-0' },
       ],
     },
     {
-      name: 'Full Body - Orienté haut',
+      name: 'Full Body - Upper-focused',
       dayOfWeek: 5,
       order: 3,
       exercises: [
-        { name: 'Développé couché barre', targetSets: 4, targetRepsMin: 6, targetRepsMax: 8, targetRIR: 2, restSec: 150, tempo: '3-0-1-0' },
-        { name: 'Tractions pronation (lestées si possible)', targetSets: 4, targetRepsMin: 8, targetRepsMax: 10, targetRIR: 2, restSec: 120, tempo: '2-1-2-0' },
-        { name: 'Pec deck (ou butterfly poulies)', targetSets: 3, targetRepsMin: 10, targetRepsMax: 12, targetRIR: 1, restSec: 75, tempo: '1-1-2-1' },
-        { name: 'Tirage horizontal poulie (poignées étroites)', targetSets: 3, targetRepsMin: 10, targetRepsMax: 12, targetRIR: 1, restSec: 90, tempo: '2-1-1-0' },
-        { name: 'Élévations latérales poulie', targetSets: 4, targetRepsMin: 10, targetRepsMax: 15, targetRIR: 1, restSec: 60, tempo: '1-1-3-0' },
-        { name: 'Oiseau machine (rear delt fly)', targetSets: 3, targetRepsMin: 12, targetRepsMax: 15, targetRIR: 1, restSec: 60, tempo: '1-1-2-1' },
-        { name: 'Curl incliné haltères (banc 60°)', targetSets: 3, targetRepsMin: 10, targetRepsMax: 12, targetRIR: 1, restSec: 75, tempo: '3-1-1-1' },
-        { name: 'Extension triceps poulie (corde)', targetSets: 3, targetRepsMin: 10, targetRepsMax: 12, targetRIR: 1, restSec: 60, tempo: '2-0-1-1' },
-        { name: 'Mollets assis machine', targetSets: 4, targetRepsMin: 12, targetRepsMax: 15, targetRIR: 1, restSec: 60, tempo: '3-1-1-1' },
-        { name: 'Crunch poulie haute (à genoux)', targetSets: 3, targetRepsMin: 12, targetRepsMax: 15, targetRIR: 1, restSec: 60, tempo: '2-2-2-0' },
+        { name: 'Barbell bench press', targetSets: 4, targetRepsMin: 6, targetRepsMax: 8, targetRIR: 2, restSec: 150, tempo: '3-0-1-0' },
+        { name: 'Pronated pull-ups (weighted if possible)', targetSets: 4, targetRepsMin: 8, targetRepsMax: 10, targetRIR: 2, restSec: 120, tempo: '2-1-2-0' },
+        { name: 'Pec deck (or cable fly)', targetSets: 3, targetRepsMin: 10, targetRepsMax: 12, targetRIR: 1, restSec: 75, tempo: '1-1-2-1' },
+        { name: 'Seated cable row (close handles)', targetSets: 3, targetRepsMin: 10, targetRepsMax: 12, targetRIR: 1, restSec: 90, tempo: '2-1-1-0' },
+        { name: 'Cable lateral raises', targetSets: 4, targetRepsMin: 10, targetRepsMax: 15, targetRIR: 1, restSec: 60, tempo: '1-1-3-0' },
+        { name: 'Machine rear delt fly', targetSets: 3, targetRepsMin: 12, targetRepsMax: 15, targetRIR: 1, restSec: 60, tempo: '1-1-2-1' },
+        { name: 'Incline dumbbell curl (bench 60 deg)', targetSets: 3, targetRepsMin: 10, targetRepsMax: 12, targetRIR: 1, restSec: 75, tempo: '3-1-1-1' },
+        { name: 'Triceps pushdown (rope)', targetSets: 3, targetRepsMin: 10, targetRepsMax: 12, targetRIR: 1, restSec: 60, tempo: '2-0-1-1' },
+        { name: 'Seated calf raise machine', targetSets: 4, targetRepsMin: 12, targetRepsMax: 15, targetRIR: 1, restSec: 60, tempo: '3-1-1-1' },
+        { name: 'Cable crunch (kneeling)', targetSets: 3, targetRepsMin: 12, targetRepsMax: 15, targetRIR: 1, restSec: 60, tempo: '2-2-2-0' },
       ],
     },
   ];
@@ -357,7 +357,7 @@ async function main() {
     let order = 1;
     for (const ex of w.exercises) {
       const exerciseId = exerciseMap.get(ex.name);
-      if (!exerciseId) throw new Error(`Exercice introuvable : ${ex.name}`);
+      if (!exerciseId) throw new Error(`Exercise not found: ${ex.name}`);
       await prisma.programExercise.create({
         data: {
           workoutId: workout.id,
@@ -372,11 +372,11 @@ async function main() {
         },
       });
     }
-    console.log(`Seed: workout "${w.name}" (${w.exercises.length} exercices)`);
+    console.log(`Seed: workout "${w.name}" (${w.exercises.length} exercises)`);
   }
 
   // ============================================================
-  // 4. SÉANCE D'EXEMPLE (données neutres pour les graphiques)
+  // 4. SAMPLE SESSION (neutral data for the charts)
   // ============================================================
   const demoSession = await prisma.session.create({
     data: {
@@ -385,7 +385,7 @@ async function main() {
       workoutId: fullBodyWorkoutId,
       startedAt: new Date('2026-01-10T10:00:00'),
       finishedAt: new Date('2026-01-10T11:25:00'),
-      notes: 'Séance d\'exemple générée par le seed.',
+      notes: 'Sample session generated by the seed.',
     },
   });
 
@@ -397,28 +397,28 @@ async function main() {
     rir?: number;
     isDropSet?: boolean;
   }> = [
-    { exerciseName: 'Développé couché barre', setNumber: 1, weight: 70, reps: 8, rir: 2 },
-    { exerciseName: 'Développé couché barre', setNumber: 2, weight: 70, reps: 7, rir: 1 },
-    { exerciseName: 'Développé couché barre', setNumber: 3, weight: 70, reps: 6, rir: 1 },
-    { exerciseName: 'Tractions pronation (lestées si possible)', setNumber: 1, weight: 0, reps: 10, rir: 2 },
-    { exerciseName: 'Tractions pronation (lestées si possible)', setNumber: 2, weight: 0, reps: 9, rir: 1 },
-    { exerciseName: 'Tractions pronation (lestées si possible)', setNumber: 3, weight: 0, reps: 8, rir: 0 },
-    { exerciseName: 'Pec deck (ou butterfly poulies)', setNumber: 1, weight: 60, reps: 12, rir: 2 },
-    { exerciseName: 'Pec deck (ou butterfly poulies)', setNumber: 2, weight: 60, reps: 11, rir: 1 },
-    { exerciseName: 'Tirage horizontal poulie (poignées étroites)', setNumber: 1, weight: 55, reps: 12, rir: 1 },
-    { exerciseName: 'Tirage horizontal poulie (poignées étroites)', setNumber: 2, weight: 55, reps: 11, rir: 1 },
-    { exerciseName: 'Élévations latérales poulie', setNumber: 1, weight: 6, reps: 14, rir: 2 },
-    { exerciseName: 'Élévations latérales poulie', setNumber: 2, weight: 6, reps: 12, rir: 1 },
-    { exerciseName: 'Curl incliné haltères (banc 60°)', setNumber: 1, weight: 10, reps: 12, rir: 2 },
-    { exerciseName: 'Curl incliné haltères (banc 60°)', setNumber: 2, weight: 10, reps: 10, rir: 1 },
-    { exerciseName: 'Extension triceps poulie (corde)', setNumber: 1, weight: 18, reps: 12, rir: 1 },
-    { exerciseName: 'Mollets assis machine', setNumber: 1, weight: 55, reps: 15, rir: 1 },
-    { exerciseName: 'Crunch poulie haute (à genoux)', setNumber: 1, weight: 36, reps: 12, rir: 1 },
+    { exerciseName: 'Barbell bench press', setNumber: 1, weight: 70, reps: 8, rir: 2 },
+    { exerciseName: 'Barbell bench press', setNumber: 2, weight: 70, reps: 7, rir: 1 },
+    { exerciseName: 'Barbell bench press', setNumber: 3, weight: 70, reps: 6, rir: 1 },
+    { exerciseName: 'Pronated pull-ups (weighted if possible)', setNumber: 1, weight: 0, reps: 10, rir: 2 },
+    { exerciseName: 'Pronated pull-ups (weighted if possible)', setNumber: 2, weight: 0, reps: 9, rir: 1 },
+    { exerciseName: 'Pronated pull-ups (weighted if possible)', setNumber: 3, weight: 0, reps: 8, rir: 0 },
+    { exerciseName: 'Pec deck (or cable fly)', setNumber: 1, weight: 60, reps: 12, rir: 2 },
+    { exerciseName: 'Pec deck (or cable fly)', setNumber: 2, weight: 60, reps: 11, rir: 1 },
+    { exerciseName: 'Seated cable row (close handles)', setNumber: 1, weight: 55, reps: 12, rir: 1 },
+    { exerciseName: 'Seated cable row (close handles)', setNumber: 2, weight: 55, reps: 11, rir: 1 },
+    { exerciseName: 'Cable lateral raises', setNumber: 1, weight: 6, reps: 14, rir: 2 },
+    { exerciseName: 'Cable lateral raises', setNumber: 2, weight: 6, reps: 12, rir: 1 },
+    { exerciseName: 'Incline dumbbell curl (bench 60 deg)', setNumber: 1, weight: 10, reps: 12, rir: 2 },
+    { exerciseName: 'Incline dumbbell curl (bench 60 deg)', setNumber: 2, weight: 10, reps: 10, rir: 1 },
+    { exerciseName: 'Triceps pushdown (rope)', setNumber: 1, weight: 18, reps: 12, rir: 1 },
+    { exerciseName: 'Seated calf raise machine', setNumber: 1, weight: 55, reps: 15, rir: 1 },
+    { exerciseName: 'Cable crunch (kneeling)', setNumber: 1, weight: 36, reps: 12, rir: 1 },
   ];
 
   for (const s of setsData) {
     const exerciseId = exerciseMap.get(s.exerciseName);
-    if (!exerciseId) throw new Error(`Exercice introuvable : ${s.exerciseName}`);
+    if (!exerciseId) throw new Error(`Exercise not found: ${s.exerciseName}`);
     await prisma.set.create({
       data: {
         sessionId: demoSession.id,
@@ -431,14 +431,14 @@ async function main() {
       },
     });
   }
-  console.log(`Seed: séance d'exemple (${setsData.length} séries)`);
+  console.log(`Seed: sample session (${setsData.length} sets)`);
 
-  console.log('Seed: terminé.');
+  console.log('Seed: done.');
 }
 
 main()
   .catch((e) => {
-    console.error('Seed: erreur', e);
+    console.error('Seed: error', e);
     process.exit(1);
   })
   .finally(async () => {

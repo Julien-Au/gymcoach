@@ -33,10 +33,10 @@ export function DeleteExerciseButton({
       const res = await fetch(`/api/exercises/${exerciseId}`, { method: 'DELETE' });
       if (!res.ok) {
         const data = (await res.json().catch(() => null)) as { error?: string } | null;
-        toast.error(data?.error ?? 'Suppression impossible.');
+        toast.error(data?.error ?? 'Could not delete.');
         return;
       }
-      toast.success('Exercice supprimé.');
+      toast.success('Exercise deleted.');
       setOpen(false);
       router.refresh();
     });
@@ -48,7 +48,7 @@ export function DeleteExerciseButton({
         <Button
           variant="ghost"
           size="icon"
-          aria-label="Supprimer"
+          aria-label="Delete"
           className="min-h-tap min-w-tap text-destructive hover:text-destructive"
         >
           <Trash2 className="size-4" />
@@ -56,15 +56,15 @@ export function DeleteExerciseButton({
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Supprimer cet exercice ?</AlertDialogTitle>
+          <AlertDialogTitle>Delete this exercise?</AlertDialogTitle>
           <AlertDialogDescription>
-            <span className="font-medium text-foreground">{exerciseName}</span> sera retiré du
-            catalogue. Impossible si l&apos;exercice est utilisé dans un programme ou un
-            historique.
+            <span className="font-medium text-foreground">{exerciseName}</span> will be removed from
+            the catalog. Not possible if the exercise is used in a program or in
+            history.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isPending}>Annuler</AlertDialogCancel>
+          <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
           <AlertDialogAction
             onClick={(e) => {
               e.preventDefault();
@@ -73,7 +73,7 @@ export function DeleteExerciseButton({
             disabled={isPending}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            {isPending ? 'Suppression...' : 'Supprimer'}
+            {isPending ? 'Deleting...' : 'Delete'}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

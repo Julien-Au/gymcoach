@@ -10,7 +10,7 @@ import { DAY_LABELS } from '@/lib/schemas/workout';
 export default async function DashboardPage() {
   const session = await requireSession();
 
-  // Recherche d'une session non clôturée pour proposer la reprise.
+  // Look for an unfinished session to offer resuming it.
   const inProgressSession = await db.session.findFirst({
     where: { userId: session.userId, finishedAt: null },
     orderBy: { startedAt: 'desc' },
@@ -41,10 +41,10 @@ export default async function DashboardPage() {
         {inProgressSession ? (
           <Card className="border-primary/40 bg-primary/5">
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Séance en cours</CardTitle>
+              <CardTitle className="text-base">Active session</CardTitle>
               <CardDescription>
-                {inProgressSession.workout?.name ?? 'Séance'} commencée le{' '}
-                {new Intl.DateTimeFormat('fr-FR', {
+                {inProgressSession.workout?.name ?? 'Session'} started on{' '}
+                {new Intl.DateTimeFormat('en-US', {
                   day: '2-digit',
                   month: '2-digit',
                   hour: '2-digit',
@@ -54,35 +54,35 @@ export default async function DashboardPage() {
             </CardHeader>
             <CardContent>
               <Button asChild className="min-h-tap w-full text-base">
-                <Link href={`/session/${inProgressSession.id}`}>Reprendre la séance</Link>
+                <Link href={`/session/${inProgressSession.id}`}>Resume session</Link>
               </Button>
             </CardContent>
           </Card>
         ) : !activeProgram ? (
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Aucun programme actif</CardTitle>
+              <CardTitle className="text-base">No active program</CardTitle>
               <CardDescription>
-                Active un programme pour démarrer une séance.
+                Activate a program to start a session.
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Button asChild>
-                <Link href="/programs">Voir les programmes</Link>
+                <Link href="/programs">View programs</Link>
               </Button>
             </CardContent>
           </Card>
         ) : activeProgram.workouts.length === 0 ? (
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Programme vide</CardTitle>
+              <CardTitle className="text-base">Empty program</CardTitle>
               <CardDescription>
-                {activeProgram.name} n&apos;a aucune séance configurée.
+                {activeProgram.name} has no session configured.
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Button asChild>
-                <Link href={`/programs/${activeProgram.id}`}>Configurer le programme</Link>
+                <Link href={`/programs/${activeProgram.id}`}>Configure program</Link>
               </Button>
             </CardContent>
           </Card>
@@ -90,16 +90,16 @@ export default async function DashboardPage() {
           <>
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base">Démarrer une séance</CardTitle>
+                <CardTitle className="text-base">Start a session</CardTitle>
                 <CardDescription>
-                  Programme actif : {activeProgram.name}
+                  Active program: {activeProgram.name}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <Button asChild className="min-h-tap w-full text-base">
                   <Link href="/session/new">
                     <Play className="size-5" />
-                    <span className="ml-2">Choisir une séance</span>
+                    <span className="ml-2">Choose a session</span>
                   </Link>
                 </Button>
               </CardContent>
@@ -107,7 +107,7 @@ export default async function DashboardPage() {
 
             <div>
               <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                Séances du programme
+                Program sessions
               </h2>
               <ul className="flex flex-col gap-2">
                 {activeProgram.workouts.map((w) => {
@@ -122,12 +122,12 @@ export default async function DashboardPage() {
                             <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
                               {day && <Badge variant="secondary">{day}</Badge>}
                               <span>
-                                {w._count.exercises} exercice{w._count.exercises > 1 ? 's' : ''}
+                                {w._count.exercises} exercise{w._count.exercises > 1 ? 's' : ''}
                               </span>
                               {empty && (
                                 <span className="flex items-center gap-1 text-amber-600">
                                   <AlertCircle className="size-3" />
-                                  vide
+                                  empty
                                 </span>
                               )}
                             </div>

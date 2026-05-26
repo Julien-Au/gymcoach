@@ -30,7 +30,7 @@ export function ProgramExerciseRow({ programExercise, catalog }: Props) {
   const [deleting, setDeleting] = useState(false);
 
   async function handleDelete() {
-    if (!confirm(`Retirer "${programExercise.exercise.name}" de cette séance ?`)) return;
+    if (!confirm(`Remove "${programExercise.exercise.name}" from this session?`)) return;
     setDeleting(true);
     try {
       const res = await fetch(`/api/program-exercises/${programExercise.id}`, {
@@ -38,10 +38,10 @@ export function ProgramExerciseRow({ programExercise, catalog }: Props) {
       });
       if (!res.ok) {
         const data = (await res.json().catch(() => null)) as { error?: string } | null;
-        toast.error(data?.error ?? 'Suppression impossible.');
+        toast.error(data?.error ?? 'Could not delete.');
         return;
       }
-      toast.success('Exercice retiré.');
+      toast.success('Exercise removed.');
       router.refresh();
     } finally {
       setDeleting(false);
@@ -68,8 +68,8 @@ export function ProgramExerciseRow({ programExercise, catalog }: Props) {
               </Badge>
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              {programExercise.targetSets} séries × {repsLabel} reps · RIR{' '}
-              {programExercise.targetRIR} · repos {programExercise.restSec}s
+              {programExercise.targetSets} sets × {repsLabel} reps · RIR{' '}
+              {programExercise.targetRIR} · rest {programExercise.restSec}s
               {programExercise.tempo && ` · tempo ${programExercise.tempo}`}
             </p>
             {programExercise.notes && (
@@ -84,7 +84,7 @@ export function ProgramExerciseRow({ programExercise, catalog }: Props) {
                 variant="ghost"
                 size="icon"
                 className="min-h-tap min-w-tap"
-                aria-label="Actions exercice"
+                aria-label="Exercise actions"
               >
                 <MoreHorizontal className="size-4" />
               </Button>
@@ -92,7 +92,7 @@ export function ProgramExerciseRow({ programExercise, catalog }: Props) {
             <DropdownMenuContent align="end">
               <DropdownMenuItem onSelect={() => setEditOpen(true)}>
                 <Pencil className="mr-2 size-4" />
-                Modifier
+                Edit
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
@@ -101,7 +101,7 @@ export function ProgramExerciseRow({ programExercise, catalog }: Props) {
                 className="text-destructive focus:text-destructive"
               >
                 <Trash2 className="mr-2 size-4" />
-                Retirer
+                Remove
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

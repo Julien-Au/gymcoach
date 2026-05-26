@@ -45,10 +45,10 @@ export function ProgramDetailView({ program, catalog }: Props) {
       });
       if (!res.ok) {
         const data = (await res.json().catch(() => null)) as { error?: string } | null;
-        toast.error(data?.error ?? 'Erreur');
+        toast.error(data?.error ?? 'Error');
         return;
       }
-      toast.success(program.isActive ? 'Programme désactivé.' : 'Programme activé.');
+      toast.success(program.isActive ? 'Program deactivated.' : 'Program activated.');
       router.refresh();
     } finally {
       setActivating(false);
@@ -60,7 +60,7 @@ export function ProgramDetailView({ program, catalog }: Props) {
       <Button asChild variant="ghost" size="sm" className="self-start">
         <Link href="/programs">
           <ChevronLeft className="size-4" />
-          <span className="ml-1">Retour</span>
+          <span className="ml-1">Back</span>
         </Link>
       </Button>
 
@@ -71,7 +71,7 @@ export function ProgramDetailView({ program, catalog }: Props) {
               <CardTitle className="text-xl">{program.name}</CardTitle>
               <CardDescription>{program.phase}</CardDescription>
             </div>
-            {program.isActive && <Badge>Actif</Badge>}
+            {program.isActive && <Badge>Active</Badge>}
           </div>
         </CardHeader>
         {program.description && (
@@ -85,7 +85,7 @@ export function ProgramDetailView({ program, catalog }: Props) {
             disabled={activating}
             className="min-h-tap"
           >
-            {program.isActive ? 'Désactiver' : 'Activer'}
+            {program.isActive ? 'Deactivate' : 'Activate'}
           </Button>
           <Button
             variant="outline"
@@ -93,14 +93,14 @@ export function ProgramDetailView({ program, catalog }: Props) {
             onClick={() => setEditOpen(true)}
             className="min-h-tap"
           >
-            Modifier
+            Edit
           </Button>
           <ProgramDeleteButton programId={program.id} programName={program.name} />
         </CardContent>
       </Card>
 
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold">Séances</h2>
+        <h2 className="text-lg font-semibold">Sessions</h2>
         <Button
           size="sm"
           variant="outline"
@@ -108,16 +108,16 @@ export function ProgramDetailView({ program, catalog }: Props) {
           className="min-h-tap"
         >
           <Plus className="size-4" />
-          <span className="ml-2">Ajouter une séance</span>
+          <span className="ml-2">Add a session</span>
         </Button>
       </div>
 
       {program.workouts.length === 0 ? (
         <Card>
           <CardHeader>
-            <CardTitle>Aucune séance</CardTitle>
+            <CardTitle>No sessions</CardTitle>
             <CardDescription>
-              Ajoute une première séance pour structurer ce programme (ex. Upper, Lower).
+              Add a first session to structure this program (e.g. Upper, Lower).
             </CardDescription>
           </CardHeader>
         </Card>

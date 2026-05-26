@@ -30,25 +30,24 @@ export function ExercisesView({ exercises }: ExercisesViewProps) {
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Catalogue d&apos;exercices</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Exercise catalog</h1>
           <p className="text-sm text-muted-foreground">
-            {exercises.length} exercice{exercises.length > 1 ? 's' : ''} enregistré
-            {exercises.length > 1 ? 's' : ''}.
+            {exercises.length} exercise{exercises.length > 1 ? 's' : ''} saved.
           </p>
         </div>
         <Button onClick={() => setCreateOpen(true)} className="min-h-tap">
           <Plus className="size-4" />
-          <span className="ml-2">Ajouter</span>
+          <span className="ml-2">Add</span>
         </Button>
       </div>
 
       {exercises.length === 0 ? (
         <Card>
           <CardHeader>
-            <CardTitle>Aucun exercice</CardTitle>
+            <CardTitle>No exercises</CardTitle>
             <CardDescription>
-              Le catalogue est vide. Ajoute ton premier exercice pour pouvoir l&apos;utiliser dans
-              un programme.
+              The catalog is empty. Add your first exercise so you can use it in
+              a program.
             </CardDescription>
           </CardHeader>
         </Card>
@@ -90,7 +89,7 @@ function ExerciseRow({ exercise, onEdit }: { exercise: Exercise; onEdit: () => v
           <p className="truncate text-sm font-medium">{exercise.name}</p>
           <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
             <Badge variant="secondary">{CATEGORY_LABELS[exercise.category]}</Badge>
-            <span>repos {exercise.defaultRestSec}s</span>
+            <span>rest {exercise.defaultRestSec}s</span>
           </div>
           {exercise.notes && (
             <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">{exercise.notes}</p>
@@ -101,7 +100,7 @@ function ExerciseRow({ exercise, onEdit }: { exercise: Exercise; onEdit: () => v
             variant="ghost"
             size="icon"
             onClick={onEdit}
-            aria-label="Modifier"
+            aria-label="Edit"
             className="min-h-tap min-w-tap"
           >
             <Pencil className="size-4" />

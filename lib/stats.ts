@@ -1,17 +1,17 @@
 import type { Set } from '@prisma/client';
 
 // ============================================================
-// Stats d'entraînement - volume, 1RM estimé, agrégation hebdo
+// Training stats - volume, estimated 1RM, weekly aggregation
 // ============================================================
 
 // ============================================================
-// Bodyweight : tonnage effectif sur les exos au poids du corps
+// Bodyweight: effective tonnage on bodyweight exercises
 // ============================================================
 
-// Charge effective d'une série : pour les exos `usesBodyweight`, on ajoute le
-// poids du corps de l'utilisateur. `setWeight` reste la valeur saisie (lest
-// ajouté ou négatif pour l'assistance). Si le user n'a pas renseigné son
-// bodyweight, on retourne setWeight tel quel (rétrograde-safe).
+// Effective load of a set: for `usesBodyweight` exercises, we add the user's
+// bodyweight. `setWeight` remains the entered value (added load, or negative
+// for assistance). If the user has not filled in their bodyweight, we return
+// setWeight as-is (backward-safe).
 export function effectiveWeight(
   setWeight: number,
   exerciseUsesBodyweight: boolean,
@@ -23,10 +23,10 @@ export function effectiveWeight(
   return setWeight;
 }
 
-// Enrichit une liste de sets avec leur charge effective. Les sets doivent être
-// décorés au préalable avec `usesBodyweight` (typiquement copié depuis
-// `set.exercise.usesBodyweight` côté Server Component). On évite de mutter,
-// on retourne une nouvelle liste.
+// Enriches a list of sets with their effective load. The sets must be
+// decorated beforehand with `usesBodyweight` (typically copied from
+// `set.exercise.usesBodyweight` in the Server Component). We avoid mutating,
+// returning a new list instead.
 export function applyBodyweight<
   T extends { weight: number; usesBodyweight?: boolean | null },
 >(sets: T[], bodyweight: number | null | undefined): T[] {
@@ -36,27 +36,27 @@ export function applyBodyweight<
   );
 }
 
-// Volume d'une série = charge × reps. Pour le poids du corps (weight = 0),
-// on retourne 0 par convention (impossible à comparer avec une charge).
+// Volume of a set = load × reps. For bodyweight (weight = 0),
+// we return 0 by convention (impossible to compare with a load).
 export function setVolume(set: Pick<Set, 'weight' | 'reps' | 'isWarmup'>): number {
   if (set.isWarmup) return 0;
   return set.weight * set.reps;
 }
 
-// Volume total d'une liste de séries (somme, hors warmup).
+// Total volume of a list of sets (sum, excluding warmups).
 export function totalVolume(sets: Pick<Set, 'weight' | 'reps' | 'isWarmup'>[]): number {
   return sets.reduce((acc, s) => acc + setVolume(s), 0);
 }
 
-// 1RM estimé via la formule d'Epley : weight × (1 + reps / 30).
-// Retourne 0 pour les séries à 0 kg (poids du corps non comparable).
+// Estimated 1RM via the Epley formula: weight × (1 + reps / 30).
+// Returns 0 for sets at 0 kg (bodyweight not comparable).
 export function estimate1RM(weight: number, reps: number): number {
   if (weight <= 0 || reps <= 0) return 0;
   return weight * (1 + reps / 30);
 }
 
-// Meilleur 1RM estimé sur une liste de séries (warmup et drop sets inclus
-// car techniquement valides pour estimer la force).
+// Best estimated 1RM over a list of sets (warmups and drop sets included
+// since they are technically valid for estimating strength).
 export function best1RM(sets: Pick<Set, 'weight' | 'reps' | 'isWarmup'>[]): number {
   let best = 0;
   for (const s of sets) {
@@ -68,13 +68,13 @@ export function best1RM(sets: Pick<Set, 'weight' | 'reps' | 'isWarmup'>[]): numb
 }
 
 // ============================================================
-// Semaine ISO (lundi-dimanche) - clé YYYY-Www, label "S{w} YYYY"
+// ISO week (Monday-Sunday) - key YYYY-Www, label "W{w} YYYY"
 // ============================================================
 
-// Retourne la clé ISO d'une date au format "YYYY-Www" (semaine commençant lundi).
+// Returns the ISO key of a date in the "YYYY-Www" format (week starting Monday).
 export function isoWeekKey(date: Date): string {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-  // Jeudi de la semaine courante (ISO : la semaine appartient à l'année où tombe son jeudi).
+  // Thursday of the current week (ISO: the week belongs to the year its Thursday falls in).
   const dayNum = d.getUTCDay() || 7;
   d.setUTCDate(d.getUTCDate() + 4 - dayNum);
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
@@ -82,7 +82,7 @@ export function isoWeekKey(date: Date): string {
   return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
 }
 
-// Date du lundi (00:00 UTC) de la semaine ISO contenant la date donnée.
+// Date of the Monday (00:00 UTC) of the ISO week containing the given date.
 export function isoWeekStart(date: Date): Date {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
   const dayNum = d.getUTCDay() || 7;
@@ -91,20 +91,20 @@ export function isoWeekStart(date: Date): Date {
 }
 
 // ============================================================
-// Agrégations
+// Aggregations
 // ============================================================
 
 export interface ExerciseChartPoint {
-  date: string; // ISO date (YYYY-MM-DD) de la séance
+  date: string; // ISO date (YYYY-MM-DD) of the session
   sessionStartedAt: Date;
   maxWeight: number;
-  topSetReps: number; // reps de la meilleure série (max weight)
+  topSetReps: number; // reps of the best set (max weight)
   estimated1RM: number;
   totalVolume: number;
 }
 
-// Pour un exercice, agrège chaque séance en un point de progression.
-// Entrée : sets ordonnés par session, avec sessionStartedAt joint.
+// For an exercise, aggregates each session into a progression point.
+// Input: sets ordered by session, with sessionStartedAt joined.
 export function exerciseProgress(
   sets: (Pick<Set, 'weight' | 'reps' | 'isWarmup'> & { sessionId: string; sessionStartedAt: Date })[],
 ): ExerciseChartPoint[] {
@@ -142,14 +142,14 @@ export function exerciseProgress(
 
 export interface WeeklyVolumePoint {
   weekKey: string; // YYYY-Www
-  weekStart: Date; // monday 00:00 UTC
-  // Volume par groupe musculaire (kg). Les groupes absents valent 0.
+  weekStart: Date; // Monday 00:00 UTC
+  // Volume per muscle group (kg). Absent groups count as 0.
   byMuscleGroup: Record<string, number>;
   total: number;
 }
 
-// Agrège le volume hebdomadaire par groupe musculaire.
-// Entrée : sets non-warmup avec leur muscle group et la date de session.
+// Aggregates the weekly volume by muscle group.
+// Input: non-warmup sets with their muscle group and the session date.
 export function weeklyVolumeByMuscleGroup(
   sets: (Pick<Set, 'weight' | 'reps' | 'isWarmup'> & {
     muscleGroup: string;

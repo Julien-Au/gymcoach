@@ -4,9 +4,9 @@ import { handleApiError, requireApiUserId } from '@/lib/api';
 import { buildCoachPayload, callCoach, CoachError } from '@/lib/coach';
 import { isoWeekStart } from '@/lib/stats';
 
-// POST /api/coach : génère un nouveau debrief pour la semaine en cours.
-// Le payload structuré est calculé serveur-side puis envoyé au modèle via
-// OpenRouter. La réponse markdown est stockée dans CoachSession.
+// POST /api/coach: generates a new debrief for the current week.
+// The structured payload is computed server-side then sent to the model via
+// OpenRouter. The markdown response is stored in CoachSession.
 export async function POST() {
   try {
     const userId = await requireApiUserId();
@@ -43,7 +43,7 @@ export async function POST() {
   }
 }
 
-// GET /api/coach : historique des debriefs (les 20 derniers).
+// GET /api/coach: debrief history (the last 20).
 export async function GET() {
   try {
     const userId = await requireApiUserId();
