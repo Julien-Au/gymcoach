@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { handleApiError, requireApiUserId } from '@/lib/api';
-import { buildCoachPayload, callCoach, CoachError } from '@/lib/coach';
+import { buildCoachPayload, callCoach } from '@/lib/coach';
+import { LlmError } from '@/lib/llm';
 import { isoWeekStart } from '@/lib/stats';
 
 // POST /api/coach: generates a new debrief for the current week.
-// The structured payload is computed server-side then sent to the model via
-// OpenRouter. The markdown response is stored in CoachSession.
+// The structured payload is computed server-side then sent to the configured
+// LLM provider. The markdown response is stored in CoachSession.
 export async function POST() {
   try {
     const userId = await requireApiUserId();
@@ -36,7 +37,7 @@ export async function POST() {
       createdAt: stored.createdAt,
     });
   } catch (err) {
-    if (err instanceof CoachError) {
+    if (err instanceof LlmError) {
       return NextResponse.json({ error: err.message }, { status: err.status });
     }
     return handleApiError(err);
