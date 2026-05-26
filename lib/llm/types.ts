@@ -46,4 +46,6 @@ export interface LlmProvider {
   readonly model: string;
   isConfigured(): boolean;
   complete(req: LlmCompletionRequest): Promise<LlmCompletionResult>;
+  // Streams text deltas as they arrive. Same request shape as complete().
+  stream(req: LlmCompletionRequest): AsyncIterable<string>;
 }
