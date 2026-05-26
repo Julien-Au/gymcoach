@@ -2,6 +2,24 @@
 
 Open source, self hosted hypertrophy training tracker with a built in AI coach. Log your sessions, track your progress, and get evidence based weekly debriefs and program suggestions from the LLM of your choice (Anthropic Claude or any OpenRouter model).
 
+[![CI](https://github.com/Julien-Au/gymcoach/actions/workflows/ci.yml/badge.svg)](https://github.com/Julien-Au/gymcoach/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+[![Built with Next.js](https://img.shields.io/badge/Next.js-14-black.svg)](https://nextjs.org)
+
+<p align="center">
+  <img src="docs/screenshots/home.png" width="23%" alt="Dashboard" />
+  <img src="docs/screenshots/progress.png" width="23%" alt="Progress charts" />
+  <img src="docs/screenshots/program-generator.png" width="23%" alt="AI program generator" />
+  <img src="docs/screenshots/catalog.png" width="23%" alt="Exercise catalog" />
+</p>
+
+> Why GymCoach? It is the only workout tracker you self-host that brings your
+> own LLM. Log your training, see your progress, and get a coach that actually
+> knows your data: weekly debriefs, a streaming chat, and full programs
+> generated from a sentence. Your data stays in your database; the AI runs on
+> your Anthropic or OpenRouter key.
+
 > Status: actively developed. Multi-user, provider-agnostic (Anthropic or
 > OpenRouter), with a unit / integration / E2E test suite and deep AI
 > integration.
