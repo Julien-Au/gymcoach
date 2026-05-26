@@ -1,0 +1,31 @@
+# ============================================================
+# GymCoach - Compose DEV
+# ============================================================
+# Lance UNIQUEMENT Postgres. Next.js tourne en local via
+# `npm run dev` pour bénéficier du hot-reload natif.
+#
+# Pour la prod (tout en Docker) : voir docker-compose.prod.yml
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: gymcoach-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-gymcoach}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-gymcoach_dev_pwd}
+      POSTGRES_DB: ${POSTGRES_DB:-gymcoach}
+    ports:
+      # Décalé en 5433 sur l'hôte pour éviter conflit avec Postgres système ou
+      # autre projet déjà sur 5432. Côté conteneur on reste en 5432.
+      - '5433:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-gymcoach} -d ${POSTGRES_DB:-gymcoach}']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres-data:

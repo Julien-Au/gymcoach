@@ -1,0 +1,157 @@
+// GymCoach - Schéma de base de données
+// Mono-utilisateur, suivi musculation et coach IA Claude.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  passwordHash String
+  // Poids du corps en kg, utilisé pour calculer le tonnage effectif sur les
+  // exercices au poids du corps (Set.weight = lest ajouté, peut être négatif
+  // pour les machines d'assistance). Null = pas encore renseigné, on
+  // n'applique pas de bonus bodyweight (rétrograde-safe).
+  bodyweight   Float?
+  createdAt    DateTime   @default(now())
+  programs     Program[]
+  sessions     Session[]
+  exercises    Exercise[]
+}
+
+model Exercise {
+  id               String            @id @default(cuid())
+  userId           String
+  user             User              @relation(fields: [userId], references: [id])
+  name             String
+  muscleGroup      MuscleGroup
+  category         ExerciseCategory
+  defaultRestSec   Int               @default(90)
+  notes            String?
+  // Pour les exos au poids du corps (tractions, dips, pompes...) : le tonnage
+  // effectif inclut User.bodyweight. Set.weight reste le lest ajouté (0 par
+  // défaut, négatif si machine d'assistance).
+  usesBodyweight   Boolean           @default(false)
+  createdAt        DateTime          @default(now())
+  programExercises ProgramExercise[]
+  sets             Set[]
+
+  @@unique([userId, name])
+}
+
+enum MuscleGroup {
+  CHEST
+  BACK_WIDTH
+  BACK_THICKNESS
+  SHOULDERS_FRONT
+  SHOULDERS_LATERAL
+  SHOULDERS_REAR
+  BICEPS
+  TRICEPS
+  FOREARMS
+  QUADS
+  HAMSTRINGS
+  GLUTES
+  CALVES
+  ABS
+  LOWER_BACK
+}
+
+enum ExerciseCategory {
+  COMPOUND
+  ISOLATION
+}
+
+model Program {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  name        String
+  description String?
+  phase       String
+  isActive    Boolean   @default(false)
+  startDate   DateTime  @default(now())
+  endDate     DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  workouts    Workout[]
+  sessions    Session[]
+}
+
+model Workout {
+  id        String            @id @default(cuid())
+  programId String
+  program   Program           @relation(fields: [programId], references: [id], onDelete: Cascade)
+  name      String
+  dayOfWeek Int?
+  order     Int
+  exercises ProgramExercise[]
+  sessions  Session[]
+}
+
+model ProgramExercise {
+  id            String   @id @default(cuid())
+  workoutId     String
+  workout       Workout  @relation(fields: [workoutId], references: [id], onDelete: Cascade)
+  exerciseId    String
+  exercise      Exercise @relation(fields: [exerciseId], references: [id])
+  order         Int
+  targetSets    Int
+  targetRepsMin Int
+  targetRepsMax Int
+  targetRIR     Int
+  restSec       Int
+  tempo         String?
+  notes         String?
+}
+
+model Session {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id])
+  programId  String?
+  program    Program?  @relation(fields: [programId], references: [id])
+  workoutId  String?
+  workout    Workout?  @relation(fields: [workoutId], references: [id])
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+  notes      String?
+  sets       Set[]
+
+  @@index([userId, startedAt])
+}
+
+model Set {
+  id          String   @id @default(cuid())
+  sessionId   String
+  session     Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  exerciseId  String
+  exercise    Exercise @relation(fields: [exerciseId], references: [id])
+  setNumber   Int
+  weight      Float
+  reps        Int
+  rir         Int?
+  notes       String?
+  isWarmup    Boolean  @default(false)
+  isDropSet   Boolean  @default(false)
+  completedAt DateTime @default(now())
+
+  @@index([exerciseId, completedAt])
+}
+
+model CoachSession {
+  id        String    @id @default(cuid())
+  userId    String
+  weekStart DateTime
+  weekEnd   DateTime
+  prompt    String    @db.Text
+  response  String    @db.Text
+  appliedAt DateTime?
+  createdAt DateTime  @default(now())
+}

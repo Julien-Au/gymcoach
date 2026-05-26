@@ -1,0 +1,29 @@
+# ============================================================
+# GymCoach - Compose TEST
+# ============================================================
+# Ephemeral Postgres for integration and E2E tests. Data lives in tmpfs so it
+# is wiped on container stop. Exposed on host port 5434 to avoid clashing with
+# the dev database (5433).
+#
+#   docker compose -f docker-compose.test.yml up -d
+#   DATABASE_URL=postgresql://gymcoach_test:gymcoach_test@localhost:5434/gymcoach_test \
+#     npm run test
+#   docker compose -f docker-compose.test.yml down
+
+services:
+  test-db:
+    image: postgres:16-alpine
+    container_name: gymcoach-test-db
+    environment:
+      POSTGRES_USER: gymcoach_test
+      POSTGRES_PASSWORD: gymcoach_test
+      POSTGRES_DB: gymcoach_test
+    ports:
+      - '5434:5432'
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U gymcoach_test -d gymcoach_test']
+      interval: 5s
+      timeout: 5s
+      retries: 5

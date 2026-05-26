@@ -1,0 +1,51 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Next.js
+.next/
+out/
+build/
+next-env.d.ts
+tsconfig.tsbuildinfo
+
+# next-pwa : service worker généré au build, à ne pas commit
+public/sw.js
+public/sw.js.map
+public/workbox-*.js
+public/workbox-*.js.map
+public/fallback-*.js
+
+# Production
+dist/
+
+# Environment
+.env
+.env*.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Prisma
+prisma/.env
+
+# Tests
+coverage/
+test-results/
+playwright-report/
+playwright/.cache/
+
+# Turbo / Vercel
+.turbo/
+.vercel/

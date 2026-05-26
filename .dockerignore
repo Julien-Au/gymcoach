@@ -1,0 +1,16 @@
+node_modules
+.next
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+.vscode
+.idea
+README.md
+docs
+*.md
+docker/postgres-data
+coverage
+.turbo
+.vercel
