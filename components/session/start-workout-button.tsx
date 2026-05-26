@@ -25,7 +25,7 @@ export function StartWorkoutButton({
       });
       if (!res.ok) {
         const data = (await res.json().catch(() => null)) as { error?: string } | null;
-        toast.error(data?.error ?? 'Impossible de démarrer la séance.');
+        toast.error(data?.error ?? 'Could not start the session.');
         return;
       }
       const session = (await res.json()) as { id: string };
@@ -41,7 +41,7 @@ export function StartWorkoutButton({
       className="min-h-tap w-full text-base"
     >
       <Play className="size-5" />
-      <span className="ml-2">{isPending ? 'Démarrage...' : 'Démarrer cette séance'}</span>
+      <span className="ml-2">{isPending ? 'Starting...' : 'Start this session'}</span>
     </Button>
   );
 }

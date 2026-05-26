@@ -86,10 +86,10 @@ export function ExerciseFormDialog({ open, onOpenChange, mode, exercise }: Props
     });
     if (!res.ok) {
       const data = (await res.json().catch(() => null)) as { error?: string } | null;
-      toast.error(data?.error ?? 'Erreur');
+      toast.error(data?.error ?? 'Error');
       return;
     }
-    toast.success(mode === 'edit' ? 'Exercice modifié.' : 'Exercice créé.');
+    toast.success(mode === 'edit' ? 'Exercise updated.' : 'Exercise created.');
     onOpenChange(false);
     router.refresh();
   }
@@ -99,16 +99,16 @@ export function ExerciseFormDialog({ open, onOpenChange, mode, exercise }: Props
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {mode === 'edit' ? 'Modifier l\'exercice' : 'Ajouter un exercice'}
+            {mode === 'edit' ? 'Edit exercise' : 'Add an exercise'}
           </DialogTitle>
           <DialogDescription>
-            Renseigne le nom, le groupe musculaire et la catégorie.
+            Enter the name, the muscle group and the category.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
           <div className="space-y-2">
-            <Label htmlFor="name">Nom</Label>
+            <Label htmlFor="name">Name</Label>
             <Input id="name" {...form.register('name')} />
             {form.formState.errors.name && (
               <p className="text-sm text-destructive">{form.formState.errors.name.message}</p>
@@ -117,7 +117,7 @@ export function ExerciseFormDialog({ open, onOpenChange, mode, exercise }: Props
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label htmlFor="muscleGroup">Groupe musculaire</Label>
+              <Label htmlFor="muscleGroup">Muscle group</Label>
               <Select
                 value={form.watch('muscleGroup')}
                 onValueChange={(v) => form.setValue('muscleGroup', v as ExerciseInput['muscleGroup'])}
@@ -136,7 +136,7 @@ export function ExerciseFormDialog({ open, onOpenChange, mode, exercise }: Props
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="category">Catégorie</Label>
+              <Label htmlFor="category">Category</Label>
               <Select
                 value={form.watch('category')}
                 onValueChange={(v) => form.setValue('category', v as ExerciseInput['category'])}
@@ -156,7 +156,7 @@ export function ExerciseFormDialog({ open, onOpenChange, mode, exercise }: Props
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="defaultRestSec">Repos par défaut (secondes)</Label>
+            <Label htmlFor="defaultRestSec">Default rest (seconds)</Label>
             <Input
               id="defaultRestSec"
               type="number"
@@ -174,11 +174,11 @@ export function ExerciseFormDialog({ open, onOpenChange, mode, exercise }: Props
 
           <label className="flex cursor-pointer items-start justify-between gap-3 rounded-md border border-border/40 p-3">
             <div className="min-w-0 space-y-0.5">
-              <p className="text-sm font-medium">Exercice au poids du corps</p>
+              <p className="text-sm font-medium">Bodyweight exercise</p>
               <p className="text-xs text-muted-foreground">
-                Tractions, dips, pompes... Le tonnage effectif inclut ton poids
-                du corps. La charge saisie représente le lest ajouté (négatif si
-                machine d&apos;assistance).
+                Pull-ups, dips, push-ups... The effective tonnage includes your
+                bodyweight. The load you enter represents the added weight
+                (negative for an assistance machine).
               </p>
             </div>
             <Switch
@@ -188,7 +188,7 @@ export function ExerciseFormDialog({ open, onOpenChange, mode, exercise }: Props
           </label>
 
           <div className="space-y-2">
-            <Label htmlFor="notes">Notes / consignes (optionnel)</Label>
+            <Label htmlFor="notes">Notes / instructions (optional)</Label>
             <Textarea id="notes" rows={3} {...form.register('notes')} />
           </div>
 
@@ -199,14 +199,14 @@ export function ExerciseFormDialog({ open, onOpenChange, mode, exercise }: Props
               onClick={() => onOpenChange(false)}
               disabled={form.formState.isSubmitting}
             >
-              Annuler
+              Cancel
             </Button>
             <Button type="submit" disabled={form.formState.isSubmitting}>
               {form.formState.isSubmitting
-                ? 'Enregistrement...'
+                ? 'Saving...'
                 : mode === 'edit'
-                  ? 'Enregistrer'
-                  : 'Créer'}
+                  ? 'Save'
+                  : 'Create'}
             </Button>
           </DialogFooter>
         </form>

@@ -5,13 +5,13 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
 const LINKS = [
-  { href: '/', label: 'Accueil' },
-  { href: '/history', label: 'Historique' },
-  { href: '/progress', label: 'Progression' },
+  { href: '/', label: 'Home' },
+  { href: '/history', label: 'History' },
+  { href: '/progress', label: 'Progress' },
   { href: '/coach', label: 'Coach' },
-  { href: '/programs', label: 'Programmes' },
-  { href: '/exercises', label: 'Catalogue' },
-  { href: '/settings', label: 'Réglages' },
+  { href: '/programs', label: 'Programs' },
+  { href: '/exercises', label: 'Catalog' },
+  { href: '/settings', label: 'Settings' },
 ] as const;
 
 export function NavLinks() {

@@ -29,8 +29,8 @@ export default async function SessionRunPage({ params }: Props) {
 
   if (!session) notFound();
   if (session.finishedAt) {
-    // Session déjà clôturée : redirection vers l'accueil. Au LOT 8 on
-    // pointera vers la page historique de la séance.
+    // Session already finished: redirect to home. In LOT 8 we will point
+    // to the session history page.
     redirect('/');
   }
   if (!session.workout) notFound();

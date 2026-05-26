@@ -70,7 +70,7 @@ export function SessionRunner({ session, lastPerformances }: SessionRunnerProps)
 
   const currentPE = programExercises[currentIdx];
 
-  // Hydrate IndexedDB avec les sets serveur, puis active la sync auto.
+  // Hydrate IndexedDB with the server sets, then enable auto-sync.
   useEffect(() => {
     void (async () => {
       await hydrateFromServerSets(session.id, session.sets);
@@ -87,7 +87,7 @@ export function SessionRunner({ session, lastPerformances }: SessionRunnerProps)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Live query : tous les sets de cette session, depuis IndexedDB.
+  // Live query: all sets of this session, from IndexedDB.
   const liveSets = useLiveQuery(
     async () => {
       const db = getDB();
@@ -139,8 +139,8 @@ export function SessionRunner({ session, lastPerformances }: SessionRunnerProps)
     const existing = setsByExercise.get(currentPE.exerciseId) ?? [];
     const setNumber = (existing.at(-1)?.setNumber ?? 0) + 1;
 
-    // Optimistic write : ajout immédiat dans IndexedDB (status pending),
-    // affichage instantané via useLiveQuery, et tentative POST en arrière-plan.
+    // Optimistic write: immediate insert into IndexedDB (status pending),
+    // instant display via useLiveQuery, and a background POST attempt.
     await queueSet({
       localId: generateLocalId(),
       sessionId: session.id,
@@ -156,8 +156,8 @@ export function SessionRunner({ session, lastPerformances }: SessionRunnerProps)
 
     vibrate(VIBRATION_PATTERNS.validate);
 
-    // Démarre le repos. Si la série complète l'objectif et qu'il y a un exo
-    // suivant, on prépare l'avance auto à la fin du chrono.
+    // Start the rest. If the set completes the goal and there is a next
+    // exercise, prepare the auto-advance at the end of the timer.
     const isLastTargetSet =
       !values.isWarmup &&
       existing.filter((s) => !s.isWarmup).length + 1 >= currentPE.targetSets;
@@ -174,24 +174,24 @@ export function SessionRunner({ session, lastPerformances }: SessionRunnerProps)
 
   async function handleDeleteSet(set: PendingSet) {
     const db = getDB();
-    // Si déjà syncé : appel API DELETE, puis suppression locale.
-    // Si pas encore syncé : suppression locale uniquement.
+    // If already synced: API DELETE call, then local removal.
+    // If not yet synced: local removal only.
     if (set.serverId) {
       const res = await fetch(`/api/sets/${set.serverId}`, { method: 'DELETE' });
       if (!res.ok && res.status !== 404) {
         const data = (await res.json().catch(() => null)) as { error?: string } | null;
-        toast.error(data?.error ?? 'Suppression impossible.');
+        toast.error(data?.error ?? 'Could not delete.');
         return;
       }
     }
     await db.pendingSets.delete(set.localId);
-    toast.success('Série supprimée.');
+    toast.success('Set deleted.');
   }
 
   async function handleFinishSession() {
     setClosing(true);
     try {
-      // Tente un dernier flush avant clôture, pour minimiser la queue résiduelle.
+      // Attempt one last flush before closing, to minimize the residual queue.
       if (typeof navigator !== 'undefined' && navigator.onLine) {
         await flushPendingSets();
       }
@@ -202,10 +202,10 @@ export function SessionRunner({ session, lastPerformances }: SessionRunnerProps)
       });
       if (!res.ok) {
         const data = (await res.json().catch(() => null)) as { error?: string } | null;
-        toast.error(data?.error ?? 'Clôture impossible.');
+        toast.error(data?.error ?? 'Could not finish.');
         return;
       }
-      toast.success('Séance clôturée.');
+      toast.success('Session finished.');
       router.replace('/');
       router.refresh();
     } finally {
@@ -258,7 +258,7 @@ export function SessionRunner({ session, lastPerformances }: SessionRunnerProps)
   if (!currentPE) {
     return (
       <main className="flex flex-1 items-center justify-center px-4 py-6">
-        <p className="text-muted-foreground">Aucun exercice dans cette séance.</p>
+        <p className="text-muted-foreground">No exercises in this session.</p>
       </main>
     );
   }
@@ -268,13 +268,13 @@ export function SessionRunner({ session, lastPerformances }: SessionRunnerProps)
 
   return (
     <main className="flex flex-1 flex-col">
-      {/* Header sticky avec progression et bouton sortie */}
+      {/* Sticky header with progress and exit button */}
       <div className="sticky top-[97px] z-10 border-b border-border bg-background/95 px-4 py-3 backdrop-blur">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="truncate text-xs text-muted-foreground">{workout.name}</p>
             <p className="text-sm font-medium">
-              Exo {currentIdx + 1}/{programExercises.length} · {currentPE.exercise.name}
+              Exercise {currentIdx + 1}/{programExercises.length} · {currentPE.exercise.name}
             </p>
           </div>
           <Button
@@ -282,7 +282,7 @@ export function SessionRunner({ session, lastPerformances }: SessionRunnerProps)
             size="sm"
             asChild
             className="text-muted-foreground"
-            aria-label="Quitter sans clôturer"
+            aria-label="Quit without finishing"
           >
             <Link href="/">
               <X className="size-4" />
@@ -333,7 +333,7 @@ export function SessionRunner({ session, lastPerformances }: SessionRunnerProps)
             className="min-h-tap"
           >
             <ChevronLeft className="size-4" />
-            <span className="ml-1">Précédent</span>
+            <span className="ml-1">Previous</span>
           </Button>
 
           <Button
@@ -343,7 +343,7 @@ export function SessionRunner({ session, lastPerformances }: SessionRunnerProps)
             className="min-h-tap"
           >
             <Flag className="size-4" />
-            <span className="ml-2">Terminer</span>
+            <span className="ml-2">Finish</span>
           </Button>
 
           <Button
@@ -355,7 +355,7 @@ export function SessionRunner({ session, lastPerformances }: SessionRunnerProps)
             }
             className="min-h-tap"
           >
-            <span className="mr-1">Suivant</span>
+            <span className="mr-1">Next</span>
             <ChevronRight className="size-4" />
           </Button>
         </div>

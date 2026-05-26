@@ -17,12 +17,12 @@ export default async function SettingsPage() {
       <div className="mx-auto flex max-w-2xl flex-col gap-6">
         <div className="flex items-center gap-3">
           <SettingsIcon className="size-6" />
-          <h1 className="text-2xl font-bold tracking-tight">Réglages</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
         </div>
 
         <Card>
           <CardHeader className="pb-3">
-            <h2 className="text-base font-semibold">Compte</h2>
+            <h2 className="text-base font-semibold">Account</h2>
           </CardHeader>
           <CardContent className="text-sm">
             <div className="flex items-center justify-between gap-3">

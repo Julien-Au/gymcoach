@@ -7,15 +7,15 @@ interface Params {
 }
 
 // POST /api/programs/[id]/activate
-// Active ce programme et désactive tous les autres pour ce user.
-// Body optionnel : { active: boolean } (défaut true). Si active=false,
-// on désactive simplement ce programme (pas d'auto-activation d'un autre).
+// Activates this program and deactivates all the others for this user.
+// Optional body: { active: boolean } (default true). If active=false,
+// we simply deactivate this program (no auto-activation of another one).
 export async function POST(req: Request, { params }: Params) {
   try {
     const userId = await requireApiUserId();
     const program = await db.program.findUnique({ where: { id: params.id } });
     if (!program || program.userId !== userId) {
-      throw new ApiError(404, 'Programme introuvable.');
+      throw new ApiError(404, 'Program not found.');
     }
 
     const body = (await req.json().catch(() => ({}))) as { active?: boolean };

@@ -22,9 +22,9 @@ export async function GET() {
   }
 }
 
-// POST /api/sessions : démarre une nouvelle session sur un workout du user.
-// Échoue si une session non clôturée existe déjà sur le même workout
-// (évite les sessions zombies créées par double-clic).
+// POST /api/sessions: starts a new session on one of the user's workouts.
+// Fails if an unfinished session already exists on the same workout
+// (avoids zombie sessions created by a double-click).
 export async function POST(req: Request) {
   try {
     const userId = await requireApiUserId();
@@ -35,15 +35,15 @@ export async function POST(req: Request) {
       include: { program: { select: { userId: true, id: true } } },
     });
     if (!workout || workout.program.userId !== userId) {
-      throw new ApiError(404, 'Séance introuvable.');
+      throw new ApiError(404, 'Session not found.');
     }
 
     const inProgress = await db.session.findFirst({
       where: { userId, workoutId, finishedAt: null },
     });
     if (inProgress) {
-      // On retourne la session existante au lieu d'en créer une nouvelle :
-      // permet de reprendre proprement après un reload.
+      // We return the existing session instead of creating a new one:
+      // allows resuming cleanly after a reload.
       return NextResponse.json(inProgress, { status: 200 });
     }
 

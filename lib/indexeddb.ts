@@ -1,26 +1,26 @@
 // ============================================================
-// Dexie : IndexedDB pour la queue offline
+// Dexie: IndexedDB for the offline queue
 // ============================================================
-// Une seule table pour le MVP : les sets en attente de sync.
-// Les autres données (programmes, exos, sessions GET) sont gérées
-// par le service worker (cache HTTP), pas besoin d'IndexedDB.
+// A single table for the MVP: the sets waiting to sync.
+// The other data (programs, exercises, sessions GET) is handled
+// by the service worker (HTTP cache), no need for IndexedDB.
 //
-// IMPORTANT : ce module ne doit JAMAIS être importé côté serveur.
-// L'instance Dexie n'est créée que côté client. Les composants
-// doivent vérifier `typeof window !== 'undefined'` ou utiliser
-// dexie-react-hooks (qui le fait déjà).
+// IMPORTANT: this module must NEVER be imported server-side.
+// The Dexie instance is only created client-side. Components
+// must check `typeof window !== 'undefined'` or use
+// dexie-react-hooks (which already does it).
 
 import Dexie, { type Table } from 'dexie';
 
 export type PendingSetStatus = 'pending' | 'syncing' | 'synced' | 'failed';
 
 export interface PendingSet {
-  // Identifiant local (cuid client) utilisé comme clé primaire et pour
-  // l'affichage optimiste avant la confirmation serveur.
+  // Local identifier (client cuid) used as the primary key and for the
+  // optimistic display before server confirmation.
   localId: string;
 
-  // Référence à la session courante. Quand la sync réussit, le set serveur
-  // est créé sous ce sessionId.
+  // Reference to the current session. When the sync succeeds, the server set
+  // is created under this sessionId.
   sessionId: string;
 
   exerciseId: string;
@@ -34,11 +34,11 @@ export interface PendingSet {
 
   createdAt: number;        // epoch ms
   status: PendingSetStatus;
-  // Si syncé : id serveur retourné par l'API. Permet la réconciliation
-  // avec le state UI et évite les double-POST en cas de retry.
+  // If synced: server id returned by the API. Allows reconciliation
+  // with the UI state and avoids double-POST on retry.
   serverId: string | null;
   syncedAt: number | null;
-  // Compteur de tentatives ratées (pour backoff éventuel).
+  // Counter of failed attempts (for possible backoff).
   attempts: number;
   lastError: string | null;
 }
@@ -49,8 +49,8 @@ class GymCoachDB extends Dexie {
   constructor() {
     super('GymCoachDB');
     this.version(1).stores({
-      // Clé primaire : localId. Index secondaires : sessionId (pour filtrer
-      // les sets d'une session), status (pour scanner les pending).
+      // Primary key: localId. Secondary indexes: sessionId (to filter
+      // a session's sets), status (to scan the pending ones).
       pendingSets: 'localId, sessionId, status, createdAt',
     });
   }
@@ -60,14 +60,14 @@ let _db: GymCoachDB | null = null;
 
 export function getDB(): GymCoachDB {
   if (typeof window === 'undefined') {
-    throw new Error('IndexedDB n\'est disponible que côté client.');
+    throw new Error('IndexedDB is only available client-side.');
   }
   if (!_db) _db = new GymCoachDB();
   return _db;
 }
 
-// Génère un cuid simple côté client (suffisant pour les localIds).
-// On utilise crypto.randomUUID si dispo, sinon fallback Math.random.
+// Generates a simple cuid client-side (good enough for localIds).
+// We use crypto.randomUUID if available, otherwise fall back to Math.random.
 export function generateLocalId(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
     return `loc_${crypto.randomUUID().replace(/-/g, '').slice(0, 16)}`;

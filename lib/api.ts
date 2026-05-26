@@ -4,10 +4,10 @@ import { Prisma } from '@prisma/client';
 import { getCurrentUserId } from '@/lib/auth';
 
 // ============================================================
-// Helpers pour les API routes
+// Helpers for the API routes
 // ============================================================
-// Centralise les patterns récurrents : auth, parse body Zod,
-// transformation des erreurs Prisma en réponses JSON.
+// Centralizes the recurring patterns: auth, Zod body parsing,
+// turning Prisma errors into JSON responses.
 
 export class ApiError extends Error {
   constructor(
@@ -34,11 +34,11 @@ export async function parseJsonBody<T extends z.ZodTypeAny>(
   try {
     body = await req.json();
   } catch {
-    throw new ApiError(400, 'JSON invalide');
+    throw new ApiError(400, 'Invalid JSON');
   }
   const parsed = schema.safeParse(body);
   if (!parsed.success) {
-    throw new ApiError(400, parsed.error.issues[0]?.message ?? 'Données invalides');
+    throw new ApiError(400, parsed.error.issues[0]?.message ?? 'Invalid data');
   }
   return parsed.data;
 }
@@ -51,15 +51,15 @@ export function handleApiError(err: unknown): NextResponse {
   if (err instanceof Prisma.PrismaClientKnownRequestError) {
     if (err.code === 'P2002') {
       return NextResponse.json(
-        { error: 'Conflit : une entrée avec cette valeur existe déjà.' },
+        { error: 'Conflict: an entry with this value already exists.' },
         { status: 409 },
       );
     }
     if (err.code === 'P2025') {
-      return NextResponse.json({ error: 'Introuvable.' }, { status: 404 });
+      return NextResponse.json({ error: 'Not found.' }, { status: 404 });
     }
   }
 
   console.error('[api] unhandled error:', err);
-  return NextResponse.json({ error: 'Erreur serveur.' }, { status: 500 });
+  return NextResponse.json({ error: 'Server error.' }, { status: 500 });
 }

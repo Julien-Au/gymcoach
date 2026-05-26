@@ -6,14 +6,14 @@ import { ApiError, handleApiError, parseJsonBody, requireApiUserId } from '@/lib
 // ============================================================
 // Backup / Import JSON (LOT 11)
 // ============================================================
-// L'export couvre toutes les entités liées à l'utilisateur (programmes,
-// workouts, exercises, sessions, sets, coach sessions). L'import recrée le
-// contenu pour le user courant en remplaçant les ids cuid par de nouveaux,
-// pour ne pas heurter les contraintes d'unicité ou polluer un autre user.
+// The export covers all entities tied to the user (programs, workouts,
+// exercises, sessions, sets, coach sessions). The import recreates the content
+// for the current user by replacing the cuid ids with new ones, so it does not
+// break uniqueness constraints or pollute another user.
 
 const VERSION = 1;
 
-// GET /api/backup : retourne un JSON exportable.
+// GET /api/backup: returns an exportable JSON.
 export async function GET() {
   try {
     const userId = await requireApiUserId();
@@ -48,7 +48,7 @@ export async function GET() {
       db.coachSession.findMany({ where: { userId } }),
     ]);
 
-    if (!user) throw new ApiError(404, 'Utilisateur introuvable.');
+    if (!user) throw new ApiError(404, 'User not found.');
 
     const dump = {
       version: VERSION,
@@ -86,7 +86,7 @@ export async function GET() {
         })),
       })),
       sessions: sessions.map((s) => ({
-        // Identifiant local utilisé pour relier les sets, pas exporté tel quel.
+        // Local identifier used to link the sets, not exported as-is.
         _localId: s.id,
         programName: programs.find((p) => p.id === s.programId)?.name ?? null,
         workoutName: programs
@@ -212,12 +212,12 @@ const importSchema = z.object({
 
 const importBodySchema = z.object({
   payload: importSchema,
-  // Confirmation explicite : remplace toutes les données du user courant.
+  // Explicit confirmation: replaces all data of the current user.
   confirmReplace: z.literal(true),
 });
 
-// POST /api/backup : vide les données du user courant et les recrée depuis
-// le payload. Atomique : tout est dans une transaction Prisma.
+// POST /api/backup: clears the current user's data and recreates it from the
+// payload. Atomic: everything runs in a Prisma transaction.
 export async function POST(req: Request) {
   try {
     const userId = await requireApiUserId();
@@ -225,17 +225,17 @@ export async function POST(req: Request) {
 
     await db.$transaction(
       async (tx) => {
-        // 1. Purge des données existantes du user (sets via cascade puis sessions,
+        // 1. Purge the user's existing data (sets via cascade then sessions,
         //    coach sessions, programs/workouts/program-exercises via cascade,
         //    exercises).
         await tx.set.deleteMany({ where: { session: { userId } } });
         await tx.session.deleteMany({ where: { userId } });
         await tx.coachSession.deleteMany({ where: { userId } });
-        // workouts/programExercises sont en cascade via Program.
+        // workouts/programExercises cascade via Program.
         await tx.program.deleteMany({ where: { userId } });
         await tx.exercise.deleteMany({ where: { userId } });
 
-        // 2. Recrée les exercices ; on garde un index nom -> id pour lier.
+        // 2. Recreate the exercises; we keep a name -> id index to link them.
         const exerciseIdByName = new Map<string, string>();
         for (const e of payload.exercises) {
           const created = await tx.exercise.create({
@@ -253,7 +253,7 @@ export async function POST(req: Request) {
           exerciseIdByName.set(e.name, created.id);
         }
 
-        // 3. Recrée programmes / workouts / programExercises.
+        // 3. Recreate programs / workouts / programExercises.
         for (const p of payload.programs) {
           const program = await tx.program.create({
             data: {
@@ -296,8 +296,8 @@ export async function POST(req: Request) {
           }
         }
 
-        // 4. Sessions + sets : on tente de relier au programme/workout par nom,
-        //    mais on accepte de laisser nullable si introuvable.
+        // 4. Sessions + sets: we try to link to the program/workout by name,
+        //    but accept leaving them nullable if not found.
         const programs = await tx.program.findMany({
           where: { userId },
           include: { workouts: true },

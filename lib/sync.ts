@@ -1,15 +1,15 @@
 // ============================================================
-// Sync queue : flush les sets pending vers l'API
+// Sync queue: flush the pending sets to the API
 // ============================================================
-// Stratégie :
-// 1. Quand une série est validée localement, on l'écrit dans IndexedDB
-//    (status='pending') et on déclenche un flush.
-// 2. flushPendingSets() prend chaque pending dans l'ordre, tente le POST
-//    et marque selon résultat.
-// 3. Au démarrage de l'app + sur l'event 'online', on appelle flushPendingSets().
-// 4. Pas de retry agressif : on attend le prochain trigger (online, validation,
-//    démarrage). Si tu coupes le wifi en plein milieu, l'app retentera quand
-//    le réseau revient. Pas de timer en arrière-plan pour économiser la batterie.
+// Strategy:
+// 1. When a set is validated locally, we write it to IndexedDB
+//    (status='pending') and trigger a flush.
+// 2. flushPendingSets() takes each pending one in order, attempts the POST
+//    and marks it according to the result.
+// 3. On app startup + on the 'online' event, we call flushPendingSets().
+// 4. No aggressive retry: we wait for the next trigger (online, validation,
+//    startup). If you cut the wifi in the middle, the app will retry when
+//    the network comes back. No background timer, to save battery.
 
 import { getDB, type PendingSet } from '@/lib/indexeddb';
 
@@ -22,7 +22,7 @@ export interface FlushResult {
 let inFlight: Promise<FlushResult> | null = null;
 
 export async function flushPendingSets(): Promise<FlushResult> {
-  // Re-entrancy : si un flush est déjà en cours, on retourne sa promesse.
+  // Re-entrancy: if a flush is already running, we return its promise.
   if (inFlight) return inFlight;
   inFlight = doFlush();
   try {
@@ -44,7 +44,7 @@ async function doFlush(): Promise<FlushResult> {
 
   for (const item of pending) {
     if (!navigator.onLine) {
-      // Pas la peine d'essayer si on sait qu'on est offline.
+      // No point trying if we know we are offline.
       break;
     }
     await db.pendingSets.update(item.localId, { status: 'syncing' });
@@ -67,9 +67,9 @@ async function doFlush(): Promise<FlushResult> {
 
       if (!res.ok) {
         const data = (await res.json().catch(() => null)) as { error?: string } | null;
-        // Si la session est clôturée ou l'exo invalide, le retry est inutile :
-        // on marque failed pour ne pas boucler. L'utilisateur peut purger
-        // manuellement la queue plus tard si besoin.
+        // If the session is closed or the exercise invalid, retrying is
+        // pointless: we mark it failed so we do not loop. The user can manually
+        // purge the queue later if needed.
         const fatal = res.status === 400 || res.status === 404;
         await db.pendingSets.update(item.localId, {
           status: fatal ? 'failed' : 'pending',
@@ -89,7 +89,7 @@ async function doFlush(): Promise<FlushResult> {
       });
       flushed += 1;
     } catch (err) {
-      // Erreur réseau (offline, timeout) : on garde 'pending' pour retry plus tard.
+      // Network error (offline, timeout): we keep 'pending' to retry later.
       await db.pendingSets.update(item.localId, {
         status: 'pending',
         attempts: (item.attempts ?? 0) + 1,
@@ -103,7 +103,7 @@ async function doFlush(): Promise<FlushResult> {
   return { flushed, failed, pending: remaining };
 }
 
-// Helper : ajoute un set en queue (status pending) et déclenche un flush.
+// Helper: adds a set to the queue (status pending) and triggers a flush.
 export async function queueSet(
   set: Omit<PendingSet, 'createdAt' | 'status' | 'serverId' | 'syncedAt' | 'attempts' | 'lastError'>,
 ): Promise<PendingSet> {
@@ -118,12 +118,12 @@ export async function queueSet(
     lastError: null,
   };
   await db.pendingSets.add(record);
-  // Lance le flush en background (pas await pour ne pas bloquer l'UI).
+  // Kick off the flush in the background (not awaited so as not to block the UI).
   void flushPendingSets();
   return record;
 }
 
-// Supprime les sets syncés plus vieux que `maxAgeMs` pour garder Dexie léger.
+// Deletes synced sets older than `maxAgeMs` to keep Dexie lightweight.
 export async function pruneSyncedSets(maxAgeMs = 7 * 24 * 60 * 60 * 1000): Promise<number> {
   const db = getDB();
   const cutoff = Date.now() - maxAgeMs;
@@ -134,14 +134,14 @@ export async function pruneSyncedSets(maxAgeMs = 7 * 24 * 60 * 60 * 1000): Promi
     .delete();
 }
 
-// Hook event listener pour démarrer/arrêter l'auto-sync sur online/offline.
+// Hook event listener to start/stop the auto-sync on online/offline.
 export function bindAutoSync(): () => void {
   if (typeof window === 'undefined') return () => {};
   const onOnline = () => {
     void flushPendingSets();
   };
   window.addEventListener('online', onOnline);
-  // Premier flush au montage (au cas où des sets restent de la session précédente).
+  // First flush on mount (in case some sets remain from the previous session).
   if (navigator.onLine) {
     void flushPendingSets();
   }

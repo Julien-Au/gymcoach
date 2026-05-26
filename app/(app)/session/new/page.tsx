@@ -28,15 +28,15 @@ export default async function NewSessionPage() {
         <Button asChild variant="ghost" size="sm" className="self-start">
           <Link href="/">
             <ChevronLeft className="size-4" />
-            <span className="ml-1">Retour</span>
+            <span className="ml-1">Back</span>
           </Link>
         </Button>
 
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Démarrer une séance</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Start a session</h1>
           {activeProgram ? (
             <p className="text-sm text-muted-foreground">
-              Programme actif : <span className="font-medium">{activeProgram.name}</span>
+              Active program: <span className="font-medium">{activeProgram.name}</span>
             </p>
           ) : null}
         </div>
@@ -44,28 +44,28 @@ export default async function NewSessionPage() {
         {!activeProgram ? (
           <Card>
             <CardHeader>
-              <CardTitle>Aucun programme actif</CardTitle>
+              <CardTitle>No active program</CardTitle>
               <CardDescription>
-                Active un programme pour pouvoir démarrer une séance.
+                Activate a program so you can start a session.
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Button asChild>
-                <Link href="/programs">Voir les programmes</Link>
+                <Link href="/programs">View programs</Link>
               </Button>
             </CardContent>
           </Card>
         ) : activeProgram.workouts.length === 0 ? (
           <Card>
             <CardHeader>
-              <CardTitle>Aucune séance dans ce programme</CardTitle>
+              <CardTitle>No session in this program</CardTitle>
               <CardDescription>
-                Ajoute au moins une séance avec des exercices avant de démarrer.
+                Add at least one session with exercises before starting.
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Button asChild>
-                <Link href={`/programs/${activeProgram.id}`}>Configurer le programme</Link>
+                <Link href={`/programs/${activeProgram.id}`}>Configure program</Link>
               </Button>
             </CardContent>
           </Card>
@@ -81,7 +81,7 @@ export default async function NewSessionPage() {
                         <div className="min-w-0">
                           <CardTitle className="text-base">{w.name}</CardTitle>
                           <CardDescription className="text-xs">
-                            {w._count.exercises} exercice{w._count.exercises > 1 ? 's' : ''}
+                            {w._count.exercises} exercise{w._count.exercises > 1 ? 's' : ''}
                           </CardDescription>
                         </div>
                         {day && <Badge variant="secondary">{day}</Badge>}

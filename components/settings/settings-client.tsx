@@ -36,7 +36,7 @@ export function SettingsClient() {
     <>
       <Card>
         <CardHeader className="pb-3">
-          <h2 className="text-base font-semibold">Apparence</h2>
+          <h2 className="text-base font-semibold">Appearance</h2>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-2">
@@ -44,21 +44,21 @@ export function SettingsClient() {
               current={theme}
               value="dark"
               icon={<Moon className="size-4" />}
-              label="Sombre"
+              label="Dark"
               onClick={() => setTheme('dark')}
             />
             <ThemeChoice
               current={theme}
               value="light"
               icon={<Sun className="size-4" />}
-              label="Clair"
+              label="Light"
               onClick={() => setTheme('light')}
             />
             <ThemeChoice
               current={theme}
               value="system"
               icon={<Monitor className="size-4" />}
-              label="Système"
+              label="System"
               onClick={() => setTheme('system')}
             />
           </div>
@@ -67,24 +67,24 @@ export function SettingsClient() {
 
       <Card>
         <CardHeader className="pb-3">
-          <h2 className="text-base font-semibold">Séance</h2>
+          <h2 className="text-base font-semibold">Session</h2>
           <p className="text-xs text-muted-foreground">
-            Ces préférences sont enregistrées sur cet appareil uniquement.
+            These preferences are saved on this device only.
           </p>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           <PrefRow
             icon={<Smartphone className="size-4" />}
             label="Vibration"
-            description="Validation des séries et fin de chrono."
+            description="Set logging and end of timer."
             checked={prefs.vibration}
             onChange={(v) => update('vibration', v)}
             disabled={!hydrated}
           />
           <PrefRow
             icon={<Volume2 className="size-4" />}
-            label="Bip de fin de chrono"
-            description="Joue un court bip 880 Hz à la fin du repos."
+            label="End of timer beep"
+            description="Plays a short 880 Hz beep at the end of the rest."
             checked={prefs.restTimerSound}
             onChange={(v) => update('restTimerSound', v)}
             disabled={!hydrated}

@@ -7,14 +7,14 @@ interface Params {
   params: { id: string };
 }
 
-// POST /api/programs/[id]/workouts : ajoute un workout à un programme.
-// L'ordre est calculé automatiquement (max + 1).
+// POST /api/programs/[id]/workouts: adds a workout to a program.
+// The order is computed automatically (max + 1).
 export async function POST(req: Request, { params }: Params) {
   try {
     const userId = await requireApiUserId();
     const program = await db.program.findUnique({ where: { id: params.id } });
     if (!program || program.userId !== userId) {
-      throw new ApiError(404, 'Programme introuvable.');
+      throw new ApiError(404, 'Program not found.');
     }
 
     const data = await parseJsonBody(req, workoutInputSchema);

@@ -39,13 +39,13 @@ interface FormState {
 const RIR_OPTIONS = [0, 1, 2, 3];
 
 export function SetInput({ programExercise, existingSets, lastPerformance, onSubmit }: Props) {
-  // Pré-remplissage : dernière série de cet exo dans la session courante,
-  // sinon dernière performance, sinon defaults.
+  // Pre-fill: last set of this exercise in the current session,
+  // otherwise the last performance, otherwise defaults.
   const initial = computeInitial(programExercise, existingSets, lastPerformance);
   const [form, setForm] = useState<FormState>(initial);
   const [submitting, setSubmitting] = useState(false);
 
-  // Re-init quand on change d'exercice ou qu'une série change.
+  // Re-init when the exercise changes or a set changes.
   useEffect(() => {
     setForm(computeInitial(programExercise, existingSets, lastPerformance));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -71,7 +71,7 @@ export function SetInput({ programExercise, existingSets, lastPerformance, onSub
         isDropSet: form.isDropSet,
         notes: form.notes.trim() || null,
       });
-      // L'animation de transition vers le rest timer est gérée par le parent.
+      // The transition animation to the rest timer is handled by the parent.
     } finally {
       setSubmitting(false);
     }
@@ -80,10 +80,10 @@ export function SetInput({ programExercise, existingSets, lastPerformance, onSub
   return (
     <Card>
       <CardContent className="flex flex-col gap-4 pt-6">
-        {/* Charge */}
+        {/* Load */}
         <div className="space-y-2">
           <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-            Charge (kg)
+            Load (kg)
           </Label>
           <div className="flex items-center gap-2">
             <Button
@@ -122,7 +122,7 @@ export function SetInput({ programExercise, existingSets, lastPerformance, onSub
         {/* Reps */}
         <div className="space-y-2">
           <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-            Répétitions
+            Reps
           </Label>
           <div className="flex items-center gap-2">
             <Button
@@ -191,21 +191,21 @@ export function SetInput({ programExercise, existingSets, lastPerformance, onSub
               checked={form.isWarmup}
               onCheckedChange={(v) => setForm((f) => ({ ...f, isWarmup: v }))}
             />
-            <span>Échauffement</span>
+            <span>Warmup</span>
           </label>
         </div>
 
         {/* Notes */}
         <div className="space-y-2">
           <Label htmlFor="set-notes" className="text-xs uppercase tracking-wide text-muted-foreground">
-            Note rapide (optionnel)
+            Quick note (optional)
           </Label>
           <Textarea
             id="set-notes"
             rows={2}
             value={form.notes}
             onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-            placeholder="ex. douleur poignet, drop set 22.5 puis 18kg, etc."
+            placeholder="e.g. wrist pain, drop set 22.5 then 18kg, etc."
           />
         </div>
 
@@ -216,7 +216,7 @@ export function SetInput({ programExercise, existingSets, lastPerformance, onSub
           className="h-20 w-full text-lg font-semibold"
         >
           <Check className="size-6" />
-          <span className="ml-2">{submitting ? 'Enregistrement...' : 'Valider la série'}</span>
+          <span className="ml-2">{submitting ? 'Saving...' : 'Log the set'}</span>
         </Button>
       </CardContent>
     </Card>
@@ -228,8 +228,8 @@ function computeInitial(
   existingSets: PendingSet[],
   lastPerf: SerializedLastPerformance | undefined,
 ): FormState {
-  // 1. Si une série existe déjà sur cet exo dans la session courante,
-  //    reprendre ses valeurs (idée : tu vises la même charge, ajustes les reps).
+  // 1. If a set already exists for this exercise in the current session,
+  //    reuse its values (idea: you aim for the same load, adjust the reps).
   const lastInSession = existingSets.filter((s) => !s.isWarmup).at(-1);
   if (lastInSession) {
     return {
@@ -241,9 +241,9 @@ function computeInitial(
       notes: '',
     };
   }
-  // 2. Sinon, pré-remplir avec la suggestion (algo double progression). Si on
-  //    progresse, on vise le bas de la fourchette de reps avec la charge plus
-  //    lourde ; sinon on essaie de battre les reps précédents (au moins matcher).
+  // 2. Otherwise, pre-fill with the suggestion (double progression algo). If
+  //    progressing, aim for the bottom of the rep range with the heavier
+  //    load; otherwise try to beat the previous reps (at least match them).
   if (lastPerf) {
     const suggestion = suggestNextWeight(pe, lastPerf.sets);
     const initialReps =
@@ -259,7 +259,7 @@ function computeInitial(
       notes: '',
     };
   }
-  // 3. Defaults : milieu de la fourchette de reps, RIR cible, charge 0.
+  // 3. Defaults: middle of the rep range, target RIR, load 0.
   const midReps = Math.round((pe.targetRepsMin + pe.targetRepsMax) / 2);
   return {
     weight: 0,

@@ -7,10 +7,10 @@ const dayOfWeekSchema = z
   .nullable();
 
 export const workoutInputSchema = z.object({
-  name: z.string().trim().min(1, 'Nom requis').max(120),
+  name: z.string().trim().min(1, 'Name required').max(120),
   dayOfWeek: dayOfWeekSchema,
 });
 
 export type WorkoutInput = z.infer<typeof workoutInputSchema>;
 
-export const DAY_LABELS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+export const DAY_LABELS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];

@@ -1,11 +1,11 @@
 import { z } from 'zod';
 
 // ============================================================
-// Ajustements proposés par le coach (LOT 10)
+// Adjustments proposed by the coach (BATCH 10)
 // ============================================================
-// Le system prompt demande à Claude d'émettre un bloc XML <adjustments>
-// contenant un tableau JSON à la fin de chaque debrief. On extrait, valide
-// (Zod) et expose le résultat à l'UI sans toucher au markdown affiché.
+// The system prompt asks Claude to emit an <adjustments> XML block
+// containing a JSON array at the end of each debrief. We extract, validate
+// (Zod) and expose the result to the UI without touching the displayed markdown.
 
 export const adjustmentSchema = z.object({
   exerciseName: z.string().trim().min(1).max(120),
@@ -26,18 +26,18 @@ export type Adjustment = z.infer<typeof adjustmentSchema>;
 const ADJUSTMENTS_TAG_RE = /<adjustments>([\s\S]*?)<\/adjustments>/i;
 
 export interface ExtractedAdjustments {
-  // Markdown nettoyé du bloc <adjustments> (utilisable directement à l'affichage).
+  // Markdown with the <adjustments> block stripped out (ready to display as-is).
   cleaned: string;
-  // Tableau d'ajustements validés. Vide si bloc absent ou invalide.
+  // Array of validated adjustments. Empty if the block is missing or invalid.
   adjustments: Adjustment[];
-  // Erreurs de parsing remontées pour debug (non bloquantes).
+  // Parsing errors surfaced for debugging (non-blocking).
   parseErrors: string[];
 }
 
-// Extrait et parse le bloc <adjustments>...</adjustments> d'une réponse coach.
-// Retourne le markdown nettoyé + les ajustements valides. En cas d'erreur de
-// parsing JSON ou de schéma, on retourne juste un tableau vide et l'erreur
-// dans parseErrors (le markdown reste affichable).
+// Extracts and parses the <adjustments>...</adjustments> block from a coach response.
+// Returns the cleaned markdown + the valid adjustments. On a JSON parsing or schema
+// error, we just return an empty array and the error in parseErrors (the markdown
+// stays displayable).
 export function extractAdjustments(markdown: string): ExtractedAdjustments {
   const match = markdown.match(ADJUSTMENTS_TAG_RE);
   if (!match) {
@@ -46,7 +46,7 @@ export function extractAdjustments(markdown: string): ExtractedAdjustments {
   const cleaned = markdown.replace(ADJUSTMENTS_TAG_RE, '').trim();
   const raw = match[1]?.trim();
   if (!raw) {
-    return { cleaned, adjustments: [], parseErrors: ['Bloc <adjustments> vide.'] };
+    return { cleaned, adjustments: [], parseErrors: ['Empty <adjustments> block.'] };
   }
 
   let parsed: unknown;
@@ -57,7 +57,7 @@ export function extractAdjustments(markdown: string): ExtractedAdjustments {
       cleaned,
       adjustments: [],
       parseErrors: [
-        `JSON invalide dans <adjustments> : ${err instanceof Error ? err.message : 'erreur inconnue'}`,
+        `Invalid JSON in <adjustments>: ${err instanceof Error ? err.message : 'unknown error'}`,
       ],
     };
   }
@@ -68,7 +68,7 @@ export function extractAdjustments(markdown: string): ExtractedAdjustments {
       cleaned,
       adjustments: [],
       parseErrors: [
-        `Schema invalide : ${result.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join(' ; ')}`,
+        `Invalid schema: ${result.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join(' ; ')}`,
       ],
     };
   }
@@ -76,13 +76,13 @@ export function extractAdjustments(markdown: string): ExtractedAdjustments {
 }
 
 // ============================================================
-// Schema de la requête POST /api/coach/[id]/apply
+// Schema for the POST /api/coach/[id]/apply request
 // ============================================================
-// Le client envoie la liste des ajustements validés (potentiellement édités
-// par l'utilisateur). On revérifie côté serveur via Zod.
+// The client sends the list of validated adjustments (possibly edited
+// by the user). We re-validate server-side via Zod.
 
 export const applyAdjustmentsSchema = z.object({
-  adjustments: z.array(adjustmentSchema).min(1, 'Aucun ajustement à appliquer.'),
+  adjustments: z.array(adjustmentSchema).min(1, 'No adjustment to apply.'),
 });
 
 export type ApplyAdjustmentsInput = z.infer<typeof applyAdjustmentsSchema>;

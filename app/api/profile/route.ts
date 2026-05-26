@@ -3,15 +3,16 @@ import { z } from 'zod';
 import { db } from '@/lib/db';
 import { handleApiError, parseJsonBody, requireApiUserId } from '@/lib/api';
 
-// Profil utilisateur (self-service). Mono-user, donc pas d'admin/role check.
+// User profile (self-service). Single-user, so no admin/role check.
 
 const profileUpdateSchema = z.object({
-  // Poids du corps en kg. null = effacer la valeur (revient au comportement
-  // pré-bodyweight où le tonnage des exos PdC reste basé sur set.weight seul).
+  // Bodyweight in kg. null = clear the value (reverts to the pre-bodyweight
+  // behavior where the tonnage of bodyweight exercises stays based on
+  // set.weight alone).
   bodyweight: z
     .number()
-    .min(20, 'Trop bas')
-    .max(300, 'Trop haut')
+    .min(20, 'Too low')
+    .max(300, 'Too high')
     .nullable()
     .optional(),
 });

@@ -25,8 +25,8 @@ export function RestTimer({ endsAt, totalSec, nextLabel, onEnd, onSkip, onAdd30 
     return () => clearInterval(id);
   }, [endsAt]);
 
-  // Détection du passage à 0 : on déclenche onEnd UNE seule fois et on joue
-  // le bip si la préférence l'autorise.
+  // Detect reaching 0: trigger onEnd ONCE and play the beep if the preference
+  // allows it.
   useEffect(() => {
     if (!endedRef.current && now >= endsAt) {
       endedRef.current = true;
@@ -42,7 +42,7 @@ export function RestTimer({ endsAt, totalSec, nextLabel, onEnd, onSkip, onAdd30 
   return (
     <Card>
       <CardContent className="flex flex-col items-center gap-4 py-8">
-        <p className="text-xs uppercase tracking-wider text-muted-foreground">Repos</p>
+        <p className="text-xs uppercase tracking-wider text-muted-foreground">Rest</p>
 
         <div className="relative">
           <p className="text-7xl font-bold tabular-nums">
@@ -60,7 +60,7 @@ export function RestTimer({ endsAt, totalSec, nextLabel, onEnd, onSkip, onAdd30 
 
         {nextLabel && (
           <p className="text-center text-sm text-muted-foreground">
-            Prochain : <span className="font-medium text-foreground">{nextLabel}</span>
+            Next: <span className="font-medium text-foreground">{nextLabel}</span>
           </p>
         )}
 
@@ -71,7 +71,7 @@ export function RestTimer({ endsAt, totalSec, nextLabel, onEnd, onSkip, onAdd30 
           </Button>
           <Button variant="default" onClick={onSkip} className="min-h-tap flex-1">
             <FastForward className="size-4" />
-            <span className="ml-1">Passer</span>
+            <span className="ml-1">Skip</span>
           </Button>
         </div>
       </CardContent>

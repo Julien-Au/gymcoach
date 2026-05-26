@@ -1,6 +1,6 @@
-// Wrapper Wake Lock API (empêche l'écran de s'éteindre pendant une séance).
-// Le navigateur libère automatiquement le lock quand l'onglet perd le focus.
-// Il faut donc le réacquérir au retour via visibilitychange.
+// Wake Lock API wrapper (prevents the screen from turning off during a session).
+// The browser automatically releases the lock when the tab loses focus.
+// It must therefore be re-acquired on return via visibilitychange.
 
 let currentLock: WakeLockSentinel | null = null;
 
@@ -9,7 +9,7 @@ export async function acquireWakeLock(): Promise<void> {
   try {
     currentLock = await navigator.wakeLock.request('screen');
   } catch (err) {
-    // Pas bloquant : l'utilisateur peut toujours forcer l'écran allumé.
+    // Non-blocking: the user can still force the screen to stay on.
     console.warn('Wake Lock request failed:', err);
   }
 }
@@ -18,12 +18,12 @@ export async function releaseWakeLock(): Promise<void> {
   try {
     await currentLock?.release();
   } catch {
-    // Ignore : le lock peut déjà être libéré par le navigateur.
+    // Ignore: the lock may already be released by the browser.
   }
   currentLock = null;
 }
 
-// À utiliser dans un useEffect côté composant :
+// To use in a useEffect on the component side:
 //   const cleanup = bindWakeLockToVisibility();
 //   acquireWakeLock();
 //   return () => { releaseWakeLock(); cleanup(); };

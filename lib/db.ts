@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 
-// Singleton pattern recommandé par Prisma en dev (évite les
-// connexions multiples au hot-reload Next.js).
+// Singleton pattern recommended by Prisma in dev (avoids
+// multiple connections on Next.js hot-reload).
 // https://www.prisma.io/docs/orm/more/help-and-troubleshooting/help-articles/nextjs-prisma-client-dev-practices
 
 const globalForPrisma = globalThis as unknown as {

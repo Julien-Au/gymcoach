@@ -2,18 +2,18 @@ import { db } from '@/lib/db';
 
 export interface LastPerformance {
   exerciseId: string;
-  // La séance précédente la plus récente sur cet exercice (hors session courante).
+  // The most recent previous session for this exercise (excluding the current session).
   sessionStartedAt: Date;
   sets: { weight: number; reps: number; rir: number | null }[];
-  // Meilleure charge de la séance (utile pour affichage rapide).
+  // Best load of the session (handy for a quick display).
   maxWeight: number;
-  // Reps à cette charge max (le plus haut nombre de reps atteint à maxWeight).
+  // Reps at that max load (the highest rep count reached at maxWeight).
   repsAtMaxWeight: number;
 }
 
-// Récupère les performances précédentes pour une liste d'exerciceIds, hors
-// session courante. Pour chaque exo, on prend la séance la plus récente qui
-// le contient, puis on remonte tous ses sets non-warmup.
+// Fetches the previous performances for a list of exerciseIds, excluding the
+// current session. For each exercise, we take the most recent session that
+// contains it, then pull up all of its non-warmup sets.
 export async function getLastPerformances(
   userId: string,
   exerciseIds: string[],
@@ -23,9 +23,9 @@ export async function getLastPerformances(
 
   const result = new Map<string, LastPerformance>();
 
-  // Pour chaque exercice : trouver le set le plus récent (hors session courante,
-  // hors warmup), récupérer son sessionId, puis tous les sets de cette session
-  // sur cet exercice.
+  // For each exercise: find the most recent set (excluding the current session,
+  // excluding warmups), get its sessionId, then all the sets of that session
+  // for this exercise.
   await Promise.all(
     exerciseIds.map(async (exerciseId) => {
       const lastSet = await db.set.findFirst({

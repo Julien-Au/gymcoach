@@ -16,7 +16,7 @@ export function BackupSection() {
     setExporting(true);
     try {
       const res = await fetch('/api/backup');
-      if (!res.ok) throw new Error(`Erreur ${res.status}`);
+      if (!res.ok) throw new Error(`Error ${res.status}`);
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -26,9 +26,9 @@ export function BackupSection() {
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-      toast.success('Export téléchargé.');
+      toast.success('Export downloaded.');
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Échec de l’export.');
+      toast.error(e instanceof Error ? e.message : 'Export failed.');
     } finally {
       setExporting(false);
     }
@@ -53,7 +53,7 @@ export function BackupSection() {
       try {
         payload = JSON.parse(text);
       } catch {
-        throw new Error('Fichier JSON invalide.');
+        throw new Error('Invalid JSON file.');
       }
       const res = await fetch('/api/backup', {
         method: 'POST',
@@ -62,14 +62,14 @@ export function BackupSection() {
       });
       if (!res.ok) {
         const j = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(j.error ?? `Erreur ${res.status}`);
+        throw new Error(j.error ?? `Error ${res.status}`);
       }
-      toast.success('Import terminé. Les données existantes ont été remplacées.');
+      toast.success('Import complete. Existing data has been replaced.');
       setConfirmingFile(null);
-      // Refresh la page pour repartir d'un état propre.
+      // Refresh the page to start from a clean state.
       setTimeout(() => window.location.reload(), 800);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Échec de l’import.');
+      toast.error(e instanceof Error ? e.message : 'Import failed.');
     } finally {
       setImporting(false);
     }
@@ -78,9 +78,9 @@ export function BackupSection() {
   return (
     <Card>
       <CardHeader className="pb-3">
-        <h2 className="text-base font-semibold">Données</h2>
+        <h2 className="text-base font-semibold">Data</h2>
         <p className="text-xs text-muted-foreground">
-          Sauvegarde locale ou restauration depuis un fichier JSON.
+          Local backup or restore from a JSON file.
         </p>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
@@ -95,7 +95,7 @@ export function BackupSection() {
           ) : (
             <Download className="size-4" />
           )}
-          <span className="ml-2">Exporter toutes mes données (JSON)</span>
+          <span className="ml-2">Export all my data (JSON)</span>
         </Button>
 
         <Button
@@ -105,7 +105,7 @@ export function BackupSection() {
           className="min-h-tap"
         >
           <Upload className="size-4" />
-          <span className="ml-2">Importer un backup</span>
+          <span className="ml-2">Import a backup</span>
         </Button>
         <input
           ref={fileRef}
@@ -120,11 +120,11 @@ export function BackupSection() {
             <div className="flex items-start gap-2">
               <AlertTriangle className="size-5 shrink-0 text-amber-600" />
               <div className="flex-1">
-                <p className="font-medium">Confirmer l&apos;import</p>
+                <p className="font-medium">Confirm the import</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Le fichier <code>{confirmingFile.name}</code> remplacera{' '}
-                  <strong>toutes</strong> tes données actuelles (programmes,
-                  séances, séries, debriefs). Action irréversible.
+                  The file <code>{confirmingFile.name}</code> will replace{' '}
+                  <strong>all</strong> your current data (programs,
+                  sessions, sets, debriefs). This action cannot be undone.
                 </p>
                 <div className="mt-3 flex gap-2">
                   <Button
@@ -137,7 +137,7 @@ export function BackupSection() {
                       <Loader2 className="size-4 animate-spin" />
                     ) : null}
                     <span className={importing ? 'ml-2' : ''}>
-                      Oui, remplacer
+                      Yes, replace
                     </span>
                   </Button>
                   <Button
@@ -146,7 +146,7 @@ export function BackupSection() {
                     onClick={() => setConfirmingFile(null)}
                     disabled={importing}
                   >
-                    Annuler
+                    Cancel
                   </Button>
                 </div>
               </div>

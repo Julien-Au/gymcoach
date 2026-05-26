@@ -6,7 +6,7 @@ export const sessionStartSchema = z.object({
 
 export const sessionUpdateSchema = z.object({
   notes: z.string().trim().max(2000).optional().nullable(),
-  // Si true, marque finishedAt à maintenant.
+  // If true, sets finishedAt to now.
   finish: z.boolean().optional(),
 });
 

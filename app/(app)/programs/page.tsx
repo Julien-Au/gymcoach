@@ -21,15 +21,15 @@ export default async function ProgramsPage() {
       <div className="mx-auto flex max-w-3xl flex-col gap-6">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Programmes</h1>
+            <h1 className="text-2xl font-bold tracking-tight">Programs</h1>
             <p className="text-sm text-muted-foreground">
-              {programs.length} programme{programs.length > 1 ? 's' : ''}.
+              {programs.length} program{programs.length > 1 ? 's' : ''}.
             </p>
           </div>
           <Button asChild className="min-h-tap">
             <Link href="/programs/new">
               <Plus className="size-4" />
-              <span className="ml-2">Créer</span>
+              <span className="ml-2">Create</span>
             </Link>
           </Button>
         </div>
@@ -37,9 +37,9 @@ export default async function ProgramsPage() {
         {programs.length === 0 ? (
           <Card>
             <CardHeader>
-              <CardTitle>Aucun programme</CardTitle>
+              <CardTitle>No program</CardTitle>
               <CardDescription>
-                Crée ton premier programme pour pouvoir démarrer une séance.
+                Create your first program so you can start a session.
               </CardDescription>
             </CardHeader>
           </Card>
@@ -52,11 +52,11 @@ export default async function ProgramsPage() {
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between gap-3">
                         <CardTitle className="text-base">{p.name}</CardTitle>
-                        {p.isActive && <Badge>Actif</Badge>}
+                        {p.isActive && <Badge>Active</Badge>}
                       </div>
                       <CardDescription className="text-xs">
-                        {p.phase} · démarré le{' '}
-                        {new Intl.DateTimeFormat('fr-FR', {
+                        {p.phase} · started on{' '}
+                        {new Intl.DateTimeFormat('en-US', {
                           day: '2-digit',
                           month: '2-digit',
                           year: 'numeric',
@@ -64,9 +64,8 @@ export default async function ProgramsPage() {
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="pt-0 text-xs text-muted-foreground">
-                      {p._count.workouts} séance{p._count.workouts > 1 ? 's' : ''} ·{' '}
-                      {p._count.sessions} session{p._count.sessions > 1 ? 's' : ''} historique
-                      {p._count.sessions > 1 ? 's' : ''}
+                      {p._count.workouts} session{p._count.workouts > 1 ? 's' : ''} ·{' '}
+                      {p._count.sessions} logged session{p._count.sessions > 1 ? 's' : ''}
                     </CardContent>
                   </Card>
                 </Link>

@@ -54,7 +54,7 @@ interface Props {
   recap: RecapRow[];
 }
 
-// Palette stable pour les groupes musculaires (HSL distincts, accessible LCH).
+// Stable palette for muscle groups (distinct HSL, accessible LCH).
 const MUSCLE_COLORS: Record<string, string> = {
   CHEST: '#ef4444',
   BACK_WIDTH: '#3b82f6',
@@ -75,7 +75,7 @@ const MUSCLE_COLORS: Record<string, string> = {
 
 function shortDate(iso: string) {
   const d = new Date(iso);
-  return new Intl.DateTimeFormat('fr-FR', {
+  return new Intl.DateTimeFormat('en-US', {
     day: '2-digit',
     month: '2-digit',
   }).format(d);
@@ -102,7 +102,7 @@ export function ProgressDashboard({
 
   const selectedExo = exercises.find((e) => e.id === selectedExerciseId);
 
-  // Pour le bar chart empilé : on collecte les groupes présents.
+  // For the stacked bar chart: collect the groups present.
   const presentMuscleGroups = useMemo(() => {
     const groups = new Set<string>();
     for (const p of weeklyPoints) {
@@ -111,7 +111,7 @@ export function ProgressDashboard({
     return [...groups];
   }, [weeklyPoints]);
 
-  // Aplatit les points hebdo pour Recharts (clé = weekKey, value par groupe).
+  // Flatten the weekly points for Recharts (key = weekKey, value per group).
   const weeklyChartData = useMemo(() => {
     return weeklyPoints.map((p) => ({
       weekKey: p.weekKey,
@@ -127,18 +127,18 @@ export function ProgressDashboard({
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Charge max et 1RM par exercice */}
+      {/* Max load and 1RM per exercise */}
       <Card>
         <CardHeader className="pb-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-base font-semibold">Charge max et 1RM estimé</h2>
+            <h2 className="text-base font-semibold">Max load and estimated 1RM</h2>
             <Select
               value={selectedExerciseId ?? ''}
               onValueChange={selectExercise}
               disabled={isPending}
             >
               <SelectTrigger className="h-9 w-auto min-w-[12rem]">
-                <SelectValue placeholder="Choisir un exercice" />
+                <SelectValue placeholder="Choose an exercise" />
               </SelectTrigger>
               <SelectContent>
                 {exercises.map((e) => (
@@ -158,7 +158,7 @@ export function ProgressDashboard({
         <CardContent>
           {exerciseChartData.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">
-              Pas de données pour cet exercice.
+              No data for this exercise.
             </p>
           ) : (
             <div className="h-64 w-full">
@@ -179,7 +179,7 @@ export function ProgressDashboard({
                   <Line
                     type="monotone"
                     dataKey="maxWeight"
-                    name="Charge max (kg)"
+                    name="Max load (kg)"
                     stroke="hsl(var(--primary))"
                     strokeWidth={2}
                     dot={{ r: 3 }}
@@ -187,7 +187,7 @@ export function ProgressDashboard({
                   <Line
                     type="monotone"
                     dataKey="estimated1RM"
-                    name="1RM estimé (kg)"
+                    name="Estimated 1RM (kg)"
                     stroke="#a855f7"
                     strokeDasharray="4 4"
                     strokeWidth={2}
@@ -200,18 +200,18 @@ export function ProgressDashboard({
         </CardContent>
       </Card>
 
-      {/* Volume hebdomadaire empilé par groupe musculaire */}
+      {/* Stacked weekly volume per muscle group */}
       <Card>
         <CardHeader className="pb-3">
-          <h2 className="text-base font-semibold">Volume hebdo par groupe musculaire</h2>
+          <h2 className="text-base font-semibold">Weekly volume per muscle group</h2>
           <p className="text-xs text-muted-foreground">
-            Volume = somme charge × reps (séries de travail uniquement).
+            Volume = sum of load × reps (working sets only).
           </p>
         </CardHeader>
         <CardContent>
           {weeklyChartData.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">
-              Aucune donnée hebdomadaire.
+              No weekly data.
             </p>
           ) : (
             <div className="h-72 w-full">
@@ -245,25 +245,25 @@ export function ProgressDashboard({
         </CardContent>
       </Card>
 
-      {/* Tableau récap progression */}
+      {/* Progress recap table */}
       <Card>
         <CardHeader className="pb-3">
-          <h2 className="text-base font-semibold">Récap des 12 dernières semaines</h2>
+          <h2 className="text-base font-semibold">Last 12 weeks recap</h2>
         </CardHeader>
         <CardContent>
           {recap.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">
-              Aucun exercice avec assez de données.
+              No exercise with enough data.
             </p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
-                    <th className="py-2 font-medium">Exercice</th>
-                    <th className="py-2 font-medium">Séances</th>
-                    <th className="py-2 font-medium">Charge début → fin</th>
-                    <th className="py-2 font-medium">Δ charge</th>
+                    <th className="py-2 font-medium">Exercise</th>
+                    <th className="py-2 font-medium">Sessions</th>
+                    <th className="py-2 font-medium">Load start → end</th>
+                    <th className="py-2 font-medium">Δ load</th>
                     <th className="py-2 font-medium">Δ 1RM</th>
                   </tr>
                 </thead>
@@ -299,9 +299,9 @@ export function ProgressDashboard({
 }
 
 function shortLabelFromWeekKey(weekKey: string) {
-  // "2026-W18" -> "S18"
+  // "2026-W18" -> "W18"
   const parts = weekKey.split('-W');
-  return parts[1] ? `S${parts[1]}` : weekKey;
+  return parts[1] ? `W${parts[1]}` : weekKey;
 }
 
 function formatDelta(n: number) {

@@ -13,7 +13,7 @@ async function ensureOwnership(id: string, userId: string) {
     include: { workout: { include: { program: { select: { userId: true } } } } },
   });
   if (!pe || pe.workout.program.userId !== userId) {
-    throw new ApiError(404, 'Exercice de programme introuvable.');
+    throw new ApiError(404, 'Program exercise not found.');
   }
   return pe;
 }
@@ -26,7 +26,7 @@ export async function PUT(req: Request, { params }: Params) {
 
     const exercise = await db.exercise.findUnique({ where: { id: data.exerciseId } });
     if (!exercise || exercise.userId !== userId) {
-      throw new ApiError(400, 'Exercice invalide.');
+      throw new ApiError(400, 'Invalid exercise.');
     }
 
     const updated = await db.programExercise.update({

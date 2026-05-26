@@ -5,8 +5,8 @@ import { useEffect, useState } from 'react';
 import { Moon, Sun } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-// Bouton de bascule clair/sombre. Évite l'hydration mismatch en n'affichant
-// l'icône réelle qu'après le mount (next-themes recommande ce pattern).
+// Light/dark toggle button. Avoids the hydration mismatch by only showing
+// the real icon after mount (next-themes recommends this pattern).
 export function ThemeToggle() {
   const { theme, resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -20,7 +20,7 @@ export function ThemeToggle() {
       variant="ghost"
       size="icon"
       onClick={() => setTheme(next)}
-      aria-label={`Passer en mode ${next === 'dark' ? 'sombre' : 'clair'}`}
+      aria-label={`Switch to ${next === 'dark' ? 'dark' : 'light'} mode`}
     >
       {!mounted ? (
         <Sun className="size-4" />

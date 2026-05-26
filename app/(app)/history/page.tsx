@@ -19,7 +19,7 @@ export default async function HistoryPage({
 }) {
   const session = await requireSession();
 
-  // Filtres : programme et mois (YYYY-MM).
+  // Filters: program and month (YYYY-MM).
   const programFilter = searchParams.programId
     ? { programId: searchParams.programId }
     : {};
@@ -76,7 +76,7 @@ export default async function HistoryPage({
       <div className="mx-auto flex max-w-2xl flex-col gap-6">
         <div className="flex items-center gap-3">
           <HistoryIcon className="size-6" />
-          <h1 className="text-2xl font-bold tracking-tight">Historique</h1>
+          <h1 className="text-2xl font-bold tracking-tight">History</h1>
         </div>
 
         <HistoryFilters
@@ -88,7 +88,7 @@ export default async function HistoryPage({
         {sessions.length === 0 ? (
           <Card>
             <CardContent className="py-8 text-center text-sm text-muted-foreground">
-              Aucune séance terminée ne correspond à ces filtres.
+              No finished session matches these filters.
             </CardContent>
           </Card>
         ) : (
@@ -118,7 +118,7 @@ export default async function HistoryPage({
                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
                             <Calendar className="size-3" />
                             <span>
-                              {new Intl.DateTimeFormat('fr-FR', {
+                              {new Intl.DateTimeFormat('en-US', {
                                 day: '2-digit',
                                 month: 'long',
                                 year: 'numeric',
@@ -126,17 +126,17 @@ export default async function HistoryPage({
                             </span>
                           </div>
                           <p className="mt-0.5 truncate text-base font-medium">
-                            {s.workout?.name ?? 'Séance libre'}
+                            {s.workout?.name ?? 'Free session'}
                           </p>
                           <div className="mt-1 flex flex-wrap gap-1.5 text-xs">
                             {s.program && (
                               <Badge variant="secondary">{s.program.name}</Badge>
                             )}
                             <Badge variant="outline">
-                              {workingSets} série{workingSets > 1 ? 's' : ''}
+                              {workingSets} set{workingSets > 1 ? 's' : ''}
                             </Badge>
                             <Badge variant="outline">
-                              {Math.round(volume).toLocaleString('fr-FR')} kg vol.
+                              {Math.round(volume).toLocaleString('en-US')} kg vol.
                             </Badge>
                             {durationMin != null && (
                               <Badge variant="outline">{durationMin} min</Badge>

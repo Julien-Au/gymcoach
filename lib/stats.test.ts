@@ -49,7 +49,7 @@ describe('best1RM', () => {
       { weight: 80, reps: 10, isWarmup: false }, // 106.67
       { weight: 100, reps: 5, isWarmup: false }, // 116.67 (best)
       { weight: 60, reps: 12, isWarmup: false }, // 84
-      { weight: 120, reps: 1, isWarmup: true }, // ignoré
+      { weight: 120, reps: 1, isWarmup: true }, // ignored
     ];
     expect(best1RM(sets)).toBeCloseTo(116.667, 2);
   });
@@ -125,7 +125,7 @@ describe('exerciseProgress', () => {
 describe('weeklyVolumeByMuscleGroup', () => {
   it('aggregates by ISO week and muscle group', () => {
     const sets = [
-      // semaine 18 (lundi 2026-04-27)
+      // week 18 (Monday 2026-04-27)
       {
         weight: 80,
         reps: 10,
@@ -147,7 +147,7 @@ describe('weeklyVolumeByMuscleGroup', () => {
         muscleGroup: 'BACK_WIDTH',
         sessionStartedAt: new Date('2026-04-29T10:00:00Z'),
       },
-      // semaine 19 (lundi 2026-05-04)
+      // week 19 (Monday 2026-05-04)
       {
         weight: 82.5,
         reps: 10,
@@ -183,7 +183,7 @@ describe('effectiveWeight', () => {
   });
   it('adds the bodyweight for bodyweight exercises', () => {
     expect(effectiveWeight(0, true, 70)).toBe(70);
-    expect(effectiveWeight(10, true, 70)).toBe(80); // tractions lestées 10 kg
+    expect(effectiveWeight(10, true, 70)).toBe(80); // weighted pull-ups +10 kg
   });
   it('handles negative loads (assisted machines)', () => {
     expect(effectiveWeight(-15, true, 70)).toBe(55);
@@ -199,8 +199,8 @@ describe('applyBodyweight', () => {
   it('only enriches sets flagged usesBodyweight', () => {
     const sets = [
       { weight: 80, reps: 10, isWarmup: false, usesBodyweight: false }, // squat
-      { weight: 0, reps: 10, isWarmup: false, usesBodyweight: true }, // tractions PdC
-      { weight: 5, reps: 8, isWarmup: false, usesBodyweight: true }, // tractions +5 kg
+      { weight: 0, reps: 10, isWarmup: false, usesBodyweight: true }, // bodyweight pull-ups
+      { weight: 5, reps: 8, isWarmup: false, usesBodyweight: true }, // pull-ups +5 kg
     ];
     const out = applyBodyweight(sets, 70);
     expect(out[0]?.weight).toBe(80); // unchanged

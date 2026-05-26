@@ -10,10 +10,10 @@ export default function NewProgramPage() {
         <Button asChild variant="ghost" size="sm" className="self-start">
           <Link href="/programs">
             <ChevronLeft className="size-4" />
-            <span className="ml-1">Retour</span>
+            <span className="ml-1">Back</span>
           </Link>
         </Button>
-        <h1 className="text-2xl font-bold tracking-tight">Nouveau programme</h1>
+        <h1 className="text-2xl font-bold tracking-tight">New program</h1>
         <ProgramCreateForm />
       </div>
     </main>

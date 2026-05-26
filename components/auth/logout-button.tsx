@@ -23,10 +23,10 @@ export function LogoutButton() {
       size="sm"
       onClick={handleLogout}
       disabled={isPending}
-      aria-label="Déconnexion"
+      aria-label="Log out"
     >
       <LogOut className="size-4" />
-      <span className="ml-2 hidden sm:inline">Déconnexion</span>
+      <span className="ml-2 hidden sm:inline">Log out</span>
     </Button>
   );
 }

@@ -10,7 +10,7 @@ interface Params {
 async function ensureOwnership(id: string, userId: string) {
   const program = await db.program.findUnique({ where: { id } });
   if (!program || program.userId !== userId) {
-    throw new ApiError(404, 'Programme introuvable.');
+    throw new ApiError(404, 'Program not found.');
   }
   return program;
 }
@@ -62,9 +62,9 @@ export async function DELETE(_req: Request, { params }: Params) {
   try {
     const userId = await requireApiUserId();
     await ensureOwnership(params.id, userId);
-    // onDelete: Cascade sur Workout supprime workouts + programExercises.
-    // Les Sessions liées ont programId nullable donc seront détachées
-    // (Prisma met null par défaut sur les relations optionnelles).
+    // onDelete: Cascade on Workout removes workouts + programExercises.
+    // Linked Sessions have a nullable programId so they will be detached
+    // (Prisma sets null by default on optional relations).
     await db.program.delete({ where: { id: params.id } });
     return NextResponse.json({ ok: true });
   } catch (err) {

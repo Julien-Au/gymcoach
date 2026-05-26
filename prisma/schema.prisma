@@ -1,5 +1,5 @@
-// GymCoach - Schéma de base de données
-// Mono-utilisateur, suivi musculation et coach IA Claude.
+// GymCoach - Database schema
+// Single-user, weightlifting tracking and Claude AI coach.
 
 generator client {
   provider = "prisma-client-js"
@@ -14,10 +14,10 @@ model User {
   id           String     @id @default(cuid())
   email        String     @unique
   passwordHash String
-  // Poids du corps en kg, utilisé pour calculer le tonnage effectif sur les
-  // exercices au poids du corps (Set.weight = lest ajouté, peut être négatif
-  // pour les machines d'assistance). Null = pas encore renseigné, on
-  // n'applique pas de bonus bodyweight (rétrograde-safe).
+  // Bodyweight in kg, used to compute the effective tonnage on bodyweight
+  // exercises (Set.weight = added load, can be negative for assistance
+  // machines). Null = not filled in yet, so no bodyweight bonus is applied
+  // (backward-safe).
   bodyweight   Float?
   createdAt    DateTime   @default(now())
   programs     Program[]
@@ -34,9 +34,9 @@ model Exercise {
   category         ExerciseCategory
   defaultRestSec   Int               @default(90)
   notes            String?
-  // Pour les exos au poids du corps (tractions, dips, pompes...) : le tonnage
-  // effectif inclut User.bodyweight. Set.weight reste le lest ajouté (0 par
-  // défaut, négatif si machine d'assistance).
+  // For bodyweight exercises (pull-ups, dips, push-ups...): the effective
+  // tonnage includes User.bodyweight. Set.weight remains the added load (0 by
+  // default, negative for an assistance machine).
   usesBodyweight   Boolean           @default(false)
   createdAt        DateTime          @default(now())
   programExercises ProgramExercise[]

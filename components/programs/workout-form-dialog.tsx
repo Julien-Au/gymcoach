@@ -75,10 +75,10 @@ export function WorkoutFormDialog(props: Props) {
     });
     if (!res.ok) {
       const data = (await res.json().catch(() => null)) as { error?: string } | null;
-      toast.error(data?.error ?? 'Erreur');
+      toast.error(data?.error ?? 'Error');
       return;
     }
-    toast.success(props.mode === 'edit' ? 'Séance modifiée.' : 'Séance créée.');
+    toast.success(props.mode === 'edit' ? 'Session updated.' : 'Session created.');
     props.onOpenChange(false);
     router.refresh();
   }
@@ -88,20 +88,20 @@ export function WorkoutFormDialog(props: Props) {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {props.mode === 'edit' ? 'Modifier la séance' : 'Nouvelle séance'}
+            {props.mode === 'edit' ? 'Edit session' : 'New session'}
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
           <div className="space-y-2">
-            <Label htmlFor="name">Nom</Label>
-            <Input id="name" placeholder="ex. Upper - Haut du corps" {...form.register('name')} />
+            <Label htmlFor="name">Name</Label>
+            <Input id="name" placeholder="e.g. Upper - Upper body" {...form.register('name')} />
             {form.formState.errors.name && (
               <p className="text-sm text-destructive">{form.formState.errors.name.message}</p>
             )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="dayOfWeek">Jour (optionnel)</Label>
+            <Label htmlFor="dayOfWeek">Day (optional)</Label>
             <Select
               value={form.watch('dayOfWeek') == null ? NO_DAY : String(form.watch('dayOfWeek'))}
               onValueChange={(v) =>
@@ -129,14 +129,14 @@ export function WorkoutFormDialog(props: Props) {
               onClick={() => props.onOpenChange(false)}
               disabled={form.formState.isSubmitting}
             >
-              Annuler
+              Cancel
             </Button>
             <Button type="submit" disabled={form.formState.isSubmitting}>
               {form.formState.isSubmitting
-                ? 'Enregistrement...'
+                ? 'Saving...'
                 : props.mode === 'edit'
-                  ? 'Enregistrer'
-                  : 'Créer'}
+                  ? 'Save'
+                  : 'Create'}
             </Button>
           </DialogFooter>
         </form>

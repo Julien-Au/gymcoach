@@ -7,8 +7,8 @@ interface Params {
   params: { id: string };
 }
 
-// POST /api/workouts/[id]/program-exercises : ajoute un exercice (avec ses cibles)
-// dans un workout. L'ordre est calculé automatiquement.
+// POST /api/workouts/[id]/program-exercises: adds an exercise (with its targets)
+// to a workout. The order is computed automatically.
 export async function POST(req: Request, { params }: Params) {
   try {
     const userId = await requireApiUserId();
@@ -17,15 +17,15 @@ export async function POST(req: Request, { params }: Params) {
       include: { program: { select: { userId: true } } },
     });
     if (!workout || workout.program.userId !== userId) {
-      throw new ApiError(404, 'Séance introuvable.');
+      throw new ApiError(404, 'Session not found.');
     }
 
     const data = await parseJsonBody(req, programExerciseInputSchema);
 
-    // Vérifier que l'exercice appartient au user.
+    // Check that the exercise belongs to the user.
     const exercise = await db.exercise.findUnique({ where: { id: data.exerciseId } });
     if (!exercise || exercise.userId !== userId) {
-      throw new ApiError(400, 'Exercice invalide.');
+      throw new ApiError(400, 'Invalid exercise.');
     }
 
     const last = await db.programExercise.findFirst({

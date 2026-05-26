@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const programExerciseInputSchema = z
   .object({
-    exerciseId: z.string().min(1, 'Exercice requis'),
+    exerciseId: z.string().min(1, 'Exercise required'),
     targetSets: z.coerce.number().int().min(1).max(20),
     targetRepsMin: z.coerce.number().int().min(1).max(50),
     targetRepsMax: z.coerce.number().int().min(1).max(50),
@@ -12,7 +12,7 @@ export const programExerciseInputSchema = z
     notes: z.string().trim().max(2000).optional().nullable(),
   })
   .refine((v) => v.targetRepsMax >= v.targetRepsMin, {
-    message: 'Reps max doit être >= reps min',
+    message: 'Reps max must be >= reps min',
     path: ['targetRepsMax'],
   });
 

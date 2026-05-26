@@ -1,4 +1,4 @@
-// Layout des routes d'authentification : pas de navbar, plein écran.
+// Layout for authentication routes: no navbar, fullscreen.
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
