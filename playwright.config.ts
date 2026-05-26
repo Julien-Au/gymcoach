@@ -1,17 +1,28 @@
 import { defineConfig, devices } from '@playwright/test';
 
-// End to end tests. The full suite (auth, session logging, program generation,
-// conversational coach) is wired with a seeded test database in a later batch.
-// For now this config drives the smoke test against a locally running app.
+// End to end tests. The web server runs a production build against the test
+// database (docker-compose.test.yml). Build the app and apply migrations
+// first; in CI the e2e job does both before invoking Playwright.
+const PORT = 3031;
+const TEST_DB =
+  process.env.E2E_DATABASE_URL ??
+  'postgresql://gymcoach_test:gymcoach_test@localhost:5434/gymcoach_test';
+
 export default defineConfig({
   testDir: './tests/e2e',
-  fullyParallel: true,
+  fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   reporter: 'list',
   use: {
-    baseURL: process.env.E2E_BASE_URL ?? 'http://localhost:3030',
+    baseURL: `http://localhost:${PORT}`,
     trace: 'on-first-retry',
+  },
+  webServer: {
+    command: `DATABASE_URL='${TEST_DB}' JWT_SECRET='e2e-test-secret-at-least-32-characters' next start -p ${PORT}`,
+    url: `http://localhost:${PORT}/login`,
+    timeout: 120_000,
+    reuseExistingServer: !process.env.CI,
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
 });

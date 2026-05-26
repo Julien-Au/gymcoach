@@ -2,14 +2,20 @@
 
 Open source, self hosted hypertrophy training tracker with a built in AI coach. Log your sessions, track your progress, and get evidence based weekly debriefs and program suggestions from the LLM of your choice (Anthropic Claude or any OpenRouter model).
 
-> Status: open source edition, under active rework. The codebase is being migrated from a single user personal app to a multi user, provider agnostic project with a full test suite and deeper AI integration. See the Roadmap below.
+> Status: actively developed. Multi-user, provider-agnostic (Anthropic or
+> OpenRouter), with a unit / integration / E2E test suite and deep AI
+> integration.
 
 ## Features
 
+- Multi-user accounts: sign up, profiles, per-user data isolation
 - Workout logging with sets, reps, RIR, warmups and drop sets
 - Progress charts and estimated 1RM tracking
-- Bodyweight aware tonnage (pull ups, dips, etc.)
+- Bodyweight-aware tonnage (pull-ups, dips, etc.)
 - AI coach: weekly debrief and assisted program adjustments
+- Conversational AI coach: streaming chat grounded in your training data
+- AI program generation from a natural-language goal, editable before saving
+- Pluggable LLM provider: Anthropic SDK or any OpenRouter model
 - Installable PWA with offline session logging
 
 ## Stack
@@ -60,13 +66,24 @@ All configuration is done through environment variables. See `.env.example` for 
 
 ## Testing
 
+Three tiers: unit/component (Vitest + jsdom), integration (Vitest against a
+real Postgres), and end to end (Playwright driving the built app).
+
 ```bash
-npm run test          # unit and component tests (Vitest)
-npm run test:coverage # with coverage report
-npm run test:e2e      # end to end tests (Playwright)
+npm run test            # unit and component tests
+npm run test:coverage   # with coverage report
+
+# Integration + E2E use a dedicated Postgres (docker-compose.test.yml, port 5434):
+docker compose -f docker-compose.test.yml up -d
+DATABASE_URL=postgresql://gymcoach_test:gymcoach_test@localhost:5434/gymcoach_test \
+  npx prisma migrate deploy
+npm run test:integration
+npm run build && npm run test:e2e
+docker compose -f docker-compose.test.yml down
 ```
 
-A dedicated Postgres instance for integration and E2E tests is provided in `docker-compose.test.yml`.
+CI (`.github/workflows/ci.yml`) runs lint, typecheck, unit, integration,
+build and E2E on every push and pull request.
 
 ## Scripts
 
@@ -95,7 +112,7 @@ A dedicated Postgres instance for integration and E2E tests is provided in `dock
 ├── lib/              # Helpers (db, auth, stats, llm, etc.)
 ├── prisma/           # Schema, migrations and seed
 ├── public/           # Static assets (PWA icons, manifest)
-├── tests/            # End to end tests (Playwright)
+├── tests/            # Integration (Vitest) and E2E (Playwright) tests
 ├── docs/             # Project documentation
 └── docker-compose*.yml
 ```
@@ -114,15 +131,17 @@ docker compose -f docker-compose.prod.yml exec app npx prisma migrate deploy
 ## Roadmap
 
 - [x] Single user MVP (logging, progress, weekly AI debrief, program adjustments)
-- [ ] Pluggable LLM provider (Anthropic SDK or OpenRouter, switchable via env)
-- [ ] Multi user support (registration, profiles, data isolation)
-- [ ] AI program generation from a natural language goal
-- [ ] Conversational AI coach (streaming chat with your training context)
-- [ ] Full test pyramid (unit, API integration, E2E) and CI
+- [x] Pluggable LLM provider (Anthropic SDK or OpenRouter, switchable via env)
+- [x] Multi user support (registration, profiles, data isolation)
+- [x] AI program generation from a natural language goal
+- [x] Conversational AI coach (streaming chat with your training context)
+- [x] Test pyramid (unit, integration, E2E) and CI
+- [ ] In-session AI suggestions and natural-language set logging
 
 ## Contributing
 
-Contributions are welcome. A `CONTRIBUTING.md` with guidelines will land as the project stabilizes.
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup,
+conventions and the test commands.
 
 ## License
 

@@ -15,6 +15,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:integration": "DATABASE_URL=postgresql://gymcoach_test:gymcoach_test@localhost:5434/gymcoach_test vitest run --config vitest.integration.config.ts",
     "test:e2e": "playwright test",
     "db:migrate": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
