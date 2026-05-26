@@ -9,6 +9,7 @@ const LINKS = [
   { href: '/history', label: 'History' },
   { href: '/progress', label: 'Progress' },
   { href: '/coach', label: 'Coach' },
+  { href: '/chat', label: 'Chat' },
   { href: '/programs', label: 'Programs' },
   { href: '/exercises', label: 'Catalog' },
   { href: '/settings', label: 'Settings' },

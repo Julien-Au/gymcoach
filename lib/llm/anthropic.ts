@@ -70,4 +70,43 @@ export class AnthropicProvider implements LlmProvider {
       );
     }
   }
+
+  async *stream(req: LlmCompletionRequest): AsyncIterable<string> {
+    if (!this.apiKey) {
+      throw new LlmError(503, 'ANTHROPIC_API_KEY is not configured.');
+    }
+    this.client ??= new Anthropic({ apiKey: this.apiKey });
+
+    try {
+      const stream = this.client.messages.stream({
+        model: this.model,
+        max_tokens: req.maxTokens ?? DEFAULT_MAX_TOKENS,
+        system: [
+          {
+            type: 'text',
+            text: req.system,
+            cache_control: { type: 'ephemeral' },
+          },
+        ],
+        messages: req.messages.map((m) => ({ role: m.role, content: m.content })),
+      });
+
+      for await (const event of stream) {
+        if (
+          event.type === 'content_block_delta' &&
+          event.delta.type === 'text_delta'
+        ) {
+          yield event.delta.text;
+        }
+      }
+    } catch (err) {
+      if (err instanceof Anthropic.APIError) {
+        throw new LlmError(err.status ?? 502, `Anthropic: ${err.message}`);
+      }
+      throw new LlmError(
+        502,
+        `Anthropic stream failed: ${err instanceof Error ? err.message : 'unknown'}`,
+      );
+    }
+  }
 }
