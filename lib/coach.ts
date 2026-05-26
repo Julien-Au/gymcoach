@@ -17,10 +17,17 @@ import { getLlmProvider } from '@/lib/llm';
 
 export interface CoachPayload {
   generatedAt: string;
-  // Profile: bodyweight in kg, used for `usesBodyweight` exercises.
-  // All loads and volumes in the payload already include the bodyweight
-  // when applicable - the coach can rely on them directly.
-  userBodyweight: number | null;
+  // User profile (when filled in), so the coach can tailor its advice. All
+  // loads and volumes in the payload already include the bodyweight when
+  // applicable - the coach can rely on them directly.
+  userProfile: {
+    displayName: string | null;
+    sex: string | null;
+    heightCm: number | null;
+    bodyweight: number | null;
+    goal: string | null;
+    weeklyFrequency: number | null;
+  };
   weekCurrent: WeekSummary;
   weekPrevious: WeekSummary | null;
   activeProgram: ProgramSummary | null;
@@ -104,7 +111,14 @@ export async function buildCoachPayload(userId: string): Promise<CoachPayload> {
   // weekSummary, which depends on it to compute the effective volumes.
   const user = await db.user.findUnique({
     where: { id: userId },
-    select: { bodyweight: true },
+    select: {
+      displayName: true,
+      sex: true,
+      heightCm: true,
+      bodyweight: true,
+      goal: true,
+      weeklyFrequency: true,
+    },
   });
   const bodyweight = user?.bodyweight ?? null;
 
@@ -199,7 +213,14 @@ export async function buildCoachPayload(userId: string): Promise<CoachPayload> {
 
   return {
     generatedAt: now.toISOString(),
-    userBodyweight: bodyweight,
+    userProfile: {
+      displayName: user?.displayName ?? null,
+      sex: user?.sex ?? null,
+      heightCm: user?.heightCm ?? null,
+      bodyweight,
+      goal: user?.goal ?? null,
+      weeklyFrequency: user?.weeklyFrequency ?? null,
+    },
     weekCurrent: currentWeek,
     weekPrevious: previousWeek.sessions.length === 0 ? null : previousWeek,
     activeProgram,

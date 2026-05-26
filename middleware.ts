@@ -1,10 +1,16 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { verifySession, SESSION_COOKIE } from '@/lib/auth';
 
-// Routes accessibles sans session valide.
-// /api/auth/logout est public : rejouer la requête sans cookie ne fait rien
-// de méchant et permet de purger côté client même si le JWT a expiré.
-const PUBLIC_PATHS = new Set(['/login', '/api/auth/login', '/api/auth/logout']);
+// Routes reachable without a valid session.
+// /api/auth/logout is public: replaying it without a cookie does nothing
+// harmful and lets the client clear state even if the JWT has expired.
+const PUBLIC_PATHS = new Set([
+  '/login',
+  '/signup',
+  '/api/auth/login',
+  '/api/auth/register',
+  '/api/auth/logout',
+]);
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -13,8 +19,8 @@ export async function middleware(req: NextRequest) {
   const session = token ? await verifySession(token) : null;
 
   if (isPublic) {
-    // Si déjà connecté et qu'on visite /login, on renvoie sur le dashboard.
-    if (session && pathname === '/login') {
+    // Already signed in and visiting /login or /signup: send to the dashboard.
+    if (session && (pathname === '/login' || pathname === '/signup')) {
       const url = req.nextUrl.clone();
       url.pathname = '/';
       return NextResponse.redirect(url);
@@ -23,7 +29,7 @@ export async function middleware(req: NextRequest) {
   }
 
   if (!session) {
-    // API : 401 JSON. Pages : redirect vers /login.
+    // API: 401 JSON. Pages: redirect to /login.
     if (pathname.startsWith('/api/')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -37,7 +43,7 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    // On exclut les ressources statiques et les assets PWA.
+    // Exclude static resources and PWA assets.
     '/((?!_next/static|_next/image|icons|manifest.json|favicon.ico|sw.js|workbox-).*)',
   ],
 };
