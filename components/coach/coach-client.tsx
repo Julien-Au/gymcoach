@@ -29,10 +29,18 @@ export interface ProgramExerciseDefaults {
 interface Props {
   initialHistory: DebriefItem[];
   hasApiKey: boolean;
+  providerLabel: string;
+  apiKeyEnvVar: string;
   programDefaults: Record<string, ProgramExerciseDefaults>;
 }
 
-export function CoachClient({ initialHistory, hasApiKey, programDefaults }: Props) {
+export function CoachClient({
+  initialHistory,
+  hasApiKey,
+  providerLabel,
+  apiKeyEnvVar,
+  programDefaults,
+}: Props) {
   const [history, setHistory] = useState(initialHistory);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -77,10 +85,10 @@ export function CoachClient({ initialHistory, hasApiKey, programDefaults }: Prop
             <AlertTriangle className="size-5 shrink-0 text-amber-600" />
             <div>
               <p className="font-medium text-amber-900 dark:text-amber-100">
-                OpenRouter key missing
+                {providerLabel} key missing
               </p>
               <p className="text-xs text-muted-foreground">
-                Set <code>OPENROUTER_API_KEY</code> in <code>.env</code>{' '}
+                Set <code>{apiKeyEnvVar}</code> in <code>.env</code>{' '}
                 to enable the coach.
               </p>
             </div>

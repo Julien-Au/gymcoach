@@ -7,6 +7,7 @@ import {
   totalVolume,
 } from '@/lib/stats';
 import { COACH_SYSTEM_PROMPT } from '@/lib/prompts/coach-system-prompt';
+import { getLlmProvider } from '@/lib/llm';
 
 // ============================================================
 // Structured payload sent to the coach
@@ -341,31 +342,8 @@ async function fetchActiveProgram(userId: string): Promise<ProgramSummary | null
 }
 
 // ============================================================
-// OpenRouter call (Chat Completions-compatible API)
+// Coach call (routed through the configured LLM provider)
 // ============================================================
-
-export class CoachError extends Error {
-  constructor(
-    public status: number,
-    message: string,
-  ) {
-    super(message);
-    this.name = 'CoachError';
-  }
-}
-
-interface OpenRouterChoice {
-  message: { role: string; content: string };
-  finish_reason: string | null;
-}
-
-interface OpenRouterResponse {
-  id: string;
-  model: string;
-  choices: OpenRouterChoice[];
-  usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number };
-  error?: { message: string; code?: number | string };
-}
 
 export interface CoachCompletion {
   markdown: string;
@@ -373,68 +351,19 @@ export interface CoachCompletion {
   promptText: string; // JSON payload sent, for auditing
 }
 
+// Builds the prompt and delegates to the active LLM provider (Anthropic SDK or
+// OpenRouter, selected via LLM_PROVIDER). Provider errors surface as LlmError,
+// which the API route maps to an HTTP status.
 export async function callCoach(payload: CoachPayload): Promise<CoachCompletion> {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) {
-    throw new CoachError(503, 'OPENROUTER_API_KEY is not configured.');
-  }
-  const model = process.env.OPENROUTER_MODEL ?? 'anthropic/claude-sonnet-4.5';
-  const appName = process.env.OPENROUTER_APP_NAME ?? 'GymCoach';
-  const appUrl = process.env.OPENROUTER_APP_URL ?? 'http://localhost:3030';
-
+  const provider = getLlmProvider();
   const userMessage = JSON.stringify(payload, null, 2);
 
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${apiKey}`,
-    'HTTP-Referer': appUrl,
-    'X-Title': appName,
-  };
-
-  const body = {
-    model,
-    messages: [
-      { role: 'system', content: COACH_SYSTEM_PROMPT },
-      { role: 'user', content: userMessage },
-    ],
+  const { text, modelUsed } = await provider.complete({
+    system: COACH_SYSTEM_PROMPT,
+    messages: [{ role: 'user', content: userMessage }],
     temperature: 0.4,
-    max_tokens: 32000,
-  };
+    maxTokens: 8000,
+  });
 
-  let res: Response;
-  try {
-    res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(body),
-    });
-  } catch (err) {
-    throw new CoachError(
-      502,
-      `Network failure to OpenRouter: ${err instanceof Error ? err.message : 'unknown'}`,
-    );
-  }
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new CoachError(
-      res.status,
-      `OpenRouter ${res.status}: ${text.slice(0, 500)}`,
-    );
-  }
-
-  const json = (await res.json()) as OpenRouterResponse;
-  if (json.error) {
-    throw new CoachError(502, `OpenRouter: ${json.error.message}`);
-  }
-  const markdown = json.choices[0]?.message?.content?.trim();
-  if (!markdown) {
-    throw new CoachError(502, 'Empty response from the coach.');
-  }
-
-  return {
-    markdown,
-    modelUsed: json.model ?? model,
-    promptText: userMessage,
-  };
+  return { markdown: text, modelUsed, promptText: userMessage };
 }
