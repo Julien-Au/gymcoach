@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Plus } from 'lucide-react';
+import { Plus, Wand2 } from 'lucide-react';
 import { db } from '@/lib/db';
 import { requireSession } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
@@ -26,12 +26,20 @@ export default async function ProgramsPage() {
               {programs.length} program{programs.length > 1 ? 's' : ''}.
             </p>
           </div>
-          <Button asChild className="min-h-tap">
-            <Link href="/programs/new">
-              <Plus className="size-4" />
-              <span className="ml-2">Create</span>
-            </Link>
-          </Button>
+          <div className="flex gap-2">
+            <Button asChild variant="outline" className="min-h-tap">
+              <Link href="/programs/generate">
+                <Wand2 className="size-4" />
+                <span className="ml-2">Generate with AI</span>
+              </Link>
+            </Button>
+            <Button asChild className="min-h-tap">
+              <Link href="/programs/new">
+                <Plus className="size-4" />
+                <span className="ml-2">Create</span>
+              </Link>
+            </Button>
+          </div>
         </div>
 
         {programs.length === 0 ? (
