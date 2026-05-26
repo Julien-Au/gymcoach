@@ -18,13 +18,14 @@ import {
 } from '@/components/ui/card';
 
 const schema = z.object({
+  displayName: z.string().trim().min(1, 'Name required').max(80),
   email: z.string().email('Invalid email'),
-  password: z.string().min(1, 'Password required'),
+  password: z.string().min(8, 'At least 8 characters'),
 });
 
 type FormValues = z.infer<typeof schema>;
 
-export function LoginForm() {
+export function SignupForm() {
   const router = useRouter();
   const [serverError, setServerError] = useState<string | null>(null);
 
@@ -34,12 +35,12 @@ export function LoginForm() {
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { email: '', password: '' },
+    defaultValues: { displayName: '', email: '', password: '' },
   });
 
   async function onSubmit(values: FormValues) {
     setServerError(null);
-    const res = await fetch('/api/auth/login', {
+    const res = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(values),
@@ -52,17 +53,30 @@ export function LoginForm() {
     }
 
     const data = (await res.json().catch(() => null)) as { error?: string } | null;
-    setServerError(data?.error ?? 'Login error.');
+    setServerError(data?.error ?? 'Sign up error.');
   }
 
   return (
     <Card className="w-full max-w-sm">
       <CardHeader>
-        <CardTitle>Sign in</CardTitle>
-        <CardDescription>Access your training log.</CardDescription>
+        <CardTitle>Create your account</CardTitle>
+        <CardDescription>Start tracking your training.</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+          <div className="space-y-2">
+            <Label htmlFor="displayName">Name</Label>
+            <Input
+              id="displayName"
+              autoComplete="name"
+              aria-invalid={errors.displayName ? 'true' : 'false'}
+              {...register('displayName')}
+            />
+            {errors.displayName && (
+              <p className="text-sm text-destructive">{errors.displayName.message}</p>
+            )}
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -85,7 +99,7 @@ export function LoginForm() {
             <Input
               id="password"
               type="password"
-              autoComplete="current-password"
+              autoComplete="new-password"
               aria-invalid={errors.password ? 'true' : 'false'}
               {...register('password')}
             />
@@ -105,16 +119,16 @@ export function LoginForm() {
             className="min-h-tap w-full text-base"
             disabled={isSubmitting}
           >
-            {isSubmitting ? 'Signing in...' : 'Sign in'}
+            {isSubmitting ? 'Creating...' : 'Create account'}
           </Button>
 
           <p className="text-center text-sm text-muted-foreground">
-            No account yet?{' '}
+            Already have an account?{' '}
             <Link
-              href="/signup"
+              href="/login"
               className="font-medium text-foreground underline-offset-4 hover:underline"
             >
-              Create one
+              Sign in
             </Link>
           </p>
         </form>

@@ -19,10 +19,30 @@ model User {
   // machines). Null = not filled in yet, so no bodyweight bonus is applied
   // (backward-safe).
   bodyweight   Float?
+  // Optional profile, used to tailor the AI coach output to the user.
+  displayName     String?
+  sex             Sex?
+  heightCm        Int?
+  goal            TrainingGoal?
+  weeklyFrequency Int?
   createdAt    DateTime   @default(now())
   programs     Program[]
   sessions     Session[]
   exercises    Exercise[]
+}
+
+enum Sex {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum TrainingGoal {
+  HYPERTROPHY
+  STRENGTH
+  FAT_LOSS
+  RECOMP
+  GENERAL_FITNESS
 }
 
 model Exercise {

@@ -9,7 +9,14 @@ export default async function SettingsPage() {
   const auth = await requireSession();
   const user = await db.user.findUnique({
     where: { id: auth.userId },
-    select: { bodyweight: true },
+    select: {
+      displayName: true,
+      bodyweight: true,
+      sex: true,
+      heightCm: true,
+      goal: true,
+      weeklyFrequency: true,
+    },
   });
 
   return (
@@ -32,7 +39,16 @@ export default async function SettingsPage() {
           </CardContent>
         </Card>
 
-        <ProfileSection initialBodyweight={user?.bodyweight ?? null} />
+        <ProfileSection
+          initial={{
+            displayName: user?.displayName ?? null,
+            bodyweight: user?.bodyweight ?? null,
+            sex: user?.sex ?? null,
+            heightCm: user?.heightCm ?? null,
+            goal: user?.goal ?? null,
+            weeklyFrequency: user?.weeklyFrequency ?? null,
+          }}
+        />
 
         <SettingsClient />
       </div>
