@@ -8,6 +8,10 @@ Open source, self hosted hypertrophy training tracker with a built in AI coach. 
 [![Built with Next.js](https://img.shields.io/badge/Next.js-14-black.svg)](https://nextjs.org)
 
 <p align="center">
+  <img src="docs/screenshots/session.gif" width="280" alt="Logging a session in GymCoach" />
+</p>
+
+<p align="center">
   <img src="docs/screenshots/home.png" width="23%" alt="Dashboard" />
   <img src="docs/screenshots/progress.png" width="23%" alt="Progress charts" />
   <img src="docs/screenshots/program-generator.png" width="23%" alt="AI program generator" />

@@ -21,6 +21,7 @@
     "db:migrate:deploy": "prisma migrate deploy",
     "db:reset": "prisma migrate reset",
     "db:seed": "prisma db seed",
+    "seed:demo": "tsx scripts/seed-demo-history.ts",
     "db:studio": "prisma studio",
     "db:generate": "prisma generate"
   },
@@ -76,7 +77,9 @@
     "eslint": "^8.57.1",
     "eslint-config-next": "14.2.35",
     "eslint-config-prettier": "^9.1.0",
+    "gifenc": "^1.0.3",
     "jsdom": "^25.0.1",
+    "pngjs": "^7.0.0",
     "postcss": "^8.4.49",
     "prettier": "^3.3.3",
     "prettier-plugin-tailwindcss": "^0.6.9",
