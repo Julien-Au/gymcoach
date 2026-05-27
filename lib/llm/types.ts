@@ -38,7 +38,7 @@ export class LlmError extends Error {
 }
 
 export interface LlmProvider {
-  readonly id: 'anthropic' | 'openrouter';
+  readonly id: 'anthropic' | 'openrouter' | 'demo';
   // Human-friendly name and the env var holding the key, used by the UI to
   // tell the user what to configure when no key is present.
   readonly label: string;

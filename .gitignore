@@ -46,6 +46,9 @@ test-results/
 playwright-report/
 playwright/.cache/
 
+# Media: intermediate recordings (the committed GIFs/MP4s live in docs/)
+docs/media/raw/
+
 # Turbo / Vercel
 .turbo/
 .vercel/

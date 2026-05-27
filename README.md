@@ -76,6 +76,23 @@ The AI layer:
   - Program generation: a plain-language goal becomes a JSON program, validated and previewed so you can edit it before it is saved.
 - The stable system prompt is marked for prompt caching, so multi-turn chats reuse it instead of re-sending it every turn.
 
+## See the AI in action
+
+<table>
+  <tr>
+    <td align="center" width="33%"><b>Chat coach</b></td>
+    <td align="center" width="33%"><b>Weekly debrief + 1-tap adjustments</b></td>
+    <td align="center" width="33%"><b>Program generation</b></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/chat.gif" alt="Chat coach" /></td>
+    <td align="center"><img src="docs/screenshots/debrief.gif" alt="Weekly debrief and one-tap adjustments" /></td>
+    <td align="center"><img src="docs/screenshots/program.gif" alt="AI program generation" /></td>
+  </tr>
+</table>
+
+> These clips use the built-in `demo` provider (canned responses, no key). Point `LLM_PROVIDER` at your Anthropic or OpenRouter key for the real thing.
+
 ## Requirements
 
 - Node.js 20+
