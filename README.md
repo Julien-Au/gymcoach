@@ -8,6 +8,11 @@ Open source, self hosted hypertrophy training tracker with a built in AI coach. 
 [![Built with Next.js](https://img.shields.io/badge/Next.js-14-black.svg)](https://nextjs.org)
 
 <p align="center">
+  <a href="https://demo-gymcoach.mesureprivee.com"><b>▶ Try the live demo</b></a>
+  &nbsp;&middot;&nbsp; login <code>demo@gymcoach.app</code> / <code>gymcoachdemo</code>
+</p>
+
+<p align="center">
   <img src="docs/screenshots/session.gif" width="280" alt="Logging a session in GymCoach" />
 </p>
 
@@ -57,7 +62,7 @@ A few beliefs shaped GymCoach:
 - Evidence over hype. Load progression uses double-progression logic, and the coach is prompted to reason from your data (and cite the usual names: Schoenfeld, Helms, Israetel) rather than invent.
 - Self-hosting should be boring: one Docker Compose file, one database, standard Next.js.
 
-I built it for my own training and open-sourced it under MIT. There is nothing to buy and no hosted version: clone it, run it, change it.
+I built it for my own training and open-sourced it under MIT. There is nothing to buy: a [public demo](https://demo-gymcoach.mesureprivee.com) lets you look around, but GymCoach is meant to be self-hosted. Clone it, run it, change it.
 
 ## How it works
 
