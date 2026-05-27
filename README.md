@@ -47,6 +47,35 @@ Open source, self hosted hypertrophy training tracker with a built in AI coach. 
 - AI: pluggable LLM provider (Anthropic SDK or OpenRouter)
 - Infra: Docker and Docker Compose
 
+## Why
+
+A few beliefs shaped GymCoach:
+
+- Your training data is yours. It lives in a Postgres database you control, not on someone else's servers. No ads, no tracking, no account you cannot delete.
+- AI should be optional and yours to pay for. The coach runs on your own Anthropic or OpenRouter key, so there is no subscription and no rate-limited "free tier". With no key set, the app is a clean, fast tracker.
+- Coaching should be grounded in your numbers, not generic advice. The AI only ever sees a structured summary of your own sessions, program and progress.
+- Evidence over hype. Load progression uses double-progression logic, and the coach is prompted to reason from your data (and cite the usual names: Schoenfeld, Helms, Israetel) rather than invent.
+- Self-hosting should be boring: one Docker Compose file, one database, standard Next.js.
+
+I built it for my own training and open-sourced it under MIT. There is nothing to buy and no hosted version: clone it, run it, change it.
+
+## How it works
+
+The app:
+
+- Next.js 14 (App Router) serves both the UI and the API routes; data lives in PostgreSQL through Prisma. Auth is a signed JWT in an httpOnly cookie; every record is scoped to a user id and every route checks ownership.
+- The session logger is offline-first: each set is written to IndexedDB (Dexie) first for instant feedback, then synced to the server in the background, so a flaky gym connection never blocks you. A Wake Lock keeps the screen awake during a session.
+- Progress is computed server-side: estimated 1RM (Epley), max load over time, and weekly volume per muscle group, with bodyweight-aware tonnage for movements like pull-ups and dips.
+
+The AI layer:
+
+- A single provider interface (`lib/llm`) sits in front of either the Anthropic SDK or any OpenRouter model. You pick one with the `LLM_PROVIDER` env var; the rest of the app does not care which.
+- For every AI call the server builds a compact, structured payload (your profile + recent sessions + active program + per-exercise progression) instead of dumping raw rows, then:
+  - Weekly debrief and program adjustments: one completion that returns markdown plus an optional structured block of suggested changes, validated with Zod before anything touches your program.
+  - Chat coach: the same context plus your conversation, streamed back token by token.
+  - Program generation: a plain-language goal becomes a JSON program, validated and previewed so you can edit it before it is saved.
+- The stable system prompt is marked for prompt caching, so multi-turn chats reuse it instead of re-sending it every turn.
+
 ## Requirements
 
 - Node.js 20+
