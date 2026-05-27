@@ -84,7 +84,7 @@ jobs:
           --health-cmd "pg_isready -U gymcoach_test"
           --health-interval 5s --health-timeout 5s --health-retries 5
     env:
-      DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
+      DATABASE_URL: postgresql://gymcoach_test:gymcoach_test@localhost:5434/gymcoach_test
       JWT_SECRET: e2e-test-secret-at-least-32-characters
     steps:
       - uses: actions/checkout@v4
