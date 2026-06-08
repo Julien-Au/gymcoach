@@ -6,6 +6,32 @@ by the charter in [`07-autonomy.md`](07-autonomy.md).
 
 ---
 
+## 2026-06-08 - Imperial units complete + backlog refilled
+
+**Context.** Close out issue #1 and keep the pipeline fed.
+
+**Decided / shipped.**
+- Shipped #17 (Closes #1): converted the progress page (line chart, weekly-volume bars,
+  recap table) to the user's unit by converting the plotted data, not just labels. #1 is
+  now fully delivered across #14 (foundation), #15 (logging/history), #17 (charts).
+- Noticed #1 had auto-closed early (the progress charts were still kg, so the acceptance
+  was not met) and **reopened it** before finishing, rather than leave a half-done issue
+  marked done. Truth over green checkmarks.
+- Triage refilled the backlog (no TODO/FIXME markers exist, so coverage was the real gap):
+  #18 (Zod schema validation tests), #19 (unit-agnostic set-note placeholder), #20
+  (integration tests for getLastPerformances).
+
+**Challenged.** Independent skeptic subagent on #17: READY, kg output verified
+byte-identical, no double-conversion or mixed units.
+
+**Deferred to human.** None. The AI coach intentionally stays in kg (matches its own
+prompt/prose); localizing it would need a prompt-design decision, so it was not forced.
+
+**Next.** #19 (fast win) then #18, each subagent-reviewed; #20 (integration tier) after.
+Keep the README/docs/loops démarche current - the growth engine is stars.
+
+---
+
 ## 2026-06-08 - Empty states + imperial units (split delivery)
 
 **Context.** Continuing the maintainer loop through the backlog (#5, #1).
