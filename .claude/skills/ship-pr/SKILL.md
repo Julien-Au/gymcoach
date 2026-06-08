@@ -1,0 +1,69 @@
+---
+name: ship-pr
+description: Drive one open PR to merged. Wait for CI, fix red checks (bounded retries), self-review the diff, and auto-merge (squash) once CI is green and review is clean. Use when asked to "ship PR N", "merge the green PRs", or as the unit the shipping loop calls. Never merges on a red gate.
+---
+
+# ship-pr
+
+The shipping half of the pipeline. `implement-issue` opens PRs; this skill takes **one**
+open PR from "opened" to "merged", autonomously. It is the reusable unit behind the
+CI-watch and auto-merge loops. Read `CLAUDE.md` first.
+
+**Autonomy boundary (decided):** auto-merge is allowed **only** when CI is green and the
+self-review is clean. The green CI is the trust boundary - never merge around it, never
+merge on a red or pending gate, never merge a PR a human has marked as draft or requested
+changes on.
+
+## Input
+
+- A PR number, OR "ship the ready PRs" (then operate on each open, non-draft PR that
+  targets `main` and is authored by the loop).
+
+## Procedure (per PR)
+
+1. **Load state.**
+   `gh pr view <n> --json number,title,headRefName,isDraft,mergeable,reviewDecision,state`.
+   Skip immediately if: draft, `state != OPEN`, `reviewDecision == CHANGES_REQUESTED`,
+   or not targeting `main`. Report why it was skipped.
+
+2. **Watch CI.** `gh pr checks <n> --watch` (blocks until checks settle), or poll
+   `gh pr checks <n>`. Three outcomes:
+   - **All green** -> go to step 4 (review).
+   - **Some red** -> step 3 (fix).
+   - **Stuck pending** for an unreasonable time -> stop, report; do not merge.
+
+3. **Fix a red gate (bounded).** Reproduce locally with the matching green-gate tier:
+   `bash scripts/verify.sh` for lint/type/unit/build, `--full` for integration/E2E.
+   - `gh run view --log-failed` on the failing run to see the real error.
+   - Check out the PR branch (`gh pr checkout <n>`), fix the **cause**, re-run the gate,
+     commit (Conventional Commit, e.g. `fix(ci): ...`), and push.
+   - **At most 3 fix attempts.** If still red after 3: do not merge. Leave a comment
+     summarizing the blocker (`gh pr comment <n> --body ...`), mark the PR draft if
+     appropriate, and STOP. A human looks.
+
+4. **Self-review the diff.** Run the `code-review` skill (or review `gh pr diff <n>`
+   directly) for correctness and convention bugs. If it surfaces a real defect, treat it
+   like a red gate: fix on the branch (counts against the 3 attempts), re-verify, push.
+   Cosmetic-only nits do not block a merge.
+
+5. **Merge.** Only if CI is green AND review is clean:
+   `gh pr merge <n> --squash --delete-branch`. Confirm it merged
+   (`gh pr view <n> --json state,mergedAt`).
+
+6. **Report.** PR -> merged (with the merge commit), or skipped/blocked with the reason.
+
+## Guardrails
+
+- Never `gh pr merge` while any required check is red or pending.
+- Never merge a draft, a `CHANGES_REQUESTED` PR, or one not targeting `main`.
+- At most 3 fix attempts per PR; then stop and hand off.
+- Per run, ship at most the PRs you were given (or cap "ship the ready PRs" at a small
+  batch so a bad change cannot cascade). One merge at a time; re-check the next PR's CI
+  after each merge in case `main` moved.
+- Inherited deny-list still applies (no force-push, no hard reset).
+
+## What success looks like
+
+Open PRs that are genuinely ready (green CI, clean review) become squash-merged commits
+on `main` with their branch deleted - with no human click. Anything uncertain stops and
+asks. The green gate, not optimism, decides.
