@@ -29,7 +29,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Friendly empty states with a clear call to action on the progress and history
   pages when there is no data yet.
 - Weight-unit preference: choose kilograms or pounds for displaying and entering
-  weights across logging and history. Data is always stored in kg.
+  weights everywhere (logging, history, summaries, and progress charts). Data is
+  always stored in kg.
 - Test pyramid (unit, integration, E2E) with CI running lint, typecheck, unit,
   integration, build, and E2E on every pull request.
 - Docker and Docker Compose setup for local development and production.
