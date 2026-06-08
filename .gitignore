@@ -52,3 +52,6 @@ docs/media/raw/
 # Turbo / Vercel
 .turbo/
 .vercel/
+
+# Claude Code local (machine-specific) overrides
+.claude/settings.local.json
