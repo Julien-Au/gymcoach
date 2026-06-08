@@ -55,3 +55,6 @@ docs/media/raw/
 
 # Claude Code local (machine-specific) overrides
 .claude/settings.local.json
+# Claude Code runtime state (locks, scheduled tasks) - never commit
+.claude/scheduled_tasks.lock
+.claude/*.lock

@@ -3,6 +3,7 @@ import { Calendar, ChevronRight, History as HistoryIcon } from 'lucide-react';
 import { db } from '@/lib/db';
 import { requireSession } from '@/lib/auth';
 import { Card, CardContent } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
 import { Badge } from '@/components/ui/badge';
 import { applyBodyweight, totalVolume } from '@/lib/stats';
 import { HistoryFilters } from '@/components/history/history-filters';
@@ -18,6 +19,8 @@ export default async function HistoryPage({
   searchParams: SearchParams;
 }) {
   const session = await requireSession();
+
+  const hasActiveFilters = Boolean(searchParams.programId || searchParams.month);
 
   // Filters: program and month (YYYY-MM).
   const programFilter = searchParams.programId
@@ -86,11 +89,20 @@ export default async function HistoryPage({
         />
 
         {sessions.length === 0 ? (
-          <Card>
-            <CardContent className="py-8 text-center text-sm text-muted-foreground">
-              No finished session matches these filters.
-            </CardContent>
-          </Card>
+          hasActiveFilters ? (
+            <Card>
+              <CardContent className="py-8 text-center text-sm text-muted-foreground">
+                No finished session matches these filters.
+              </CardContent>
+            </Card>
+          ) : (
+            <EmptyState
+              icon={HistoryIcon}
+              title="No sessions logged yet"
+              description="Finish your first workout and it will show up here with its volume, sets, and duration."
+              action={{ label: 'Log your first session', href: '/session/new' }}
+            />
+          )
         ) : (
           <ul className="flex flex-col gap-2">
             {sessions.map((s) => {
