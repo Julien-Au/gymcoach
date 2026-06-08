@@ -6,6 +6,39 @@ by the charter in [`07-autonomy.md`](07-autonomy.md).
 
 ---
 
+## 2026-06-08 - Route ownership + steady state
+
+**Decided / shipped.**
+- #30 (Closes): route-level integration tests proving per-user data isolation on
+  `DELETE /api/sets/[id]`, `PUT /api/sessions/[id]`, `GET /api/exercises/[id]` - owner
+  succeeds, stranger gets 404 and the row is left intact. The subagent verified this is
+  non-vacuous: the auth mock genuinely controls the acting user (owner cases return 200,
+  not 401) and the 404 comes from the ownership branch, so the security property is really
+  asserted in both directions.
+
+**Steady state.** The high-value, single-PR backlog is now exhausted. Tested: the pure-logic
+modules (schemas, units, preferences, api, last-performance) and route-level ownership.
+Remaining gaps are deliberately NOT auto-filed:
+- low-ROI browser-IO modules (`sync`, `indexeddb`, `wake-lock`, `sound`, `vibrate`) - hard to
+  test meaningfully, little payoff;
+- larger product work (the roadmap's in-session AI suggestions, AI-coach unit localization) -
+  needs human product scoping per the charter's stop list.
+
+Manufacturing busywork would degrade the tracker and the démarche, so triage files nothing.
+
+**Mode.** The loop transitions to MONITOR MODE: it wakes on a long interval, ships any green
+PR, implements any newly-filed actionable issue (with subagent review), and otherwise idles.
+This is a clean idle, not a failure - the pipeline stays ready for new work.
+
+**Session tally.** ~12 issues closed (#1-#5, #8, #18-#20, #26-#27, #30), the end-to-end loop
+system + autonomy charter + git rollback baseline, imperial-unit support, and broad
+unit/integration/security test coverage. The adversarial subagent loop caught two real product
+regressions (a mis-classified exercise, a silent kg rounding change) and the process guardrails
+caught two slips (a masked red-gate commit, a mixed-scope branch) - all fixed without
+force-pushing or touching main directly.
+
+---
+
 ## 2026-06-08 - Coverage round + honest triage
 
 **Context.** Drain the test backlog and decide, honestly, whether more work is warranted.
