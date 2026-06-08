@@ -214,7 +214,8 @@ docker compose -f docker-compose.prod.yml exec app npx prisma migrate deploy
 ## Contributing
 
 Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup,
-conventions and the test commands.
+conventions and the test commands. Notable changes are tracked in the
+[CHANGELOG](CHANGELOG.md).
 
 ## License
 
