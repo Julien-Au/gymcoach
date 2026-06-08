@@ -6,6 +6,37 @@ by the charter in [`07-autonomy.md`](07-autonomy.md).
 
 ---
 
+## 2026-06-08 - Empty states + imperial units (split delivery)
+
+**Context.** Continuing the maintainer loop through the backlog (#5, #1).
+
+**Decided / shipped.**
+- Shipped #5 (empty states): a reusable `EmptyState` primitive + friendly empty states
+  with a CTA on the progress and history pages. Subagent review: READY.
+- Issue #1 (imperial units) was deliberately **split** - the full conversion across every
+  surface plus input was too large/regression-prone for one safe PR (charter: split when
+  too large). PR #14 (foundation: WeightUnit enum, additive migration, `lib/units.ts`,
+  profile API) merged. PR #15 (UX: settings toggle + logging/history conversion) opened.
+  Progress charts follow in a third PR that closes #1; the AI coach stays in kg to match
+  its own prompt/prose.
+- Content/README pass (this PR): added a "this repo largely maintains itself" section to
+  the README (the démarche is the growth engine), recorded empty states + the unit
+  preference in the CHANGELOG, and logged this run.
+
+**Challenged.** Subagents reviewed every product change. On #1 PR #15 the skeptic caught a
+**real silent regression**: rendering raw stored weights via `decimals:1` would have
+rounded `82.25 kg -> 82.3 kg` for existing kg users. Fixed to `{decimals:2, group:false}`
+(byte-identical to the old raw render) and verified by a second review pass. This is the
+adversarial loop earning its keep.
+
+**Deferred to human.** None. Progress-chart conversion and a possible coach localization
+are tracked as follow-up work, not blockers.
+
+**Next.** Merge #15 on green, then PR #3-of-#1 (progress charts) to close #1; triage to
+refill the backlog once empty.
+
+---
+
 ## 2026-06-08 - First product run (catalog + content)
 
 **Context.** Maintainer loop running unsupervised under the charter. Goal: drain ready PRs,
