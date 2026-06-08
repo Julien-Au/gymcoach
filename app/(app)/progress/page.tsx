@@ -46,10 +46,11 @@ export default async function ProgressPage({
     }),
     db.user.findUnique({
       where: { id: auth.userId },
-      select: { bodyweight: true },
+      select: { bodyweight: true, unit: true },
     }),
   ]);
   const bodyweight = user?.bodyweight ?? null;
+  const unit = user?.unit ?? 'KG';
   const usesBodyweightById = new Map(
     exercisesWithSets.map((e) => [e.id, e.usesBodyweight]),
   );
@@ -211,6 +212,7 @@ export default async function ProgressPage({
               total: w.total,
             }))}
             recap={recap}
+            unit={unit}
           />
         )}
       </div>

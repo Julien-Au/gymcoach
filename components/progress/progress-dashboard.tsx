@@ -22,7 +22,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import type { WeightUnit } from '@prisma/client';
 import type { ExerciseChartPoint } from '@/lib/stats';
+import { roundWeight, toDisplayWeight, unitLabel } from '@/lib/units';
 
 interface RecapRow {
   exerciseId: string;
@@ -52,6 +54,7 @@ interface Props {
   exercisePoints: ExerciseChartPoint[];
   weeklyPoints: SerializedWeeklyPoint[];
   recap: RecapRow[];
+  unit: WeightUnit;
 }
 
 // Stable palette for muscle groups (distinct HSL, accessible LCH).
@@ -87,10 +90,18 @@ export function ProgressDashboard({
   exercisePoints,
   weeklyPoints,
   recap,
+  unit,
 }: Props) {
   const router = useRouter();
   const search = useSearchParams();
   const [isPending, startTransition] = useTransition();
+
+  // Convert a kg value to the display unit. KG returns the raw value unchanged
+  // (so kg output stays byte-identical); LB rounds the conversion for clean
+  // axes, tooltips, and table cells.
+  const unitSuffix = unitLabel(unit);
+  const toDisplay = (kg: number) =>
+    unit === 'KG' ? kg : roundWeight(toDisplayWeight(kg, unit), 1);
 
   function selectExercise(id: string) {
     const params = new URLSearchParams(search.toString());
@@ -111,18 +122,28 @@ export function ProgressDashboard({
     return [...groups];
   }, [weeklyPoints]);
 
-  // Flatten the weekly points for Recharts (key = weekKey, value per group).
+  // Flatten the weekly points for Recharts (key = weekKey, value per group),
+  // converting each group volume to the display unit.
   const weeklyChartData = useMemo(() => {
-    return weeklyPoints.map((p) => ({
-      weekKey: p.weekKey,
-      label: shortLabelFromWeekKey(p.weekKey),
-      ...p.byMuscleGroup,
-    }));
-  }, [weeklyPoints]);
+    return weeklyPoints.map((p) => {
+      const converted: Record<string, number> = {};
+      for (const [group, value] of Object.entries(p.byMuscleGroup)) {
+        converted[group] = toDisplay(value);
+      }
+      return {
+        weekKey: p.weekKey,
+        label: shortLabelFromWeekKey(p.weekKey),
+        ...converted,
+      };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weeklyPoints, unit]);
 
   const exerciseChartData = exercisePoints.map((p) => ({
-    label: shortDate(p.sessionStartedAt.toString()),
     ...p,
+    label: shortDate(p.sessionStartedAt.toString()),
+    maxWeight: toDisplay(p.maxWeight),
+    estimated1RM: toDisplay(p.estimated1RM),
   }));
 
   return (
@@ -179,7 +200,7 @@ export function ProgressDashboard({
                   <Line
                     type="monotone"
                     dataKey="maxWeight"
-                    name="Max load (kg)"
+                    name={`Max load (${unitSuffix})`}
                     stroke="hsl(var(--primary))"
                     strokeWidth={2}
                     dot={{ r: 3 }}
@@ -187,7 +208,7 @@ export function ProgressDashboard({
                   <Line
                     type="monotone"
                     dataKey="estimated1RM"
-                    name="Estimated 1RM (kg)"
+                    name={`Estimated 1RM (${unitSuffix})`}
                     stroke="#a855f7"
                     strokeDasharray="4 4"
                     strokeWidth={2}
@@ -278,13 +299,13 @@ export function ProgressDashboard({
                       </td>
                       <td className="py-2">{r.sessions}</td>
                       <td className="py-2">
-                        {r.firstWeight} → {r.lastWeight} kg
+                        {toDisplay(r.firstWeight)} → {toDisplay(r.lastWeight)} {unitSuffix}
                       </td>
                       <td className={`py-2 font-medium ${deltaClass(r.weightDelta)}`}>
-                        {formatDelta(r.weightDelta)} kg
+                        {formatDelta(toDisplay(r.weightDelta))} {unitSuffix}
                       </td>
                       <td className={`py-2 ${deltaClass(r.e1rmDelta)}`}>
-                        {formatDelta(r.e1rmDelta)} kg
+                        {formatDelta(toDisplay(r.e1rmDelta))} {unitSuffix}
                       </td>
                     </tr>
                   ))}
