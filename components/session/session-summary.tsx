@@ -101,7 +101,7 @@ export function SessionSummary({ session, sets, programExercises, unit, onBack, 
                   <span className="flex-shrink-0 text-xs text-muted-foreground">
                     {s.doneSets}/{s.targetSets} sets
                     {s.maxWeight > 0
-                      ? ` · max ${formatWeight(s.maxWeight, unit, { decimals: 1 })}`
+                      ? ` · max ${formatWeight(s.maxWeight, unit, { decimals: 2, group: false })}`
                       : ''}
                   </span>
                 </li>

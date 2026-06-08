@@ -196,6 +196,7 @@ export default async function HistorySessionPage({ params }: Params) {
                             {formatWeight(e1rm, unit, {
                               decimals: 1,
                               fixed: true,
+                              group: false,
                             })}
                           </span>
                         )}
@@ -229,12 +230,16 @@ export default async function HistorySessionPage({ params }: Params) {
                                 <td className="py-1.5">
                                   {isBw ? (
                                     <span>
-                                      {formatWeight(effective, unit, { decimals: 1 })}
+                                      {formatWeight(effective, unit, {
+                                        decimals: 2,
+                                        group: false,
+                                      })}
                                       <span className="ml-1 text-xs text-muted-foreground">
                                         ({s.weight >= 0 ? '+' : ''}
                                         {formatWeight(s.weight, unit, {
-                                          decimals: 1,
+                                          decimals: 2,
                                           withUnit: false,
+                                          group: false,
                                         })}{' '}
                                         ext)
                                       </span>
@@ -242,7 +247,10 @@ export default async function HistorySessionPage({ params }: Params) {
                                   ) : effective === 0 ? (
                                     'BW'
                                   ) : (
-                                    formatWeight(effective, unit, { decimals: 1 })
+                                    formatWeight(effective, unit, {
+                                      decimals: 2,
+                                      group: false,
+                                    })
                                   )}
                                 </td>
                                 <td className="py-1.5">{s.reps}</td>

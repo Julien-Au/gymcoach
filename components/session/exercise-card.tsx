@@ -59,7 +59,7 @@ export function ExerciseCard({ programExercise, lastPerformance, unit }: Props) 
             <p className="font-medium">
               {lastPerformance.maxWeight === 0
                 ? `${lastPerformance.repsAtMaxWeight} reps bodyweight`
-                : `${formatWeight(lastPerformance.maxWeight, unit, { decimals: 1 })} × ${lastPerformance.repsAtMaxWeight} reps`}
+                : `${formatWeight(lastPerformance.maxWeight, unit, { decimals: 2, group: false })} × ${lastPerformance.repsAtMaxWeight} reps`}
             </p>
           </div>
         )}
@@ -77,11 +77,11 @@ export function ExerciseCard({ programExercise, lastPerformance, unit }: Props) 
                 <span className="font-medium">
                   {suggestion.weight === 0
                     ? 'bodyweight'
-                    : formatWeight(suggestion.weight, unit, { decimals: 1 })}
+                    : formatWeight(suggestion.weight, unit, { decimals: 2, group: false })}
                 </span>
                 {suggestion.reason === 'progression' && suggestion.delta && (
                   <span className="ml-1 text-xs text-primary">
-                    (+{formatWeight(suggestion.delta, unit, { decimals: 1 })})
+                    (+{formatWeight(suggestion.delta, unit, { decimals: 2, group: false })})
                   </span>
                 )}
               </span>
@@ -98,7 +98,7 @@ export function ExerciseCard({ programExercise, lastPerformance, unit }: Props) 
             {helpOpen && (
               <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
                 {suggestion.reason === 'progression'
-                  ? `All working sets reached ${suggestion.targetRepsMax} reps at ${formatWeight(suggestion.workingWeight ?? 0, unit, { decimals: 1 })}: load goes up by ${formatWeight(suggestion.delta ?? 0, unit, { decimals: 1 })} to drop back to the bottom of the rep range (double progression).`
+                  ? `All working sets reached ${suggestion.targetRepsMax} reps at ${formatWeight(suggestion.workingWeight ?? 0, unit, { decimals: 2, group: false })}: load goes up by ${formatWeight(suggestion.delta ?? 0, unit, { decimals: 2, group: false })} to drop back to the bottom of the rep range (double progression).`
                   : `Keep the same load and try to beat your reps. Progression unlocks once all working sets reach ${suggestion.targetRepsMax} reps.`}
               </p>
             )}
