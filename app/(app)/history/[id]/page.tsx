@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { MUSCLE_GROUP_LABELS } from '@/lib/schemas/exercise';
 import { applyBodyweight, best1RM, totalVolume } from '@/lib/stats';
+import { formatWeight } from '@/lib/units';
 import { DeleteSessionButton } from '@/components/history/delete-session-button';
 
 interface Params {
@@ -40,7 +41,7 @@ export default async function HistorySessionPage({ params }: Params) {
     }),
     db.user.findUnique({
       where: { id: auth.userId },
-      select: { bodyweight: true },
+      select: { bodyweight: true, unit: true },
     }),
   ]);
 
@@ -48,6 +49,7 @@ export default async function HistorySessionPage({ params }: Params) {
     notFound();
   }
   const bodyweight = user?.bodyweight ?? null;
+  const unit = user?.unit ?? 'KG';
 
   // Group sets by exercise (keeping the order of the first set per exercise).
   const exerciseOrder: string[] = [];
@@ -132,7 +134,7 @@ export default async function HistorySessionPage({ params }: Params) {
             <Stat label="Exercises" value={String(setsByExercise.size)} />
             <Stat
               label="Total volume"
-              value={`${Math.round(volume).toLocaleString('en-US')} kg`}
+              value={formatWeight(volume, unit, { decimals: 0 })}
             />
           </CardContent>
         </Card>
@@ -181,8 +183,22 @@ export default async function HistorySessionPage({ params }: Params) {
                         </Badge>
                       </div>
                       <div className="mt-1 flex gap-3 text-xs text-muted-foreground">
-                        <span>Volume: {Math.round(exoVolume)} kg</span>
-                        {e1rm > 0 && <span>Est. 1RM: {e1rm.toFixed(1)} kg</span>}
+                        <span>
+                          Volume:{' '}
+                          {formatWeight(exoVolume, unit, {
+                            decimals: 0,
+                            group: false,
+                          })}
+                        </span>
+                        {e1rm > 0 && (
+                          <span>
+                            Est. 1RM:{' '}
+                            {formatWeight(e1rm, unit, {
+                              decimals: 1,
+                              fixed: true,
+                            })}
+                          </span>
+                        )}
                       </div>
                     </CardHeader>
                     <CardContent className="pt-0">
@@ -213,16 +229,20 @@ export default async function HistorySessionPage({ params }: Params) {
                                 <td className="py-1.5">
                                   {isBw ? (
                                     <span>
-                                      {effective} kg
+                                      {formatWeight(effective, unit, { decimals: 1 })}
                                       <span className="ml-1 text-xs text-muted-foreground">
                                         ({s.weight >= 0 ? '+' : ''}
-                                        {s.weight} ext)
+                                        {formatWeight(s.weight, unit, {
+                                          decimals: 1,
+                                          withUnit: false,
+                                        })}{' '}
+                                        ext)
                                       </span>
                                     </span>
                                   ) : effective === 0 ? (
                                     'BW'
                                   ) : (
-                                    `${effective} kg`
+                                    formatWeight(effective, unit, { decimals: 1 })
                                   )}
                                 </td>
                                 <td className="py-1.5">{s.reps}</td>

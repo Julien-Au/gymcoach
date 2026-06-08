@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Badge } from '@/components/ui/badge';
 import { applyBodyweight, totalVolume } from '@/lib/stats';
+import { formatWeight } from '@/lib/units';
 import { HistoryFilters } from '@/components/history/history-filters';
 
 interface SearchParams {
@@ -70,9 +71,10 @@ export default async function HistoryPage({
     }),
     db.user.findUnique({
       where: { id: session.userId },
-      select: { bodyweight: true },
+      select: { bodyweight: true, unit: true },
     }),
   ]);
+  const unit = user?.unit ?? 'KG';
 
   return (
     <main className="flex-1 px-4 py-6">
@@ -148,7 +150,7 @@ export default async function HistoryPage({
                               {workingSets} set{workingSets > 1 ? 's' : ''}
                             </Badge>
                             <Badge variant="outline">
-                              {Math.round(volume).toLocaleString('en-US')} kg vol.
+                              {formatWeight(volume, unit, { decimals: 0 })} vol.
                             </Badge>
                             {durationMin != null && (
                               <Badge variant="outline">{durationMin} min</Badge>

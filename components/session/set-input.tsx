@@ -2,7 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { Check, Minus, Plus } from 'lucide-react';
-import type { Exercise, ProgramExercise } from '@prisma/client';
+import type { Exercise, ProgramExercise, WeightUnit } from '@prisma/client';
+import {
+  displayIncrement,
+  fromDisplayWeight,
+  roundWeight,
+  toDisplayWeight,
+  unitLabel,
+} from '@/lib/units';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -17,6 +24,7 @@ interface Props {
   programExercise: ProgramExercise & { exercise: Exercise };
   existingSets: PendingSet[];
   lastPerformance: SerializedLastPerformance | undefined;
+  unit: WeightUnit;
   onSubmit: (values: {
     weight: number;
     reps: number;
@@ -38,7 +46,7 @@ interface FormState {
 
 const RIR_OPTIONS = [0, 1, 2, 3];
 
-export function SetInput({ programExercise, existingSets, lastPerformance, onSubmit }: Props) {
+export function SetInput({ programExercise, existingSets, lastPerformance, unit, onSubmit }: Props) {
   // Pre-fill: last set of this exercise in the current session,
   // otherwise the last performance, otherwise defaults.
   const initial = computeInitial(programExercise, existingSets, lastPerformance);
@@ -52,6 +60,14 @@ export function SetInput({ programExercise, existingSets, lastPerformance, onSub
   }, [programExercise.id, existingSets.length]);
 
   const incrementKg = weightIncrement(programExercise.exercise.category);
+  // Increment shown in the user's unit (clean plate jumps), applied to the
+  // kg-stored weight. The form value stays in kg; only display/input convert.
+  const stepDisplay = displayIncrement(incrementKg, unit);
+  const stepKg = fromDisplayWeight(stepDisplay, unit);
+  // Show the kg-stored weight in the user's unit. KG renders the raw value
+  // (unchanged behavior); LB shows a rounded conversion.
+  const displayWeight =
+    unit === 'LB' ? roundWeight(toDisplayWeight(form.weight, unit), 1) : form.weight;
 
   function adjustWeight(delta: number) {
     setForm((f) => ({ ...f, weight: Math.max(0, +(f.weight + delta).toFixed(2)) }));
@@ -83,16 +99,16 @@ export function SetInput({ programExercise, existingSets, lastPerformance, onSub
         {/* Load */}
         <div className="space-y-2">
           <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-            Load (kg)
+            Load ({unitLabel(unit)})
           </Label>
           <div className="flex items-center gap-2">
             <Button
               type="button"
               variant="outline"
               size="icon"
-              onClick={() => adjustWeight(-incrementKg)}
+              onClick={() => adjustWeight(-stepKg)}
               className="min-h-tap min-w-tap"
-              aria-label={`-${incrementKg} kg`}
+              aria-label={`-${stepDisplay} ${unitLabel(unit)}`}
             >
               <Minus className="size-5" />
             </Button>
@@ -100,9 +116,12 @@ export function SetInput({ programExercise, existingSets, lastPerformance, onSub
               type="number"
               inputMode="decimal"
               step="0.1"
-              value={form.weight}
+              value={displayWeight}
               onChange={(e) =>
-                setForm((f) => ({ ...f, weight: parseFloat(e.target.value) || 0 }))
+                setForm((f) => ({
+                  ...f,
+                  weight: fromDisplayWeight(parseFloat(e.target.value) || 0, unit),
+                }))
               }
               className="h-14 text-center text-2xl font-semibold"
             />
@@ -110,9 +129,9 @@ export function SetInput({ programExercise, existingSets, lastPerformance, onSub
               type="button"
               variant="outline"
               size="icon"
-              onClick={() => adjustWeight(incrementKg)}
+              onClick={() => adjustWeight(stepKg)}
               className="min-h-tap min-w-tap"
-              aria-label={`+${incrementKg} kg`}
+              aria-label={`+${stepDisplay} ${unitLabel(unit)}`}
             >
               <Plus className="size-5" />
             </Button>

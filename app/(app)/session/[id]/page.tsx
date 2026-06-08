@@ -36,14 +36,23 @@ export default async function SessionRunPage({ params }: Props) {
   if (!session.workout) notFound();
 
   const exerciseIds = session.workout.exercises.map((pe) => pe.exerciseId);
-  const lastPerformances = await getLastPerformances(auth.userId, exerciseIds, session.id);
+  const [lastPerformances, user] = await Promise.all([
+    getLastPerformances(auth.userId, exerciseIds, session.id),
+    db.user.findUnique({ where: { id: auth.userId }, select: { unit: true } }),
+  ]);
 
   const lastPerfRecord: Record<string, SerializedLastPerformance> = {};
   for (const [k, v] of lastPerformances) {
     lastPerfRecord[k] = serializePerf(v);
   }
 
-  return <SessionRunner session={session} lastPerformances={lastPerfRecord} />;
+  return (
+    <SessionRunner
+      session={session}
+      lastPerformances={lastPerfRecord}
+      unit={user?.unit ?? 'KG'}
+    />
+  );
 }
 
 function serializePerf(p: LastPerformance): SerializedLastPerformance {

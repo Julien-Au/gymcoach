@@ -48,6 +48,15 @@ describe('units', () => {
     expect(formatWeight(70, 'KG', { withUnit: false })).toBe('70');
   });
 
+  it('honors fixed decimals and grouping options (kg parity with toFixed / no-group)', () => {
+    // fixed keeps trailing zeros, matching the old `e1rm.toFixed(1)` look.
+    expect(formatWeight(100, 'KG', { decimals: 1, fixed: true })).toBe('100.0 kg');
+    // group:false matches the old `Math.round(volume)` (no separators).
+    expect(formatWeight(1234, 'KG', { decimals: 0, group: false })).toBe('1234 kg');
+    // signed external load, no unit label.
+    expect(formatWeight(20, 'KG', { decimals: 1, withUnit: false })).toBe('20');
+  });
+
   it('uses clean plate jumps for the lb increment', () => {
     expect(displayIncrement(2.5, 'KG')).toBe(2.5);
     expect(displayIncrement(1, 'KG')).toBe(1);

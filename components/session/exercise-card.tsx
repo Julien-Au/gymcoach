@@ -2,20 +2,22 @@
 
 import { useState } from 'react';
 import { ChevronDown, ChevronUp, HelpCircle, Lightbulb, TrendingUp } from 'lucide-react';
-import type { Exercise, ProgramExercise } from '@prisma/client';
+import type { Exercise, ProgramExercise, WeightUnit } from '@prisma/client';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { MUSCLE_GROUP_LABELS, CATEGORY_LABELS } from '@/lib/schemas/exercise';
 import { suggestNextWeight } from '@/lib/progression';
+import { formatWeight } from '@/lib/units';
 import type { SerializedLastPerformance } from './session-runner';
 
 interface Props {
   programExercise: ProgramExercise & { exercise: Exercise };
   lastPerformance: SerializedLastPerformance | undefined;
+  unit: WeightUnit;
 }
 
-export function ExerciseCard({ programExercise, lastPerformance }: Props) {
+export function ExerciseCard({ programExercise, lastPerformance, unit }: Props) {
   const [notesOpen, setNotesOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const exo = programExercise.exercise;
@@ -57,7 +59,7 @@ export function ExerciseCard({ programExercise, lastPerformance }: Props) {
             <p className="font-medium">
               {lastPerformance.maxWeight === 0
                 ? `${lastPerformance.repsAtMaxWeight} reps bodyweight`
-                : `${lastPerformance.maxWeight} kg × ${lastPerformance.repsAtMaxWeight} reps`}
+                : `${formatWeight(lastPerformance.maxWeight, unit, { decimals: 1 })} × ${lastPerformance.repsAtMaxWeight} reps`}
             </p>
           </div>
         )}
@@ -75,11 +77,11 @@ export function ExerciseCard({ programExercise, lastPerformance }: Props) {
                 <span className="font-medium">
                   {suggestion.weight === 0
                     ? 'bodyweight'
-                    : `${suggestion.weight} kg`}
+                    : formatWeight(suggestion.weight, unit, { decimals: 1 })}
                 </span>
                 {suggestion.reason === 'progression' && suggestion.delta && (
                   <span className="ml-1 text-xs text-primary">
-                    (+{suggestion.delta} kg)
+                    (+{formatWeight(suggestion.delta, unit, { decimals: 1 })})
                   </span>
                 )}
               </span>
@@ -96,7 +98,7 @@ export function ExerciseCard({ programExercise, lastPerformance }: Props) {
             {helpOpen && (
               <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
                 {suggestion.reason === 'progression'
-                  ? `All working sets reached ${suggestion.targetRepsMax} reps at ${suggestion.workingWeight} kg: load goes up by ${suggestion.delta} kg to drop back to the bottom of the rep range (double progression).`
+                  ? `All working sets reached ${suggestion.targetRepsMax} reps at ${formatWeight(suggestion.workingWeight ?? 0, unit, { decimals: 1 })}: load goes up by ${formatWeight(suggestion.delta ?? 0, unit, { decimals: 1 })} to drop back to the bottom of the rep range (double progression).`
                   : `Keep the same load and try to beat your reps. Progression unlocks once all working sets reach ${suggestion.targetRepsMax} reps.`}
               </p>
             )}

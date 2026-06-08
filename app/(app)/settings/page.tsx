@@ -16,6 +16,7 @@ export default async function SettingsPage() {
       heightCm: true,
       goal: true,
       weeklyFrequency: true,
+      unit: true,
     },
   });
 
@@ -47,6 +48,7 @@ export default async function SettingsPage() {
             heightCm: user?.heightCm ?? null,
             goal: user?.goal ?? null,
             weeklyFrequency: user?.weeklyFrequency ?? null,
+            unit: user?.unit ?? 'KG',
           }}
         />
 

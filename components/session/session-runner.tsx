@@ -10,6 +10,7 @@ import type {
   ProgramExercise,
   Session,
   Set as PrismaSet,
+  WeightUnit,
   Workout,
 } from '@prisma/client';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -51,6 +52,7 @@ type SessionRunnerProps = {
     sets: PrismaSet[];
   };
   lastPerformances: Record<string, SerializedLastPerformance>;
+  unit: WeightUnit;
 };
 
 type Mode =
@@ -58,7 +60,7 @@ type Mode =
   | { kind: 'rest'; endsAt: number; totalSec: number; nextExerciseIdx: number | null }
   | { kind: 'summary' };
 
-export function SessionRunner({ session, lastPerformances }: SessionRunnerProps) {
+export function SessionRunner({ session, lastPerformances, unit }: SessionRunnerProps) {
   const router = useRouter();
   const workout = session.workout!;
   const programExercises = workout.exercises;
@@ -248,6 +250,7 @@ export function SessionRunner({ session, lastPerformances }: SessionRunnerProps)
         session={session}
         sets={liveSets}
         programExercises={programExercises}
+        unit={unit}
         onBack={() => setMode({ kind: 'input' })}
         onFinish={handleFinishSession}
         finishing={closing}
@@ -293,7 +296,7 @@ export function SessionRunner({ session, lastPerformances }: SessionRunnerProps)
       </div>
 
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 py-4">
-        <ExerciseCard programExercise={currentPE} lastPerformance={lastPerf} />
+        <ExerciseCard programExercise={currentPE} lastPerformance={lastPerf} unit={unit} />
 
         <SetsList
           programExercise={currentPE}
@@ -307,6 +310,7 @@ export function SessionRunner({ session, lastPerformances }: SessionRunnerProps)
             programExercise={currentPE}
             existingSets={currentSets}
             lastPerformance={lastPerf}
+            unit={unit}
             onSubmit={handleValidate}
           />
         ) : (
