@@ -12,7 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Multi-user accounts: registration, profiles, per-user data isolation, and
   rate limiting.
 - Workout logging with sets, reps, RIR, warmups, and drop sets.
-- Progress charts and estimated 1RM tracking.
+- Progress charts, estimated 1RM (Epley) tracking, and bodyweight-aware tonnage
+  for movements like pull-ups and dips.
+- Installable PWA with offline-first session logging (IndexedDB + background
+  sync) and a screen wake lock during sessions.
 - Pluggable LLM provider: Anthropic SDK or any OpenRouter model, switchable via
   the `LLM_PROVIDER` environment variable.
 - AI program generation from a natural-language goal, with Zod-validated output.
