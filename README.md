@@ -33,6 +33,20 @@ Open source, self hosted hypertrophy training tracker with a built in AI coach. 
 > OpenRouter), with a unit / integration / E2E test suite and deep AI
 > integration.
 
+## This repo largely maintains itself
+
+GymCoach is also an experiment in autonomous software maintenance: most of its
+ongoing changes are made by Claude Code running in **documented loops**, not by a
+human typing each one. An agent picks an open issue, writes the change to the repo
+conventions, makes it pass a green-gate (lint + typecheck + tests + build), has an
+independent agent adversarially review the diff, opens a pull request, and
+auto-merges it once CI is green. A human still owns the vision and the hard calls.
+
+The whole playbook is open and reproducible in [`docs/loops/`](docs/loops/): the
+pipeline (triage -> implement -> ship -> write-up), the guardrails, and the
+[autonomy charter](docs/loops/07-autonomy.md) the agent runs inside. If you care
+more about *how a repo can maintain itself* than about the gym app, start there.
+
 ## Features
 
 - Multi-user accounts: sign up, profiles, per-user data isolation
@@ -43,6 +57,7 @@ Open source, self hosted hypertrophy training tracker with a built in AI coach. 
 - Conversational AI coach: streaming chat grounded in your training data
 - AI program generation from a natural-language goal, editable before saving
 - Pluggable LLM provider: Anthropic SDK or any OpenRouter model
+- Train in kilograms or pounds, a per-user preference (data is always stored in kg)
 - Installable PWA with offline session logging
 
 ## Stack
