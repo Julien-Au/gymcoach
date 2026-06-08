@@ -21,6 +21,9 @@ This folder is the reproducible playbook. Read in order:
   playbook true to what shipped. The growth engine.
 - [`06-orchestration.md`](06-orchestration.md) - the maintainer loop that runs all the
   stages end to end, and how it graduates to a nightly cron.
+- [`07-autonomy.md`](07-autonomy.md) - the charter for running unsupervised: mandate,
+  hard guardrails, the stop-for-human list, the subagent challenge protocol, and the
+  rollback baseline. Paired with the append-only [`autonomy-log.md`](autonomy-log.md).
 
 ## The system at a glance
 

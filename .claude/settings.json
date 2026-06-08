@@ -20,6 +20,7 @@
       "Bash(git checkout *)",
       "Bash(git switch *)",
       "Bash(git branch *)",
+      "Bash(git tag *)",
       "Bash(git status)",
       "Bash(git status *)",
       "Bash(git diff *)",
