@@ -13,21 +13,37 @@ This folder is the reproducible playbook. Read in order:
   (`.claude/settings.json`), and a reusable skill.
 - [`02-issue-to-pr-loop.md`](02-issue-to-pr-loop.md) - the flagship loop that turns
   open issues into pull requests, its guardrails, and how it graduates to the cloud.
+- [`03-triage-loop.md`](03-triage-loop.md) - the head of the pipeline: manufacture
+  well-scoped issues so the Issue -> PR loop never starves.
+- [`04-ship-loop.md`](04-ship-loop.md) - the shipping half: watch CI, fix a red gate,
+  self-review, and auto-merge on green. Where the full gate actually gates a merge.
+- [`05-content-loop.md`](05-content-loop.md) - the tail: keep the CHANGELOG and this
+  playbook true to what shipped. The growth engine.
+- [`06-orchestration.md`](06-orchestration.md) - the maintainer loop that runs all the
+  stages end to end, and how it graduates to a nightly cron.
 
 ## The system at a glance
 
 ```
-/loop (cron + decision-maker)
-   |
-   v
-implement-issue  (the reusable skill: branch -> code -> test -> PR)
-   |
-   v
-scripts/verify.sh  (the green-gate: lint + typecheck + unit + build)   <- feedback
-   |
-   v
-green PR that closes an issue   ->   a human reviews and merges
+            maintainer loop (06): cron + a decision-maker each tick
+                                  |
+   +----------------+------------+------------+-----------------+
+   v                v                         v                 v
+ triage (03)   implement-issue (02)      ship-pr (04)      write-up (05)
+ refill the    one issue -> one PR       watch CI, fix     CHANGELOG +
+ backlog       (branch->code->test)      red, self-review, playbook stay
+ when low                                auto-merge GREEN  true to reality
+   |                |                         |                 |
+   +----------------+------------+------------+-----------------+
+                                  |
+                    scripts/verify.sh + CI = the feedback gate
+                    (nothing merges on a red or pending gate)
+                                  |
+                    state lives in git + GitHub, not the session
 ```
+
+The pipeline is **generate work -> do work -> verify in CI -> ship -> tell the story**.
+Each stage is a small loop calling one tested skill; `06` is the loop that runs them.
 
 ## The four rules we never break
 
