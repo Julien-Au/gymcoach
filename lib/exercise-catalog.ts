@@ -223,6 +223,210 @@ export const EXERCISE_CATALOG: CatalogExercise[] = [
     usesBodyweight: true,
     notes: 'Core stability. 1 round as a finisher.',
   },
+
+  // ============================================================
+  // Additional common movements (machine, cable and accessory work)
+  // ============================================================
+
+  // Chest
+  {
+    name: 'Flat dumbbell bench press',
+    muscleGroup: MuscleGroup.CHEST,
+    category: ExerciseCategory.COMPOUND,
+    defaultRestSec: 120,
+    notes: 'Dumbbells let each side work independently. Wrists stacked over the elbows. Touch at chest level, do not lock out hard.',
+  },
+  {
+    name: 'Machine chest press',
+    muscleGroup: MuscleGroup.CHEST,
+    category: ExerciseCategory.COMPOUND,
+    defaultRestSec: 90,
+    notes: 'Handles at mid-chest height. Drive through the chest, stop just short of lockout. Great for pushing close to failure safely.',
+  },
+
+  // Back
+  {
+    name: 'Neutral-grip lat pulldown',
+    muscleGroup: MuscleGroup.BACK_WIDTH,
+    category: ExerciseCategory.COMPOUND,
+    defaultRestSec: 120,
+    notes: 'Palms facing, shoulder-width handle. Pull to the upper chest, drive the elbows down and back.',
+  },
+  {
+    name: 'Straight-arm cable pulldown',
+    muscleGroup: MuscleGroup.BACK_WIDTH,
+    category: ExerciseCategory.ISOLATION,
+    defaultRestSec: 75,
+    notes: 'Arms nearly straight, slight elbow bend held fixed. Drive the bar to the thighs with the lats. Big stretch at the top.',
+  },
+  {
+    name: 'Chest-supported machine row',
+    muscleGroup: MuscleGroup.BACK_THICKNESS,
+    category: ExerciseCategory.COMPOUND,
+    defaultRestSec: 90,
+    notes: 'Chest pad removes lower-back fatigue. Row to the torso, squeeze the shoulder blades, control the stretch.',
+  },
+  {
+    name: 'Single-arm dumbbell row',
+    muscleGroup: MuscleGroup.BACK_THICKNESS,
+    category: ExerciseCategory.COMPOUND,
+    defaultRestSec: 90,
+    notes: 'Knee and hand on the bench, flat back. Pull toward the hip, elbow close to the body. Full stretch at the bottom.',
+  },
+
+  // Shoulders
+  {
+    name: 'Standing barbell overhead press',
+    muscleGroup: MuscleGroup.SHOULDERS_FRONT,
+    category: ExerciseCategory.COMPOUND,
+    defaultRestSec: 150,
+    notes: 'Brace the core, glutes tight, no excessive arch. Bar travels over the mid-foot. Lock out with the head through.',
+  },
+  {
+    name: 'Dumbbell lateral raise',
+    muscleGroup: MuscleGroup.SHOULDERS_LATERAL,
+    category: ExerciseCategory.ISOLATION,
+    defaultRestSec: 60,
+    notes: 'Slight forward lean, elbows soft. Lead with the elbows to shoulder height. Control the descent, no swinging.',
+  },
+  {
+    name: 'Face pull (rope)',
+    muscleGroup: MuscleGroup.SHOULDERS_REAR,
+    category: ExerciseCategory.ISOLATION,
+    defaultRestSec: 60,
+    notes: 'Cable at face height. Pull the rope apart toward the forehead, externally rotate. Rear delts and upper back.',
+  },
+
+  // Biceps
+  {
+    name: 'Standing cable curl (straight bar)',
+    muscleGroup: MuscleGroup.BICEPS,
+    category: ExerciseCategory.ISOLATION,
+    defaultRestSec: 60,
+    notes: 'Constant cable tension through the range. Elbows pinned. Squeeze 1s at the top, no swinging.',
+  },
+  {
+    name: 'Concentration curl',
+    muscleGroup: MuscleGroup.BICEPS,
+    category: ExerciseCategory.ISOLATION,
+    defaultRestSec: 60,
+    notes: 'Seated, elbow braced on the inner thigh. Strict, full contraction. High peak-contraction tension.',
+  },
+
+  // Forearms
+  {
+    name: 'Barbell wrist curl',
+    muscleGroup: MuscleGroup.FOREARMS,
+    category: ExerciseCategory.ISOLATION,
+    defaultRestSec: 60,
+    notes: 'Forearms on the thighs or a bench, palms up. Let the bar roll to the fingers, then curl the wrists up. Full range, no momentum.',
+  },
+  {
+    name: 'Reverse EZ-bar curl',
+    muscleGroup: MuscleGroup.FOREARMS,
+    category: ExerciseCategory.ISOLATION,
+    defaultRestSec: 60,
+    notes: 'Pronated (palms down) grip. Targets the brachioradialis and wrist extensors. Lighter load, strict tempo.',
+  },
+
+  // Biceps (brachialis emphasis)
+  {
+    name: 'Hammer curl (dumbbell)',
+    muscleGroup: MuscleGroup.BICEPS,
+    category: ExerciseCategory.ISOLATION,
+    defaultRestSec: 60,
+    notes: 'Neutral grip throughout. Emphasizes the brachialis and brachioradialis. Elbows fixed, no swinging.',
+  },
+
+  // Triceps
+  {
+    name: 'Close-grip bench press',
+    muscleGroup: MuscleGroup.TRICEPS,
+    category: ExerciseCategory.COMPOUND,
+    defaultRestSec: 120,
+    notes: 'Grip just inside shoulder width. Elbows tucked. Bar to the lower chest. Triceps-biased pressing.',
+  },
+  {
+    name: 'Overhead cable triceps extension',
+    muscleGroup: MuscleGroup.TRICEPS,
+    category: ExerciseCategory.ISOLATION,
+    defaultRestSec: 60,
+    notes: 'Rope from a low or high pulley, facing away. Long-head stretch overhead. Extend fully, keep the elbows in.',
+  },
+  {
+    name: 'EZ-bar skull crusher',
+    muscleGroup: MuscleGroup.TRICEPS,
+    category: ExerciseCategory.ISOLATION,
+    defaultRestSec: 75,
+    notes: 'Lower to the forehead or behind the head for more stretch. Elbows pointing up, kept narrow. Controlled descent.',
+  },
+
+  // Quads
+  {
+    name: 'Leg press (45 deg)',
+    muscleGroup: MuscleGroup.QUADS,
+    category: ExerciseCategory.COMPOUND,
+    defaultRestSec: 150,
+    notes: 'Feet mid-platform, shoulder width. Lower until the knees reach the chest without the lower back rounding. Do not lock out hard.',
+  },
+  {
+    name: 'Goblet squat',
+    muscleGroup: MuscleGroup.QUADS,
+    category: ExerciseCategory.COMPOUND,
+    defaultRestSec: 120,
+    notes: 'Hold a dumbbell at the chest. Upright torso, elbows inside the knees at the bottom. Great for learning depth.',
+  },
+  {
+    name: 'Bulgarian split squat',
+    muscleGroup: MuscleGroup.QUADS,
+    category: ExerciseCategory.COMPOUND,
+    defaultRestSec: 90,
+    notes: 'Rear foot elevated. Most weight on the front leg, vertical shin bias for quads. Control the descent.',
+  },
+
+  // Hamstrings
+  {
+    name: 'Lying leg curl',
+    muscleGroup: MuscleGroup.HAMSTRINGS,
+    category: ExerciseCategory.ISOLATION,
+    defaultRestSec: 75,
+    notes: 'Hips pinned to the pad. Curl fully, pause 1s at the contraction, control the negative. No hip lift.',
+  },
+
+  // Glutes
+  {
+    name: 'Cable glute kickback',
+    muscleGroup: MuscleGroup.GLUTES,
+    category: ExerciseCategory.ISOLATION,
+    defaultRestSec: 60,
+    notes: 'Ankle strap on a low pulley. Hinge slightly, drive the heel back and up. Squeeze the glute at the top, no lower-back arch.',
+  },
+
+  // Lower back
+  {
+    name: 'Back extension (hyperextension)',
+    muscleGroup: MuscleGroup.LOWER_BACK,
+    category: ExerciseCategory.ISOLATION,
+    defaultRestSec: 60,
+    usesBodyweight: true,
+    notes: 'Hips on the pad. Round and extend through the spine, or stay rigid to bias the glutes. Add a plate for load.',
+  },
+  {
+    name: 'Barbell good morning',
+    muscleGroup: MuscleGroup.LOWER_BACK,
+    category: ExerciseCategory.COMPOUND,
+    defaultRestSec: 120,
+    notes: 'Bar on the upper back. Hinge at the hips with a flat back, soft knees. Light load, feel the spinal erectors and hamstrings.',
+  },
+
+  // Abs
+  {
+    name: 'Machine crunch',
+    muscleGroup: MuscleGroup.ABS,
+    category: ExerciseCategory.ISOLATION,
+    defaultRestSec: 60,
+    notes: 'Flex the spine against the resistance, ribs toward the pelvis. Controlled tempo, pause at the contraction.',
+  },
 ];
 
 // Upserts the default catalog for a user. Returns a name -> exercise id map so
