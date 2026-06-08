@@ -24,6 +24,13 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
+// Public demo flag and credentials, inlined at build time. When the flag is on
+// (e.g. on a public demo instance) the login page surfaces a one-click sign in.
+const demoMode = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
+const demoEmail = process.env.NEXT_PUBLIC_DEMO_EMAIL ?? '';
+const demoPassword = process.env.NEXT_PUBLIC_DEMO_PASSWORD ?? '';
+const showDemo = demoMode && demoEmail !== '' && demoPassword !== '';
+
 export function LoginForm() {
   const router = useRouter();
   const [serverError, setServerError] = useState<string | null>(null);
@@ -31,11 +38,19 @@ export function LoginForm() {
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { email: '', password: '' },
   });
+
+  async function loginAsDemo() {
+    // Prefill the fields for visible feedback, then submit the demo credentials.
+    setValue('email', demoEmail);
+    setValue('password', demoPassword);
+    await onSubmit({ email: demoEmail, password: demoPassword });
+  }
 
   async function onSubmit(values: FormValues) {
     setServerError(null);
@@ -62,6 +77,23 @@ export function LoginForm() {
         <CardDescription>Access your training log.</CardDescription>
       </CardHeader>
       <CardContent>
+        {showDemo && (
+          <div className="mb-4 space-y-2 rounded-md border border-dashed bg-muted/50 p-3">
+            <p className="text-sm font-medium">Demo account</p>
+            <p className="text-sm text-muted-foreground">
+              {demoEmail} / {demoPassword}
+            </p>
+            <Button
+              type="button"
+              variant="secondary"
+              className="min-h-tap w-full"
+              onClick={loginAsDemo}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Signing in...' : 'Log in as demo'}
+            </Button>
+          </div>
+        )}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
