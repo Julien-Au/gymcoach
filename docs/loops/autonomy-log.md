@@ -6,6 +6,38 @@ by the charter in [`07-autonomy.md`](07-autonomy.md).
 
 ---
 
+## 2026-06-08 - Backlog cleared (tests + polish)
+
+**Context.** Drain the triaged batch (#18/#19/#20) and keep the pipeline honest.
+
+**Decided / shipped.**
+- #19 (Closes): unit-agnostic set-note placeholder. Trivial copy change, so no subagent
+  review per the charter's non-trivial threshold - documented that judgment in the PR.
+- #18 (Closes): validation tests for the six untested `lib/schemas` Zod schemas (40 cases).
+- #20 (Closes): integration tests for `getLastPerformances`, run against the real test
+  Postgres locally (full integration suite 7/7) before shipping, not just typechecked.
+- Subagent reviews on #18 and #20 returned READY; the #18 review prompted documenting a
+  real `z.coerce.boolean()` footgun ("false" coerces to true).
+
+**Challenged / process guardrails that fired.**
+- **Commit on a RED gate, caught and reverted.** A `verify.sh | tail && git commit` chain
+  let the pipe mask verify.sh's non-zero exit, so a commit landed while typecheck was red.
+  Caught it immediately, fixed the test, re-verified by capturing the exit code to a file.
+  Lesson recorded in the loop prompts: never pipe the gate through `tail` in a commit chain.
+- **Mixed-scope branch, untangled.** The #18 test commit had been stacked on the #19
+  branch; recovered by cherry-picking it onto a clean branch so each PR holds one scope.
+- **Non-fast-forward after an amend, reconciled without force.** Amending an already-pushed
+  commit broke the push; resolved with `reset --soft` + a new commit (force-push stays
+  denied by the charter), never rewriting pushed history.
+
+**Deferred to human.** None.
+
+**Next.** Backlog empty -> triage to refill (uncovered lib modules / small polish), then
+implement with subagent review. The big roadmap item (in-session AI suggestions) is left
+for a human to scope.
+
+---
+
 ## 2026-06-08 - Imperial units complete + backlog refilled
 
 **Context.** Close out issue #1 and keep the pipeline fed.
