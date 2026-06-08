@@ -1,7 +1,7 @@
 import { TrendingUp } from 'lucide-react';
 import { db } from '@/lib/db';
 import { requireSession } from '@/lib/auth';
-import { Card, CardContent } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
 import { MUSCLE_GROUP_LABELS } from '@/lib/schemas/exercise';
 import {
   applyBodyweight,
@@ -189,11 +189,12 @@ export default async function ProgressPage({
         </div>
 
         {exercisesWithSets.length === 0 ? (
-          <Card>
-            <CardContent className="py-8 text-center text-sm text-muted-foreground">
-              No sets recorded yet over the last {RECENT_WEEKS} weeks.
-            </CardContent>
-          </Card>
+          <EmptyState
+            icon={TrendingUp}
+            title="No progress to show yet"
+            description={`Log a few sessions and your charts and PRs will appear here, tracking the last ${RECENT_WEEKS} weeks.`}
+            action={{ label: 'Log your first session', href: '/session/new' }}
+          />
         ) : (
           <ProgressDashboard
             exercises={exercisesWithSets.map((e) => ({
