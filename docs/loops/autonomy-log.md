@@ -6,6 +6,36 @@ by the charter in [`07-autonomy.md`](07-autonomy.md).
 
 ---
 
+## 2026-06-08 - Coverage round + honest triage
+
+**Context.** Drain the test backlog and decide, honestly, whether more work is warranted.
+
+**Decided / shipped.**
+- #26 (Closes): unit tests for `lib/preferences.ts` (localStorage defaults, merge, corrupt-JSON
+  fallback, round-trip, helpers). Subagent review: READY.
+- #27 (Closes): unit tests for `lib/api.ts` error handling - `handleApiError` status mapping
+  (ApiError / Prisma P2002 -> 409 / P2025 -> 404 / unknown -> 500 with no message leak) and
+  `parseJsonBody` rejection paths. Subagent review: READY; the reviewer ran a probe to confirm
+  `instanceof Prisma.PrismaClientKnownRequestError` actually holds, so the 409/404 branches are
+  genuinely exercised (not vacuous).
+
+**Triage (honest).** The high-value pure-logic modules now have tests (schemas, units,
+preferences, api, last-performance). Rather than manufacture low-ROI tests for IO/DB modules,
+filed ONE genuinely valuable item: #30, route-level integration tests for per-user ownership
+(data isolation is a security guarantee with zero route-level coverage today). Identified the
+mockable auth seam (`getCurrentUserId`) so the issue is implementable, not half-baked.
+
+**Challenged.** Subagent reviews on #26 and #27 (both READY).
+
+**Deferred to human.** None. Larger product work (the roadmap's in-session AI suggestions)
+still needs scoping and is intentionally not auto-filed.
+
+**Next.** Implement #30 (intermediate: test Postgres + auth mocking) with subagent review. If
+the backlog empties again with no genuinely useful work left, idle cleanly - that is a valid
+outcome, not a failure.
+
+---
+
 ## 2026-06-08 - Backlog cleared (tests + polish)
 
 **Context.** Drain the triaged batch (#18/#19/#20) and keep the pipeline honest.
