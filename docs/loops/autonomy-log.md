@@ -6,6 +6,29 @@ by the charter in [`07-autonomy.md`](07-autonomy.md).
 
 ---
 
+## 2026-06-08 - First product run (catalog + content)
+
+**Context.** Maintainer loop running unsupervised under the charter. Goal: drain ready PRs,
+then improve the product, challenging each non-trivial change with a subagent.
+
+**Decided / shipped.**
+- Shipped #11 (Closes #4): expanded the seed exercise catalog by 25 movements and filled the
+  two muscle groups that had zero coverage (FOREARMS, LOWER_BACK); strengthened the catalog
+  test to assert valid enum membership and full-group coverage.
+- Content loop (this PR): recorded the now-merged demo-credentials (#6) and catalog (#4)
+  features in CHANGELOG, updated the loop-infra line, and logged this run.
+
+**Challenged.** An independent skeptic subagent reviewed the #4 diff and caught a real
+mis-classification (Hammer curl tagged FOREARMS; brachialis/biceps are the prime movers).
+Fixed to BICEPS before push, then re-verified. The author did not grade its own homework.
+
+**Deferred to human.** None.
+
+**Next.** #5 (polish empty states) with subagent review; then scope #1 (imperial units,
+larger, additive only). Triage if the backlog empties.
+
+---
+
 ## 2026-06-08 - Bootstrap autonomy
 
 **Context.** Operator switched the repo to a full-autonomy experiment: improve the product

@@ -22,6 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Streaming conversational AI coach that uses your training context.
 - `demo` LLM provider with canned responses (no API key) plus demo media for the
   AI flows, so the app and live demo work without a real key.
+- Demo credentials shown on the login screen when demo mode is enabled, so the
+  live demo is one click to try.
+- Expanded the default exercise catalog with common machine, cable, dumbbell, and
+  accessory movements, including coverage for the forearms and lower-back groups.
 - Test pyramid (unit, integration, E2E) with CI running lint, typecheck, unit,
   integration, build, and E2E on every pull request.
 - Docker and Docker Compose setup for local development and production.
@@ -30,9 +34,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Migrated the entire codebase (UI, comments, prompts, docs) from French to
   English.
-- Bootstrapped the autonomous-loop maintenance infrastructure: the green-gate
-  (`scripts/verify.sh`), the `implement-issue` skill, and the loop playbook in
-  `docs/loops/`.
+- Grew the autonomous-loop maintenance infrastructure into a full self-maintenance
+  pipeline: the green-gate (`scripts/verify.sh`); the `implement-issue`, `triage`,
+  `ship-pr`, and `write-up` skills; an autonomy charter with guardrails; and the
+  loop playbook in `docs/loops/`.
 
 ### Fixed
 
