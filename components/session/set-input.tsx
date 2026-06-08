@@ -224,7 +224,7 @@ export function SetInput({ programExercise, existingSets, lastPerformance, unit,
             rows={2}
             value={form.notes}
             onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-            placeholder="e.g. wrist pain, drop set 22.5 then 18kg, etc."
+            placeholder="e.g. wrist pain, dropped the weight mid-set, felt easy, etc."
           />
         </div>
 
