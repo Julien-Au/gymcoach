@@ -25,6 +25,9 @@ model User {
   heightCm        Int?
   goal            TrainingGoal?
   weeklyFrequency Int?
+  // Preferred weight unit for display and input. Data is always stored in kg;
+  // this only affects the presentation layer. Default keeps existing users on kg.
+  unit            WeightUnit @default(KG)
   createdAt    DateTime   @default(now())
   programs      Program[]
   sessions      Session[]
@@ -36,6 +39,11 @@ enum Sex {
   MALE
   FEMALE
   OTHER
+}
+
+enum WeightUnit {
+  KG
+  LB
 }
 
 enum TrainingGoal {

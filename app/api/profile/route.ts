@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { Sex, TrainingGoal } from '@prisma/client';
+import { Sex, TrainingGoal, WeightUnit } from '@prisma/client';
 import { db } from '@/lib/db';
 import { handleApiError, parseJsonBody, requireApiUserId } from '@/lib/api';
 
@@ -14,6 +14,8 @@ const profileUpdateSchema = z.object({
   heightCm: z.number().int().min(100).max(250).nullable().optional(),
   goal: z.nativeEnum(TrainingGoal).nullable().optional(),
   weeklyFrequency: z.number().int().min(1).max(14).nullable().optional(),
+  // Preferred weight unit (display + input only; data stays in kg).
+  unit: z.nativeEnum(WeightUnit).optional(),
 });
 
 const PROFILE_SELECT = {
@@ -24,6 +26,7 @@ const PROFILE_SELECT = {
   heightCm: true,
   goal: true,
   weeklyFrequency: true,
+  unit: true,
 } as const;
 
 export async function GET() {
@@ -54,6 +57,7 @@ export async function PATCH(req: Request) {
         ...(data.weeklyFrequency !== undefined
           ? { weeklyFrequency: data.weeklyFrequency }
           : {}),
+        ...(data.unit !== undefined ? { unit: data.unit } : {}),
       },
       select: PROFILE_SELECT,
     });
