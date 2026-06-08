@@ -41,18 +41,27 @@ interface FormatOptions {
   decimals?: number;
   // Append the unit label (default true).
   withUnit?: boolean;
+  // Always show exactly `decimals` digits, keeping trailing zeros (like
+  // toFixed). Default false: trailing zeros are dropped.
+  fixed?: boolean;
+  // Group thousands with separators (default true).
+  group?: boolean;
 }
 
 // Format a stored kg value for display in the user's unit, e.g. "70 kg" or
-// "154.3 lb". Thousands are grouped; trailing zeros are dropped.
+// "154.3 lb". Options preserve the exact look of each call site.
 export function formatWeight(
   kg: number,
   unit: WeightUnit,
   opts: FormatOptions = {},
 ): string {
-  const { decimals = 1, withUnit = true } = opts;
+  const { decimals = 1, withUnit = true, fixed = false, group = true } = opts;
   const display = roundWeight(toDisplayWeight(kg, unit), decimals);
-  const str = display.toLocaleString('en-US', { maximumFractionDigits: decimals });
+  const str = display.toLocaleString('en-US', {
+    minimumFractionDigits: fixed ? decimals : 0,
+    maximumFractionDigits: decimals,
+    useGrouping: group,
+  });
   return withUnit ? `${str} ${unitLabel(unit)}` : str;
 }
 

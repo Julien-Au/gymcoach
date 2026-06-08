@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Loader2, Save, User } from 'lucide-react';
 import { toast } from 'sonner';
-import type { Sex, TrainingGoal } from '@prisma/client';
+import type { Sex, TrainingGoal, WeightUnit } from '@prisma/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -23,6 +23,7 @@ export interface ProfileData {
   heightCm: number | null;
   goal: TrainingGoal | null;
   weeklyFrequency: number | null;
+  unit: WeightUnit;
 }
 
 interface Props {
@@ -43,6 +44,11 @@ const GOAL_OPTIONS: { value: TrainingGoal; label: string }[] = [
   { value: 'GENERAL_FITNESS', label: 'General fitness' },
 ];
 
+const UNIT_OPTIONS: { value: WeightUnit; label: string }[] = [
+  { value: 'KG', label: 'Kilograms (kg)' },
+  { value: 'LB', label: 'Pounds (lb)' },
+];
+
 function numOrEmpty(n: number | null): string {
   return n != null ? String(n) : '';
 }
@@ -58,6 +64,7 @@ export function ProfileSection({ initial }: Props) {
   const [goal, setGoal] = useState<TrainingGoal | undefined>(
     initial.goal ?? undefined,
   );
+  const [unit, setUnit] = useState<WeightUnit>(initial.unit);
   const [pending, setPending] = useState(false);
 
   function rangeOk(value: string, min: number, max: number): boolean {
@@ -86,6 +93,7 @@ export function ProfileSection({ initial }: Props) {
       };
       if (sex) body.sex = sex;
       if (goal) body.goal = goal;
+      body.unit = unit;
 
       const res = await fetch('/api/profile', {
         method: 'PATCH',
@@ -220,6 +228,26 @@ export function ProfileSection({ initial }: Props) {
               ))}
             </SelectContent>
           </Select>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-sm">Weight unit</Label>
+          <Select value={unit} onValueChange={(v) => setUnit(v as WeightUnit)}>
+            <SelectTrigger className="max-w-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {UNIT_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            Changes how weights are shown and entered. Your data is always stored
+            in kg, so switching never alters past sessions.
+          </p>
         </div>
 
         <div>

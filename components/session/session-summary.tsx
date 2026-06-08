@@ -2,24 +2,26 @@
 
 import { useState } from 'react';
 import { ChevronLeft, Check } from 'lucide-react';
-import type { Exercise, ProgramExercise, Session } from '@prisma/client';
+import type { Exercise, ProgramExercise, Session, WeightUnit } from '@prisma/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import type { PendingSet } from '@/lib/indexeddb';
+import { formatWeight } from '@/lib/units';
 
 interface Props {
   session: Session;
   sets: PendingSet[];
   programExercises: (ProgramExercise & { exercise: Exercise })[];
+  unit: WeightUnit;
   onBack: () => void;
   onFinish: () => Promise<void> | void;
   finishing: boolean;
 }
 
-export function SessionSummary({ session, sets, programExercises, onBack, onFinish, finishing }: Props) {
+export function SessionSummary({ session, sets, programExercises, unit, onBack, onFinish, finishing }: Props) {
   const [notes, setNotes] = useState(session.notes ?? '');
 
   const durationMin = Math.round(
@@ -70,7 +72,7 @@ export function SessionSummary({ session, sets, programExercises, onBack, onFini
         <div className="grid grid-cols-3 gap-3">
           <Stat label="Duration" value={`${durationMin} min`} />
           <Stat label="Sets" value={totalSets} />
-          <Stat label="Volume" value={`${Math.round(totalVolume).toLocaleString('en-US')} kg`} />
+          <Stat label="Volume" value={formatWeight(totalVolume, unit, { decimals: 0 })} />
         </div>
         <p className="text-xs text-muted-foreground">
           Volume = Σ (load × reps), {totalReps} reps total.
@@ -98,7 +100,9 @@ export function SessionSummary({ session, sets, programExercises, onBack, onFini
                   </div>
                   <span className="flex-shrink-0 text-xs text-muted-foreground">
                     {s.doneSets}/{s.targetSets} sets
-                    {s.maxWeight > 0 ? ` · max ${s.maxWeight} kg` : ''}
+                    {s.maxWeight > 0
+                      ? ` · max ${formatWeight(s.maxWeight, unit, { decimals: 2, group: false })}`
+                      : ''}
                   </span>
                 </li>
               ))}
