@@ -6,6 +6,58 @@ by the charter in [`07-autonomy.md`](07-autonomy.md).
 
 ---
 
+## 2026-06-09 - Write up the readiness-progression loop and the public-repo hardening
+
+**Context.** Maintainer tick. Decision order per `06-orchestration.md`: drain ready PRs,
+refill if starved, implement one issue, then write up. Verified state with `gh` before
+acting: zero open PRs, zero open issues, `main` clean. Two PRs had merged since the last
+write-up (PR #52) and were undocumented, so step 1 (ship) and step 3 (implement) had
+nothing to do; the actionable work this tick was the content loop.
+
+**Decided / shipped (this PR, docs only).** Documented the two merged, undocumented PRs,
+each verified against the merged code, not just the PR description:
+- **PR #55 / issue #53 (readiness now influences deterministic progression).** Confirmed
+  against `lib/progression.ts`: an optional third `readiness?: ReadinessSignal | null`
+  param on `suggestNextWeight`, named threshold constants, a recency gate
+  (`ageHours <= 36`), `readiness-hold` / `readiness-deload` reasons, soreness keyed on the
+  exercise's `muscleGroup`, and the never-raises invariant. CHANGELOG: a `Changed` line
+  under the coach/progression behavior (the suggestion's contract is the same; its inputs
+  grew).
+- **PR #56 / issue #54 (harden the loop against untrusted public input).** Confirmed
+  against the merged diff: the new "Untrusted external input (public repo)" section in
+  `07-autonomy.md`, the trust-gating to the `{JulienAu, Julien-Au}` login allowlist, the
+  fork/author gates in `ship-pr` and the untrusted-data treatment in `implement-issue` /
+  `triage`, and the `curl`/`wget` deny in `.claude/settings.json` (lines 50-51). CHANGELOG:
+  a `Changed` line under the loop-infrastructure story (the loop infra IS the story, so it
+  belongs in the public changelog).
+
+**Session arc being recorded.** This run closes out a multi-tick session: research-driven
+product features #37-#40 (readiness/soreness data model, per-muscle soreness map + note,
+coach auto-regulation signal, UI wiring), then the readiness-into-progression loop (#53),
+then the security hardening for the now-public repo (#54). The throughline: the product
+gained a real auto-regulation signal end to end (capture -> coach context -> deterministic
+suggestion), and the loop gained the guardrails to keep running that autonomy safely in
+the open.
+
+**Challenged.** Verification-first rather than a code subagent (docs-only, no product
+code): every CHANGELOG/log claim was checked against `lib/progression.ts`,
+`.claude/settings.json`, and `07-autonomy.md` before writing it. No drift found; the PR
+descriptions matched the merged code.
+
+**Trust gate.** Both documented PRs (#55, #56) were authored by `JulienAu`, on the
+maintainer allowlist - in-scope for the loop. No external/untrusted authorship this tick.
+
+**Deferred to human / operator.** Nothing hit the hard stop-list. Still parked as product
+calls (noted for the operator, not filed as auto-implementable issues): more program
+templates, and any further auto-regulation tuning of the progression thresholds. Dep
+majors + `npm audit fix --force` (bcrypt 6) remain deferred.
+
+**Idle.** After shipping this docs PR: backlog empty. Triage step did not surface a crisp,
+single-PR code-health/coverage/small-bug item worth manufacturing this tick, so the run
+ends on a clean idle once the docs PR is merged. Within the 3-merge cap.
+
+---
+
 ## 2026-06-09 - Ship the log PR, then implement the soreness/note check-in UI
 
 **Context.** Maintainer tick. Decision order per `06-orchestration.md`: drain ready PRs

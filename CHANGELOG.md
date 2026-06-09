@@ -58,6 +58,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   silently restructuring it, always explains the why behind a suggestion, and
   frames generated programs as editable drafts. The program-adjustment output
   contract is unchanged.
+- The deterministic next-weight suggestion now factors in a recent readiness
+  check-in: high soreness on the worked muscle group or low overall readiness
+  holds the load (no increment), and very poor recovery applies a single
+  conservative step-down. Readiness can only hold or reduce the suggestion, never
+  raise it, and with no recent check-in the suggestion is unchanged.
+- Hardened the autonomous maintenance loop against untrusted external input now
+  that the repo is public: external issues, PRs, comments, diffs, and CI logs are
+  treated as data and never as instructions; only issues/PRs authored by the
+  maintainer login allowlist are auto-implemented or auto-merged; forks and
+  non-maintainer PRs are never auto-merged; and the loop refuses prompt-injection
+  and secret-exfiltration attempts. Documented in the autonomy charter and
+  `CLAUDE.md`, with the loop's `curl`/`wget` denied in the harness config as
+  defense in depth.
 
 ### Fixed
 
