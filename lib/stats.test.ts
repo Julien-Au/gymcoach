@@ -7,7 +7,10 @@ import {
   exerciseProgress,
   isoWeekKey,
   isoWeekStart,
+  isStalled,
   setVolume,
+  STALL_LOOKBACK_SESSIONS,
+  STALL_TOLERANCE,
   totalVolume,
   trainingConsistency,
   weeklyVolumeByMuscleGroup,
@@ -316,5 +319,60 @@ describe('trainingConsistency', () => {
   it('clamps the window to the requested number of weeks', () => {
     const out = trainingConsistency([], { now, windowWeeks: 4 });
     expect(out.weeks).toHaveLength(4);
+  });
+});
+
+describe('isStalled', () => {
+  it('uses a default lookback of 3 sessions', () => {
+    expect(STALL_LOOKBACK_SESSIONS).toBe(3);
+  });
+
+  it('flags a flat lift over the lookback window', () => {
+    // Reached 100 earlier, then held flat: the last 3 sessions never beat the
+    // prior best of 100.
+    expect(isStalled([95, 100, 100, 100, 100])).toBe(true);
+  });
+
+  it('flags a strictly declining lift', () => {
+    expect(isStalled([110, 105, 100])).toBe(true);
+  });
+
+  it('does not flag a clearly progressing lift', () => {
+    expect(isStalled([100, 105, 110])).toBe(false);
+  });
+
+  it('does not flag when the latest session beats the prior best', () => {
+    // Prior best 100; the window dips then exceeds it -> still progressing.
+    expect(isStalled([100, 98, 102])).toBe(false);
+  });
+
+  it('does not flag with fewer than the lookback number of sessions', () => {
+    expect(isStalled([100, 100])).toBe(false);
+    expect(isStalled([100])).toBe(false);
+    expect(isStalled([])).toBe(false);
+  });
+
+  it('treats sub-tolerance growth as no improvement (still stalled)', () => {
+    // +0.4% < 0.5% tolerance -> noise, not progress.
+    const within = 100 * (1 + STALL_TOLERANCE * 0.8);
+    expect(isStalled([100, within, within])).toBe(true);
+  });
+
+  it('treats above-tolerance growth as improvement (not stalled)', () => {
+    // +0.6% > 0.5% tolerance -> a genuine gain.
+    const above = 100 * (1 + STALL_TOLERANCE * 1.2);
+    expect(isStalled([100, 100, above])).toBe(false);
+  });
+
+  it('honours a custom lookback', () => {
+    // Lookback 2: the window [100, 100] must beat the prior best (100) to count
+    // as progress; it does not, so the lift is stalled. With a higher final
+    // session it would improve and clear the flag.
+    expect(isStalled([100, 100, 100], 2)).toBe(true);
+    expect(isStalled([100, 100, 105], 2)).toBe(false);
+  });
+
+  it('never flags with a lookback below 2', () => {
+    expect(isStalled([100, 100, 100], 1)).toBe(false);
   });
 });
