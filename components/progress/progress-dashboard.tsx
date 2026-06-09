@@ -14,8 +14,9 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { MUSCLE_GROUP_LABELS } from '@/lib/schemas/exercise';
 import {
   Select,
   SelectContent,
@@ -23,8 +24,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import type { WeightUnit } from '@prisma/client';
-import { STALL_LOOKBACK_SESSIONS, type ExerciseChartPoint } from '@/lib/stats';
+import type { MuscleGroup, WeightUnit } from '@prisma/client';
+import {
+  STALL_LOOKBACK_SESSIONS,
+  type ExerciseChartPoint,
+  type VolumeLandmarkZone,
+} from '@/lib/stats';
 import { roundWeight, toDisplayWeight, unitLabel } from '@/lib/units';
 
 interface RecapRow {
@@ -50,13 +55,38 @@ interface SerializedWeeklyPoint {
   total: number;
 }
 
+// Per-muscle-group classification of the latest completed week against the
+// MEV/MRV band. Display-only; computed server-side in lib/stats.
+interface VolumeLandmarks {
+  weekKey: string;
+  mev: number;
+  mrv: number;
+  byMuscleGroup: Record<string, { sets: number; zone: VolumeLandmarkZone }>;
+}
+
 interface Props {
   exercises: { id: string; name: string; muscleGroup: string }[];
   selectedExerciseId: string | undefined;
   exercisePoints: ExerciseChartPoint[];
   weeklyPoints: SerializedWeeklyPoint[];
+  volumeLandmarks: VolumeLandmarks | null;
   recap: RecapRow[];
   unit: WeightUnit;
+}
+
+// Badge variant + short label per zone. Below MEV and above MRV are both
+// "off-target" (secondary/destructive); within the band reads as on-target.
+const ZONE_META: Record<
+  VolumeLandmarkZone,
+  { label: string; variant: 'default' | 'secondary' | 'destructive' }
+> = {
+  BELOW_MEV: { label: 'Below MEV', variant: 'secondary' },
+  WITHIN: { label: 'In range', variant: 'default' },
+  ABOVE_MRV: { label: 'Above MRV', variant: 'destructive' },
+};
+
+function muscleGroupLabel(group: string) {
+  return MUSCLE_GROUP_LABELS[group as MuscleGroup] ?? group;
 }
 
 // Stable palette for muscle groups (distinct HSL, accessible LCH).
@@ -91,6 +121,7 @@ export function ProgressDashboard({
   selectedExerciseId,
   exercisePoints,
   weeklyPoints,
+  volumeLandmarks,
   recap,
   unit,
 }: Props) {
@@ -143,6 +174,14 @@ export function ProgressDashboard({
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weeklyPoints, unit]);
+
+  // Sort the landmark rows by descending set count for a readable list.
+  const landmarkRows = useMemo(() => {
+    if (!volumeLandmarks) return [];
+    return Object.entries(volumeLandmarks.byMuscleGroup)
+      .map(([group, info]) => ({ group, ...info }))
+      .sort((a, b) => b.sets - a.sets);
+  }, [volumeLandmarks]);
 
   const exerciseChartData = exercisePoints.map((p) => ({
     ...p,
@@ -294,6 +333,44 @@ export function ProgressDashboard({
                   </Badge>
                 </li>
               ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Volume landmarks: latest week vs the MEV/MRV band */}
+      {volumeLandmarks && landmarkRows.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <h2 className="text-base font-semibold">Volume landmarks</h2>
+            <p className="text-xs text-muted-foreground">
+              Working sets in {shortLabelFromWeekKey(volumeLandmarks.weekKey)}{' '}
+              vs a reference band of {volumeLandmarks.mev}-{volumeLandmarks.mrv}{' '}
+              sets/week per muscle group (MEV-MRV). General hypertrophy
+              defaults, not a prescription.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <ul className="flex flex-col gap-2">
+              {landmarkRows.map((row) => {
+                const meta = ZONE_META[row.zone];
+                return (
+                  <li
+                    key={row.group}
+                    className="flex items-center justify-between gap-3 text-sm"
+                  >
+                    <span className="font-medium">
+                      {muscleGroupLabel(row.group)}
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <span className="text-muted-foreground">
+                        {row.sets} {row.sets === 1 ? 'set' : 'sets'}
+                      </span>
+                      <Badge variant={meta.variant}>{meta.label}</Badge>
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           </CardContent>
         </Card>
