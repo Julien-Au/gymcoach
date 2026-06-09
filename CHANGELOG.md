@@ -61,6 +61,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   on read from finished sessions (no new model). A week is on streak when it has at
   least one trained day, or meets your weekly-frequency target when one is set; the
   partial current week does not break the streak.
+- Personal records on the post-session summary: a "Personal records this session"
+  card flags exercises that beat your last session, reusing the in-session PR math
+  (`detectPRs`) against a "since last session" baseline so a set is never compared
+  with itself. Heaviest load and best estimated 1RM are shown as separate badges;
+  warm-up sets are excluded.
+- Volume landmarks card on the progress page: weekly working-set counts per muscle
+  group classified against a default MEV/MRV band (10-20 sets/week) as below,
+  within, or above the productive range. Display-only reference defaults, derived
+  on read; warm-up sets are excluded and the band does not affect progression.
+- Stalled-lift detection on the progress page: a "Stalled lifts" card flags
+  exercises whose best estimated 1RM has not improved (beyond a 0.5 percent
+  tolerance) over the last three sessions. Pure derivation over existing set
+  history; needs at least three sessions before it can flag.
 - Test pyramid (unit, integration, E2E) with CI running lint, typecheck, unit,
   integration, build, and E2E on every pull request.
 - Docker and Docker Compose setup for local development and production.

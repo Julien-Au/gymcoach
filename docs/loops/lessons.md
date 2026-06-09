@@ -74,3 +74,19 @@ Format per entry: trigger/evidence, the lesson (actionable), and **Status** = `g
 - **Status:** accepted risk - a narrow naming collision specific to this schema's `Set` model,
   not a recurring loop behavior; recorded so future `lib` work does not rediscover it under a
   red typecheck.
+
+### L7 - Serialize tasks that touch the same file: wait for the prior PR to MERGE before spawning the next
+- **Trigger:** the second ideate batch queued #81 and #82, which both edited `lib/stats.ts` and
+  the progress dashboard. The two implement agents overlapped, so the second branch was cut from
+  a `main` that did not yet contain the first's additions and hit a merge conflict (resolved by
+  merging `main` into the branch and keeping both additions).
+- **Lesson:** when two queued issues touch the same file(s), serialize strictly - do not spawn
+  the next implement agent until the prior PR has actually **merged**, so the next branch cuts
+  from a base that already contains the earlier change. Unrelated tasks may still overlap at the
+  stage level; this rule is specifically for **same-file** tasks. This sharpens the existing
+  "one writer per task" note (`implement-issue`/`ship-pr`) and `09`'s stage-vs-writer concurrency
+  ("green separately, red together"): those cover the principle; this makes the trigger concrete -
+  shared file means serialize on merge, not just on branch.
+- **Status:** graduated -> orchestration practice (`06-orchestration.md` decision order + the
+  "one linear writer per task" rule in `09-memory-and-learning.md` / `implement-issue` /
+  `ship-pr`): same-file queued issues are dispatched one at a time, gated on the prior merge.

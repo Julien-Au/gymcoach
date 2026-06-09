@@ -6,6 +6,49 @@ by the charter in [`07-autonomy.md`](07-autonomy.md).
 
 ---
 
+## 2026-06-09 - Second ideate batch (#80/#81/#82 via #84/#85/#86)
+
+**Context.** The second batch of ideate-produced product features shipped autonomously; this
+docs run is the content-loop tail that records it.
+
+**Shipped this batch.** Three additive, derived-on-read features, no schema/migration:
+- **#84 / #80 - personal records on the post-session summary.** Confirmed against
+  `components/session/session-summary.tsx`: `computeSessionPRs` reuses `lib/records` `detectPRs`
+  against a "since last session" baseline (prior-session sets + earlier sets this session), so a
+  set is never compared with itself; warm-ups excluded; renders a "Personal records this session"
+  card with heaviest-load / best-e1RM badges.
+- **#85 / #81 - MEV/MRV volume landmarks.** Confirmed against `lib/stats.ts`:
+  `WEEKLY_SETS_MEV=10`, `WEEKLY_SETS_MRV=20`, `weeklySetsByMuscleGroup` (working-set counts per
+  ISO week, warm-ups excluded), and `classifyWeeklySets` (inclusive band -> BELOW_MEV / WITHIN /
+  ABOVE_MRV). A "Volume landmarks" card on the progress dashboard; display-only.
+- **#86 / #82 - stalled-lift detection.** Confirmed against `lib/stats.ts`: `isStalled` over a
+  per-session best-e1RM series with `STALL_LOOKBACK_SESSIONS=3` and `STALL_TOLERANCE=0.005`
+  (0.5%), never flagging with fewer than `lookback` sessions; a "Stalled lifts" card on the
+  progress dashboard.
+
+**Challenged / verified.** Docs-only, verification-first: every CHANGELOG/log claim was read out
+of `components/session/session-summary.tsx` and `lib/stats.ts` (the constants, the band edges,
+the lookback/tolerance) before writing it, not trusted from the PR summaries.
+
+**Lesson harvested.** L7 - #81 and #82 both edited `lib/stats.ts` and the progress dashboard; the
+two implement agents overlapped, so the second branch cut from a stale `main` and hit a merge
+conflict (resolved by merging `main` in and keeping both additions). Graduated into the
+orchestration decision order (`06`): serialize same-file queued issues, gated on the prior PR
+actually merging - sharpening the existing "one writer per task" / "green separately, red
+together" notes.
+
+**Comprehension digest exercised.** The per-batch reading-list mechanism (#79) was used: the
+digest ranks this batch modest and points the human first at the shared `lib/stats.ts` helpers
+(`isStalled` / `classifyWeeklySets` / `weeklySetsByMuscleGroup`), with the additive cards to skim.
+
+**Trust gate.** All three documented PRs (#84/#85/#86) and the issues they closed (#80/#81/#82)
+were authored by `JulienAu`, on the maintainer allowlist - in-scope for the loop.
+
+**Deferred to human / operator.** Unchanged: dep majors + `bcrypt` 6 remain parked; the
+non-additive product ideas the ideate run rejected stay for a human.
+
+---
+
 ## 2026-06-09 - The loop starts growing the product: ideation + the first ideate batch
 
 **Context.** A multi-tick session that closed the gap between "the loop maintains the repo"
