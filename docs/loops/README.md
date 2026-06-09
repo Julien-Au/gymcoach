@@ -24,20 +24,24 @@ This folder is the reproducible playbook. Read in order:
 - [`07-autonomy.md`](07-autonomy.md) - the charter for running unsupervised: mandate,
   hard guardrails, the stop-for-human list, the subagent challenge protocol, and the
   rollback baseline. Paired with the append-only [`autonomy-log.md`](autonomy-log.md).
+- [`08-ideation-loop.md`](08-ideation-loop.md) - the head above triage: when even triage
+  comes up dry, manufacture bounded **product** feature ideas (the cheap, recurring cousin
+  of the one-off deep-research workflow) so the product keeps growing, not just the test
+  suite. Logs to [`ideas-backlog.md`](ideas-backlog.md).
 
 ## The system at a glance
 
 ```
             maintainer loop (06): cron + a decision-maker each tick
                                   |
-   +----------------+------------+------------+-----------------+
-   v                v                         v                 v
- triage (03)   implement-issue (02)      ship-pr (04)      write-up (05)
- refill the    one issue -> one PR       watch CI, fix     CHANGELOG +
- backlog       (branch->code->test)      red, self-review, playbook stay
- when low                                auto-merge GREEN  true to reality
-   |                |                         |                 |
-   +----------------+------------+------------+-----------------+
+   +-------------+-------------+-----------+-----------+-------------+
+   v             v             v                       v             v
+ triage (03)  ideate (08)  implement (02)        ship-pr (04)   write-up (05)
+ refill code  refill        one issue -> one PR   watch CI, fix  CHANGELOG +
+ -health when PRODUCT       (branch->code->test)  red, review,   playbook stay
+ backlog low  ideas when                          auto-merge     true to reality
+   |          starved (bounded)  |                 GREEN  |          |
+   +-------------+-------------+-----------+-----------+-------------+
                                   |
                     scripts/verify.sh + CI = the feedback gate
                     (nothing merges on a red or pending gate)
@@ -47,6 +51,9 @@ This folder is the reproducible playbook. Read in order:
 
 The pipeline is **generate work -> do work -> verify in CI -> ship -> tell the story**.
 Each stage is a small loop calling one tested skill; `06` is the loop that runs them.
+`triage` (03) generates code-health work; `ideate` (08) generates product work when even
+triage is dry, so the product grows toward "the most complete AI fitness app", not just a
+tidier repo.
 
 ## The four rules we never break
 
