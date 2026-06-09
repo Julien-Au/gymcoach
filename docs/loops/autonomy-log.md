@@ -6,6 +6,52 @@ by the charter in [`07-autonomy.md`](07-autonomy.md).
 
 ---
 
+## 2026-06-09 - Chain everything: templates, readiness explainability + opt-out
+
+**Context.** Operator said "chain everything": run the full pipeline unsupervised under the
+charter. Three product bets (issues #59/#60/#61) were scoped, implemented, and merged
+autonomously this session; this docs run is the content-loop tail that records them. Three
+PRs had merged since the last write-up (PR #58) and were undocumented.
+
+**Decided / shipped (this PR, docs only).** Documented the three merged PRs, each verified
+against the merged code, not just the PR description:
+- **PR #62 / issue #59 (expanded template catalog).** Confirmed against
+  `lib/programs/templates.ts`: six new `ProgramTemplate` entries (slugs
+  `starting-strength-3day`, `stronglifts-5x5-3day`, `madcow-5x5-3day`, `phul-4day`,
+  `phat-5day`, `full-body-3day`) added additively next to the original five, each
+  schema-validated at module load and asserted to materialize into a runnable program by
+  `templates.test.ts`. CHANGELOG: extended the existing `Added` templates line.
+- **PR #63 / issue #60 (readiness explainability).** Confirmed against
+  `components/session/exercise-card.tsx`: the `readiness-hold` / `readiness-deload` reason
+  from `suggestNextWeight` is plumbed to the set UI and rendered as a badge composed from a
+  verb ("Held" / "Lighter") and a cause ("reported soreness" / "low readiness today"), with
+  no UI when there is no readiness signal. CHANGELOG: a new `Added` line.
+- **PR #64 / issue #61 (readiness auto-regulation opt-out).** Confirmed against
+  `lib/preferences.ts` (`readinessAutoRegulation: true` in `DEFAULT_PREFERENCES`, additive,
+  no Prisma migration) and `lib/progression.ts` (`readinessForSuggestion` gate, applied in
+  `SessionRunner`): default on; off reproduces pre-readiness pure programmed progression.
+  CHANGELOG: folded into the existing `Changed` readiness-progression line.
+
+**Challenged.** Verification-first (docs-only, no product code): each CHANGELOG/log claim was
+checked against `lib/programs/templates.ts`, `components/session/exercise-card.tsx`,
+`lib/preferences.ts`, and `lib/progression.ts` before writing it. The badge wording in the
+PR summary matched the code (verb + cause composition).
+
+**Trust gate.** All three documented PRs (#62/#63/#64) and the product issues they closed
+(#59/#60/#61) were authored by `JulienAu`, on the maintainer allowlist - in-scope for the
+loop. External issue #57 was closed as not-planned by the trust gate (untrusted external
+authorship; never promoted into auto-implementable work).
+
+**Deferred to human / operator.** Dependency major bumps and `bcrypt` 6 remain parked as a
+separate human-reviewed draft, not actioned here. Further product calls (still more
+templates, progression-threshold tuning) noted for the operator rather than filed as
+auto-implementable issues.
+
+**Idle.** After this docs PR the product backlog is empty; a triage sweep follows to decide
+whether a crisp, single-PR code-health item is worth manufacturing, else a clean idle.
+
+---
+
 ## 2026-06-09 - Write up the readiness-progression loop and the public-repo hardening
 
 **Context.** Maintainer tick. Decision order per `06-orchestration.md`: drain ready PRs,
