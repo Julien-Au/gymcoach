@@ -6,7 +6,57 @@ by the charter in [`07-autonomy.md`](07-autonomy.md).
 
 ---
 
-## 2026-06-09 - Ship the log PR, refill the backlog, harden the readiness route
+## 2026-06-09 - Ship the log PR, then implement the soreness/note check-in UI
+
+**Context.** Maintainer tick. Decision order per `06-orchestration.md`: drain ready PRs
+first, then implement one issue, then write up. Verified state with `gh` before acting:
+PR #50 (docs) had three green checks with E2E pending; one open issue, #48.
+
+**Decided / shipped (merged, 2).**
+- **PR #50 (docs: changelog the shipped features + log the prior tick).** Polled E2E to
+  green (all four checks pass), reviewed the diff (CHANGELOG entries for the shipped
+  plate calculator / templates / readiness features + an accurate dated log entry, no
+  em-/en-dashes), squash-merged. This drained the only ready PR, satisfying step 1.
+- **PR #51 (feat: capture per-muscle soreness and a note in the readiness check-in,
+  Closes #48).** Implemented next; green CI; squash-merged.
+
+**Implemented #48.** The readiness data model, `/api/readiness` route, and coach prompt
+already supported a partial `MuscleGroup -> 1-5` soreness map and a free-text note (#38),
+but the pre-session UI only submitted `readiness` + `sleepQuality`, so that coach
+capability was dead. Wired it up in `components/session/readiness-checkin.tsx` behind an
+optional, collapsed-by-default "Add soreness / note" toggle so the quick two-tap path is
+unchanged: per-muscle soreness rated 1-5 (labels reused from the shared
+`MUSCLE_GROUP_LABELS`), tap-again-to-clear, an optional note via the existing `Textarea`
+primitive capped at 500 to match the schema. Only rated groups are sent (a partial map);
+an empty map / blank note are omitted. The payload is validated client-side with the same
+`readinessCheckinInputSchema` the route uses (no duplicated validation). Added
+`components/session/readiness-checkin.test.tsx` (quick path, missing-rating guard,
+collapsed-by-default, partial-map + note round-trip, tap-to-clear). No change to the
+route, schema, prompt, or coach output contract.
+
+**Challenged.** Independent skeptic lens (`code-review`, high) on the diff: no
+correctness or convention defects. Pressure-tested the one real regression risk - that the
+new client-side `safeParse` could reject a previously-valid quick-path submission - by
+probing `readinessCheckinInputSchema` against every payload the component builds (quick
+path, soreness + note, max-length note); all validate, so the quick path is a strict
+subset of the old behavior. The only note (soreness section has no re-collapse) is
+intentional low-friction design, not a defect. Verdict: ready.
+
+**Process notes.** Green-gate passed (lint + typecheck + unit + build); the 5 new
+component tests pass under vitest. Test-Postgres schema was already migrated from the
+prior tick, so the integration tier (run in CI) needed no `prisma migrate deploy` here. No
+route add/remove on the branch, so no stale `.next/types` cleanup needed.
+
+**Deferred to human.** Nothing hit the hard stop-list. Still parked from earlier ticks:
+dep majors + `npm audit fix --force` (bcrypt 6); wiring readiness/soreness into the
+deterministic `suggestNextWeight` progression and "more program templates" remain product
+calls, not filed.
+
+**Idle.** After this: zero open issues, zero open PRs. Backlog genuinely empty; did not
+manufacture triage work this tick (cap reached on useful work, clean idle is success). 2
+merges this run, under the cap of 3.
+
+---
 
 **Context.** Maintainer tick after the research-driven product run. Decision order per
 `06-orchestration.md`: drain ready PRs first, then refill if the backlog is starved, then
