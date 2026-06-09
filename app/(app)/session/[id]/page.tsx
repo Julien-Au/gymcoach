@@ -2,6 +2,7 @@ import { notFound, redirect } from 'next/navigation';
 import { db } from '@/lib/db';
 import { requireSession } from '@/lib/auth';
 import { getLastPerformances, type LastPerformance } from '@/lib/last-performance';
+import { READINESS_RECENCY_HOURS, type ReadinessSignal } from '@/lib/progression';
 import { SessionRunner, type SerializedLastPerformance } from '@/components/session/session-runner';
 
 interface Props {
@@ -36,9 +37,13 @@ export default async function SessionRunPage({ params }: Props) {
   if (!session.workout) notFound();
 
   const exerciseIds = session.workout.exercises.map((pe) => pe.exerciseId);
-  const [lastPerformances, user] = await Promise.all([
+  const [lastPerformances, user, latestCheckin] = await Promise.all([
     getLastPerformances(auth.userId, exerciseIds, session.id),
     db.user.findUnique({ where: { id: auth.userId }, select: { unit: true } }),
+    db.readinessCheckin.findFirst({
+      where: { userId: auth.userId },
+      orderBy: { createdAt: 'desc' },
+    }),
   ]);
 
   const lastPerfRecord: Record<string, SerializedLastPerformance> = {};
@@ -46,13 +51,45 @@ export default async function SessionRunPage({ params }: Props) {
     lastPerfRecord[k] = serializePerf(v);
   }
 
+  const readiness = buildReadinessSignal(latestCheckin);
+
   return (
     <SessionRunner
       session={session}
       lastPerformances={lastPerfRecord}
+      readiness={readiness}
       unit={user?.unit ?? 'KG'}
     />
   );
+}
+
+// Turn the latest check-in into the readiness signal that drives the load
+// suggestion. We only forward an in-window check-in; a stale one is dropped here
+// so the client never has to reason about clocks (and the suggestion stays
+// identical to the no-data path). Returns null when there is no usable signal.
+function buildReadinessSignal(
+  checkin: {
+    readiness: number;
+    soreness: unknown;
+    createdAt: Date;
+  } | null,
+): ReadinessSignal | null {
+  if (!checkin) return null;
+  const ageHours = (Date.now() - checkin.createdAt.getTime()) / (1000 * 60 * 60);
+  if (ageHours > READINESS_RECENCY_HOURS) return null;
+
+  // soreness is stored as JSON; coerce defensively to a plain { group: 1-5 } map.
+  let soreness: ReadinessSignal['soreness'] = null;
+  if (checkin.soreness && typeof checkin.soreness === 'object' && !Array.isArray(checkin.soreness)) {
+    const entries = Object.entries(checkin.soreness as Record<string, unknown>).filter(
+      ([, v]) => typeof v === 'number',
+    ) as Array<[string, number]>;
+    if (entries.length > 0) {
+      soreness = Object.fromEntries(entries) as ReadinessSignal['soreness'];
+    }
+  }
+
+  return { readiness: checkin.readiness, soreness, ageHours };
 }
 
 function serializePerf(p: LastPerformance): SerializedLastPerformance {

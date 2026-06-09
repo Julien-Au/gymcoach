@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { suggestNextWeight, weightIncrement } from '@/lib/progression';
+import { suggestNextWeight, weightIncrement, type ReadinessSignal } from '@/lib/progression';
 import { PlateCalculator } from '@/components/session/plate-calculator';
 import type { PendingSet } from '@/lib/indexeddb';
 import type { SerializedLastPerformance } from './session-runner';
@@ -25,6 +25,7 @@ interface Props {
   programExercise: ProgramExercise & { exercise: Exercise };
   existingSets: PendingSet[];
   lastPerformance: SerializedLastPerformance | undefined;
+  readiness: ReadinessSignal | null;
   unit: WeightUnit;
   onSubmit: (values: {
     weight: number;
@@ -47,16 +48,23 @@ interface FormState {
 
 const RIR_OPTIONS = [0, 1, 2, 3];
 
-export function SetInput({ programExercise, existingSets, lastPerformance, unit, onSubmit }: Props) {
+export function SetInput({
+  programExercise,
+  existingSets,
+  lastPerformance,
+  readiness,
+  unit,
+  onSubmit,
+}: Props) {
   // Pre-fill: last set of this exercise in the current session,
   // otherwise the last performance, otherwise defaults.
-  const initial = computeInitial(programExercise, existingSets, lastPerformance);
+  const initial = computeInitial(programExercise, existingSets, lastPerformance, readiness);
   const [form, setForm] = useState<FormState>(initial);
   const [submitting, setSubmitting] = useState(false);
 
   // Re-init when the exercise changes or a set changes.
   useEffect(() => {
-    setForm(computeInitial(programExercise, existingSets, lastPerformance));
+    setForm(computeInitial(programExercise, existingSets, lastPerformance, readiness));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [programExercise.id, existingSets.length]);
 
@@ -250,6 +258,7 @@ function computeInitial(
   pe: ProgramExercise & { exercise: Exercise },
   existingSets: PendingSet[],
   lastPerf: SerializedLastPerformance | undefined,
+  readiness: ReadinessSignal | null,
 ): FormState {
   // 1. If a set already exists for this exercise in the current session,
   //    reuse its values (idea: you aim for the same load, adjust the reps).
@@ -268,7 +277,7 @@ function computeInitial(
   //    progressing, aim for the bottom of the rep range with the heavier
   //    load; otherwise try to beat the previous reps (at least match them).
   if (lastPerf) {
-    const suggestion = suggestNextWeight(pe, lastPerf.sets);
+    const suggestion = suggestNextWeight(pe, lastPerf.sets, readiness);
     const initialReps =
       suggestion.reason === 'progression'
         ? pe.targetRepsMin
