@@ -31,6 +31,11 @@ export interface CoachPayload {
   weekCurrent: WeekSummary;
   weekPrevious: WeekSummary | null;
   activeProgram: ProgramSummary | null;
+  // Latest pre-session readiness / soreness check-in (issue #38), when the user
+  // filled one in recently. Input signal for recovery-anchored auto-regulation;
+  // null when there is no recent check-in. The coach reasons over this but its
+  // output contract (the <adjustments> block) is unchanged.
+  latestReadiness: ReadinessSummary | null;
   // For each program exercise: the progression over the last 8 weeks
   // (max loads + 1RM per session, effective values with bodyweight included).
   recentProgress: Array<{
@@ -48,6 +53,20 @@ export interface CoachPayload {
       estimated1RM: number;
     }>;
   }>;
+}
+
+interface ReadinessSummary {
+  // ISO date of the check-in.
+  date: string;
+  // Whole-days-ago since the check-in, so the coach can weight its relevance.
+  daysAgo: number;
+  // Overall readiness to train, 1 (drained) to 5 (primed).
+  readiness: number;
+  // Sleep quality the previous night, 1 (poor) to 5 (great).
+  sleepQuality: number;
+  // Optional per-muscle-group soreness ratings (group -> 1-5).
+  soreness: Record<string, number> | null;
+  note: string | null;
 }
 
 interface WeekSummary {
@@ -122,10 +141,12 @@ export async function buildCoachPayload(userId: string): Promise<CoachPayload> {
   });
   const bodyweight = user?.bodyweight ?? null;
 
-  const [currentWeek, previousWeek, activeProgram, recentSets] = await Promise.all([
+  const [currentWeek, previousWeek, activeProgram, latestReadiness, recentSets] =
+    await Promise.all([
     weekSummary(userId, currentWeekStart, addDays(currentWeekStart, 7), bodyweight),
     weekSummary(userId, previousWeekStart, currentWeekStart, bodyweight),
     fetchActiveProgram(userId),
+    fetchLatestReadiness(userId, now),
     db.set.findMany({
       where: {
         isWarmup: false,
@@ -224,6 +245,7 @@ export async function buildCoachPayload(userId: string): Promise<CoachPayload> {
     weekCurrent: currentWeek,
     weekPrevious: previousWeek.sessions.length === 0 ? null : previousWeek,
     activeProgram,
+    latestReadiness,
     recentProgress: recentProgress.sort((a, b) =>
       a.exerciseName.localeCompare(b.exerciseName),
     ),
@@ -359,6 +381,43 @@ async function fetchActiveProgram(userId: string): Promise<ProgramSummary | null
         targetRIR: pe.targetRIR,
       })),
     })),
+  };
+}
+
+// The most recent readiness check-in, but only if it is recent enough to be
+// relevant (within the last 7 days). Returns null otherwise. This is an INPUT
+// signal for the coach; it does not change the coach output contract.
+async function fetchLatestReadiness(
+  userId: string,
+  now: Date,
+): Promise<ReadinessSummary | null> {
+  const sevenDaysAgo = addDays(now, -7);
+  const checkin = await db.readinessCheckin.findFirst({
+    where: { userId, createdAt: { gte: sevenDaysAgo } },
+    orderBy: { createdAt: 'desc' },
+  });
+  if (!checkin) return null;
+
+  const daysAgo = Math.floor(
+    (now.getTime() - checkin.createdAt.getTime()) / (1000 * 60 * 60 * 24),
+  );
+
+  // soreness is stored as JSON; coerce to a plain { group: 1-5 } map defensively.
+  let soreness: Record<string, number> | null = null;
+  if (checkin.soreness && typeof checkin.soreness === 'object' && !Array.isArray(checkin.soreness)) {
+    const entries = Object.entries(checkin.soreness as Record<string, unknown>).filter(
+      ([, v]) => typeof v === 'number',
+    ) as Array<[string, number]>;
+    if (entries.length > 0) soreness = Object.fromEntries(entries);
+  }
+
+  return {
+    date: checkin.createdAt.toISOString(),
+    daysAgo,
+    readiness: checkin.readiness,
+    sleepQuality: checkin.sleepQuality,
+    soreness,
+    note: checkin.note,
   };
 }
 

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { StartWorkoutButton } from '@/components/session/start-workout-button';
+import { ReadinessCheckin } from '@/components/session/readiness-checkin';
 import { DAY_LABELS } from '@/lib/schemas/workout';
 
 export default async function NewSessionPage() {
@@ -70,7 +71,9 @@ export default async function NewSessionPage() {
             </CardContent>
           </Card>
         ) : (
-          <ul className="flex flex-col gap-3">
+          <>
+            <ReadinessCheckin />
+            <ul className="flex flex-col gap-3">
             {activeProgram.workouts.map((w) => {
               const day = w.dayOfWeek != null ? DAY_LABELS[w.dayOfWeek - 1] : null;
               return (
@@ -97,7 +100,8 @@ export default async function NewSessionPage() {
                 </li>
               );
             })}
-          </ul>
+            </ul>
+          </>
         )}
       </div>
     </main>
