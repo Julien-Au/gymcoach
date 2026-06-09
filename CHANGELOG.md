@@ -31,6 +31,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Weight-unit preference: choose kilograms or pounds for displaying and entering
   weights everywhere (logging, history, summaries, and progress charts). Data is
   always stored in kg.
+- In-workout plate-loading calculator: from the set logger, see the per-side plate
+  breakdown for a target weight in your display unit, with configurable bar and
+  plate inventory per unit, and an honest note when a weight cannot be loaded
+  exactly.
+- Built-in program templates (5/3/1 Boring But Big, GZCLP, nSuns, Push/Pull/Legs,
+  Upper/Lower): start a program from a template through the same generation path
+  the AI uses, then edit it like any program.
+- Optional pre-session readiness check-in (overall readiness and sleep quality on
+  1-5 scales): skippable, never blocks starting a session, and feeds the AI coach
+  as one more auto-regulation signal when it is recent.
 - Test pyramid (unit, integration, E2E) with CI running lint, typecheck, unit,
   integration, build, and E2E on every pull request.
 - Docker and Docker Compose setup for local development and production.
@@ -43,6 +53,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   pipeline: the green-gate (`scripts/verify.sh`); the `implement-issue`, `triage`,
   `ship-pr`, and `write-up` skills; an autonomy charter with guardrails; and the
   loop playbook in `docs/loops/`.
+- Sharpened the AI coach's positioning: it advises within your program rather than
+  silently restructuring it, always explains the why behind a suggestion, and
+  frames generated programs as editable drafts. The program-adjustment output
+  contract is unchanged.
 
 ### Fixed
 

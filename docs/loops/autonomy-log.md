@@ -6,6 +6,58 @@ by the charter in [`07-autonomy.md`](07-autonomy.md).
 
 ---
 
+## 2026-06-09 - Ship the log PR, refill the backlog, harden the readiness route
+
+**Context.** Maintainer tick after the research-driven product run. Decision order per
+`06-orchestration.md`: drain ready PRs first, then refill if the backlog is starved, then
+implement one issue, then write up. Verified state with `gh` before acting: PR #46 green,
+zero open issues.
+
+**Decided / shipped (merged, 1).**
+- **PR #46 (docs: log the research-driven product run).** All four CI checks green, docs-only,
+  reviewed the diff (a single dated log entry, accurate, no em-/en-dashes). Squash-merged. This
+  drained the only ready PR; #43/#44/#45 had already merged earlier in the session, so step 1
+  was satisfied.
+
+**Backlog was empty -> triaged (2 issues filed).** Swept code markers (none), lib coverage
+holes, the README roadmap, and `npm outdated`/`audit`. The in-range dep bumps were already
+applied in #45 and everything left is a major (stop-list), so no dep issue. Filed:
+- **#47 - integration coverage for the `/api/readiness` route handlers.** The route shipped in
+  #38 had no direct test (only the coach-payload side was covered); other routes are covered in
+  `route-ownership.test.ts` but this newer one was missed.
+- **#48 - let the readiness check-in capture per-muscle-group soreness (and a note).** The
+  schema, route, and coach prompt all already support `soreness` + `note`, but the UI only
+  submits readiness + sleep, so that coach capability is effectively dead. Small UI half of an
+  already-built feature, not a new product direction.
+
+Deliberately did NOT file: wiring readiness into the deterministic `suggestNextWeight`, and
+"more program templates" - both are product calls, not single-PR mechanical work.
+
+**Implemented #47 (PR #49, opened, CI pending).** Added `tests/integration/readiness-route.test.ts`
+(GET + POST: 201 + persist, soreness/note round-trip, Zod 4xx with nothing persisted, GET
+latest/null, GET scoped to caller). Test-only, no production code. Green-gate `--full` passed
+(26 integration tests, E2E green).
+
+**Challenged.** Independent skeptic lens (`code-review`) on the diff: no correctness/convention
+defects, but it flagged that the cross-user isolation test only proved the stranger got `null`
+because they had no row - not that the owner's row was filtered. Treated as a real (if minor)
+finding: rewrote the test so the stranger has an older row and the owner a newer one, so an
+unscoped query would have leaked the owner's; now it genuinely proves scoping. Re-verified green.
+
+**Process notes.** The freshly-created test Postgres on :5434 had no schema; the integration
+tier failed with `relation "Message" does not exist` until `prisma migrate deploy` was run
+against it. Not a code defect - environment setup. Strict `noUncheckedIndexedAccess` rejected
+`checkins[0]`; switched to `findFirstOrThrow`. No destructive ops; `find -delete` not needed
+this tick (no route add/remove on the branches switched).
+
+**Deferred to human.** Nothing hit the hard stop-list. Dep majors + the `npm audit fix --force`
+(bcrypt 6) still parked from #35. #48 left for the next implement tick.
+
+**Next.** Ship #49 on green CI (next tick / human). Then implement #48 (the soreness UI), or
+idle if no actionable work remains.
+
+---
+
 ## 2026-06-09 - Research-driven product issues (#39, #37, #38, #40, #35)
 
 **Context.** Operator fed in five research-driven product issues and set a merge cap of 2
