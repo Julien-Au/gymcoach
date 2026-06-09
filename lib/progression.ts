@@ -67,6 +67,18 @@ export interface ReadinessSignal {
   ageHours: number;
 }
 
+// Applies the user's auto-regulation preference (issue #61) to a readiness
+// signal before it reaches suggestNextWeight. When the preference is off, the
+// signal is dropped (returns null), so the suggestion follows pure programmed
+// progression - identical to the pre-#55 behavior. When on, the signal passes
+// through unchanged. Kept pure so the gate is unit-testable on its own.
+export function readinessForSuggestion(
+  readiness: ReadinessSignal | null,
+  autoRegulationEnabled: boolean,
+): ReadinessSignal | null {
+  return autoRegulationEnabled ? readiness : null;
+}
+
 export function suggestNextWeight(
   programExercise: ProgramExercise & { exercise: Exercise },
   lastSets: Pick<Set, 'weight' | 'reps' | 'rir'>[],
