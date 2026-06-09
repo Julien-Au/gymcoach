@@ -33,6 +33,7 @@ model User {
   sessions      Session[]
   exercises     Exercise[]
   conversations Conversation[]
+  readinessCheckins ReadinessCheckin[]
 }
 
 enum Sex {
@@ -212,4 +213,26 @@ model CoachSession {
   response  String    @db.Text
   appliedAt DateTime?
   createdAt DateTime  @default(now())
+}
+
+// Pre-session readiness / soreness check-in (issue #38). Additive, optional:
+// the app never requires a check-in, and the coach treats it as one more input
+// signal for recovery-anchored auto-regulation. Soreness is stored per muscle
+// group as a JSON map (group -> 1-5) so adding groups later needs no migration.
+model ReadinessCheckin {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Overall readiness to train, 1 (drained) to 5 (primed).
+  readiness    Int
+  // Sleep quality the previous night, 1 (poor) to 5 (great).
+  sleepQuality Int
+  // Optional per-muscle-group soreness: { "QUADS": 4, "CHEST": 2, ... } on a
+  // 1-5 scale. Stored as JSON to stay flexible without a schema change.
+  soreness     Json?
+  // Optional free-text note.
+  note         String?
+  createdAt    DateTime @default(now())
+
+  @@index([userId, createdAt])
 }

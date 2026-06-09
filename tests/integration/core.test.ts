@@ -187,3 +187,67 @@ describe('buildCoachPayload isolation', () => {
     expect(names).not.toContain('B-Only Squat');
   });
 });
+
+describe('buildCoachPayload readiness (issue #38)', () => {
+  it('surfaces the latest recent readiness check-in into the payload', async () => {
+    const user = await makeUser('readiness@test.dev');
+
+    // An older check-in and a newer one: the newest should win.
+    await db.readinessCheckin.create({
+      data: {
+        userId: user.id,
+        readiness: 2,
+        sleepQuality: 2,
+        createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+      },
+    });
+    await db.readinessCheckin.create({
+      data: {
+        userId: user.id,
+        readiness: 4,
+        sleepQuality: 5,
+        soreness: { QUADS: 5, CHEST: 2 },
+        note: 'legs sore',
+      },
+    });
+
+    const payload = await buildCoachPayload(user.id);
+    expect(payload.latestReadiness).not.toBeNull();
+    expect(payload.latestReadiness?.readiness).toBe(4);
+    expect(payload.latestReadiness?.sleepQuality).toBe(5);
+    expect(payload.latestReadiness?.soreness).toEqual({ QUADS: 5, CHEST: 2 });
+    expect(payload.latestReadiness?.note).toBe('legs sore');
+  });
+
+  it('ignores a stale check-in older than 7 days', async () => {
+    const user = await makeUser('stale-readiness@test.dev');
+    await db.readinessCheckin.create({
+      data: {
+        userId: user.id,
+        readiness: 3,
+        sleepQuality: 3,
+        createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+      },
+    });
+
+    const payload = await buildCoachPayload(user.id);
+    expect(payload.latestReadiness).toBeNull();
+  });
+
+  it('does not leak another user check-in', async () => {
+    const userA = await makeUser('ra@test.dev');
+    const userB = await makeUser('rb@test.dev');
+    await db.readinessCheckin.create({
+      data: { userId: userB.id, readiness: 5, sleepQuality: 5 },
+    });
+
+    const payload = await buildCoachPayload(userA.id);
+    expect(payload.latestReadiness).toBeNull();
+  });
+
+  it('is null when the user never checked in', async () => {
+    const user = await makeUser('no-readiness@test.dev');
+    const payload = await buildCoachPayload(user.id);
+    expect(payload.latestReadiness).toBeNull();
+  });
+});
