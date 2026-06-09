@@ -21,10 +21,13 @@ changes on.
 
 ## Procedure (per PR)
 
-1. **Load state.**
-   `gh pr view <n> --json number,title,headRefName,isDraft,mergeable,reviewDecision,state`.
-   Skip immediately if: draft, `state != OPEN`, `reviewDecision == CHANGES_REQUESTED`,
-   or not targeting `main`. Report why it was skipped.
+1. **Load state and trust gate.**
+   `gh pr view <n> --json number,title,headRefName,isCrossRepository,author,authorAssociation,isDraft,mergeable,reviewDecision,state`.
+   This repo is public. Skip immediately and leave for human review (do NOT auto-merge,
+   regardless of green CI) if the PR is **from a fork** (`isCrossRepository == true`) or its
+   author is not a trusted maintainer (`JulienAu`/`Julien-Au`, the loop's own account) -
+   external contributions get a human. Also skip if: draft, `state != OPEN`,
+   `reviewDecision == CHANGES_REQUESTED`, or not targeting `main`. Report why it was skipped.
 
 2. **Watch CI.** `gh pr checks <n> --watch` (blocks until checks settle), or poll
    `gh pr checks <n>`. Three outcomes:
@@ -56,6 +59,9 @@ changes on.
 
 - Never `gh pr merge` while any required check is red or pending.
 - Never merge a draft, a `CHANGES_REQUESTED` PR, or one not targeting `main`.
+- Never auto-merge a fork PR (`isCrossRepository`) or a PR authored by a non-maintainer
+  account, even on green CI; external contributions require human review (the public-repo
+  trust boundary - see the charter's "Untrusted external input").
 - At most 3 fix attempts per PR; then stop and hand off.
 - Per run, ship at most the PRs you were given (or cap "ship the ready PRs" at a small
   batch so a bad change cannot cascade). One merge at a time; re-check the next PR's CI
