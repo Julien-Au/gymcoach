@@ -32,7 +32,10 @@ decides what to do next**. The maintainer loop's decision each tick:
    caps: <= 3 issues, no run while >= 3 idea issues are open, never the heavy
    deep-research workflow.)
 4. **Is there an actionable issue?** -> implement the next one (-> a PR, which next tick's
-   step 1 will ship).
+   step 1 will ship). If two queued issues touch the **same file(s)**, serialize: implement
+   one, wait for its PR to actually **merge**, then implement the next from the updated `main`.
+   Do not overlap same-file tasks, or the second branch cuts from a stale base and hits a merge
+   conflict (lesson L7). Unrelated tasks may still overlap at the stage level (see `09`).
 5. **Did things merge since the last write-up?** -> run the content loop.
 6. **Nothing to do on any of the above?** -> stop. A clean idle is success, not failure.
 

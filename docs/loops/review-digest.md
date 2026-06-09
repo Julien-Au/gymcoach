@@ -13,6 +13,28 @@ Read a diff with `gh pr diff <n>`.
 
 ---
 
+## 2026-06-09 - second ideate batch (#84/#85/#86): analytics + UI on lib/stats.ts
+
+Three additive, derived-on-read features shipped (issues #80/#81/#82): personal records on the
+post-session summary (#84), MEV/MRV volume landmarks (#85), and stalled-lift detection (#86).
+No schema, no migration, no auth/prompt change - so this batch ranks **modest**. The one read
+worth your time:
+
+1. **#85 + #86 - the new `lib/stats.ts` helpers (core behavior).** `gh pr diff 86` then
+   `gh pr diff 85`. Several features now share this file: `isStalled` (e1RM flat over the last
+   `STALL_LOOKBACK_SESSIONS=3` within `STALL_TOLERANCE=0.5%`), `classifyWeeklySets` /
+   `WEEKLY_SETS_MEV=10` / `WEEKLY_SETS_MRV=20`, and `weeklySetsByMuscleGroup`. These are pure
+   functions that drive what users are told about their training; read the thresholds and the
+   "needs >= 3 sessions to flag" / inclusive-band edges. (Note: #81 and #82 both edited this
+   file and overlapped - see L7; the merged result is what the gate ran on.)
+
+**Skim (additive UI - lower risk):** #84 personal-records card (`computeSessionPRs` in
+`components/session/session-summary.tsx`, reuses `detectPRs` with a "since last session"
+baseline) and the two new progress-dashboard cards. Each is display-only, tested, and
+skeptic-reviewed; read the helper only if the numbers matter to you, skip the wiring.
+
+---
+
 ## 2026-06-09 - the big autonomous session (~27 merges)
 
 A lot shipped today. You do not need to read all of it. Read these **six first** - they
