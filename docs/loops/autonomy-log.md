@@ -6,6 +6,65 @@ by the charter in [`07-autonomy.md`](07-autonomy.md).
 
 ---
 
+## 2026-06-09 - The loop starts growing the product: ideation + the first ideate batch
+
+**Context.** A multi-tick session that closed the gap between "the loop maintains the repo"
+and "the loop grows the product", then proved the public-repo guardrail under a real attack.
+This docs run is the content-loop tail that records it.
+
+**Shipped this arc.**
+- **Ideation loop (#68) + first ideate run (#73).** Added the `ideate` skill and
+  `docs/loops/08-ideation-loop.md`: when ship and triage have nothing, manufacture
+  well-scoped, single-PR product feature ideas grounded in the product vision and the
+  captured competitor research, and file them as crisp issues. The first run proposed three
+  (issues #69/#70/#71) and rejected the gaps that did not fit one tight PR (bodyweight history,
+  supersets, CSV import), logged in `ideas-backlog.md`.
+- **Memory / learning / regrounding architecture (#74).** Added
+  `docs/loops/09-memory-and-learning.md`: the loop framed as a cybernetic feedback control
+  system - setpoint (the product vision + charter), externalized durable memory (git + GitHub +
+  files, not the session), lessons that graduate into skills, and regrounding each tick. It
+  also states what we deliberately do not build (vector RAG, parallel writers, unbounded
+  memory) and why.
+- **First ideate batch shipped (issues #69/#70/#71 via PRs #75/#76/#77).** The first product
+  features the ideation loop produced, each additive, derived-on-read, no migration:
+  - **#75 / #69 - warm-up set calculator.** Confirmed against `lib/warmup.ts`: a pure
+    `computeWarmupRamp` producing 40/60/80 percent stages with descending reps in the display
+    unit, rounded down to a loadable increment (2.5 kg / 5 lb), clamped below the working
+    weight, de-duplicated, with an empty-bar lead-off; display-only, never mutates a set.
+  - **#76 / #70 - personal-record badge.** Confirmed against `lib/records.ts`: `detectPRs`
+    returns `'weight'` (heaviest non-warmup load) and/or `'e1rm'` (Epley estimate beats the
+    best prior) by comparing a candidate against prior history; warm-ups excluded, strict
+    comparisons so ties never flag, no records table.
+  - **#77 / #71 - training consistency card.** Confirmed against `lib/stats.ts`
+    `trainingConsistency`: distinct trained days per ISO week over a 12-week window plus the
+    current streak of consecutive on-streak weeks, with an optional weekly-frequency target and
+    a partial current week that does not break the streak; rendered by
+    `components/progress/consistency-card.tsx` on the progress page.
+- **Public-repo guardrail proven by the #57 red-team + CI hardening (#67).** The trust gate
+  closed external issue #57 as not-planned (untrusted authorship; never promoted to
+  auto-implementable), validating the #56 hardening under a real probe. CI was modernized for
+  Node 24 runners and the Postgres image pull hardened (#67).
+
+**Challenged / verified.** Docs-only, so verification-first rather than a code subagent: every
+CHANGELOG and log claim was read out of `lib/warmup.ts`, `lib/records.ts`, and `lib/stats.ts`
+before writing it, not trusted from the PR summaries. One correction caught this way: #71 ships
+a consistency *card*, and the `globalThis.Set` shadow workaround lives in `lib/stats.ts` (not
+`lib/records.ts`); recorded as lesson L6.
+
+**Lesson harvested.** L6 (Prisma's generated `Set` model shadows the global `Set`; use
+`globalThis.Set` in lib that touches both) - accepted risk. The mid-batch "job was not acquired
+by Runner" GitHub Actions outage reconfirmed L2 (read the failing step; infra, re-run) - noted
+under L2 rather than as a new lesson.
+
+**Trust gate.** All documented PRs (#75/#76/#77) and the issues they closed (#69/#70/#71) were
+authored by `JulienAu`, on the maintainer allowlist. External issue #57 was correctly refused.
+
+**Deferred to human / operator.** The non-additive product ideas the ideate run rejected
+(bodyweight/measurement history, supersets/circuits, CSV import) stay parked for a human; dep
+majors and `bcrypt` 6 remain deferred.
+
+---
+
 ## 2026-06-09 - Chain everything: templates, readiness explainability + opt-out
 
 **Context.** Operator said "chain everything": run the full pipeline unsupervised under the

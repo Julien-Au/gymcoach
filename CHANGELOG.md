@@ -47,6 +47,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   1-5 scales, plus optional per-muscle-group soreness and a short note): skippable,
   never blocks starting a session, and feeds the AI coach as one more
   auto-regulation signal when it is recent.
+- In-workout warm-up set calculator: from the set logger, suggest a short ramp of
+  warm-up sets (40/60/80 percent of the working weight, descending reps) in your
+  display unit, each rounded down to a loadable increment (2.5 kg / 5 lb) and
+  clamped to stay below the working weight, with an empty-bar lead-off set. It is
+  display-only and never creates or mutates a set.
+- Personal-record badge: a working set is flagged when it moves a heavier load than
+  ever before, or when its estimated 1RM (Epley) beats your best prior estimate, for
+  the same exercise. Records are derived on read from existing set history (no
+  records table, no migration); warm-up sets are excluded and ties never count.
+- Training consistency card on the progress page: per-week trained days over the
+  last 12 ISO weeks plus the current streak of consecutive on-streak weeks, derived
+  on read from finished sessions (no new model). A week is on streak when it has at
+  least one trained day, or meets your weekly-frequency target when one is set; the
+  partial current week does not break the streak.
 - Test pyramid (unit, integration, E2E) with CI running lint, typecheck, unit,
   integration, build, and E2E on every pull request.
 - Docker and Docker Compose setup for local development and production.
@@ -57,8 +71,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   English.
 - Grew the autonomous-loop maintenance infrastructure into a full self-maintenance
   pipeline: the green-gate (`scripts/verify.sh`); the `implement-issue`, `triage`,
-  `ship-pr`, and `write-up` skills; an autonomy charter with guardrails; and the
-  loop playbook in `docs/loops/`.
+  `ship-pr`, `ideate`, and `write-up` skills; an autonomy charter with guardrails;
+  and the loop playbook in `docs/loops/`, including the ideation loop that
+  manufactures product feature ideas so the loop grows the product (not just the
+  repo) and the memory/learning/regrounding architecture that frames the loop as a
+  feedback control system.
 - Sharpened the AI coach's positioning: it advises within your program rather than
   silently restructuring it, always explains the why behind a suggestion, and
   frames generated programs as editable drafts. The program-adjustment output
