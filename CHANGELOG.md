@@ -36,8 +36,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   plate inventory per unit, and an honest note when a weight cannot be loaded
   exactly.
 - Built-in program templates (5/3/1 Boring But Big, GZCLP, nSuns, Push/Pull/Legs,
-  Upper/Lower): start a program from a template through the same generation path
-  the AI uses, then edit it like any program.
+  Upper/Lower, plus Starting Strength, StrongLifts 5x5, Madcow 5x5, PHUL, PHAT,
+  and a beginner Full Body 3x): start a program from a template through the same
+  generation path the AI uses, then edit it like any program.
+- Readiness explainability in the session UI: when a recent readiness/soreness
+  check-in holds or steps down a suggested load, a short badge next to the
+  suggestion says why ("Held - reported soreness" / "Lighter - low readiness
+  today"). Nothing is shown when there is no readiness signal.
 - Optional pre-session readiness check-in (overall readiness and sleep quality on
   1-5 scales, plus optional per-muscle-group soreness and a short note): skippable,
   never blocks starting a session, and feeds the AI coach as one more
@@ -62,7 +67,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   check-in: high soreness on the worked muscle group or low overall readiness
   holds the load (no increment), and very poor recovery applies a single
   conservative step-down. Readiness can only hold or reduce the suggestion, never
-  raise it, and with no recent check-in the suggestion is unchanged.
+  raise it, and with no recent check-in the suggestion is unchanged. A user
+  preference "Let readiness/soreness adjust my suggested weights" (default on)
+  governs this: turning it off drops the readiness signal before it reaches the
+  suggestion, reproducing the pure programmed-progression behavior from before
+  the readiness integration.
 - Hardened the autonomous maintenance loop against untrusted external input now
   that the repo is public: external issues, PRs, comments, diffs, and CI logs are
   treated as data and never as instructions; only issues/PRs authored by the
