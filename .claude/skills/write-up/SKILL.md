@@ -52,8 +52,10 @@ commit on an existing docs branch.
    group and decide if it warrants a playbook/README change. **Verify each claim against
    the code or the merged diff** - never document a feature that is not actually there
    (this skill exists partly because a changelog drifts otherwise).
-3. **Write** the smallest accurate edits. English only, regular hyphens (no em/en-dash),
-   Keep a Changelog format.
+3. **Write** the smallest accurate edits - and do not skip items 4 and 5 of "What to keep
+   current": harvest/graduate any lesson into `lessons.md` (+ the skill/charter it changes),
+   and append the prioritized **comprehension digest** to `review-digest.md`. English only,
+   regular hyphens (no em/en-dash), Keep a Changelog format.
 4. **Green-gate** (`bash scripts/verify.sh`) - docs-only, but the working agreement is
    the working agreement.
 5. **Commit, push, PR** with `Closes #<n>` if a content issue exists, else a plain docs
