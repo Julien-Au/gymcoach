@@ -16,6 +16,44 @@ describe('program templates', () => {
     expect(slugs).toContain('upper-lower-4day');
   });
 
+  it('ships the expanded catalog added in issue #59', () => {
+    // Issue #59 adds Starting Strength, StrongLifts 5x5, Madcow, PHUL, PHAT and
+    // a beginner Full Body 3x template on top of the original five.
+    const slugs = programTemplates.map((t) => t.slug);
+    expect(slugs).toContain('starting-strength-3day');
+    expect(slugs).toContain('stronglifts-5x5-3day');
+    expect(slugs).toContain('madcow-5x5-3day');
+    expect(slugs).toContain('phul-4day');
+    expect(slugs).toContain('phat-5day');
+    expect(slugs).toContain('full-body-3day');
+    expect(programTemplates.length).toBeGreaterThanOrEqual(11);
+  });
+
+  it('every new #59 template materializes into a valid program with runnable workouts', () => {
+    const newSlugs = [
+      'starting-strength-3day',
+      'stronglifts-5x5-3day',
+      'madcow-5x5-3day',
+      'phul-4day',
+      'phat-5day',
+      'full-body-3day',
+    ];
+    for (const slug of newSlugs) {
+      const template = getTemplateBySlug(slug);
+      expect(template, `${slug} should exist`).toBeDefined();
+      const result = generatedProgramSchema.safeParse(template!.program);
+      expect(result.success, `${slug} should validate`).toBe(true);
+      // A runnable program: at least one workout, each with at least one set.
+      expect(template!.program.workouts.length).toBeGreaterThan(0);
+      for (const w of template!.program.workouts) {
+        expect(w.exercises.length).toBeGreaterThan(0);
+        for (const ex of w.exercises) {
+          expect(ex.targetSets).toBeGreaterThan(0);
+        }
+      }
+    }
+  });
+
   it('has unique slugs', () => {
     const slugs = programTemplates.map((t) => t.slug);
     expect(new Set(slugs).size).toBe(slugs.length);

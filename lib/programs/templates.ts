@@ -537,6 +537,311 @@ const NSUNS: ProgramTemplate = {
   },
 };
 
+// Starting Strength - Mark Rippetoe's novice barbell program. Two alternating
+// full-body days (A/B), 3x5 on the main lifts, deadlift 1x5, add weight every
+// session. Power clean is run as a back/thickness pull here.
+const STARTING_STRENGTH: ProgramTemplate = {
+  slug: 'starting-strength-3day',
+  name: 'Starting Strength (3x5 A/B)',
+  summary: 'Rippetoe novice linear progression: two full-body days, 3x5, add weight every session.',
+  attribution:
+    'Mark Rippetoe Starting Strength. Alternate workout A and B across 3 sessions per week. Squat every session 3x5; add 2.5-5 kg each time you complete all reps. Deadlift is 1x5. Reset 10% on a stall.',
+  program: {
+    name: 'Starting Strength',
+    description:
+      'Rippetoe novice barbell linear progression. Two alternating full-body workouts, three sessions per week. Squat 3x5 every session and add a small jump whenever all prescribed reps are completed.',
+    phase: 'Strength',
+    workouts: [
+      {
+        name: 'Workout A - Squat / Bench / Deadlift',
+        dayOfWeek: 1,
+        exercises: [
+          { name: 'Back Squat', muscleGroup: 'QUADS', category: 'COMPOUND', targetSets: 3, targetRepsMin: 5, targetRepsMax: 5, targetRIR: 1, restSec: 240, notes: '3x5. Add 2.5-5 kg every session you complete all reps.' },
+          { name: 'Bench Press', muscleGroup: 'CHEST', category: 'COMPOUND', targetSets: 3, targetRepsMin: 5, targetRepsMax: 5, targetRIR: 1, restSec: 180, notes: '3x5. Add weight every session you complete all reps.' },
+          { name: 'Deadlift', muscleGroup: 'BACK_THICKNESS', category: 'COMPOUND', targetSets: 1, targetRepsMin: 5, targetRepsMax: 5, targetRIR: 1, restSec: 240, notes: '1x5 working set. Add weight every session.' },
+        ],
+      },
+      {
+        name: 'Workout B - Squat / Press / Power Clean',
+        dayOfWeek: 3,
+        exercises: [
+          { name: 'Back Squat', muscleGroup: 'QUADS', category: 'COMPOUND', targetSets: 3, targetRepsMin: 5, targetRepsMax: 5, targetRIR: 1, restSec: 240, notes: '3x5. Add 2.5-5 kg every session you complete all reps.' },
+          { name: 'Overhead Press', muscleGroup: 'SHOULDERS_FRONT', category: 'COMPOUND', targetSets: 3, targetRepsMin: 5, targetRepsMax: 5, targetRIR: 1, restSec: 180, notes: '3x5. Add weight every session you complete all reps.' },
+          { name: 'Power Clean', muscleGroup: 'BACK_THICKNESS', category: 'COMPOUND', targetSets: 5, targetRepsMin: 3, targetRepsMax: 3, targetRIR: 2, restSec: 180, notes: '5x3 explosive pulls. Beginners may substitute barbell rows.' },
+        ],
+      },
+    ],
+  },
+};
+
+// StrongLifts 5x5 - two alternating workouts (A/B), 5x5 on the main lifts,
+// deadlift 1x5, add weight every session. A simpler high-volume novice LP.
+const STRONGLIFTS: ProgramTemplate = {
+  slug: 'stronglifts-5x5-3day',
+  name: 'StrongLifts 5x5 (A/B)',
+  summary: 'Two alternating full-body workouts, 5x5 main lifts, add weight every session.',
+  attribution:
+    'StrongLifts 5x5 by Mehdi. Alternate workout A and B across 3 sessions per week. 5x5 on squat, bench, press and row; deadlift 1x5. Add 2.5 kg each session; deload 10% after three failed attempts.',
+  program: {
+    name: 'StrongLifts 5x5',
+    description:
+      'Two alternating full-body workouts run three times per week. 5x5 on the main lifts (deadlift 1x5). Add a small jump every session and deload 10% after stalling three times.',
+    phase: 'Strength',
+    workouts: [
+      {
+        name: 'Workout A - Squat / Bench / Row',
+        dayOfWeek: 1,
+        exercises: [
+          { name: 'Back Squat', muscleGroup: 'QUADS', category: 'COMPOUND', targetSets: 5, targetRepsMin: 5, targetRepsMax: 5, targetRIR: 1, restSec: 240, notes: '5x5. Add 2.5 kg every session you complete all reps.' },
+          { name: 'Bench Press', muscleGroup: 'CHEST', category: 'COMPOUND', targetSets: 5, targetRepsMin: 5, targetRepsMax: 5, targetRIR: 1, restSec: 180, notes: '5x5. Add weight every session you complete all reps.' },
+          { name: 'Barbell Row', muscleGroup: 'BACK_THICKNESS', category: 'COMPOUND', targetSets: 5, targetRepsMin: 5, targetRepsMax: 5, targetRIR: 1, restSec: 180, notes: '5x5. Add weight every session you complete all reps.' },
+        ],
+      },
+      {
+        name: 'Workout B - Squat / Press / Deadlift',
+        dayOfWeek: 3,
+        exercises: [
+          { name: 'Back Squat', muscleGroup: 'QUADS', category: 'COMPOUND', targetSets: 5, targetRepsMin: 5, targetRepsMax: 5, targetRIR: 1, restSec: 240, notes: '5x5. Add 2.5 kg every session you complete all reps.' },
+          { name: 'Overhead Press', muscleGroup: 'SHOULDERS_FRONT', category: 'COMPOUND', targetSets: 5, targetRepsMin: 5, targetRepsMax: 5, targetRIR: 1, restSec: 180, notes: '5x5. Add weight every session you complete all reps.' },
+          { name: 'Deadlift', muscleGroup: 'BACK_THICKNESS', category: 'COMPOUND', targetSets: 1, targetRepsMin: 5, targetRepsMax: 5, targetRIR: 1, restSec: 240, notes: '1x5 working set. Add weight every session.' },
+        ],
+      },
+    ],
+  },
+};
+
+// Madcow 5x5 - intermediate weekly ramping 5x5. Monday heavy ramp to a top 5,
+// Wednesday light, Friday ramp to a new top triple/PR. Weekly progression.
+const MADCOW: ProgramTemplate = {
+  slug: 'madcow-5x5-3day',
+  name: 'Madcow 5x5 (intermediate)',
+  summary: 'Weekly ramping 5x5: heavy Monday top set, light Wednesday, Friday PR triple.',
+  attribution:
+    'Madcow 5x5 intermediate program. Monday ramps in 5 sets to a top set of 5; Wednesday is lighter recovery volume; Friday ramps to a heavy top set then a back-off. Progress the load week to week, not session to session.',
+  program: {
+    name: 'Madcow 5x5',
+    description:
+      'Intermediate weekly-progression 5x5. Ramp across sets to a heavy top set on Monday, take a lighter Wednesday, and hit a new top set on Friday. Add weight week over week rather than every session.',
+    phase: 'Strength',
+    workouts: [
+      {
+        name: 'Monday - Heavy Ramp',
+        dayOfWeek: 1,
+        exercises: [
+          { name: 'Back Squat', muscleGroup: 'QUADS', category: 'COMPOUND', targetSets: 5, targetRepsMin: 5, targetRepsMax: 5, targetRIR: 1, restSec: 240, notes: 'Ramp 5 sets to a top set of 5. Top set sits near 1-2 RIR.' },
+          { name: 'Bench Press', muscleGroup: 'CHEST', category: 'COMPOUND', targetSets: 5, targetRepsMin: 5, targetRepsMax: 5, targetRIR: 1, restSec: 180, notes: 'Ramp 5 sets to a top set of 5.' },
+          { name: 'Barbell Row', muscleGroup: 'BACK_THICKNESS', category: 'COMPOUND', targetSets: 5, targetRepsMin: 5, targetRepsMax: 5, targetRIR: 1, restSec: 180, notes: 'Ramp 5 sets to a top set of 5.' },
+        ],
+      },
+      {
+        name: 'Wednesday - Light',
+        dayOfWeek: 3,
+        exercises: [
+          { name: 'Back Squat', muscleGroup: 'QUADS', category: 'COMPOUND', targetSets: 4, targetRepsMin: 5, targetRepsMax: 5, targetRIR: 3, restSec: 180, notes: 'Lighter recovery volume; ramp to Mondays 3rd set load.' },
+          { name: 'Overhead Press', muscleGroup: 'SHOULDERS_FRONT', category: 'COMPOUND', targetSets: 4, targetRepsMin: 5, targetRepsMax: 5, targetRIR: 3, restSec: 150, notes: 'Lighter recovery volume.' },
+          { name: 'Deadlift', muscleGroup: 'BACK_THICKNESS', category: 'COMPOUND', targetSets: 4, targetRepsMin: 5, targetRepsMax: 5, targetRIR: 2, restSec: 180, notes: 'Lighter ramp; save the heavy pull for the weekly progression.' },
+        ],
+      },
+      {
+        name: 'Friday - Top Set / PR',
+        dayOfWeek: 5,
+        exercises: [
+          { name: 'Back Squat', muscleGroup: 'QUADS', category: 'COMPOUND', targetSets: 4, targetRepsMin: 3, targetRepsMax: 5, targetRIR: 0, restSec: 240, notes: 'Ramp to a heavy top set of 3 (PR set), then one back-off set of 8.' },
+          { name: 'Bench Press', muscleGroup: 'CHEST', category: 'COMPOUND', targetSets: 4, targetRepsMin: 3, targetRepsMax: 5, targetRIR: 0, restSec: 180, notes: 'Ramp to a heavy top set of 3 (PR set), then a back-off set.' },
+          { name: 'Barbell Row', muscleGroup: 'BACK_THICKNESS', category: 'COMPOUND', targetSets: 4, targetRepsMin: 3, targetRepsMax: 5, targetRIR: 1, restSec: 180, notes: 'Ramp to a heavy top set, then a back-off set.' },
+        ],
+      },
+    ],
+  },
+};
+
+// PHUL - Power Hypertrophy Upper Lower. 4 days: two power days (lower reps,
+// heavier) and two hypertrophy days (higher reps).
+const PHUL: ProgramTemplate = {
+  slug: 'phul-4day',
+  name: 'PHUL (Power Hypertrophy Upper Lower)',
+  summary: '4-day upper/lower mixing two heavy power days with two higher-rep hypertrophy days.',
+  attribution:
+    'PHUL (Power Hypertrophy Upper Lower). Two power days (3-5 reps on main lifts) and two hypertrophy days (8-15 reps). Progress load on the power days; chase volume and the rep range on the hypertrophy days.',
+  program: {
+    name: 'PHUL',
+    description:
+      'Power Hypertrophy Upper Lower. Two heavier power days build strength on the main lifts (3-5 reps) and two hypertrophy days accumulate volume (8-15 reps). Four sessions per week.',
+    phase: 'Hypertrophy',
+    workouts: [
+      {
+        name: 'Upper Power',
+        dayOfWeek: 1,
+        exercises: [
+          { name: 'Bench Press', muscleGroup: 'CHEST', category: 'COMPOUND', targetSets: 4, targetRepsMin: 3, targetRepsMax: 5, targetRIR: 1, restSec: 180 },
+          { name: 'Barbell Row', muscleGroup: 'BACK_THICKNESS', category: 'COMPOUND', targetSets: 4, targetRepsMin: 3, targetRepsMax: 5, targetRIR: 1, restSec: 180 },
+          { name: 'Overhead Press', muscleGroup: 'SHOULDERS_FRONT', category: 'COMPOUND', targetSets: 3, targetRepsMin: 5, targetRepsMax: 8, targetRIR: 2, restSec: 150 },
+          { name: 'Lat Pulldown', muscleGroup: 'BACK_WIDTH', category: 'COMPOUND', targetSets: 3, targetRepsMin: 6, targetRepsMax: 10, targetRIR: 2, restSec: 120 },
+          { name: 'Barbell Curl', muscleGroup: 'BICEPS', category: 'ISOLATION', targetSets: 3, targetRepsMin: 6, targetRepsMax: 10, targetRIR: 1, restSec: 60 },
+          { name: 'Triceps Pushdown', muscleGroup: 'TRICEPS', category: 'ISOLATION', targetSets: 3, targetRepsMin: 6, targetRepsMax: 10, targetRIR: 1, restSec: 60 },
+        ],
+      },
+      {
+        name: 'Lower Power',
+        dayOfWeek: 2,
+        exercises: [
+          { name: 'Back Squat', muscleGroup: 'QUADS', category: 'COMPOUND', targetSets: 4, targetRepsMin: 3, targetRepsMax: 5, targetRIR: 1, restSec: 240 },
+          { name: 'Deadlift', muscleGroup: 'BACK_THICKNESS', category: 'COMPOUND', targetSets: 4, targetRepsMin: 3, targetRepsMax: 5, targetRIR: 1, restSec: 240 },
+          { name: 'Leg Press', muscleGroup: 'QUADS', category: 'COMPOUND', targetSets: 3, targetRepsMin: 8, targetRepsMax: 12, targetRIR: 2, restSec: 120 },
+          { name: 'Leg Curl', muscleGroup: 'HAMSTRINGS', category: 'ISOLATION', targetSets: 3, targetRepsMin: 8, targetRepsMax: 12, targetRIR: 1, restSec: 60 },
+          { name: 'Standing Calf Raise', muscleGroup: 'CALVES', category: 'ISOLATION', targetSets: 4, targetRepsMin: 8, targetRepsMax: 12, targetRIR: 1, restSec: 60 },
+        ],
+      },
+      {
+        name: 'Upper Hypertrophy',
+        dayOfWeek: 4,
+        exercises: [
+          { name: 'Incline Dumbbell Press', muscleGroup: 'CHEST', category: 'COMPOUND', targetSets: 4, targetRepsMin: 8, targetRepsMax: 12, targetRIR: 1, restSec: 120 },
+          { name: 'Seated Cable Row', muscleGroup: 'BACK_THICKNESS', category: 'COMPOUND', targetSets: 4, targetRepsMin: 8, targetRepsMax: 12, targetRIR: 1, restSec: 120 },
+          { name: 'Cable Fly', muscleGroup: 'CHEST', category: 'ISOLATION', targetSets: 3, targetRepsMin: 12, targetRepsMax: 15, targetRIR: 1, restSec: 60 },
+          { name: 'Lateral Raise', muscleGroup: 'SHOULDERS_LATERAL', category: 'ISOLATION', targetSets: 4, targetRepsMin: 12, targetRepsMax: 20, targetRIR: 1, restSec: 60 },
+          { name: 'Hammer Curl', muscleGroup: 'BICEPS', category: 'ISOLATION', targetSets: 3, targetRepsMin: 10, targetRepsMax: 15, targetRIR: 1, restSec: 60 },
+          { name: 'Overhead Triceps Extension', muscleGroup: 'TRICEPS', category: 'ISOLATION', targetSets: 3, targetRepsMin: 10, targetRepsMax: 15, targetRIR: 1, restSec: 60 },
+        ],
+      },
+      {
+        name: 'Lower Hypertrophy',
+        dayOfWeek: 5,
+        exercises: [
+          { name: 'Front Squat', muscleGroup: 'QUADS', category: 'COMPOUND', targetSets: 4, targetRepsMin: 8, targetRepsMax: 12, targetRIR: 1, restSec: 150 },
+          { name: 'Romanian Deadlift', muscleGroup: 'HAMSTRINGS', category: 'COMPOUND', targetSets: 3, targetRepsMin: 8, targetRepsMax: 12, targetRIR: 1, restSec: 120 },
+          { name: 'Leg Extension', muscleGroup: 'QUADS', category: 'ISOLATION', targetSets: 3, targetRepsMin: 12, targetRepsMax: 15, targetRIR: 1, restSec: 60 },
+          { name: 'Leg Curl', muscleGroup: 'HAMSTRINGS', category: 'ISOLATION', targetSets: 3, targetRepsMin: 12, targetRepsMax: 15, targetRIR: 1, restSec: 60 },
+          { name: 'Seated Calf Raise', muscleGroup: 'CALVES', category: 'ISOLATION', targetSets: 4, targetRepsMin: 12, targetRepsMax: 20, targetRIR: 1, restSec: 60 },
+        ],
+      },
+    ],
+  },
+};
+
+// PHAT - Power Hypertrophy Adaptive Training (Layne Norton). 5 days: two power
+// days (upper/lower) and three hypertrophy days (back/shoulders, lower, chest/arms).
+const PHAT: ProgramTemplate = {
+  slug: 'phat-5day',
+  name: 'PHAT (Power Hypertrophy Adaptive Training)',
+  summary: 'Layne Norton 5-day split: two power days plus three high-volume hypertrophy days.',
+  attribution:
+    'PHAT by Layne Norton. Two power days train the main lifts in the 3-5 rep range; three hypertrophy days train the same patterns lighter for 8-20 reps. Five sessions per week, high overall volume.',
+  program: {
+    name: 'PHAT',
+    description:
+      'Power Hypertrophy Adaptive Training (Layne Norton). Two power days (3-5 reps) drive strength and three hypertrophy days (8-20 reps) drive volume across upper and lower body. Five sessions per week.',
+    phase: 'Hypertrophy',
+    workouts: [
+      {
+        name: 'Upper Power',
+        dayOfWeek: 1,
+        exercises: [
+          { name: 'Barbell Row', muscleGroup: 'BACK_THICKNESS', category: 'COMPOUND', targetSets: 4, targetRepsMin: 3, targetRepsMax: 5, targetRIR: 1, restSec: 180 },
+          { name: 'Pull-up', muscleGroup: 'BACK_WIDTH', category: 'COMPOUND', targetSets: 3, targetRepsMin: 6, targetRepsMax: 8, targetRIR: 2, restSec: 150 },
+          { name: 'Bench Press', muscleGroup: 'CHEST', category: 'COMPOUND', targetSets: 4, targetRepsMin: 3, targetRepsMax: 5, targetRIR: 1, restSec: 180 },
+          { name: 'Overhead Press', muscleGroup: 'SHOULDERS_FRONT', category: 'COMPOUND', targetSets: 3, targetRepsMin: 6, targetRepsMax: 8, targetRIR: 2, restSec: 150 },
+          { name: 'Barbell Curl', muscleGroup: 'BICEPS', category: 'ISOLATION', targetSets: 3, targetRepsMin: 6, targetRepsMax: 10, targetRIR: 1, restSec: 60 },
+          { name: 'Skullcrusher', muscleGroup: 'TRICEPS', category: 'ISOLATION', targetSets: 3, targetRepsMin: 6, targetRepsMax: 10, targetRIR: 1, restSec: 60 },
+        ],
+      },
+      {
+        name: 'Lower Power',
+        dayOfWeek: 2,
+        exercises: [
+          { name: 'Back Squat', muscleGroup: 'QUADS', category: 'COMPOUND', targetSets: 4, targetRepsMin: 3, targetRepsMax: 5, targetRIR: 1, restSec: 240 },
+          { name: 'Deadlift', muscleGroup: 'BACK_THICKNESS', category: 'COMPOUND', targetSets: 4, targetRepsMin: 3, targetRepsMax: 5, targetRIR: 1, restSec: 240 },
+          { name: 'Leg Press', muscleGroup: 'QUADS', category: 'COMPOUND', targetSets: 3, targetRepsMin: 8, targetRepsMax: 10, targetRIR: 2, restSec: 120 },
+          { name: 'Leg Curl', muscleGroup: 'HAMSTRINGS', category: 'ISOLATION', targetSets: 3, targetRepsMin: 6, targetRepsMax: 10, targetRIR: 1, restSec: 60 },
+          { name: 'Standing Calf Raise', muscleGroup: 'CALVES', category: 'ISOLATION', targetSets: 4, targetRepsMin: 6, targetRepsMax: 10, targetRIR: 1, restSec: 60 },
+        ],
+      },
+      {
+        name: 'Back / Shoulders Hypertrophy',
+        dayOfWeek: 4,
+        exercises: [
+          { name: 'Seated Cable Row', muscleGroup: 'BACK_THICKNESS', category: 'COMPOUND', targetSets: 4, targetRepsMin: 8, targetRepsMax: 12, targetRIR: 1, restSec: 120 },
+          { name: 'Lat Pulldown', muscleGroup: 'BACK_WIDTH', category: 'COMPOUND', targetSets: 3, targetRepsMin: 12, targetRepsMax: 15, targetRIR: 1, restSec: 90 },
+          { name: 'Overhead Press', muscleGroup: 'SHOULDERS_FRONT', category: 'COMPOUND', targetSets: 3, targetRepsMin: 8, targetRepsMax: 12, targetRIR: 1, restSec: 90 },
+          { name: 'Lateral Raise', muscleGroup: 'SHOULDERS_LATERAL', category: 'ISOLATION', targetSets: 4, targetRepsMin: 12, targetRepsMax: 20, targetRIR: 1, restSec: 60 },
+          { name: 'Rear Delt Fly', muscleGroup: 'SHOULDERS_REAR', category: 'ISOLATION', targetSets: 3, targetRepsMin: 15, targetRepsMax: 20, targetRIR: 1, restSec: 60 },
+        ],
+      },
+      {
+        name: 'Lower Hypertrophy',
+        dayOfWeek: 5,
+        exercises: [
+          { name: 'Front Squat', muscleGroup: 'QUADS', category: 'COMPOUND', targetSets: 4, targetRepsMin: 8, targetRepsMax: 12, targetRIR: 1, restSec: 150 },
+          { name: 'Romanian Deadlift', muscleGroup: 'HAMSTRINGS', category: 'COMPOUND', targetSets: 3, targetRepsMin: 8, targetRepsMax: 12, targetRIR: 1, restSec: 120 },
+          { name: 'Leg Extension', muscleGroup: 'QUADS', category: 'ISOLATION', targetSets: 4, targetRepsMin: 12, targetRepsMax: 20, targetRIR: 1, restSec: 60 },
+          { name: 'Leg Curl', muscleGroup: 'HAMSTRINGS', category: 'ISOLATION', targetSets: 3, targetRepsMin: 12, targetRepsMax: 15, targetRIR: 1, restSec: 60 },
+          { name: 'Seated Calf Raise', muscleGroup: 'CALVES', category: 'ISOLATION', targetSets: 4, targetRepsMin: 12, targetRepsMax: 20, targetRIR: 1, restSec: 60 },
+        ],
+      },
+      {
+        name: 'Chest / Arms Hypertrophy',
+        dayOfWeek: 6,
+        exercises: [
+          { name: 'Incline Dumbbell Press', muscleGroup: 'CHEST', category: 'COMPOUND', targetSets: 4, targetRepsMin: 8, targetRepsMax: 12, targetRIR: 1, restSec: 120 },
+          { name: 'Cable Fly', muscleGroup: 'CHEST', category: 'ISOLATION', targetSets: 3, targetRepsMin: 12, targetRepsMax: 15, targetRIR: 1, restSec: 60 },
+          { name: 'Hammer Curl', muscleGroup: 'BICEPS', category: 'ISOLATION', targetSets: 4, targetRepsMin: 10, targetRepsMax: 15, targetRIR: 1, restSec: 60 },
+          { name: 'Cable Curl', muscleGroup: 'BICEPS', category: 'ISOLATION', targetSets: 3, targetRepsMin: 12, targetRepsMax: 15, targetRIR: 1, restSec: 60 },
+          { name: 'Overhead Triceps Extension', muscleGroup: 'TRICEPS', category: 'ISOLATION', targetSets: 4, targetRepsMin: 10, targetRepsMax: 15, targetRIR: 1, restSec: 60 },
+          { name: 'Triceps Pushdown', muscleGroup: 'TRICEPS', category: 'ISOLATION', targetSets: 3, targetRepsMin: 12, targetRepsMax: 15, targetRIR: 1, restSec: 60 },
+        ],
+      },
+    ],
+  },
+};
+
+// Full Body 3x/week - a beginner-friendly full-body template, three sessions
+// with rotating emphasis, moderate volume and rep ranges.
+const FULL_BODY_3X: ProgramTemplate = {
+  slug: 'full-body-3day',
+  name: 'Full Body 3x/week (beginner)',
+  summary: 'Beginner-friendly full-body program, three sessions per week, moderate volume.',
+  attribution:
+    'Generic beginner full-body, three non-consecutive days per week. Each session hits the whole body with one main compound per pattern plus an accessory. Add weight when you reach the top of the rep range on all sets.',
+  program: {
+    name: 'Full Body 3x',
+    description:
+      'A beginner-friendly full-body program run three non-consecutive days per week. Each day covers a squat, a hinge/pull, a press and an accessory, in the 6-15 rep range. Progress load at the top of each range.',
+    phase: 'General',
+    workouts: [
+      {
+        name: 'Full Body A',
+        dayOfWeek: 1,
+        exercises: [
+          { name: 'Back Squat', muscleGroup: 'QUADS', category: 'COMPOUND', targetSets: 3, targetRepsMin: 6, targetRepsMax: 10, targetRIR: 2, restSec: 180 },
+          { name: 'Bench Press', muscleGroup: 'CHEST', category: 'COMPOUND', targetSets: 3, targetRepsMin: 6, targetRepsMax: 10, targetRIR: 2, restSec: 150 },
+          { name: 'Barbell Row', muscleGroup: 'BACK_THICKNESS', category: 'COMPOUND', targetSets: 3, targetRepsMin: 8, targetRepsMax: 12, targetRIR: 2, restSec: 120 },
+          { name: 'Lateral Raise', muscleGroup: 'SHOULDERS_LATERAL', category: 'ISOLATION', targetSets: 3, targetRepsMin: 12, targetRepsMax: 15, targetRIR: 1, restSec: 60 },
+        ],
+      },
+      {
+        name: 'Full Body B',
+        dayOfWeek: 3,
+        exercises: [
+          { name: 'Deadlift', muscleGroup: 'BACK_THICKNESS', category: 'COMPOUND', targetSets: 3, targetRepsMin: 5, targetRepsMax: 8, targetRIR: 2, restSec: 180 },
+          { name: 'Overhead Press', muscleGroup: 'SHOULDERS_FRONT', category: 'COMPOUND', targetSets: 3, targetRepsMin: 6, targetRepsMax: 10, targetRIR: 2, restSec: 150 },
+          { name: 'Lat Pulldown', muscleGroup: 'BACK_WIDTH', category: 'COMPOUND', targetSets: 3, targetRepsMin: 8, targetRepsMax: 12, targetRIR: 2, restSec: 120 },
+          { name: 'Leg Curl', muscleGroup: 'HAMSTRINGS', category: 'ISOLATION', targetSets: 3, targetRepsMin: 10, targetRepsMax: 15, targetRIR: 1, restSec: 60 },
+        ],
+      },
+      {
+        name: 'Full Body C',
+        dayOfWeek: 5,
+        exercises: [
+          { name: 'Front Squat', muscleGroup: 'QUADS', category: 'COMPOUND', targetSets: 3, targetRepsMin: 6, targetRepsMax: 10, targetRIR: 2, restSec: 180 },
+          { name: 'Incline Dumbbell Press', muscleGroup: 'CHEST', category: 'COMPOUND', targetSets: 3, targetRepsMin: 8, targetRepsMax: 12, targetRIR: 2, restSec: 120 },
+          { name: 'Seated Cable Row', muscleGroup: 'BACK_THICKNESS', category: 'COMPOUND', targetSets: 3, targetRepsMin: 8, targetRepsMax: 12, targetRIR: 2, restSec: 120 },
+          { name: 'Barbell Curl', muscleGroup: 'BICEPS', category: 'ISOLATION', targetSets: 3, targetRepsMin: 10, targetRepsMax: 15, targetRIR: 1, restSec: 60 },
+        ],
+      },
+    ],
+  },
+};
+
 // The public catalog. Validated at module load (see programTemplates) so a
 // malformed template fails fast in tests and the build, never at runtime for a
 // user.
@@ -546,6 +851,12 @@ const RAW_TEMPLATES: ProgramTemplate[] = [
   PPL,
   UPPER_LOWER,
   NSUNS,
+  STARTING_STRENGTH,
+  STRONGLIFTS,
+  MADCOW,
+  PHUL,
+  PHAT,
+  FULL_BODY_3X,
 ];
 
 // Validate every template's program against the same schema the build route
