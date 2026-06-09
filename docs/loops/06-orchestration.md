@@ -25,14 +25,21 @@ decides what to do next**. The maintainer loop's decision each tick:
 
 1. **Are there ready PRs?** (green or fixable CI) -> ship them first. Shipping finishes
    started work and moves `main` forward; always drain this before starting new work.
-2. **Is the backlog low** (no actionable, unclaimed issue)? -> run triage to refill.
-3. **Is there an actionable issue?** -> implement the next one (-> a PR, which next tick's
+2. **Is the backlog low** (no actionable, unclaimed issue)? -> run triage to refill it with
+   code-health work.
+3. **Still no actionable issue after triage?** -> run `ideate` (08) to manufacture bounded
+   **product** ideas, so the loop keeps improving the product, not just tidying it. (Hard
+   caps: <= 3 issues, no run while >= 3 idea issues are open, never the heavy
+   deep-research workflow.)
+4. **Is there an actionable issue?** -> implement the next one (-> a PR, which next tick's
    step 1 will ship).
-4. **Did things merge since the last write-up?** -> run the content loop.
-5. **Nothing to do on any of the above?** -> stop. A clean idle is success, not failure.
+5. **Did things merge since the last write-up?** -> run the content loop.
+6. **Nothing to do on any of the above?** -> stop. A clean idle is success, not failure.
 
 Order matters: finish before you start (ship before implement), and only manufacture work
-(triage) when genuinely starved, so the tracker and the PR queue never flood.
+(triage, then ideate) when genuinely starved, so the tracker and the PR queue never flood.
+Ideation sits below triage on purpose: ideas are made only when the loop would otherwise
+idle, and implementation drains them before more are made.
 
 ## Running it
 
@@ -40,11 +47,13 @@ Phase 1 - watched, locally:
 
 ```
 /loop You are the maintainer of this repo. Each tick: (1) ship any ready PR with ship-pr;
-(2) if the backlog is low, run triage; (3) implement the next actionable issue with
-implement-issue; (4) if work merged since the last write-up, run write-up. Respect every
-skill's own guardrails. STOP when there is nothing to ship, no actionable issue, and
-nothing to document - or after 3 merges this run. Auto-merge only on green CI; never on
-main directly.
+(2) if the backlog is low, run triage; (3) if there is still no actionable issue, run
+ideate to manufacture bounded product ideas; (4) implement the next actionable issue with
+implement-issue; (5) if work merged since the last write-up, run write-up. Respect every
+skill's own guardrails (including ideate's hard caps: <= 3 issues, no run while >= 3 idea
+issues are open, never the heavy deep-research workflow). STOP when there is nothing to
+ship, no actionable issue, ideate has nothing new to add, and nothing to document - or
+after 3 merges this run. Auto-merge only on green CI; never on main directly.
 ```
 
 Phase 2 - unattended, on infrastructure:
