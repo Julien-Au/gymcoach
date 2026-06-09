@@ -18,6 +18,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { suggestNextWeight, weightIncrement, type ReadinessSignal } from '@/lib/progression';
 import { PlateCalculator } from '@/components/session/plate-calculator';
+import { WarmupCalculator } from '@/components/session/warmup-calculator';
 import type { PendingSet } from '@/lib/indexeddb';
 import type { SerializedLastPerformance } from './session-runner';
 
@@ -111,7 +112,10 @@ export function SetInput({
             <Label className="text-xs uppercase tracking-wide text-muted-foreground">
               Load ({unitLabel(unit)})
             </Label>
-            <PlateCalculator weightKg={form.weight} unit={unit} />
+            <div className="flex items-center gap-1">
+              <WarmupCalculator weightKg={form.weight} unit={unit} />
+              <PlateCalculator weightKg={form.weight} unit={unit} />
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <Button
