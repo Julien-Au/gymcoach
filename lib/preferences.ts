@@ -8,6 +8,11 @@ const STORAGE_KEY = 'gymcoach.prefs.v1';
 export interface UserPreferences {
   vibration: boolean;
   restTimerSound: boolean;
+  // Auto-regulation (issue #61). When on (default), a recent readiness/soreness
+  // check-in can make the deterministic next-weight suggestion more conservative
+  // (hold the load or step it down). When off, readiness is ignored entirely and
+  // the suggestion follows pure programmed progression (pre-#55 behavior).
+  readinessAutoRegulation: boolean;
   // Plate-loading calculator (issue #39). Bar weight and available plate
   // denominations are stored per unit, since a kg gym and a lb gym stock
   // different plates. Values are in the matching display unit.
@@ -20,6 +25,7 @@ export interface UserPreferences {
 export const DEFAULT_PREFERENCES: UserPreferences = {
   vibration: true,
   restTimerSound: false,
+  readinessAutoRegulation: true,
   barWeightKg: 20,
   barWeightLb: 45,
   platesKg: [25, 20, 15, 10, 5, 2.5, 1.25],
@@ -54,6 +60,12 @@ export function isVibrationEnabled(): boolean {
 
 export function isRestTimerSoundEnabled(): boolean {
   return loadPreferences().restTimerSound;
+}
+
+// Whether a recent readiness/soreness check-in is allowed to adjust the
+// deterministic next-weight suggestion (issue #61). Defaults to true.
+export function isReadinessAutoRegulationEnabled(): boolean {
+  return loadPreferences().readinessAutoRegulation;
 }
 
 // The plate-loading config (bar weight + available plates) for the active unit.

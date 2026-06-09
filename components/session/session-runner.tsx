@@ -24,7 +24,8 @@ import {
   getDB,
   type PendingSet,
 } from '@/lib/indexeddb';
-import type { ReadinessSignal } from '@/lib/progression';
+import { readinessForSuggestion, type ReadinessSignal } from '@/lib/progression';
+import { isReadinessAutoRegulationEnabled } from '@/lib/preferences';
 import { bindAutoSync, flushPendingSets, queueSet } from '@/lib/sync';
 import { hydrateFromServerSets } from '@/lib/sync-hydration';
 import { ExerciseCard } from '@/components/session/exercise-card';
@@ -73,11 +74,20 @@ export function SessionRunner({ session, lastPerformances, readiness, unit }: Se
   const [currentIdx, setCurrentIdx] = useState(0);
   const [mode, setMode] = useState<Mode>({ kind: 'input' });
   const [closing, setClosing] = useState(false);
+  // Readiness auto-regulation can be turned off in settings (issue #61). The
+  // preference lives in localStorage, so it is read after mount; until then we
+  // assume the default (on) so the first render matches the server output.
+  const [autoRegulate, setAutoRegulate] = useState(true);
 
   const currentPE = programExercises[currentIdx];
 
+  // When auto-regulation is off, the readiness signal is dropped entirely, so
+  // the suggestion falls back to pure programmed progression (pre-#55 behavior).
+  const effectiveReadiness = readinessForSuggestion(readiness, autoRegulate);
+
   // Hydrate IndexedDB with the server sets, then enable auto-sync.
   useEffect(() => {
+    setAutoRegulate(isReadinessAutoRegulationEnabled());
     void (async () => {
       await hydrateFromServerSets(session.id, session.sets);
       setHydrated(true);
@@ -303,7 +313,7 @@ export function SessionRunner({ session, lastPerformances, readiness, unit }: Se
         <ExerciseCard
           programExercise={currentPE}
           lastPerformance={lastPerf}
-          readiness={readiness}
+          readiness={effectiveReadiness}
           unit={unit}
         />
 
@@ -319,7 +329,7 @@ export function SessionRunner({ session, lastPerformances, readiness, unit }: Se
             programExercise={currentPE}
             existingSets={currentSets}
             lastPerformance={lastPerf}
-            readiness={readiness}
+            readiness={effectiveReadiness}
             unit={unit}
             onSubmit={handleValidate}
           />

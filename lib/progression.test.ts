@@ -3,6 +3,7 @@ import type { Exercise, ProgramExercise } from '@prisma/client';
 import {
   READINESS_DELOAD_FRACTION,
   READINESS_RECENCY_HOURS,
+  readinessForSuggestion,
   suggestNextWeight,
   weightIncrement,
   type ReadinessSignal,
@@ -271,5 +272,50 @@ describe('suggestNextWeight - readiness auto-regulation (issue #53)', () => {
     const res = suggestNextWeight(makePe(compoundExo), holdingSets, deloadSignal);
     expect(res.weight as number).toBeLessThanOrEqual(baseline);
     expect(res.reason).toBe('readiness-deload');
+  });
+});
+
+describe('readinessForSuggestion - auto-regulation preference gate (issue #61)', () => {
+  const progressingSets = [
+    { weight: 80, reps: 10, rir: 2 },
+    { weight: 80, reps: 10, rir: 2 },
+    { weight: 80, reps: 10, rir: 2 },
+  ];
+  // A worst-case in-window check-in: with #55 on, this forces a step-down.
+  const drained: ReadinessSignal = { readiness: 1, soreness: { QUADS: 5 }, ageHours: 1 };
+
+  it('passes the signal through unchanged when the preference is on', () => {
+    expect(readinessForSuggestion(drained, true)).toBe(drained);
+    expect(readinessForSuggestion(null, true)).toBeNull();
+  });
+
+  it('drops the signal entirely when the preference is off', () => {
+    expect(readinessForSuggestion(drained, false)).toBeNull();
+    expect(readinessForSuggestion(null, false)).toBeNull();
+  });
+
+  it('OFF: readiness has no effect, identical to the pre-#55 (no-signal) suggestion', () => {
+    // Pre-#55 behavior is exactly "no readiness arg": pure programmed progression.
+    const pre55 = suggestNextWeight(makePe(compoundExo), progressingSets);
+    const gatedOff = suggestNextWeight(
+      makePe(compoundExo),
+      progressingSets,
+      readinessForSuggestion(drained, false),
+    );
+    expect(gatedOff).toEqual(pre55);
+    expect(gatedOff.reason).toBe('progression');
+    expect(gatedOff.weight).toBe(82.5);
+  });
+
+  it('ON: readiness applies the #55 step-down for the same drained check-in', () => {
+    const gatedOn = suggestNextWeight(
+      makePe(compoundExo),
+      progressingSets,
+      readinessForSuggestion(drained, true),
+    );
+    const direct = suggestNextWeight(makePe(compoundExo), progressingSets, drained);
+    expect(gatedOn).toEqual(direct);
+    expect(gatedOn.reason).toBe('readiness-deload');
+    expect(gatedOn.weight).toBe(+(80 * (1 - READINESS_DELOAD_FRACTION)).toFixed(2));
   });
 });

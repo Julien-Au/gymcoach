@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useTheme } from 'next-themes';
-import { Moon, Smartphone, Sun, Volume2, Monitor } from 'lucide-react';
+import { Activity, Moon, Smartphone, Sun, Volume2, Monitor } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
@@ -89,6 +89,14 @@ export function SettingsClient() {
             description="Plays a short 880 Hz beep at the end of the rest."
             checked={prefs.restTimerSound}
             onChange={(v) => update('restTimerSound', v)}
+            disabled={!hydrated}
+          />
+          <PrefRow
+            icon={<Activity className="size-4" />}
+            label="Let readiness/soreness adjust my suggested weights"
+            description="When on, a recent readiness check-in can hold or lower the suggested load. When off, suggestions follow pure programmed progression."
+            checked={prefs.readinessAutoRegulation}
+            onChange={(v) => update('readinessAutoRegulation', v)}
             disabled={!hydrated}
           />
         </CardContent>

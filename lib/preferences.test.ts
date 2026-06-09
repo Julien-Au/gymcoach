@@ -5,6 +5,7 @@ import {
   savePreferences,
   isVibrationEnabled,
   isRestTimerSoundEnabled,
+  isReadinessAutoRegulationEnabled,
   plateConfigForUnit,
 } from './preferences';
 
@@ -17,6 +18,26 @@ describe('preferences', () => {
 
   it('returns the defaults when nothing is stored', () => {
     expect(loadPreferences()).toEqual(DEFAULT_PREFERENCES);
+  });
+
+  it('defaults readiness auto-regulation to on (issue #61)', () => {
+    expect(DEFAULT_PREFERENCES.readinessAutoRegulation).toBe(true);
+    expect(loadPreferences().readinessAutoRegulation).toBe(true);
+    expect(isReadinessAutoRegulationEnabled()).toBe(true);
+  });
+
+  it('keeps readiness auto-regulation on for prefs stored before the field existed', () => {
+    // A pref blob from before #61 has no readinessAutoRegulation key; the merge
+    // over the defaults must keep it enabled (backward compatible, opt-out).
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ vibration: false }));
+    expect(loadPreferences().readinessAutoRegulation).toBe(true);
+    expect(isReadinessAutoRegulationEnabled()).toBe(true);
+  });
+
+  it('reflects readiness auto-regulation turned off', () => {
+    savePreferences({ ...DEFAULT_PREFERENCES, readinessAutoRegulation: false });
+    expect(loadPreferences().readinessAutoRegulation).toBe(false);
+    expect(isReadinessAutoRegulationEnabled()).toBe(false);
   });
 
   it('merges a partial stored object over the defaults', () => {
