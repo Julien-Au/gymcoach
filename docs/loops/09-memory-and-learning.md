@@ -59,12 +59,15 @@ explicitly paged in. So:
   summarize preserving decisions + open threads and drop redundant tool output. But the
   structural answer (externalize, start cold) means we rarely need it.
 
-**One linear writer thread per task.** Subagents investigate; the main thread (or one
-delegate) writes and merges, sequentially. Parallel writers make conflicting implicit
-decisions and there is no clean cross-agent context sharing. (Cognition, *Don't build
-multi-agents*.) This repo learned it the hard way: when two feature branches were cut from
-the same `main` and merged close together, each was green alone but their combination
-needed a re-check - so we ship one at a time and let the gate run on the merged result.
+**One linear writer thread per task.** Concurrency at the *stage* level is fine and is what
+"orchestration loops, concurrently" (`00-concept.md`) means - `06` can have ship draining
+one PR while implement works another. What we avoid is **two writers on the same task or
+racing `main`**: one writer per task/branch. Subagents investigate and return summaries; the
+main thread (or one delegate) writes and merges, sequentially. Cognition (*Don't build
+multi-agents*) argues parallel writers make conflicting implicit decisions with no clean
+cross-agent context sharing; this repo hit the same edge - two feature branches cut from the
+same `main` and merged close together were each green alone but needed a re-check combined,
+so we ship one at a time and let the gate run on the merged result.
 
 ## 2. Self-learning (layered memory that graduates into procedure)
 
@@ -83,8 +86,9 @@ faster, cheaper, debuggable, and benchmark *higher* on correctness than embeddin
 (LlamaIndex; Shaped.ai). We would only add retrieval-by-embedding if the knowledge base
 became a large, unstructured, un-greppable corpus - which it is not.
 
-**The learning mechanism is reflection that graduates into procedure** (Reflexion, arXiv
-2303.11366; Generative Agents, arXiv 2304.03442). An append-only log is good *episodic*
+**The learning mechanism is reflection that graduates into procedure** - the graduation step
+(promoting a lesson into a skill) is our own design, informed by Reflexion (arXiv 2303.11366)
+and Generative Agents (arXiv 2304.03442). An append-only log is good *episodic*
 memory but a poor *behavior-change* mechanism: a lesson buried in a deep log no one re-reads
 changes nothing. So a lesson is only "learned" when it is **promoted** to where it will be
 retrieved at the relevant moment:
@@ -110,15 +114,13 @@ cybernetics paper + Anthropic's long-running-harness guidance):
 - **The setpoint lives in an external, compaction-proof file.** `CLAUDE.md` + the charter
   are the source of truth for "what this project is for". Summarization can dilute the
   window; it cannot dilute the file. Regrounding always reads from there.
-- **Two-loop homeostasis.** A *fast inner loop* works the issue. A *slow outer loop* fires
-  only when violations persist - e.g. repeated red gates, or a step that smells like goal
-  drift - and re-reads the setpoint to restate the primary purpose before continuing.
-- **Meta-cognitive self-monitoring** (the paper's highest-value, lowest-cost intervention,
-  and the one most agents skip): watch your own action history for failure signatures -
-  the same edit tried repeatedly, N consecutive red gates, a PR re-opened by an untrusted
-  author, a task that no longer maps to any goal in the charter. On a hit: stop, reground,
-  or hand to a human. The existing caps (3 merges/run, 3 fix attempts, anti-flood,
-  halt-on-idle) are the stability controls that keep this from oscillating.
+- **Self-monitoring driving a two-loop homeostasis** (the paper's highest-value,
+  lowest-cost intervention, and the one most agents skip): a *fast inner loop* works the
+  issue while you watch your own action history for failure signatures - the same edit
+  retried, N consecutive red gates, a PR re-opened by an untrusted author, a task that maps
+  to no goal in the charter. When one fires, a *slow outer loop* kicks in: stop, re-read the
+  setpoint, reground, or hand to a human. The existing caps (3 merges/run, 3 fix attempts,
+  anti-flood, halt-on-idle) are the stability controls that keep this from oscillating.
 - **Acknowledge feedback before re-planning** (anti "feedback blindness"): read the actual
   green-gate / CI / issue output and state what it says before deciding the next step. Do
   not plan past a failure signal.

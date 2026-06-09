@@ -30,9 +30,10 @@ Format per entry: trigger/evidence, the lesson (actionable), and **Status** = `g
 - **Lesson:** before assuming a regression, read which *step* failed - a Docker/registry
   pull failure is infra; re-run the job. Also: PRs cut from the same `main` and merged close
   together can be green alone but need a re-check merged ("green separately, red together").
-- **Status:** graduated -> CI hardened to pull Postgres from the rate-limit-free ECR Public
-  mirror, actions bumped for Node 24 (#67). Re-check-merged behavior: ship one PR at a time
-  and let the gate run on the merged result (accepted process, noted in `09`).
+- **Status:** graduated -> CI hardened: Postgres pulled from the rate-limit-free ECR Public
+  mirror; the action runtimes bumped `checkout@v5`/`setup-node@v5` (which run on Node 24) and
+  CI `node-version` 20 -> 22 to match the nvm toolchain (#67). Re-check-merged behavior: ship
+  one PR at a time and let the gate run on the merged result (accepted process, noted in `09`).
 
 ### L3 - The orchestrator owns CI-watch and merge; subagents stop at the PR
 - **Trigger:** background maintainer-tick agents repeatedly terminated early - they ended
