@@ -6,9 +6,11 @@ import { MUSCLE_GROUP_LABELS } from '@/lib/schemas/exercise';
 import {
   applyBodyweight,
   exerciseProgress,
+  trainingConsistency,
   weeklyVolumeByMuscleGroup,
 } from '@/lib/stats';
 import { ProgressDashboard } from '@/components/progress/progress-dashboard';
+import { ConsistencyCard } from '@/components/progress/consistency-card';
 
 interface SearchParams {
   exerciseId?: string;
@@ -46,13 +48,27 @@ export default async function ProgressPage({
     }),
     db.user.findUnique({
       where: { id: auth.userId },
-      select: { bodyweight: true, unit: true },
+      select: { bodyweight: true, unit: true, weeklyFrequency: true },
     }),
   ]);
   const bodyweight = user?.bodyweight ?? null;
   const unit = user?.unit ?? 'KG';
   const usesBodyweightById = new Map(
     exercisesWithSets.map((e) => [e.id, e.usesBodyweight]),
+  );
+
+  // Finished sessions over the window, for the consistency card.
+  const finishedSessions = await db.session.findMany({
+    where: {
+      userId: auth.userId,
+      finishedAt: { not: null },
+      startedAt: { gte: since },
+    },
+    select: { startedAt: true },
+  });
+  const consistency = trainingConsistency(
+    finishedSessions.map((s) => s.startedAt),
+    { weeklyFrequency: user?.weeklyFrequency ?? null, windowWeeks: RECENT_WEEKS },
   );
 
   const selectedExerciseId =
@@ -197,23 +213,30 @@ export default async function ProgressPage({
             action={{ label: 'Log your first session', href: '/session/new' }}
           />
         ) : (
-          <ProgressDashboard
-            exercises={exercisesWithSets.map((e) => ({
-              id: e.id,
-              name: e.name,
-              muscleGroup: MUSCLE_GROUP_LABELS[e.muscleGroup],
-            }))}
-            selectedExerciseId={selectedExerciseId}
-            exercisePoints={exercisePoints}
-            weeklyPoints={weeklyPoints.map((w) => ({
-              weekKey: w.weekKey,
-              weekStartIso: w.weekStart.toISOString(),
-              byMuscleGroup: w.byMuscleGroup,
-              total: w.total,
-            }))}
-            recap={recap}
-            unit={unit}
-          />
+          <>
+            <ConsistencyCard
+              weeks={consistency.weeks}
+              currentStreak={consistency.currentStreak}
+              weeklyFrequency={consistency.weeklyFrequency}
+            />
+            <ProgressDashboard
+              exercises={exercisesWithSets.map((e) => ({
+                id: e.id,
+                name: e.name,
+                muscleGroup: MUSCLE_GROUP_LABELS[e.muscleGroup],
+              }))}
+              selectedExerciseId={selectedExerciseId}
+              exercisePoints={exercisePoints}
+              weeklyPoints={weeklyPoints.map((w) => ({
+                weekKey: w.weekKey,
+                weekStartIso: w.weekStart.toISOString(),
+                byMuscleGroup: w.byMuscleGroup,
+                total: w.total,
+              }))}
+              recap={recap}
+              unit={unit}
+            />
+          </>
         )}
       </div>
     </main>
