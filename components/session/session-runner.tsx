@@ -24,6 +24,7 @@ import {
   getDB,
   type PendingSet,
 } from '@/lib/indexeddb';
+import type { ReadinessSignal } from '@/lib/progression';
 import { bindAutoSync, flushPendingSets, queueSet } from '@/lib/sync';
 import { hydrateFromServerSets } from '@/lib/sync-hydration';
 import { ExerciseCard } from '@/components/session/exercise-card';
@@ -52,6 +53,9 @@ type SessionRunnerProps = {
     sets: PrismaSet[];
   };
   lastPerformances: Record<string, SerializedLastPerformance>;
+  // Latest in-window readiness check-in (or null). Drives whether the load
+  // suggestion is held/reduced and the matching explainer in the UI.
+  readiness: ReadinessSignal | null;
   unit: WeightUnit;
 };
 
@@ -60,7 +64,7 @@ type Mode =
   | { kind: 'rest'; endsAt: number; totalSec: number; nextExerciseIdx: number | null }
   | { kind: 'summary' };
 
-export function SessionRunner({ session, lastPerformances, unit }: SessionRunnerProps) {
+export function SessionRunner({ session, lastPerformances, readiness, unit }: SessionRunnerProps) {
   const router = useRouter();
   const workout = session.workout!;
   const programExercises = workout.exercises;
@@ -296,7 +300,12 @@ export function SessionRunner({ session, lastPerformances, unit }: SessionRunner
       </div>
 
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 py-4">
-        <ExerciseCard programExercise={currentPE} lastPerformance={lastPerf} unit={unit} />
+        <ExerciseCard
+          programExercise={currentPE}
+          lastPerformance={lastPerf}
+          readiness={readiness}
+          unit={unit}
+        />
 
         <SetsList
           programExercise={currentPE}
@@ -310,6 +319,7 @@ export function SessionRunner({ session, lastPerformances, unit }: SessionRunner
             programExercise={currentPE}
             existingSets={currentSets}
             lastPerformance={lastPerf}
+            readiness={readiness}
             unit={unit}
             onSubmit={handleValidate}
           />
