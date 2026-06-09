@@ -28,6 +28,10 @@ This folder is the reproducible playbook. Read in order:
   comes up dry, manufacture bounded **product** feature ideas (the cheap, recurring cousin
   of the one-off deep-research workflow) so the product keeps growing, not just the test
   suite. Logs to [`ideas-backlog.md`](ideas-backlog.md).
+- [`09-memory-and-learning.md`](09-memory-and-learning.md) - the loop as a control system:
+  how it manages/compresses context (state in git, not the session), learns (layered
+  filesystem memory + lessons that **graduate** into skills - no vector RAG), and regrounds
+  on its purpose. Staging area in [`lessons.md`](lessons.md).
 
 ## The system at a glance
 

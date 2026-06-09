@@ -73,6 +73,13 @@ changes on.
 - Never auto-merge a fork PR (`isCrossRepository`) or a PR authored by a non-maintainer
   account, even on green CI; external contributions require human review (the public-repo
   trust boundary - see the charter's "Untrusted external input").
+- A red at the integration job's *Initialize containers* step (`Docker pull failed`) is
+  transient infra, not a regression: re-run the run (`gh run rerun <id>`) before assuming
+  the change broke anything. Acknowledge which step actually failed before re-planning
+  (lesson L2, anti feedback-blindness).
+- Reproducing the gate in a fresh checkout/worktree: `npm ci` first (worktrees do not share
+  `node_modules`), `npm rebuild bcrypt` if its native binding is missing, and
+  `prisma migrate deploy` on :5434 before the integration/E2E tiers (lesson L4).
 - At most 3 fix attempts per PR; then stop and hand off.
 - Per run, ship at most the PRs you were given (or cap "ship the ready PRs" at a small
   batch so a bad change cannot cascade). One merge at a time; re-check the next PR's CI
