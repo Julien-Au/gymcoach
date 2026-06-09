@@ -4,6 +4,7 @@ import { seedExerciseCatalog, EXERCISE_CATALOG } from '@/lib/exercise-catalog';
 import { buildProgramFromGenerated } from '@/lib/program-generation';
 import type { GeneratedProgram } from '@/lib/schemas/program-generation';
 import { buildCoachPayload } from '@/lib/coach';
+import { programTemplates, getTemplateBySlug } from '@/lib/programs/templates';
 
 async function makeUser(email: string) {
   return db.user.create({ data: { email, passwordHash: 'x' } });
@@ -85,6 +86,66 @@ describe('buildProgramFromGenerated', () => {
 
     const names = program?.workouts[0]?.exercises.map((pe) => pe.exercise.name).sort();
     expect(names).toEqual(['Barbell bench press', 'Brand New Cable Thing']);
+  });
+});
+
+describe('built-in program templates materialize into a Program', () => {
+  it('persists every template as a runnable program for the user', async () => {
+    const user = await makeUser('templates@test.dev');
+
+    for (const template of programTemplates) {
+      const programId = await buildProgramFromGenerated(user.id, template.program);
+      const program = await db.program.findUnique({
+        where: { id: programId },
+        include: { workouts: { include: { exercises: true } } },
+      });
+
+      expect(program?.userId).toBe(user.id);
+      // Materialized as inactive, like any generated program.
+      expect(program?.isActive).toBe(false);
+      expect(program?.name).toBe(template.program.name);
+      expect(program?.workouts).toHaveLength(template.program.workouts.length);
+
+      // Every workout has its exercises with the template's targets.
+      for (const w of template.program.workouts) {
+        const persistedWorkout = program?.workouts.find((pw) => pw.name === w.name);
+        expect(persistedWorkout?.exercises).toHaveLength(w.exercises.length);
+      }
+    }
+  });
+
+  it('can run a session from a template-instantiated program', async () => {
+    const user = await makeUser('template-session@test.dev');
+    const template = getTemplateBySlug('upper-lower-4day');
+    expect(template).toBeDefined();
+
+    const programId = await buildProgramFromGenerated(user.id, template!.program);
+    const program = await db.program.findUnique({
+      where: { id: programId },
+      include: { workouts: { include: { exercises: true } } },
+    });
+    const firstWorkout = program!.workouts[0]!;
+
+    const session = await db.session.create({
+      data: { userId: user.id, programId, workoutId: firstWorkout.id },
+    });
+    const firstExercise = firstWorkout.exercises[0]!;
+    const set = await db.set.create({
+      data: {
+        sessionId: session.id,
+        exerciseId: firstExercise.exerciseId,
+        weight: 60,
+        reps: 8,
+        setNumber: 1,
+      },
+    });
+
+    expect(set.sessionId).toBe(session.id);
+    const sessionWithSets = await db.session.findUnique({
+      where: { id: session.id },
+      include: { sets: true },
+    });
+    expect(sessionWithSets?.sets).toHaveLength(1);
   });
 });
 
