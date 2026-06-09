@@ -35,6 +35,14 @@ commit on an existing docs branch.
    behavior changes next time, then record the entry pointing at that change; otherwise mark
    it accepted risk. Do not just append prose - an un-acted lesson is noise. Prune/dedupe so
    the file stays high-signal. See `docs/loops/09-memory-and-learning.md`.
+5. **docs/loops/review-digest.md** - append a dated **comprehension digest**: the antidote to
+   comprehension debt (the loop ships faster than the human reads). For the batch, list what
+   merged, then call out the **few diffs the human should read FIRST**, ranked by risk x
+   impact - auth/security, schema/migrations, core behavior (progression/stats), LLM prompts,
+   and CI/pipeline rank highest; additive UI, tests, and docs rank lowest (the skeptic + the
+   gate cover those). Give each priority item a `gh pr diff <n>` pointer and a one-line "why
+   read this". Keep it short - a reading list, not a re-summary; "reviewed by a sub-agent" is
+   not "understood by the human".
 
 ## Procedure
 
@@ -44,8 +52,10 @@ commit on an existing docs branch.
    group and decide if it warrants a playbook/README change. **Verify each claim against
    the code or the merged diff** - never document a feature that is not actually there
    (this skill exists partly because a changelog drifts otherwise).
-3. **Write** the smallest accurate edits. English only, regular hyphens (no em/en-dash),
-   Keep a Changelog format.
+3. **Write** the smallest accurate edits - and do not skip items 4 and 5 of "What to keep
+   current": harvest/graduate any lesson into `lessons.md` (+ the skill/charter it changes),
+   and append the prioritized **comprehension digest** to `review-digest.md`. English only,
+   regular hyphens (no em/en-dash), Keep a Changelog format.
 4. **Green-gate** (`bash scripts/verify.sh`) - docs-only, but the working agreement is
    the working agreement.
 5. **Commit, push, PR** with `Closes #<n>` if a content issue exists, else a plain docs
