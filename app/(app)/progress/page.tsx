@@ -5,9 +5,14 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { MUSCLE_GROUP_LABELS } from '@/lib/schemas/exercise';
 import {
   applyBodyweight,
+  classifyWeeklySets,
   exerciseProgress,
+  isoWeekKey,
   trainingConsistency,
+  weeklySetsByMuscleGroup,
   weeklyVolumeByMuscleGroup,
+  WEEKLY_SETS_MEV,
+  WEEKLY_SETS_MRV,
 } from '@/lib/stats';
 import { ProgressDashboard } from '@/components/progress/progress-dashboard';
 import { ConsistencyCard } from '@/components/progress/consistency-card';
@@ -141,6 +146,42 @@ export default async function ProgressPage({
     ),
   );
 
+  // Weekly working-set count per muscle group, for the MEV/MRV reference band.
+  // Set counts are load-agnostic, so no bodyweight adjustment is needed.
+  const weeklySetsPoints = weeklySetsByMuscleGroup(
+    weeklySetsRaw.map((s) => ({
+      isWarmup: s.isWarmup,
+      muscleGroup: s.exercise.muscleGroup,
+      sessionStartedAt: s.session.startedAt,
+    })),
+  );
+
+  // Classify the most recent completed (non-current) week against the band so
+  // the dashboard can flag below MEV / within / above MRV per muscle group.
+  // Falling back to the latest available week keeps a signal when only the
+  // current week has data.
+  const currentWeekKey = isoWeekKey(new Date());
+  const latestCompletedWeek =
+    [...weeklySetsPoints]
+      .reverse()
+      .find((w) => w.weekKey !== currentWeekKey) ??
+    weeklySetsPoints[weeklySetsPoints.length - 1];
+  const volumeLandmarks = latestCompletedWeek
+    ? {
+        weekKey: latestCompletedWeek.weekKey,
+        mev: WEEKLY_SETS_MEV,
+        mrv: WEEKLY_SETS_MRV,
+        byMuscleGroup: Object.fromEntries(
+          Object.entries(latestCompletedWeek.byMuscleGroup).map(
+            ([group, sets]) => [
+              group,
+              { sets, zone: classifyWeeklySets(sets) },
+            ],
+          ),
+        ),
+      }
+    : null;
+
   // Recap table: per exercise, first and last session in the period,
   // delta of the max load and the 1RM.
   const recapRows = await Promise.all(
@@ -233,6 +274,7 @@ export default async function ProgressPage({
                 byMuscleGroup: w.byMuscleGroup,
                 total: w.total,
               }))}
+              volumeLandmarks={volumeLandmarks}
               recap={recap}
               unit={unit}
             />

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   applyBodyweight,
   best1RM,
+  classifyWeeklySets,
   effectiveWeight,
   estimate1RM,
   exerciseProgress,
@@ -10,7 +11,10 @@ import {
   setVolume,
   totalVolume,
   trainingConsistency,
+  weeklySetsByMuscleGroup,
   weeklyVolumeByMuscleGroup,
+  WEEKLY_SETS_MEV,
+  WEEKLY_SETS_MRV,
 } from './stats';
 
 describe('setVolume / totalVolume', () => {
@@ -175,6 +179,85 @@ describe('weeklyVolumeByMuscleGroup', () => {
     expect(w18.total).toBe(80 * 10 + 60 * 12 + 100 * 8);
     expect(w19.weekKey).toBe('2026-W19');
     expect(w19.byMuscleGroup.CHEST).toBe(82.5 * 10);
+  });
+});
+
+describe('weeklySetsByMuscleGroup', () => {
+  it('counts working sets per ISO week and muscle group', () => {
+    const sets = [
+      // week 18 (Monday 2026-04-27): 2 chest + 1 back
+      {
+        isWarmup: false,
+        muscleGroup: 'CHEST',
+        sessionStartedAt: new Date('2026-04-27T10:00:00Z'),
+      },
+      {
+        isWarmup: false,
+        muscleGroup: 'CHEST',
+        sessionStartedAt: new Date('2026-04-29T10:00:00Z'),
+      },
+      {
+        isWarmup: false,
+        muscleGroup: 'BACK_WIDTH',
+        sessionStartedAt: new Date('2026-04-29T10:00:00Z'),
+      },
+      // week 19 (Monday 2026-05-04): 1 chest working + 1 warmup ignored
+      {
+        isWarmup: false,
+        muscleGroup: 'CHEST',
+        sessionStartedAt: new Date('2026-05-04T10:00:00Z'),
+      },
+      {
+        isWarmup: true,
+        muscleGroup: 'CHEST',
+        sessionStartedAt: new Date('2026-05-04T10:00:00Z'),
+      },
+    ];
+    const points = weeklySetsByMuscleGroup(sets);
+    expect(points).toHaveLength(2);
+    const w18 = points[0]!;
+    const w19 = points[1]!;
+    expect(w18.weekKey).toBe('2026-W18');
+    expect(w18.byMuscleGroup.CHEST).toBe(2);
+    expect(w18.byMuscleGroup.BACK_WIDTH).toBe(1);
+    expect(w18.total).toBe(3);
+    expect(w19.weekKey).toBe('2026-W19');
+    expect(w19.byMuscleGroup.CHEST).toBe(1);
+    expect(w19.total).toBe(1);
+  });
+
+  it('returns an empty list when there are no working sets', () => {
+    expect(
+      weeklySetsByMuscleGroup([
+        {
+          isWarmup: true,
+          muscleGroup: 'CHEST',
+          sessionStartedAt: new Date('2026-05-04T10:00:00Z'),
+        },
+      ]),
+    ).toEqual([]);
+  });
+});
+
+describe('classifyWeeklySets (MEV/MRV band)', () => {
+  it('uses the documented defaults of 10 (MEV) and 20 (MRV)', () => {
+    expect(WEEKLY_SETS_MEV).toBe(10);
+    expect(WEEKLY_SETS_MRV).toBe(20);
+  });
+
+  it('classifies at the band boundaries', () => {
+    expect(classifyWeeklySets(0)).toBe('BELOW_MEV');
+    expect(classifyWeeklySets(9)).toBe('BELOW_MEV');
+    expect(classifyWeeklySets(10)).toBe('WITHIN'); // MEV inclusive
+    expect(classifyWeeklySets(15)).toBe('WITHIN');
+    expect(classifyWeeklySets(20)).toBe('WITHIN'); // MRV inclusive
+    expect(classifyWeeklySets(21)).toBe('ABOVE_MRV');
+  });
+
+  it('honours overridden thresholds', () => {
+    expect(classifyWeeklySets(8, 6, 12)).toBe('WITHIN');
+    expect(classifyWeeklySets(5, 6, 12)).toBe('BELOW_MEV');
+    expect(classifyWeeklySets(13, 6, 12)).toBe('ABOVE_MRV');
   });
 });
 
