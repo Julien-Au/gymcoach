@@ -9,6 +9,7 @@ import {
   isoWeekStart,
   setVolume,
   totalVolume,
+  trainingConsistency,
   weeklyVolumeByMuscleGroup,
 } from './stats';
 
@@ -218,5 +219,102 @@ describe('applyBodyweight', () => {
       { weight: 0, reps: 8, isWarmup: false, usesBodyweight: true }, // 70 × 8
     ];
     expect(totalVolume(applyBodyweight(sets, 70))).toBe(70 * 10 + 70 * 8);
+  });
+});
+
+describe('trainingConsistency', () => {
+  // Fixed reference point: Wednesday 2026-06-10, 12:00 UTC.
+  const now = new Date('2026-06-10T12:00:00Z');
+  // Monday 00:00 UTC of the ISO week containing `now`.
+  const currentMonday = isoWeekStart(now);
+
+  // A date inside the ISO week that is `weeksAgo` weeks before the current week,
+  // offset by `dayOffset` days from that week's Monday.
+  function dayInWeek(weeksAgo: number, dayOffset = 0): Date {
+    const d = new Date(currentMonday);
+    d.setUTCDate(d.getUTCDate() - weeksAgo * 7 + dayOffset);
+    d.setUTCHours(10, 0, 0, 0);
+    return d;
+  }
+
+  it('returns a zero streak and no crash for empty history', () => {
+    const out = trainingConsistency([], { now, windowWeeks: 12 });
+    expect(out.currentStreak).toBe(0);
+    expect(out.weeks).toHaveLength(12);
+    expect(out.weeks.every((w) => w.trainedDays === 0)).toBe(true);
+    expect(out.weeks[out.weeks.length - 1]?.isCurrent).toBe(true);
+  });
+
+  it('counts an unbroken run of weeks (one session per week)', () => {
+    const dates = [
+      dayInWeek(0), // current week
+      dayInWeek(1),
+      dayInWeek(2),
+      dayInWeek(3),
+    ];
+    const out = trainingConsistency(dates, { now, windowWeeks: 12 });
+    expect(out.currentStreak).toBe(4);
+  });
+
+  it('breaks the streak on a missed week', () => {
+    const dates = [
+      dayInWeek(0),
+      dayInWeek(1),
+      // week 2 missed
+      dayInWeek(3),
+    ];
+    const out = trainingConsistency(dates, { now, windowWeeks: 12 });
+    expect(out.currentStreak).toBe(2);
+  });
+
+  it('de-duplicates multiple sessions on the same calendar day', () => {
+    const sameDay = dayInWeek(0, 1);
+    const sameDayLater = new Date(sameDay);
+    sameDayLater.setUTCHours(18, 0, 0, 0);
+    const out = trainingConsistency([sameDay, sameDayLater], { now, windowWeeks: 12 });
+    const current = out.weeks[out.weeks.length - 1];
+    expect(current?.trainedDays).toBe(1);
+  });
+
+  it('does not break the streak when the current week is still empty', () => {
+    // No session this week, but a solid run in the prior two weeks.
+    const dates = [dayInWeek(1), dayInWeek(2)];
+    const out = trainingConsistency(dates, { now, windowWeeks: 12 });
+    expect(out.weeks[out.weeks.length - 1]?.trainedDays).toBe(0);
+    expect(out.currentStreak).toBe(2);
+  });
+
+  it('respects the weeklyFrequency target when present', () => {
+    // Two trained days in the current and previous week, one in the week before.
+    const dates = [
+      dayInWeek(0, 0),
+      dayInWeek(0, 2),
+      dayInWeek(1, 0),
+      dayInWeek(1, 3),
+      dayInWeek(2, 0), // only one day this week -> below target of 2
+    ];
+    const out = trainingConsistency(dates, {
+      now,
+      windowWeeks: 12,
+      weeklyFrequency: 2,
+    });
+    expect(out.weeklyFrequency).toBe(2);
+    // current + previous meet the target; the one-day week does not.
+    expect(out.currentStreak).toBe(2);
+  });
+
+  it('ignores a target of zero or negative and falls back to >=1 day', () => {
+    const out = trainingConsistency([dayInWeek(0), dayInWeek(1)], {
+      now,
+      windowWeeks: 12,
+      weeklyFrequency: 0,
+    });
+    expect(out.weeklyFrequency).toBeNull();
+    expect(out.currentStreak).toBe(2);
+  });
+
+  it('clamps the window to the requested number of weeks', () => {
+    const out = trainingConsistency([], { now, windowWeeks: 4 });
+    expect(out.weeks).toHaveLength(4);
   });
 });
