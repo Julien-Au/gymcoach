@@ -39,8 +39,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Upper/Lower): start a program from a template through the same generation path
   the AI uses, then edit it like any program.
 - Optional pre-session readiness check-in (overall readiness and sleep quality on
-  1-5 scales): skippable, never blocks starting a session, and feeds the AI coach
-  as one more auto-regulation signal when it is recent.
+  1-5 scales, plus optional per-muscle-group soreness and a short note): skippable,
+  never blocks starting a session, and feeds the AI coach as one more
+  auto-regulation signal when it is recent.
 - Test pyramid (unit, integration, E2E) with CI running lint, typecheck, unit,
   integration, build, and E2E on every pull request.
 - Docker and Docker Compose setup for local development and production.
