@@ -125,6 +125,13 @@ cybernetics paper + Anthropic's long-running-harness guidance):
   green-gate / CI / issue output and state what it says before deciding the next step. Do
   not plan past a failure signal.
 
+The same grounding principle applies to the **human**: the loop ships faster than anyone
+reads, so `docs/loops/review-digest.md` is a per-batch prioritized reading list (auth /
+security / schema / core behavior / prompts / CI first) that `write-up` appends to. It is
+the antidote to *comprehension debt* - the skeptic sub-agents gate correctness, but
+"reviewed by an agent" is not "understood by the human", and a smooth loop widens that gap
+unless the human reads the diffs that matter.
+
 ## 4. What we deliberately do NOT build (anti-hype)
 
 Capability we considered and rejected *at this scale*, with the trigger that would change

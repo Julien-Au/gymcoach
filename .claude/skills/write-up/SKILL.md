@@ -35,6 +35,14 @@ commit on an existing docs branch.
    behavior changes next time, then record the entry pointing at that change; otherwise mark
    it accepted risk. Do not just append prose - an un-acted lesson is noise. Prune/dedupe so
    the file stays high-signal. See `docs/loops/09-memory-and-learning.md`.
+5. **docs/loops/review-digest.md** - append a dated **comprehension digest**: the antidote to
+   comprehension debt (the loop ships faster than the human reads). For the batch, list what
+   merged, then call out the **few diffs the human should read FIRST**, ranked by risk x
+   impact - auth/security, schema/migrations, core behavior (progression/stats), LLM prompts,
+   and CI/pipeline rank highest; additive UI, tests, and docs rank lowest (the skeptic + the
+   gate cover those). Give each priority item a `gh pr diff <n>` pointer and a one-line "why
+   read this". Keep it short - a reading list, not a re-summary; "reviewed by a sub-agent" is
+   not "understood by the human".
 
 ## Procedure
 

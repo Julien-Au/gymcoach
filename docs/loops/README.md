@@ -31,7 +31,8 @@ This folder is the reproducible playbook. Read in order:
 - [`09-memory-and-learning.md`](09-memory-and-learning.md) - the loop as a control system:
   how it manages/compresses context (state in git, not the session), learns (layered
   filesystem memory + lessons that **graduate** into skills - no vector RAG), and regrounds
-  on its purpose. Staging area in [`lessons.md`](lessons.md).
+  on its purpose. Staging area in [`lessons.md`](lessons.md); the per-batch human reading
+  list (comprehension-debt antidote) in [`review-digest.md`](review-digest.md).
 
 ## The system at a glance
 
