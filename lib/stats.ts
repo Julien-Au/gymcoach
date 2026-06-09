@@ -181,6 +181,81 @@ export function weeklyVolumeByMuscleGroup(
 }
 
 // ============================================================
+// Volume landmarks (weekly working sets per muscle group)
+// ============================================================
+
+// Default volume landmarks, expressed in weekly working (non-warmup) sets per
+// muscle group. These are general hypertrophy heuristics (renaissance-
+// periodization style), not medical truth: a single conservative band applied
+// uniformly to every muscle group. They are intended as adjustable reference
+// defaults so a user can gauge whether a week sits below, within, or above the
+// productive range.
+//
+// - MEV (minimum effective volume): the floor below which growth stimulus is
+//   typically too low to drive progress.
+// - MRV (maximum recoverable volume): the ceiling above which fatigue tends to
+//   outpace recovery.
+export const WEEKLY_SETS_MEV = 10;
+export const WEEKLY_SETS_MRV = 20;
+
+// Where a weekly working-set count falls relative to the MEV/MRV band.
+export type VolumeLandmarkZone = 'BELOW_MEV' | 'WITHIN' | 'ABOVE_MRV';
+
+// Classifies a weekly working-set count against the band. The band is inclusive
+// at both bounds: counts < MEV are below, counts > MRV are above, and the
+// MEV..MRV range (endpoints included) is within. Defaults are overridable.
+export function classifyWeeklySets(
+  sets: number,
+  mev: number = WEEKLY_SETS_MEV,
+  mrv: number = WEEKLY_SETS_MRV,
+): VolumeLandmarkZone {
+  if (sets < mev) return 'BELOW_MEV';
+  if (sets > mrv) return 'ABOVE_MRV';
+  return 'WITHIN';
+}
+
+export interface WeeklySetsPoint {
+  weekKey: string; // YYYY-Www
+  weekStart: Date; // Monday 00:00 UTC
+  // Working-set count per muscle group. Absent groups count as 0.
+  byMuscleGroup: Record<string, number>;
+  total: number;
+}
+
+// Aggregates the weekly working-set count by muscle group. Mirrors
+// `weeklyVolumeByMuscleGroup` (same ISO-week bucketing and non-warmup filter),
+// but counts sets instead of summing load × reps. Display-only: this feeds the
+// MEV/MRV reference band and does not influence progression or coach logic.
+export function weeklySetsByMuscleGroup(
+  sets: (Pick<Set, 'isWarmup'> & {
+    muscleGroup: string;
+    sessionStartedAt: Date;
+  })[],
+): WeeklySetsPoint[] {
+  const byWeek = new Map<string, WeeklySetsPoint>();
+  for (const s of sets) {
+    if (s.isWarmup) continue;
+    const key = isoWeekKey(s.sessionStartedAt);
+    let entry = byWeek.get(key);
+    if (!entry) {
+      entry = {
+        weekKey: key,
+        weekStart: isoWeekStart(s.sessionStartedAt),
+        byMuscleGroup: {},
+        total: 0,
+      };
+      byWeek.set(key, entry);
+    }
+    entry.byMuscleGroup[s.muscleGroup] =
+      (entry.byMuscleGroup[s.muscleGroup] ?? 0) + 1;
+    entry.total += 1;
+  }
+  return [...byWeek.values()].sort(
+    (a, b) => a.weekStart.getTime() - b.weekStart.getTime(),
+  );
+}
+
+// ============================================================
 // Training consistency (per-week trained days + current streak)
 // ============================================================
 
