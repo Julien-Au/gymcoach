@@ -34,6 +34,9 @@ Format per entry: trigger/evidence, the lesson (actionable), and **Status** = `g
   mirror; the action runtimes bumped `checkout@v5`/`setup-node@v5` (which run on Node 24) and
   CI `node-version` 20 -> 22 to match the nvm toolchain (#67). Re-check-merged behavior: ship
   one PR at a time and let the gate run on the merged result (accepted process, noted in `09`).
+  Reconfirmed during the first ideate batch: a "job was not acquired by Runner" failure (GitHub
+  Actions infra, not a step in our workflow) was read as infra and re-run, not treated as a
+  regression - exactly the L2 discipline.
 
 ### L3 - The orchestrator owns CI-watch and merge; subagents stop at the PR
 - **Trigger:** background maintainer-tick agents repeatedly terminated early - they ended
@@ -58,3 +61,16 @@ Format per entry: trigger/evidence, the lesson (actionable), and **Status** = `g
   (`gh issue comment` then `gh issue close`); do not assume the newest `gh` surface.
 - **Status:** accepted risk - operational quirk of this environment, not worth encoding in a
   product skill; recorded here so future runs do not rediscover it.
+
+### L6 - Prisma's generated `Set` model type shadows the global `Set`
+- **Trigger:** the consistency-card lib (#71) needed a `Set<string>` of distinct trained days,
+  but `import type { Set } from '@prisma/client'` (the workout-set model) is in scope across
+  `lib/`, so a bare `Set<string>` / `new Set()` resolves to the Prisma model and the typecheck
+  fails (`lib/stats.ts`).
+- **Lesson:** in any `lib` module that touches both the Prisma `Set` model and JS collections,
+  reference the runtime `Set` via `globalThis.Set` (type `globalThis.Set<...>`,
+  value `new globalThis.Set(...)`) rather than the bare name. See `lib/stats.ts`
+  `trainingConsistency`.
+- **Status:** accepted risk - a narrow naming collision specific to this schema's `Set` model,
+  not a recurring loop behavior; recorded so future `lib` work does not rediscover it under a
+  red typecheck.
