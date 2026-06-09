@@ -1,28 +1,111 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronLeft, Check } from 'lucide-react';
+import { ChevronLeft, Check, Trophy } from 'lucide-react';
 import type { Exercise, ProgramExercise, Session, WeightUnit } from '@prisma/client';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import type { PendingSet } from '@/lib/indexeddb';
 import { formatWeight } from '@/lib/units';
+import { detectPRs, type PRType } from '@/lib/records';
+
+// Prior (previous-session) non-warmup sets per exerciseId, used as the PR
+// baseline. Same source as the in-session badge (getLastPerformances): a PR
+// here means "beats your last session", not an all-time record.
+type PriorSets = Record<string, { weight: number; reps: number }[]>;
 
 interface Props {
   session: Session;
   sets: PendingSet[];
   programExercises: (ProgramExercise & { exercise: Exercise })[];
   unit: WeightUnit;
+  // Previous-session sets per exercise; absent entries mean no prior history.
+  priorSets?: PriorSets;
   onBack: () => void;
   onFinish: () => Promise<void> | void;
   finishing: boolean;
 }
 
-export function SessionSummary({ session, sets, programExercises, unit, onBack, onFinish, finishing }: Props) {
+export interface SessionPR {
+  exerciseId: string;
+  exerciseName: string;
+  // The PR types achieved by any working set of this exercise this session.
+  types: PRType[];
+  // The heaviest working load of this session for the exercise (for display).
+  bestWeight: number;
+}
+
+const PR_TYPE_LABEL: Record<PRType, string> = {
+  weight: 'heaviest load',
+  e1rm: 'best est. 1RM',
+};
+
+// Computes which exercises set a personal record during this session. PR math
+// is reused from lib/records (detectPRs); the comparison baseline is the prior
+// session's sets plus any earlier working set of the same exercise this
+// session, so a set is never compared against itself.
+export function computeSessionPRs(
+  sets: PendingSet[],
+  programExercises: (ProgramExercise & { exercise: Exercise })[],
+  priorSets: PriorSets,
+): SessionPR[] {
+  const prs: SessionPR[] = [];
+  const seen = new Set<string>();
+
+  for (const pe of programExercises) {
+    // A workout may list the same exercise more than once; the PR is per
+    // exercise, so process each exerciseId at most once (also keeps React keys
+    // unique below).
+    if (seen.has(pe.exerciseId)) continue;
+    seen.add(pe.exerciseId);
+
+    const exoSets = sets.filter((s) => s.exerciseId === pe.exerciseId && !s.isWarmup);
+    if (exoSets.length === 0) continue;
+
+    const baseline = (priorSets[pe.exerciseId] ?? []).map((s) => ({ ...s, isWarmup: false }));
+    const achieved = new Set<PRType>();
+    const earlier: { weight: number; reps: number; isWarmup: boolean }[] = [];
+
+    for (const set of exoSets) {
+      const candidate = { weight: set.weight, reps: set.reps, isWarmup: false };
+      for (const type of detectPRs(candidate, [...baseline, ...earlier])) {
+        achieved.add(type);
+      }
+      earlier.push(candidate);
+    }
+
+    if (achieved.size === 0) continue;
+
+    // Preserve a stable type order: weight before e1rm.
+    const types: PRType[] = (['weight', 'e1rm'] as PRType[]).filter((t) => achieved.has(t));
+    prs.push({
+      exerciseId: pe.exerciseId,
+      exerciseName: pe.exercise.name,
+      types,
+      bestWeight: Math.max(...exoSets.map((s) => s.weight)),
+    });
+  }
+
+  return prs;
+}
+
+export function SessionSummary({
+  session,
+  sets,
+  programExercises,
+  unit,
+  priorSets = {},
+  onBack,
+  onFinish,
+  finishing,
+}: Props) {
   const [notes, setNotes] = useState(session.notes ?? '');
+
+  const sessionPRs = computeSessionPRs(sets, programExercises, priorSets);
 
   const durationMin = Math.round(
     (Date.now() - new Date(session.startedAt).getTime()) / 60000,
@@ -77,6 +160,41 @@ export function SessionSummary({ session, sets, programExercises, unit, onBack, 
         <p className="text-xs text-muted-foreground">
           Volume = Σ (load × reps), {totalReps} reps total.
         </p>
+
+        {sessionPRs.length > 0 && (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Trophy className="size-4 text-primary" />
+                Personal records this session
+              </CardTitle>
+              <CardDescription>New bests versus your last session</CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <ul className="divide-y divide-border">
+                {sessionPRs.map((pr) => (
+                  <li
+                    key={pr.exerciseId}
+                    className="flex items-center justify-between gap-2 py-2 text-sm"
+                  >
+                    <span className="min-w-0 truncate font-medium">{pr.exerciseName}</span>
+                    <div className="flex flex-shrink-0 items-center gap-1.5">
+                      {pr.types.map((type) => (
+                        <Badge key={type} className="gap-1 text-xs">
+                          <Trophy className="size-3" />
+                          {PR_TYPE_LABEL[type]}
+                        </Badge>
+                      ))}
+                      <span className="text-xs text-muted-foreground">
+                        {formatWeight(pr.bestWeight, unit, { decimals: 2, group: false })}
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader className="pb-2">

@@ -129,6 +129,16 @@ export function SessionRunner({ session, lastPerformances, readiness, unit }: Se
     return out;
   }, [liveSets]);
 
+  // Prior-session sets per exercise, the PR baseline for the post-session
+  // summary (same source as the in-session badge: getLastPerformances).
+  const priorSetsByExercise = useMemo(() => {
+    const out: Record<string, { weight: number; reps: number }[]> = {};
+    for (const [exerciseId, perf] of Object.entries(lastPerformances)) {
+      out[exerciseId] = perf.sets.map((s) => ({ weight: s.weight, reps: s.reps }));
+    }
+    return out;
+  }, [lastPerformances]);
+
   const completedExerciseCount = useMemo(() => {
     let count = 0;
     for (const pe of programExercises) {
@@ -265,6 +275,7 @@ export function SessionRunner({ session, lastPerformances, readiness, unit }: Se
         sets={liveSets}
         programExercises={programExercises}
         unit={unit}
+        priorSets={priorSetsByExercise}
         onBack={() => setMode({ kind: 'input' })}
         onFinish={handleFinishSession}
         finishing={closing}
