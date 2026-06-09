@@ -29,9 +29,10 @@ whether to keep going. The decision is the agent's, not a hardcoded branch.
    to fixed anchor files instead of letting the conversation grow.
 4. **/goal, /loop (spring 2026)** — productized ralph: run until a validator
    confirms the task is done.
-5. **Orchestration loops (now)** — loops supervising other loops, concurrently,
-   on a schedule, with durable git-backed state and crash recovery. **This is
-   what we are building.**
+5. **Orchestration loops (now)** — loops supervising other loops, concurrently
+   (at the *stage* level - one writer per task/branch; see
+   [`09-memory-and-learning.md`](09-memory-and-learning.md)), on a schedule, with durable
+   git-backed state and crash recovery. **This is what we are building.**
 
 Single-agent ralph is old hat. The multi-agent, self-verifying, scheduled,
 durable layer on top is the new thing.

@@ -102,6 +102,25 @@ operator gives you in-session.
 When in doubt, refuse and leave it for a human. A missed feature is cheap; a leaked secret
 or a merged backdoor is not.
 
+## Regrounding and self-monitoring
+
+Long autonomous runs drift. Treat the loop as a control system whose setpoint is the
+primary purpose (full architecture in `docs/loops/09-memory-and-learning.md`):
+
+- **Reground each run from the source of truth.** The setpoint lives in `CLAUDE.md` + this
+  charter - files compaction cannot dilute. Start every run, and re-check at each issue
+  boundary, by restating: "what is the primary purpose, and does this task serve it?"
+- **Acknowledge feedback before re-planning** (anti "feedback blindness"): read what the
+  green-gate / CI / issue text actually says and state it before deciding the next step.
+  Never plan past a failure signal.
+- **Watch your own action history** (cheap, high-value): the same edit retried, N
+  consecutive red gates, a task that maps to no goal in this charter, or a PR re-opened by
+  an untrusted author are drift signals - stop, reground, or hand to a human rather than
+  pushing on.
+- **The output caps are the stability controls.** 3 merges/run, 3 fix attempts, anti-flood
+  on ideation, halt-on-idle - they keep the loop from oscillating or running away. They are
+  not red tape; they are what keeps an unsupervised loop stable.
+
 ## Subagent challenge protocol
 
 The point of subagents is adversarial pressure, not extra hands. Before shipping anything

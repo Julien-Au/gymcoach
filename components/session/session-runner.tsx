@@ -322,6 +322,7 @@ export function SessionRunner({ session, lastPerformances, readiness, unit }: Se
           sets={currentSets}
           isInputActive={mode.kind === 'input'}
           onDeleteSet={handleDeleteSet}
+          priorSets={lastPerf?.sets}
         />
 
         {!hydrated ? null : mode.kind === 'input' ? (

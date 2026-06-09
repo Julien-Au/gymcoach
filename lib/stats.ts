@@ -179,3 +179,96 @@ export function weeklyVolumeByMuscleGroup(
     (a, b) => a.weekStart.getTime() - b.weekStart.getTime(),
   );
 }
+
+// ============================================================
+// Training consistency (per-week trained days + current streak)
+// ============================================================
+
+export interface ConsistencyWeek {
+  weekKey: string; // YYYY-Www
+  weekStartIso: string; // Monday 00:00 UTC, ISO string
+  trainedDays: number; // distinct calendar days with >=1 finished session
+  onStreak: boolean; // meets the streak rule (>=1 day, or the target when set)
+  isCurrent: boolean; // the ISO week that contains `now`
+}
+
+export interface ConsistencySummary {
+  weeks: ConsistencyWeek[]; // oldest -> newest, exactly `windowWeeks` entries
+  currentStreak: number; // consecutive on-streak weeks ending at the current week
+  weeklyFrequency: number | null; // the target used (echoed back), null when none
+}
+
+// Pure derivation of training consistency from finished sessions.
+//
+// - Buckets the `windowWeeks` most recent ISO weeks (ending at the week of
+//   `now`), counting distinct calendar days that have at least one finished
+//   session (multiple sessions on the same day count once).
+// - A week is "on streak" when it has at least one trained day, or meets the
+//   `weeklyFrequency` target when one is provided.
+// - `currentStreak` is the run of consecutive on-streak weeks ending at the
+//   current week. The current week is partial: if it has not yet met the rule,
+//   it does not break the streak (it simply does not extend it), so the streak
+//   is measured from the most recent completed-or-met week backwards.
+export function trainingConsistency(
+  finishedSessionDates: Date[],
+  options: { weeklyFrequency?: number | null; windowWeeks?: number; now?: Date } = {},
+): ConsistencySummary {
+  const windowWeeks = options.windowWeeks ?? 12;
+  const now = options.now ?? new Date();
+  const weeklyFrequency =
+    options.weeklyFrequency != null && options.weeklyFrequency > 0
+      ? options.weeklyFrequency
+      : null;
+
+  // Distinct trained calendar days per ISO week key. (`Set` from @prisma/client
+  // shadows the global Set type here, so reference it via globalThis.)
+  const daysByWeek = new Map<string, globalThis.Set<string>>();
+  for (const date of finishedSessionDates) {
+    const weekKey = isoWeekKey(date);
+    const dayKey = date.toISOString().slice(0, 10);
+    let days = daysByWeek.get(weekKey);
+    if (!days) {
+      days = new globalThis.Set<string>();
+      daysByWeek.set(weekKey, days);
+    }
+    days.add(dayKey);
+  }
+
+  // Build the window: the current ISO week and the (windowWeeks - 1) before it.
+  const currentWeekStart = isoWeekStart(now);
+  const currentWeekKey = isoWeekKey(now);
+  const weeks: ConsistencyWeek[] = [];
+  for (let i = windowWeeks - 1; i >= 0; i--) {
+    const weekStart = new Date(currentWeekStart);
+    weekStart.setUTCDate(weekStart.getUTCDate() - i * 7);
+    const weekKey = isoWeekKey(weekStart);
+    const trainedDays = daysByWeek.get(weekKey)?.size ?? 0;
+    const onStreak = weeklyFrequency
+      ? trainedDays >= weeklyFrequency
+      : trainedDays >= 1;
+    weeks.push({
+      weekKey,
+      weekStartIso: weekStart.toISOString(),
+      trainedDays,
+      onStreak,
+      isCurrent: weekKey === currentWeekKey,
+    });
+  }
+
+  // Count the streak backwards from the newest week. The current (partial) week
+  // not yet on streak is skipped rather than breaking the run.
+  let currentStreak = 0;
+  for (let i = weeks.length - 1; i >= 0; i--) {
+    const week = weeks[i]!;
+    if (week.onStreak) {
+      currentStreak++;
+    } else if (week.isCurrent) {
+      // Partial current week with no qualifying training yet: do not break.
+      continue;
+    } else {
+      break;
+    }
+  }
+
+  return { weeks, currentStreak, weeklyFrequency };
+}

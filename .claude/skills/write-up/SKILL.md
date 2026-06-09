@@ -29,6 +29,12 @@ commit on an existing docs branch.
    honest (document what actually runs, including failure modes you hit).
 3. **README** - only when a user-facing capability or the loop narrative changed enough
    to matter (features list, roadmap checkboxes). Keep edits minimal.
+4. **docs/loops/lessons.md** - harvest any lesson the run surfaced (a failure mode, a
+   surprise, a fix that should not have been needed). A lesson is only "learned" when it
+   **graduates**: if it is general, edit the relevant skill or `CLAUDE.md`/charter so the
+   behavior changes next time, then record the entry pointing at that change; otherwise mark
+   it accepted risk. Do not just append prose - an un-acted lesson is noise. Prune/dedupe so
+   the file stays high-signal. See `docs/loops/09-memory-and-learning.md`.
 
 ## Procedure
 
