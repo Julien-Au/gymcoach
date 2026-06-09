@@ -140,6 +140,54 @@ export function exerciseProgress(
   return points.sort((a, b) => a.sessionStartedAt.getTime() - b.sessionStartedAt.getTime());
 }
 
+// ============================================================
+// Stalled-lift detection (flat / declining e1RM over recent sessions)
+// ============================================================
+
+// How many of the most recent sessions to judge a stall over. A lift is
+// flagged when, across these sessions, the best estimated 1RM never improves
+// on the prior best (within tolerance). Defined once so it lives in one place.
+export const STALL_LOOKBACK_SESSIONS = 3;
+
+// Relative tolerance: an e1RM counts as an improvement only when it exceeds the
+// prior best by more than this fraction (0.5%). Keeps rounding/noise from
+// masking a genuine plateau.
+export const STALL_TOLERANCE = 0.005;
+
+// Pure stall test over an exercise's per-session best-e1RM series (oldest ->
+// newest). Returns true when, over the last `lookback` sessions, no session
+// improves on the best e1RM seen before that window (and within the window).
+// Never flags with fewer than `lookback` sessions (insufficient data).
+export function isStalled(
+  e1rmSeries: number[],
+  lookback: number = STALL_LOOKBACK_SESSIONS,
+): boolean {
+  if (lookback < 2) return false;
+  if (e1rmSeries.length < lookback) return false;
+
+  const windowStart = e1rmSeries.length - lookback;
+  // Best e1RM established strictly before the lookback window. With no prior
+  // history (window covers the whole series), the first window entry is the
+  // baseline the rest must beat.
+  let bestBefore = 0;
+  for (let i = 0; i < windowStart; i++) {
+    if (e1rmSeries[i]! > bestBefore) bestBefore = e1rmSeries[i]!;
+  }
+
+  let baseline = windowStart === 0 ? e1rmSeries[0]! : bestBefore;
+  const startIdx = windowStart === 0 ? 1 : windowStart;
+
+  for (let i = startIdx; i < e1rmSeries.length; i++) {
+    const value = e1rmSeries[i]!;
+    // Improvement = strictly above the running best, beyond tolerance.
+    if (value > baseline * (1 + STALL_TOLERANCE)) {
+      return false;
+    }
+    if (value > baseline) baseline = value;
+  }
+  return true;
+}
+
 export interface WeeklyVolumePoint {
   weekKey: string; // YYYY-Www
   weekStart: Date; // Monday 00:00 UTC

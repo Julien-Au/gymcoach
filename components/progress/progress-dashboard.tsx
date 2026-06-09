@@ -17,8 +17,6 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { MUSCLE_GROUP_LABELS } from '@/lib/schemas/exercise';
-import type { MuscleGroup } from '@prisma/client';
-import type { VolumeLandmarkZone } from '@/lib/stats';
 import {
   Select,
   SelectContent,
@@ -26,8 +24,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import type { WeightUnit } from '@prisma/client';
-import type { ExerciseChartPoint } from '@/lib/stats';
+import type { MuscleGroup, WeightUnit } from '@prisma/client';
+import {
+  STALL_LOOKBACK_SESSIONS,
+  type ExerciseChartPoint,
+  type VolumeLandmarkZone,
+} from '@/lib/stats';
 import { roundWeight, toDisplayWeight, unitLabel } from '@/lib/units';
 
 interface RecapRow {
@@ -43,6 +45,7 @@ interface RecapRow {
   firstE1RM: number;
   lastE1RM: number;
   e1rmDelta: number;
+  stalled: boolean;
 }
 
 interface SerializedWeeklyPoint {
@@ -142,6 +145,9 @@ export function ProgressDashboard({
   }
 
   const selectedExo = exercises.find((e) => e.id === selectedExerciseId);
+
+  // Read-only summary: exercises whose e1RM has plateaued recently.
+  const stalledLifts = recap.filter((r) => r.stalled);
 
   // For the stacked bar chart: collect the groups present.
   const presentMuscleGroups = useMemo(() => {
@@ -304,6 +310,34 @@ export function ProgressDashboard({
         </CardContent>
       </Card>
 
+      {/* Stalled lifts: e1RM flat over the recent sessions (read-only) */}
+      {stalledLifts.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <h2 className="text-base font-semibold">Stalled lifts</h2>
+            <p className="text-xs text-muted-foreground">
+              No estimated 1RM progress over the last {STALL_LOOKBACK_SESSIONS}{' '}
+              sessions. Consider a deload, a rep-range change, or swapping the
+              exercise.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <ul className="flex flex-wrap gap-2">
+              {stalledLifts.map((r) => (
+                <li key={r.exerciseId}>
+                  <Badge
+                    variant="secondary"
+                    className="text-amber-700 dark:text-amber-400"
+                  >
+                    {r.exerciseName}
+                  </Badge>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Volume landmarks: latest week vs the MEV/MRV band */}
       {volumeLandmarks && landmarkRows.length > 0 && (
         <Card>
@@ -368,7 +402,18 @@ export function ProgressDashboard({
                   {recap.map((r) => (
                     <tr key={r.exerciseId} className="border-b border-border/40">
                       <td className="py-2">
-                        <div className="font-medium">{r.exerciseName}</div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{r.exerciseName}</span>
+                          {r.stalled && (
+                            <Badge
+                              variant="secondary"
+                              className="text-[10px] font-medium uppercase tracking-wide text-amber-700 dark:text-amber-400"
+                              title={`No estimated 1RM progress over the last ${STALL_LOOKBACK_SESSIONS} sessions.`}
+                            >
+                              Stalled
+                            </Badge>
+                          )}
+                        </div>
                         <div className="text-xs text-muted-foreground">
                           {r.muscleGroup}
                         </div>

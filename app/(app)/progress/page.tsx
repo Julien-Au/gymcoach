@@ -7,6 +7,7 @@ import {
   applyBodyweight,
   classifyWeeklySets,
   exerciseProgress,
+  isStalled,
   isoWeekKey,
   trainingConsistency,
   weeklySetsByMuscleGroup,
@@ -231,6 +232,8 @@ export default async function ProgressPage({
         firstE1RM: first.estimated1RM,
         lastE1RM: last.estimated1RM,
         e1rmDelta: +(last.estimated1RM - first.estimated1RM).toFixed(1),
+        // Read-only flag: e1RM has not improved over the recent sessions.
+        stalled: isStalled(points.map((p) => p.estimated1RM)),
       };
     }),
   );
