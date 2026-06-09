@@ -1,16 +1,29 @@
 // User preferences stored locally (not in the DB).
 // Everything is single-user, so localStorage is enough. SSR-safe reads.
 
+import { WeightUnit } from '@prisma/client';
+
 const STORAGE_KEY = 'gymcoach.prefs.v1';
 
 export interface UserPreferences {
   vibration: boolean;
   restTimerSound: boolean;
+  // Plate-loading calculator (issue #39). Bar weight and available plate
+  // denominations are stored per unit, since a kg gym and a lb gym stock
+  // different plates. Values are in the matching display unit.
+  barWeightKg: number;
+  barWeightLb: number;
+  platesKg: number[];
+  platesLb: number[];
 }
 
 export const DEFAULT_PREFERENCES: UserPreferences = {
   vibration: true,
   restTimerSound: false,
+  barWeightKg: 20,
+  barWeightLb: 45,
+  platesKg: [25, 20, 15, 10, 5, 2.5, 1.25],
+  platesLb: [45, 35, 25, 10, 5, 2.5],
 };
 
 export function loadPreferences(): UserPreferences {
@@ -41,4 +54,15 @@ export function isVibrationEnabled(): boolean {
 
 export function isRestTimerSoundEnabled(): boolean {
   return loadPreferences().restTimerSound;
+}
+
+// The plate-loading config (bar weight + available plates) for the active unit.
+export function plateConfigForUnit(unit: WeightUnit): {
+  barWeight: number;
+  plates: number[];
+} {
+  const prefs = loadPreferences();
+  return unit === 'LB'
+    ? { barWeight: prefs.barWeightLb, plates: prefs.platesLb }
+    : { barWeight: prefs.barWeightKg, plates: prefs.platesKg };
 }

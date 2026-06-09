@@ -17,6 +17,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { suggestNextWeight, weightIncrement } from '@/lib/progression';
+import { PlateCalculator } from '@/components/session/plate-calculator';
 import type { PendingSet } from '@/lib/indexeddb';
 import type { SerializedLastPerformance } from './session-runner';
 
@@ -98,9 +99,12 @@ export function SetInput({ programExercise, existingSets, lastPerformance, unit,
       <CardContent className="flex flex-col gap-4 pt-6">
         {/* Load */}
         <div className="space-y-2">
-          <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-            Load ({unitLabel(unit)})
-          </Label>
+          <div className="flex items-center justify-between">
+            <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+              Load ({unitLabel(unit)})
+            </Label>
+            <PlateCalculator weightKg={form.weight} unit={unit} />
+          </div>
           <div className="flex items-center gap-2">
             <Button
               type="button"
