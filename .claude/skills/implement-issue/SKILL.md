@@ -49,8 +49,11 @@ for repo conventions; this skill assumes them.
 4. **Test.** Add or update tests for the change (unit/component colocated as
    `*.test.ts`; integration in `tests/`). A behavior change with no test is not done.
 
-5. **Green-gate (self-verify).** Run `bash scripts/verify.sh`. If it fails:
-   - Read the failing step, fix the cause, re-run.
+5. **Green-gate (self-verify).** Run `bash scripts/verify.sh`. (In a fresh checkout or git
+   worktree, first `npm ci` - worktrees do not share `node_modules` - then `npm rebuild
+   bcrypt` if its native binding is missing, and `prisma migrate deploy` against the test
+   Postgres on :5434 before the integration/E2E tiers. Lesson L4.) If it fails:
+   - Read the failing step (acknowledge what it actually says), fix the cause, re-run.
    - Allow **at most 3** fix attempts. If still red after 3, do NOT open a normal
      PR: either open a **draft** PR describing what is blocked, or STOP and report.
    This is the hard feedback loop - never open a PR on a red gate.
@@ -63,8 +66,11 @@ for repo conventions; this skill assumes them.
    `gh pr create --fill --body "<summary>\n\nCloses #<n>\n\n## How I tested\n<commands + result>"`.
    The body must state that `scripts/verify.sh` passed.
 
-8. **Report.** Output the PR URL and a one-line summary. Do NOT merge - a human
-   reviews and merges. Return to `main` (`git switch main`) so the next run starts clean.
+8. **Report.** Output the PR URL and a one-line summary. **Stop at the PR - do NOT watch CI
+   or merge.** The shipping half (`ship-pr`, run by the maintainer/orchestrator) owns the
+   CI-watch and squash-merge; blocking on CI here is what made early background runs
+   terminate before merging (lesson L3). Return to `main` (`git switch main`) so the next
+   run starts clean.
 
 ## Stop conditions (do not burn tokens)
 
