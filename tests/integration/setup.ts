@@ -11,7 +11,7 @@ if (!process.env.DATABASE_URL) {
 // Truncates every table between tests so each starts from a clean slate.
 export async function resetDb(): Promise<void> {
   await db.$executeRawUnsafe(
-    'TRUNCATE TABLE "Message","Conversation","ReadinessCheckin","Set","Session","ProgramExercise","Workout","Program","Exercise","CoachSession","User" RESTART IDENTITY CASCADE;',
+    'TRUNCATE TABLE "Message","Conversation","ReadinessCheckin","ExerciseGoal","Set","Session","ProgramExercise","Workout","Program","Exercise","CoachSession","User" RESTART IDENTITY CASCADE;',
   );
 }
 

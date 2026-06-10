@@ -31,6 +31,7 @@ import {
   type VolumeLandmarkZone,
 } from '@/lib/stats';
 import { roundWeight, toDisplayWeight, unitLabel } from '@/lib/units';
+import { ExerciseGoalCard, type GoalView } from '@/components/progress/exercise-goal-card';
 
 interface RecapRow {
   exerciseId: string;
@@ -72,6 +73,11 @@ interface Props {
   volumeLandmarks: VolumeLandmarks | null;
   recap: RecapRow[];
   unit: WeightUnit;
+  // Target goal for the selected exercise (issue #90), with the
+  // bodyweight-adjusted best e1RM it is measured against.
+  selectedGoal: GoalView | null;
+  selectedBestE1RM: number;
+  selectedUsesBodyweight: boolean;
 }
 
 // Badge variant + short label per zone. Below MEV and above MRV are both
@@ -124,6 +130,9 @@ export function ProgressDashboard({
   volumeLandmarks,
   recap,
   unit,
+  selectedGoal,
+  selectedBestE1RM,
+  selectedUsesBodyweight,
 }: Props) {
   const router = useRouter();
   const search = useSearchParams();
@@ -264,6 +273,18 @@ export function ProgressDashboard({
           )}
         </CardContent>
       </Card>
+
+      {/* Target goal for the selected exercise */}
+      {selectedExerciseId && selectedExo && (
+        <ExerciseGoalCard
+          exerciseId={selectedExerciseId}
+          exerciseName={selectedExo.name}
+          usesBodyweight={selectedUsesBodyweight}
+          goal={selectedGoal}
+          bestE1RM={selectedBestE1RM}
+          unit={unit}
+        />
+      )}
 
       {/* Stacked weekly volume per muscle group */}
       <Card>

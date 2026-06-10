@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
+import type { Exercise, Set } from '@prisma/client';
 import { db } from '@/lib/db';
 import { setInputSchema } from '@/lib/schemas/set';
 import { ApiError, handleApiError, parseJsonBody, requireApiUserId } from '@/lib/api';
+import { setAchievesGoal } from '@/lib/goals';
+import { effectiveWeight } from '@/lib/stats';
 
 interface Params {
   params: { id: string };
@@ -41,8 +44,50 @@ export async function POST(req: Request, { params }: Params) {
         isDropSet: data.isDropSet ?? false,
       },
     });
+    // Best-effort: the set is already committed, so a failure here must never
+    // fail the request (a 500 would make the offline sync retry the POST and
+    // duplicate the set). An unstamped goal self-heals on the next achieving
+    // set or on goal re-creation, which re-derives achievedAt from history.
+    try {
+      await stampGoalIfAchieved(userId, exercise, created);
+    } catch (stampErr) {
+      console.error('[api] goal achievement stamping failed:', stampErr);
+    }
+
     return NextResponse.json(created, { status: 201 });
   } catch (err) {
     return handleApiError(err);
+  }
+}
+
+// Per-exercise goal (issue #90): when a freshly logged working set meets an
+// unachieved goal's target, stamp achievedAt with the set's completedAt
+// (deterministic - the same instant the goal-creation path would derive).
+// Comparison runs on the effective load (bodyweight + added load for
+// bodyweight exercises), consistent with lib/stats.
+async function stampGoalIfAchieved(
+  userId: string,
+  exercise: Exercise,
+  set: Set,
+): Promise<void> {
+  if (set.isWarmup) return;
+  const goal = await db.exerciseGoal.findUnique({
+    where: { userId_exerciseId: { userId, exerciseId: exercise.id } },
+  });
+  if (!goal || goal.achievedAt) return;
+
+  let weight = set.weight;
+  if (exercise.usesBodyweight) {
+    const user = await db.user.findUnique({
+      where: { id: userId },
+      select: { bodyweight: true },
+    });
+    weight = effectiveWeight(set.weight, true, user?.bodyweight);
+  }
+  if (setAchievesGoal({ weight, reps: set.reps, isWarmup: set.isWarmup }, goal)) {
+    await db.exerciseGoal.update({
+      where: { id: goal.id },
+      data: { achievedAt: set.completedAt },
+    });
   }
 }

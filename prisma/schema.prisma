@@ -34,6 +34,7 @@ model User {
   exercises     Exercise[]
   conversations Conversation[]
   readinessCheckins ReadinessCheckin[]
+  exerciseGoals ExerciseGoal[]
 }
 
 enum Sex {
@@ -100,6 +101,7 @@ model Exercise {
   createdAt        DateTime          @default(now())
   programExercises ProgramExercise[]
   sets             Set[]
+  goals            ExerciseGoal[]
 
   @@unique([userId, name])
 }
@@ -202,6 +204,29 @@ model Set {
   completedAt DateTime @default(now())
 
   @@index([exerciseId, completedAt])
+}
+
+// Per-exercise target goal (issue #90): a concrete "weight x reps" the user
+// wants to reach, measured against the existing e1RM machinery (lib/goals.ts).
+// Additive: one active goal per (user, exercise); creating a new one replaces
+// it (upsert on the unique constraint). Weight is stored in kg like Set.weight;
+// for bodyweight exercises it is the EFFECTIVE load (bodyweight + added load),
+// consistent with lib/stats.ts effectiveWeight semantics.
+model ExerciseGoal {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exerciseId   String
+  exercise     Exercise  @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  // Target load in kg (effective load for bodyweight exercises).
+  targetWeight Float
+  targetReps   Int
+  createdAt    DateTime  @default(now())
+  // Stamped server-side when a logged working set meets the target
+  // (weight >= targetWeight and reps >= targetReps). Null = not achieved yet.
+  achievedAt   DateTime?
+
+  @@unique([userId, exerciseId])
 }
 
 model CoachSession {
