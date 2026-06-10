@@ -35,6 +35,7 @@ model User {
   conversations Conversation[]
   readinessCheckins ReadinessCheckin[]
   exerciseGoals ExerciseGoal[]
+  bodyweightEntries BodyweightEntry[]
 }
 
 enum Sex {
@@ -227,6 +228,23 @@ model ExerciseGoal {
   achievedAt   DateTime?
 
   @@unique([userId, exerciseId])
+}
+
+// Bodyweight history (issue #99). Additive: User.bodyweight stays the single
+// "current value" the rest of the app reads (effective load, coach payload);
+// this table keeps the measurement history behind it. Logging an entry also
+// updates User.bodyweight; deleting the newest entry re-syncs it to the new
+// newest one (or leaves the profile value alone when no entries remain).
+model BodyweightEntry {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Stored in kg like every weight in the schema; converted at the edges.
+  weightKg   Float
+  measuredAt DateTime @default(now())
+  note       String?
+
+  @@index([userId, measuredAt])
 }
 
 model CoachSession {

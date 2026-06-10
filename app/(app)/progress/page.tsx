@@ -24,6 +24,7 @@ import {
 import { ProgressDashboard } from '@/components/progress/progress-dashboard';
 import { ConsistencyCard } from '@/components/progress/consistency-card';
 import { DeloadBanner } from '@/components/progress/deload-banner';
+import { BodyweightCard } from '@/components/progress/bodyweight-card';
 
 interface SearchParams {
   exerciseId?: string;
@@ -274,6 +275,14 @@ export default async function ProgressPage({
     take: DELOAD_READINESS_LOOKBACK,
     select: { readiness: true },
   });
+  // Bodyweight trend (issue #99): entries of the last 12 weeks, newest first.
+  // Independent of training data, so the card renders even on the empty state.
+  const bodyweightEntries = await db.bodyweightEntry.findMany({
+    where: { userId: auth.userId, measuredAt: { gte: since } },
+    orderBy: { measuredAt: 'desc' },
+    select: { id: true, weightKg: true, measuredAt: true },
+  });
+
   const deload = recommendDeload({
     stalledExerciseNames: recap
       .filter((r) => r.stalled)
@@ -288,6 +297,15 @@ export default async function ProgressPage({
           <TrendingUp className="size-6" />
           <h1 className="text-2xl font-bold tracking-tight">Progress</h1>
         </div>
+
+        <BodyweightCard
+          entries={bodyweightEntries.map((e) => ({
+            id: e.id,
+            weightKg: e.weightKg,
+            measuredAt: e.measuredAt.toISOString(),
+          }))}
+          unit={unit}
+        />
 
         {exercisesWithSets.length === 0 ? (
           <EmptyState
