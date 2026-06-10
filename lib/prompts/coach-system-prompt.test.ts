@@ -34,6 +34,19 @@ describe('coach system prompt positioning', () => {
     expect(COACH_SYSTEM_PROMPT).toContain('"suggestedRepsMin"');
     expect(COACH_SYSTEM_PROMPT).toContain('"suggestedRestSec"');
   });
+
+  // Issue #101: goals and fatigue signals are INPUT-side guidance only.
+  it('tells the coach how to use the goals payload and forbids inventing goals', () => {
+    expect(COACH_SYSTEM_PROMPT).toMatch(/"goals" lists each per-exercise target/i);
+    expect(COACH_SYSTEM_PROMPT).toMatch(/NEVER invent a goal that is not in the\s+payload/i);
+  });
+
+  it('tells the coach to prefer recovery over load increases on a deload recommendation', () => {
+    expect(COACH_SYSTEM_PROMPT).toMatch(/fatigue\.stalledExercises/);
+    expect(COACH_SYSTEM_PROMPT).toMatch(
+      /deloadRecommended is true, prefer recovery-oriented advice/i,
+    );
+  });
 });
 
 describe('program generation prompt positioning', () => {

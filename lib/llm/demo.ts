@@ -22,14 +22,17 @@ Solid week: 3 sessions logged, total working volume up about 4% versus last week
 - Barbell bench press: 70 kg x 8 at RIR 2 on the top set, estimated 1RM up again.
 - Pronated pull-ups: clean reps across all sets, ready for added load.
 
+**Goal check**
+- Barbell bench press: 92% of the way to your 80 kg x 8 target on the estimated-1RM scale. One more clean progression and it should fall.
+
 **Watch (possible plateau)**
-- Cable lateral raises have been flat for 3 weeks at the same load and reps.
+- Cable lateral raises are flagged as stalled: estimated 1RM flat over the last 3 sessions at the same load and reps.
 
 **Fatigue signals**
-- RIR is holding around 2, no red flags this week.
+- RIR is holding around 2 and no deload is recommended this week, so keep pushing.
 
 **Suggestions for next week**
-- Push bench to 72.5 kg for the first working sets.
+- Push bench to 72.5 kg for the first working sets - that lines up with your stated goal.
 - Bias a little more side-delt volume.
 
 **Points of attention**

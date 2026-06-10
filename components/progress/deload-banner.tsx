@@ -1,23 +1,9 @@
 import { BatteryLow } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import type { DeloadReason } from '@/lib/deload';
+import { deloadReasonLine, type DeloadReason } from '@/lib/deload';
 
 interface Props {
   reasons: DeloadReason[];
-}
-
-function reasonLine(reason: DeloadReason): string {
-  switch (reason.kind) {
-    case 'stalled-lifts': {
-      const count = reason.exerciseNames.length;
-      const names = reason.exerciseNames.join(', ');
-      return count === 1
-        ? `1 lift has stalled: ${names}.`
-        : `${count} lifts have stalled: ${names}.`;
-    }
-    case 'low-readiness':
-      return `Your readiness has averaged ${reason.averageReadiness}/5 over your last ${reason.checkins} check-ins.`;
-  }
 }
 
 // Display-only banner shown on the progress page when recommendDeload fires.
@@ -39,7 +25,7 @@ export function DeloadBanner({ reasons }: Props) {
       <CardContent className="flex flex-col gap-2 text-sm">
         <ul className="list-disc space-y-1 pl-5">
           {reasons.map((reason) => (
-            <li key={reason.kind}>{reasonLine(reason)}</li>
+            <li key={reason.kind}>{deloadReasonLine(reason)}</li>
           ))}
         </ul>
         <p className="text-xs text-muted-foreground">

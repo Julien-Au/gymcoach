@@ -251,3 +251,183 @@ describe('buildCoachPayload readiness (issue #38)', () => {
     expect(payload.latestReadiness).toBeNull();
   });
 });
+
+describe('buildCoachPayload goals (issue #101)', () => {
+  it('surfaces each goal with e1RM progress and achievement', async () => {
+    const user = await makeUser('goals-payload@test.dev');
+    const bench = await db.exercise.create({
+      data: { userId: user.id, name: 'Bench', muscleGroup: 'CHEST', category: 'COMPOUND' },
+    });
+    const session = await db.session.create({ data: { userId: user.id } });
+    await db.set.create({
+      data: { sessionId: session.id, exerciseId: bench.id, setNumber: 1, weight: 100, reps: 5 },
+    });
+    // Unachieved 120x5 target: best e1RM 116.7 vs target e1RM 140 -> 83%.
+    await db.exerciseGoal.create({
+      data: { userId: user.id, exerciseId: bench.id, targetWeight: 120, targetReps: 5 },
+    });
+
+    const payload = await buildCoachPayload(user.id);
+    expect(payload.goals).toEqual([
+      {
+        exerciseName: 'Bench',
+        targetWeight: 120,
+        targetReps: 5,
+        progressPct: 83,
+        achieved: false,
+      },
+    ]);
+  });
+
+  it('marks an achieved goal and caps progress at 100', async () => {
+    const user = await makeUser('goals-achieved@test.dev');
+    const bench = await db.exercise.create({
+      data: { userId: user.id, name: 'Bench', muscleGroup: 'CHEST', category: 'COMPOUND' },
+    });
+    const session = await db.session.create({ data: { userId: user.id } });
+    await db.set.create({
+      data: { sessionId: session.id, exerciseId: bench.id, setNumber: 1, weight: 100, reps: 5 },
+    });
+    await db.exerciseGoal.create({
+      data: {
+        userId: user.id,
+        exerciseId: bench.id,
+        targetWeight: 90,
+        targetReps: 5,
+        achievedAt: new Date(),
+      },
+    });
+
+    const payload = await buildCoachPayload(user.id);
+    expect(payload.goals[0]?.achieved).toBe(true);
+    expect(payload.goals[0]?.progressPct).toBe(100);
+  });
+
+  it('uses the effective load for bodyweight exercises', async () => {
+    const user = await db.user.create({
+      data: { email: 'goals-bw@test.dev', passwordHash: 'x', bodyweight: 80 },
+    });
+    const pullups = await db.exercise.create({
+      data: {
+        userId: user.id,
+        name: 'Pull-up',
+        muscleGroup: 'BACK_WIDTH',
+        category: 'COMPOUND',
+        usesBodyweight: true,
+      },
+    });
+    const session = await db.session.create({ data: { userId: user.id } });
+    // +20 added at bodyweight 80 = 100 effective; target 100x5 effective.
+    await db.set.create({
+      data: { sessionId: session.id, exerciseId: pullups.id, setNumber: 1, weight: 20, reps: 5 },
+    });
+    await db.exerciseGoal.create({
+      data: { userId: user.id, exerciseId: pullups.id, targetWeight: 100, targetReps: 5 },
+    });
+
+    const payload = await buildCoachPayload(user.id);
+    expect(payload.goals[0]?.progressPct).toBe(100);
+  });
+
+  it("does not leak another user's goals and is empty without goals", async () => {
+    const userA = await makeUser('goals-a@test.dev');
+    const userB = await makeUser('goals-b@test.dev');
+    const benchB = await db.exercise.create({
+      data: { userId: userB.id, name: 'B Bench', muscleGroup: 'CHEST', category: 'COMPOUND' },
+    });
+    await db.exerciseGoal.create({
+      data: { userId: userB.id, exerciseId: benchB.id, targetWeight: 100, targetReps: 5 },
+    });
+
+    const payload = await buildCoachPayload(userA.id);
+    expect(payload.goals).toEqual([]);
+  });
+});
+
+describe('buildCoachPayload fatigue (issue #101)', () => {
+  // Three sessions on distinct days with an identical top set: e1RM flat over
+  // the full stall lookback -> isStalled flags the lift.
+  async function seedStalledLift(userId: string, name: string) {
+    const exercise = await db.exercise.create({
+      data: { userId, name, muscleGroup: 'CHEST', category: 'COMPOUND' },
+    });
+    for (let i = 0; i < 3; i++) {
+      const startedAt = new Date(Date.now() - (10 - i) * 24 * 60 * 60 * 1000);
+      const session = await db.session.create({
+        data: { userId, startedAt, finishedAt: startedAt },
+      });
+      await db.set.create({
+        data: {
+          sessionId: session.id,
+          exerciseId: exercise.id,
+          setNumber: 1,
+          weight: 100,
+          reps: 5,
+          completedAt: startedAt,
+        },
+      });
+    }
+    return exercise;
+  }
+
+  it('reports no fatigue for a fresh user', async () => {
+    const user = await makeUser('fatigue-fresh@test.dev');
+    const payload = await buildCoachPayload(user.id);
+    expect(payload.fatigue).toEqual({
+      stalledExercises: [],
+      deloadRecommended: false,
+      deloadReasons: [],
+    });
+  });
+
+  it('flags stalled lifts and recommends a deload at two stalls', async () => {
+    const user = await makeUser('fatigue-stalls@test.dev');
+    await seedStalledLift(user.id, 'Bench');
+    await seedStalledLift(user.id, 'Squat');
+
+    const payload = await buildCoachPayload(user.id);
+    expect(payload.fatigue.stalledExercises).toEqual(['Bench', 'Squat']);
+    expect(payload.fatigue.deloadRecommended).toBe(true);
+    expect(payload.fatigue.deloadReasons).toEqual([
+      '2 lifts have stalled: Bench, Squat.',
+    ]);
+  });
+
+  it('does not recommend a deload on a single stalled lift', async () => {
+    const user = await makeUser('fatigue-single@test.dev');
+    await seedStalledLift(user.id, 'Bench');
+
+    const payload = await buildCoachPayload(user.id);
+    expect(payload.fatigue.stalledExercises).toEqual(['Bench']);
+    expect(payload.fatigue.deloadRecommended).toBe(false);
+  });
+
+  it('recommends a deload on chronically low readiness', async () => {
+    const user = await makeUser('fatigue-readiness@test.dev');
+    for (let i = 0; i < 3; i++) {
+      await db.readinessCheckin.create({
+        data: {
+          userId: user.id,
+          readiness: 2,
+          sleepQuality: 3,
+          createdAt: new Date(Date.now() - i * 24 * 60 * 60 * 1000),
+        },
+      });
+    }
+
+    const payload = await buildCoachPayload(user.id);
+    expect(payload.fatigue.deloadRecommended).toBe(true);
+    expect(payload.fatigue.deloadReasons).toEqual([
+      'Your readiness has averaged 2/5 over your last 3 check-ins.',
+    ]);
+  });
+
+  it("does not count another user's stalls", async () => {
+    const userA = await makeUser('fatigue-a@test.dev');
+    const userB = await makeUser('fatigue-b@test.dev');
+    await seedStalledLift(userB.id, 'B Bench');
+
+    const payload = await buildCoachPayload(userA.id);
+    expect(payload.fatigue.stalledExercises).toEqual([]);
+  });
+});

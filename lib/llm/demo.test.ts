@@ -25,6 +25,11 @@ describe('demo provider', () => {
       messages: [{ role: 'user', content: 'x' }],
     });
     expect(debrief.text).toContain('<adjustments>');
+    // Issue #101: the canned debrief demonstrates the goals + fatigue payload
+    // fields so the no-key flow shows the behavior.
+    expect(debrief.text).toMatch(/of the way to your .* target/i);
+    expect(debrief.text).toMatch(/stalled/i);
+    expect(debrief.text).toMatch(/deload/i);
 
     const program = await p.complete({
       system: 'Respond with a SINGLE JSON object and nothing else.',

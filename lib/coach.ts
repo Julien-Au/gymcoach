@@ -3,9 +3,17 @@ import {
   applyBodyweight,
   best1RM,
   exerciseProgress,
+  isStalled,
   isoWeekStart,
   totalVolume,
 } from '@/lib/stats';
+import { goalProgress } from '@/lib/goals';
+import {
+  DELOAD_READINESS_LOOKBACK,
+  DELOAD_READINESS_MAX_AGE_DAYS,
+  deloadReasonLine,
+  recommendDeload,
+} from '@/lib/deload';
 import { COACH_SYSTEM_PROMPT } from '@/lib/prompts/coach-system-prompt';
 import { getLlmProvider } from '@/lib/llm';
 
@@ -36,6 +44,15 @@ export interface CoachPayload {
   // null when there is no recent check-in. The coach reasons over this but its
   // output contract (the <adjustments> block) is unchanged.
   latestReadiness: ReadinessSummary | null;
+  // The user's per-exercise target goals (issue #101), with progress computed
+  // exactly like the progress page: best bodyweight-adjusted e1RM over the
+  // full history vs the target's e1RM. Input signal only; the output contract
+  // (the <adjustments> block) is unchanged.
+  goals: GoalSummary[];
+  // Derived fatigue signals (issue #101): stalled lifts per lib/stats.ts
+  // isStalled over the progress page's 12-week window, plus the program-level
+  // deload recommendation from lib/deload.ts with its human-readable reasons.
+  fatigue: FatigueSummary;
   // For each program exercise: the progression over the last 8 weeks
   // (max loads + 1RM per session, effective values with bodyweight included).
   recentProgress: Array<{
@@ -53,6 +70,25 @@ export interface CoachPayload {
       estimated1RM: number;
     }>;
   }>;
+}
+
+interface GoalSummary {
+  exerciseName: string;
+  // Target load in kg (effective load for bodyweight exercises).
+  targetWeight: number;
+  targetReps: number;
+  // 0-100, fraction of the way to the goal on the e1RM scale (lib/goals.ts
+  // goalProgress), same semantics as the progress page.
+  progressPct: number;
+  achieved: boolean;
+}
+
+interface FatigueSummary {
+  // Names of the lifts currently flagged by lib/stats.ts isStalled, sorted.
+  stalledExercises: string[];
+  deloadRecommended: boolean;
+  // Short human-readable reasons (same lines the progress page shows).
+  deloadReasons: string[];
 }
 
 interface ReadinessSummary {
@@ -141,12 +177,21 @@ export async function buildCoachPayload(userId: string): Promise<CoachPayload> {
   });
   const bodyweight = user?.bodyweight ?? null;
 
-  const [currentWeek, previousWeek, activeProgram, latestReadiness, recentSets] =
-    await Promise.all([
+  const [
+    currentWeek,
+    previousWeek,
+    activeProgram,
+    latestReadiness,
+    goals,
+    fatigue,
+    recentSets,
+  ] = await Promise.all([
     weekSummary(userId, currentWeekStart, addDays(currentWeekStart, 7), bodyweight),
     weekSummary(userId, previousWeekStart, currentWeekStart, bodyweight),
     fetchActiveProgram(userId),
     fetchLatestReadiness(userId, now),
+    fetchGoalsSummary(userId, bodyweight),
+    fetchFatigueSummary(userId, bodyweight, now),
     db.set.findMany({
       where: {
         isWarmup: false,
@@ -246,6 +291,8 @@ export async function buildCoachPayload(userId: string): Promise<CoachPayload> {
     weekPrevious: previousWeek.sessions.length === 0 ? null : previousWeek,
     activeProgram,
     latestReadiness,
+    goals,
+    fatigue,
     recentProgress: recentProgress.sort((a, b) =>
       a.exerciseName.localeCompare(b.exerciseName),
     ),
@@ -381,6 +428,141 @@ async function fetchActiveProgram(userId: string): Promise<ProgramSummary | null
         targetRIR: pe.targetRIR,
       })),
     })),
+  };
+}
+
+// The user's exercise goals with progress on the e1RM scale (issue #101),
+// computed exactly like the progress page: best bodyweight-adjusted e1RM over
+// the FULL set history of each goal exercise vs the target's e1RM.
+async function fetchGoalsSummary(
+  userId: string,
+  bodyweight: number | null,
+): Promise<GoalSummary[]> {
+  const goals = await db.exerciseGoal.findMany({
+    where: { userId },
+    orderBy: { createdAt: 'desc' },
+    include: {
+      exercise: { select: { id: true, name: true, usesBodyweight: true } },
+    },
+  });
+  if (goals.length === 0) return [];
+
+  const sets = await db.set.findMany({
+    where: {
+      exerciseId: { in: goals.map((g) => g.exerciseId) },
+      isWarmup: false,
+      session: { userId },
+    },
+    select: { exerciseId: true, weight: true, reps: true, isWarmup: true },
+  });
+  const setsByExercise = new Map<string, typeof sets>();
+  for (const s of sets) {
+    const arr = setsByExercise.get(s.exerciseId);
+    if (arr) arr.push(s);
+    else setsByExercise.set(s.exerciseId, [s]);
+  }
+
+  return goals.map((goal) => {
+    const exerciseSets = setsByExercise.get(goal.exerciseId) ?? [];
+    const adjusted = applyBodyweight(
+      exerciseSets.map((s) => ({
+        ...s,
+        usesBodyweight: goal.exercise.usesBodyweight,
+      })),
+      bodyweight,
+    );
+    const best = best1RM(adjusted);
+    const target = { targetWeight: goal.targetWeight, targetReps: goal.targetReps };
+    return {
+      exerciseName: goal.exercise.name,
+      targetWeight: goal.targetWeight,
+      targetReps: goal.targetReps,
+      progressPct: Math.round(goalProgress(best, target) * 100),
+      achieved: goal.achievedAt != null,
+    };
+  });
+}
+
+// The same window the progress page judges stalls over (last 12 weeks).
+const FATIGUE_WINDOW_WEEKS = 12;
+
+// Derived fatigue signals (issue #101), mirroring the progress page: stalled
+// lifts per isStalled over the per-session e1RM series of the last 12 weeks,
+// and the program-level deload recommendation fed by those stalls plus the
+// recent readiness check-ins.
+async function fetchFatigueSummary(
+  userId: string,
+  bodyweight: number | null,
+  now: Date,
+): Promise<FatigueSummary> {
+  const since = new Date(now);
+  since.setUTCHours(0, 0, 0, 0);
+  since.setUTCDate(since.getUTCDate() - FATIGUE_WINDOW_WEEKS * 7);
+  const readinessSince = addDays(now, -DELOAD_READINESS_MAX_AGE_DAYS);
+
+  const [sets, recentCheckins] = await Promise.all([
+    db.set.findMany({
+      where: {
+        isWarmup: false,
+        completedAt: { gte: since },
+        session: { userId },
+      },
+      select: {
+        weight: true,
+        reps: true,
+        isWarmup: true,
+        sessionId: true,
+        exerciseId: true,
+        exercise: { select: { name: true, usesBodyweight: true } },
+        session: { select: { startedAt: true } },
+      },
+    }),
+    db.readinessCheckin.findMany({
+      where: { userId, createdAt: { gte: readinessSince } },
+      orderBy: { createdAt: 'desc' },
+      take: DELOAD_READINESS_LOOKBACK,
+      select: { readiness: true },
+    }),
+  ]);
+
+  const setsByExercise = new Map<string, typeof sets>();
+  for (const s of sets) {
+    const arr = setsByExercise.get(s.exerciseId);
+    if (arr) arr.push(s);
+    else setsByExercise.set(s.exerciseId, [s]);
+  }
+
+  const stalledExercises: string[] = [];
+  for (const exerciseSets of setsByExercise.values()) {
+    const first = exerciseSets[0];
+    if (!first) continue;
+    const points = exerciseProgress(
+      applyBodyweight(
+        exerciseSets.map((s) => ({
+          weight: s.weight,
+          reps: s.reps,
+          isWarmup: s.isWarmup,
+          sessionId: s.sessionId,
+          sessionStartedAt: s.session.startedAt,
+          usesBodyweight: first.exercise.usesBodyweight,
+        })),
+        bodyweight,
+      ),
+    );
+    if (isStalled(points.map((p) => p.estimated1RM))) {
+      stalledExercises.push(first.exercise.name);
+    }
+  }
+  stalledExercises.sort((a, b) => a.localeCompare(b));
+
+  const recommendation = recommendDeload({
+    stalledExerciseNames: stalledExercises,
+    recentReadiness: recentCheckins.map((c) => c.readiness),
+  });
+  return {
+    stalledExercises,
+    deloadRecommended: recommendation.recommended,
+    deloadReasons: recommendation.reasons.map(deloadReasonLine),
   };
 }
 

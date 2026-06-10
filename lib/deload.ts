@@ -41,6 +41,23 @@ export interface DeloadRecommendation {
   reasons: DeloadReason[];
 }
 
+// One short human-readable line per reason. Shared by the progress-page
+// banner and the coach payload (issue #101) so the user and the AI coach read
+// the exact same explanation.
+export function deloadReasonLine(reason: DeloadReason): string {
+  switch (reason.kind) {
+    case 'stalled-lifts': {
+      const count = reason.exerciseNames.length;
+      const names = reason.exerciseNames.join(', ');
+      return count === 1
+        ? `1 lift has stalled: ${names}.`
+        : `${count} lifts have stalled: ${names}.`;
+    }
+    case 'low-readiness':
+      return `Your readiness has averaged ${reason.averageReadiness}/5 over your last ${reason.checkins} check-ins.`;
+  }
+}
+
 export interface DeloadInput {
   // Names of the lifts currently flagged by isStalled, any order.
   stalledExerciseNames: string[];
