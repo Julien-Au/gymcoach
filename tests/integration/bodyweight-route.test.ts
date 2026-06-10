@@ -96,6 +96,26 @@ describe('GET /api/bodyweight', () => {
   });
 });
 
+describe('POST re-derivation (issue #107)', () => {
+  it('does not clobber User.bodyweight when an existing entry is measured later', async () => {
+    const { a } = await seed();
+    actAs(a.id);
+    // An entry dated in the future relative to the POST stamp - the stand-in
+    // for the race where a concurrent transaction with a later measuredAt
+    // commits first. The POST must re-derive, not assume it is the newest.
+    await db.bodyweightEntry.create({
+      data: { userId: a.id, weightKg: 90, measuredAt: new Date('2099-01-01T08:00:00Z') },
+    });
+    await db.user.update({ where: { id: a.id }, data: { bodyweight: 90 } });
+
+    const res = await postEntry(jsonReq('POST', { weightKg: 82 }));
+    expect(res.status).toBe(201);
+    const user = await db.user.findUnique({ where: { id: a.id } });
+    expect(user?.bodyweight).toBe(90);
+    expect(await db.bodyweightEntry.count({ where: { userId: a.id } })).toBe(2);
+  });
+});
+
 describe('DELETE /api/bodyweight/[id]', () => {
   it('re-syncs User.bodyweight to the newest remaining entry when the newest is deleted', async () => {
     const { a } = await seed();

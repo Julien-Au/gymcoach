@@ -11,8 +11,9 @@ export interface BodyweightEntryLike {
 }
 
 // The weight of the most recent entry, or null when there is none. Ties on
-// measuredAt resolve to the later element in the array, which matches a
-// "newest first then created order" listing where the latest write wins.
+// measuredAt resolve to the later element in the array; the routes order
+// their queries by (measuredAt asc, id asc), so a tie deterministically goes
+// to the highest id, i.e. the latest insert (issue #107).
 export function currentBodyweightFromEntries(
   entries: BodyweightEntryLike[],
 ): number | null {
