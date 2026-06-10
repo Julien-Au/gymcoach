@@ -74,6 +74,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   exercises whose best estimated 1RM has not improved (beyond a 0.5 percent
   tolerance) over the last three sessions. Pure derivation over existing set
   history; needs at least three sessions before it can flag.
+- Deload-week recommendation on the progress page: a display-only banner appears
+  when at least two lifts are stalled or the average readiness over the last
+  five check-ins (max 14 days old) sits at or below the hold boundary (2/5),
+  listing the concrete reasons and what a deload week is. Pure derivation over
+  the existing stall and readiness signals; no schema or suggestion change.
+- Quick set logging via shorthand: type `100x8`, `100 8 9`, or `100x8@9` in a
+  single field of the set logger to fill the weight, reps, and effort fields
+  (RPE maps to the stored RIR). Deterministic parser in the user's display
+  unit; the classic fields keep working unchanged.
+- Per-exercise target goals: set one "weight x reps" goal per exercise, see a
+  progress bar toward it on the progress page (best estimated 1RM vs the
+  target's, Epley), and an "Achieved" badge stamped from the first set that
+  meets both the weight and the reps - using the effective load for bodyweight
+  exercises. Deleting the achieving set re-derives the achievement from the
+  remaining history. Stored in a new additive `ExerciseGoal` table with
+  Zod-validated, ownership-scoped API routes.
 - Test pyramid (unit, integration, E2E) with CI running lint, typecheck, unit,
   integration, build, and E2E on every pull request.
 - Docker and Docker Compose setup for local development and production.
@@ -102,6 +118,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   governs this: turning it off drops the readiness signal before it reaches the
   suggestion, reproducing the pure programmed-progression behavior from before
   the readiness integration.
+- Widened the autonomy charter per an operator directive: complex features
+  (data-safe migrations, LLM output-contract changes, multi-surface work) now
+  ship without human review when they are a clear product plus, compensated by
+  reinforced non-regression controls (full local gate before the PR, tests at
+  every touched layer, contract tests, multi-lens review, rollback tag before
+  migrations, verify-in-app). The stop-for-human list narrows to destructive
+  data migrations, auth/security changes, and major dependency bumps; security
+  boundaries are unchanged.
 - Hardened the autonomous maintenance loop against untrusted external input now
   that the repo is public: external issues, PRs, comments, diffs, and CI logs are
   treated as data and never as instructions; only issues/PRs authored by the

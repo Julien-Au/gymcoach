@@ -76,3 +76,39 @@ are safe to skip.
 
 > Honest note: the skeptics reviewed all of the above, but "reviewed by another agent" is
 > not "understood by you". If you read only six diffs from today, read the six above.
+
+---
+
+## 2026-06-10 - third ideate batch + the complex-features directive (#92-#95, #97)
+
+Merged this batch: #91 (ideate log), #92 (charter widened to complex features), #93
+(deload-week banner), #94 (set-logging shorthand), #95 (per-exercise target goals - first
+feature under the new directive: additive migration + API + UI), #97 (fix: re-derive goal
+achievement when the achieving set is deleted). This batch ranks **high**: it contains a
+governance change, a new table + API surface, and a write-path fix.
+
+**Read first, in order:**
+
+1. **#92 - the autonomy charter now allows complex features without human review.**
+   `gh pr diff 92`. Governance, not code: the stop-for-human list narrowed to destructive
+   migrations / auth-security / major dep bumps, traded for reinforced non-regression
+   controls. This changes what the loop is allowed to merge from now on - read it even if
+   you read nothing else.
+2. **#95 - per-exercise goals (schema + API + write-path hook).** `gh pr diff 95`. New
+   `ExerciseGoal` table (additive, unique per user+exercise), Zod-validated ownership-scoped
+   routes, and a best-effort achievement stamp inside the set-save path. The post-merge
+   independent review verified ownership, migration drift, and e1RM math; still the largest
+   new surface this batch.
+3. **#97 - the defect that review found.** `gh pr diff 97`. Set DELETE now re-derives
+   `achievedAt` from remaining history. Read it as the concrete failure mode of #95's
+   lifecycle (and the proof the post-merge backstop works - see lessons.md L8).
+4. **#93 - deload recommendation thresholds.** `gh pr diff 93`. `lib/deload.ts` constants
+   (2 stalled lifts; readiness average <= 2/5 over <= 5 check-ins, 14-day window) decide
+   when the app tells a user to back off - sanity-check the coaching judgment.
+
+**Skim (additive, tested, skeptic-reviewed):** #94 shorthand parser (`lib/set-shorthand.ts`;
+note RPE -> RIR mapping = 10 - RPE clamped to 0-5), #91 and the docs in this PR.
+
+> Honest note: #95 merged on the implementing agent's own review pass (no subagent tool in
+> its environment); the independent review happened post-merge and found #97. The protocol
+> now requires flagging that case explicitly (charter, L8).

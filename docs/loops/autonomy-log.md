@@ -6,6 +6,35 @@ by the charter in [`07-autonomy.md`](07-autonomy.md).
 
 ---
 
+## 2026-06-10 (later) - Post-merge backstop review of #95; fix #97; batch write-up
+
+**Context.** The background tick that shipped #94/#95 reported it could not spawn an
+independent reviewer (no subagent tool in its environment) and had self-executed the
+"multi-lens" pass for #95 - which the charter does not accept as the challenge. The
+orchestrator ran the missing independent review post-merge as its next action.
+
+**Decided / shipped.**
+- Independent post-merge skeptic on #95 (commit cc33953): ownership, migration drift
+  (clean `migrate diff` against a shadow DB), e1RM math, and the set-save best-effort path
+  all verified sound; ONE real defect found - deleting the achieving set left a goal
+  permanently "Achieved".
+- Filed #96, fixed via PR #97 (merged on green; the integration job's first red was the
+  known transient ECR `toomanyrequests` pull failure - re-run, then green): set DELETE now
+  re-derives `achievedAt` from the remaining sets, same best-effort pattern as stamping.
+- Write-up: CHANGELOG (deload banner, shorthand logging, exercise goals, the charter
+  widening), ideas-backlog #88/#89/#90 -> shipped, review digest for the batch, lesson L8
+  graduated into the charter (no-independent-reviewer case now has an explicit rule).
+
+**Challenged.** The review WAS the challenge - and it proved the point: an honest
+self-review by the author missed a lifecycle defect an independent reviewer caught in one
+pass.
+
+**Deferred to human.** Nothing. Three NITs from the review (capped progress display vs
+achieved badge, stamping race, missing fetch error toast in the goal card) noted as
+accepted risks; none is data-incorrect.
+
+---
+
 ## 2026-06-10 - Maintainer run: shipped #89 (set shorthand) and #90 (exercise goals)
 
 **Context.** Maintainer tick over the third ideate batch. Both issues trust-gated (author

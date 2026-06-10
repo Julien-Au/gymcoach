@@ -90,3 +90,18 @@ Format per entry: trigger/evidence, the lesson (actionable), and **Status** = `g
 - **Status:** graduated -> orchestration practice (`06-orchestration.md` decision order + the
   "one linear writer per task" rule in `09-memory-and-learning.md` / `implement-issue` /
   `ship-pr`): same-file queued issues are dispatched one at a time, gated on the prior merge.
+
+### L8 - A nested run without the spawning tool cannot satisfy the independent-review protocol by itself
+- **Trigger:** the background maintainer tick implementing #90 (PR #95) had no subagent-spawning
+  tool in its environment, so it executed the "multi-lens review" itself - the author grading
+  its own homework, which the charter forbids. The orchestrator ran an independent post-merge
+  review as a backstop; it confirmed ownership/migration/math were sound but found a real
+  data-lifecycle defect the author had missed (deleting the achieving set left a goal
+  permanently "Achieved"), fixed the same day in #97.
+- **Lesson:** a self-executed review pass is not the subagent challenge. When a nested run
+  cannot spawn an independent reviewer, it must flag that in its report, and the orchestrator
+  must run an independent post-merge review as the very next action (or hold the PR pre-merge
+  when feasible). The author reliably misses its own blind spots even when honestly running
+  multiple "lenses" - independence, not effort, is what catches the defect.
+- **Status:** graduated -> charter (`07-autonomy.md`, "Subagent challenge protocol"): the
+  no-reviewer-available case is now an explicit rule with the post-merge backstop.
