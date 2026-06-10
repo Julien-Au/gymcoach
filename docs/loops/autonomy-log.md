@@ -6,6 +6,56 @@ by the charter in [`07-autonomy.md`](07-autonomy.md).
 
 ---
 
+## 2026-06-10 (evening) - Maintainer run: shipped #99, #101, #100 (fourth ideate batch)
+
+**Context.** Maintainer tick over the fourth ideate batch, strictly serialized (lesson L7:
+next issue only after the prior PR is MERGED). All three issues trust-gated (author
+`JulienAu`, collaborator check HTTP 204). All three are complex features under the
+2026-06-10 directive, so each ran `verify.sh --full` locally before its PR, shipped tests at
+every touched layer, and validated its migration against the test Postgres. Merge budget 3;
+used 3.
+
+**Shipped.**
+- **#99 -> PR #103 (merged): bodyweight tracking.** Additive `BodyweightEntry` migration
+  (fresh `migrate deploy` + clean `migrate diff` on :5434), POST/GET/DELETE routes that keep
+  `User.bodyweight` (the "current value" the app reads) in sync with the newest entry in one
+  transaction, and a progress-page card (12-week trend chart, quick add in the display unit,
+  deletable entries). Rollback baseline `autonomy-baseline-2026-06-10b` tagged on main
+  before the merge. One local gate red (Playwright strict-mode: "Log" matched "Log out"),
+  fixed with an exact-match selector.
+- **#101 -> PR #104 (merged): goals + fatigue signals into the AI coach payload.** Additive
+  `CoachPayload.goals` (per-exercise target, e1RM progressPct, achieved - same semantics as
+  the progress page incl. effective load) and `CoachPayload.fatigue` (stalled lifts over the
+  12-week window, deload recommendation with the same human-readable reason lines the
+  banner shows, via the new shared `deloadReasonLine`). System prompt gained usage guidance;
+  the `<adjustments>` OUTPUT contract is untouched and its existing tests passed unmodified.
+  Demo provider debrief now exercises the new fields. Full gate green on the first run.
+- **#100 -> PR #105 (this PR): Strong CSV import.** Pure quote-aware parser
+  `lib/import/strong-csv.ts` treating the file as untrusted input (5 MB / 50000-row caps,
+  no eval, Zod on every row with the set schema's bounds, per-line error collection, cardio
+  rows skipped with a count, kg/lb toggle with header-suffix override), pure planner +
+  transactional executor (case-insensitive exercise matching, missing exercises created as
+  OTHER/ISOLATION via an additive enum migration, sessions grouped per (date, workout) at
+  noon UTC, exact-duplicate skip for idempotence), rate-limited Zod-validated route with
+  dry-run preview and confirm modes, settings UI (pick -> preview -> confirm with the error
+  list), and tests at every layer incl. a transaction-rollback integration test and an E2E
+  upload -> preview -> confirm -> history flow. Two local gate reds fixed: jsdom `File.text`
+  (FileReader fallback) and the catalog-coverage test (OTHER intentionally has no catalog
+  exercise).
+
+**Challenged.** This tick ran in an environment without a subagent tool, so per the charter
+(lesson L8 rule) the multi-lens reviews could NOT be executed independently pre-merge. Each
+PR merged only on green full CI after an author self-review pass; all three are flagged in
+the run report for an independent POST-MERGE review by the orchestrator as its next action
+(correctness + does-it-actually-work for all three, plus a security lens on #100's untrusted
+file input and route).
+
+**Deferred to human / orchestrator.** The post-merge independent reviews above. Note for the
+reviewer: imported sessions render as "Free session" in the history list (the Strong workout
+name lives in the session notes) - a possible polish slice, not a defect.
+
+---
+
 ## 2026-06-10 (later) - Post-merge backstop review of #95; fix #97; batch write-up
 
 **Context.** The background tick that shipped #94/#95 reported it could not spawn an

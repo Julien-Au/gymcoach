@@ -23,6 +23,9 @@ describe('EXERCISE_CATALOG', () => {
   it('covers every muscle group at least once', () => {
     const covered = new Set(EXERCISE_CATALOG.map((e) => e.muscleGroup));
     for (const group of Object.values(MuscleGroup)) {
+      // OTHER is the fallback bucket for imported exercises (issue #100);
+      // the curated catalog intentionally has no exercise in it.
+      if (group === 'OTHER') continue;
       expect(covered, `missing exercises for ${group}`).toContain(group);
     }
   });

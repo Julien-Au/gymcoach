@@ -1,0 +1,308 @@
+import { z } from 'zod';
+import type { WeightUnit } from '@prisma/client';
+import { lbToKg, roundWeight } from '@/lib/units';
+
+// ============================================================
+// Strong app CSV export parser (issue #100) - pure, no DB
+// ============================================================
+// CSV text in, normalized rows out. The file content is UNTRUSTED user data:
+// no eval, hard size and row caps, and every value Zod-validated before it is
+// allowed out of this module. Bad lines are collected as per-line errors
+// instead of failing the whole file; only an unrecognized header or a blown
+// cap is fatal.
+
+// Hard caps on the untrusted input.
+export const STRONG_CSV_MAX_BYTES = 5 * 1024 * 1024; // 5 MB of text
+export const STRONG_CSV_MAX_ROWS = 50000; // data rows, header excluded
+
+// One normalized working-set row. Weight is in kg, like everything stored.
+export interface StrongCsvRow {
+  // The session day, as 'YYYY-MM-DD' (Strong's export has no reliable times).
+  dateKey: string;
+  workoutName: string;
+  exerciseName: string;
+  setOrder: number;
+  weightKg: number;
+  reps: number;
+}
+
+export interface StrongCsvLineError {
+  // 1-based line number in the file (header is line 1).
+  line: number;
+  reason: string;
+}
+
+export interface StrongCsvParseResult {
+  // False when the file as a whole is unusable (bad header, cap exceeded).
+  ok: boolean;
+  fatalError: string | null;
+  rows: StrongCsvRow[];
+  errors: StrongCsvLineError[];
+  // Duration/distance-only rows (cardio) skipped with a counted notice.
+  cardioSkipped: number;
+}
+
+// Bounds mirror lib/schemas/set.ts so imported sets satisfy the same contract
+// as manually logged ones.
+const rowSchema = z.object({
+  dateKey: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  workoutName: z.string().trim().min(1).max(200),
+  exerciseName: z.string().trim().min(1).max(120),
+  setOrder: z.coerce.number().int().min(1).max(50),
+  weightKg: z.coerce.number().min(0).max(500),
+  reps: z.coerce.number().int().min(1).max(100),
+});
+
+// ------------------------------------------------------------
+// Minimal RFC4180-style CSV reader (quoted fields, "" escapes, quoted
+// newlines, CRLF). Returns one string[] per record plus the 1-based line
+// number the record starts on. No regex backtracking, single pass.
+// ------------------------------------------------------------
+function readCsvRecords(text: string): Array<{ line: number; fields: string[] }> {
+  const records: Array<{ line: number; fields: string[] }> = [];
+  let fields: string[] = [];
+  let field = '';
+  let inQuotes = false;
+  let line = 1;
+  let recordStartLine = 1;
+  let recordHasContent = false;
+
+  const pushField = () => {
+    fields.push(field);
+    field = '';
+  };
+  const pushRecord = () => {
+    pushField();
+    // Skip records that are entirely empty (blank lines).
+    if (recordHasContent || fields.length > 1 || (fields[0] ?? '') !== '') {
+      records.push({ line: recordStartLine, fields });
+    }
+    fields = [];
+    recordHasContent = false;
+    recordStartLine = line;
+  };
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i]!;
+    if (inQuotes) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') {
+          field += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        if (ch === '\n') line++;
+        field += ch;
+      }
+      continue;
+    }
+    if (ch === '"') {
+      inQuotes = true;
+      recordHasContent = true;
+    } else if (ch === ',') {
+      pushField();
+      recordHasContent = true;
+    } else if (ch === '\n') {
+      line++;
+      pushRecord();
+    } else if (ch === '\r') {
+      // Swallow; the following \n (if any) ends the record.
+      if (text[i + 1] !== '\n') {
+        line++;
+        pushRecord();
+      }
+    } else {
+      field += ch;
+      recordHasContent = true;
+    }
+  }
+  // Final record without a trailing newline.
+  if (recordHasContent || field !== '' || fields.length > 0) pushRecord();
+  return records;
+}
+
+// Normalize a header cell for matching: lowercase, trimmed, collapsed spaces.
+function headerKey(cell: string): string {
+  return cell.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+interface HeaderMap {
+  date: number;
+  workoutName: number;
+  exerciseName: number;
+  setOrder: number;
+  weight: number;
+  reps: number;
+  distance: number | null;
+  seconds: number | null;
+  // Unit forced by the header itself ("Weight (kg)" / "Weight (lbs)"), if any.
+  forcedUnit: WeightUnit | null;
+}
+
+// Recognize Strong's export header (with minor variants: extra columns are
+// fine, order does not matter, a unit suffix on Weight is honored).
+function mapHeader(cells: string[]): HeaderMap | null {
+  const keys = cells.map(headerKey);
+  const find = (...names: string[]) => {
+    for (const name of names) {
+      const idx = keys.indexOf(name);
+      if (idx !== -1) return idx;
+    }
+    return -1;
+  };
+
+  const date = find('date');
+  const workoutName = find('workout name');
+  const exerciseName = find('exercise name');
+  const setOrder = find('set order');
+  const reps = find('reps');
+  let forcedUnit: WeightUnit | null = null;
+  let weight = find('weight');
+  if (weight === -1) {
+    weight = find('weight (kg)');
+    if (weight !== -1) forcedUnit = 'KG';
+  }
+  if (weight === -1) {
+    weight = find('weight (lbs)', 'weight (lb)');
+    if (weight !== -1) forcedUnit = 'LB';
+  }
+
+  if (
+    date === -1 ||
+    workoutName === -1 ||
+    exerciseName === -1 ||
+    setOrder === -1 ||
+    weight === -1 ||
+    reps === -1
+  ) {
+    return null;
+  }
+  const distance = find('distance');
+  const seconds = find('seconds', 'duration (sec)');
+  return {
+    date,
+    workoutName,
+    exerciseName,
+    setOrder,
+    weight,
+    reps,
+    distance: distance === -1 ? null : distance,
+    seconds: seconds === -1 ? null : seconds,
+    forcedUnit,
+  };
+}
+
+// 'YYYY-MM-DD' day key from Strong's date cell ('YYYY-MM-DD HH:MM:SS' or just
+// the date). Returns null when the cell is not a real calendar date.
+function toDateKey(cell: string): string | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})([ T].*)?$/.exec(cell.trim());
+  if (!m) return null;
+  const [, y, mo, d] = m;
+  const date = new Date(Date.UTC(Number(y), Number(mo) - 1, Number(d)));
+  if (
+    date.getUTCFullYear() !== Number(y) ||
+    date.getUTCMonth() !== Number(mo) - 1 ||
+    date.getUTCDate() !== Number(d)
+  ) {
+    return null;
+  }
+  return `${y}-${mo}-${d}`;
+}
+
+function asNumber(cell: string | undefined): number {
+  if (cell === undefined) return 0;
+  const trimmed = cell.trim();
+  if (trimmed === '') return 0;
+  const n = Number(trimmed);
+  return Number.isFinite(n) ? n : NaN;
+}
+
+// Parse a Strong CSV export. `unit` is the unit the Strong app was set to
+// (user-chosen toggle, default kg); a unit suffix in the header overrides it.
+export function parseStrongCsv(
+  text: string,
+  unit: WeightUnit = 'KG',
+): StrongCsvParseResult {
+  const fail = (fatalError: string): StrongCsvParseResult => ({
+    ok: false,
+    fatalError,
+    rows: [],
+    errors: [],
+    cardioSkipped: 0,
+  });
+
+  if (text.length > STRONG_CSV_MAX_BYTES) {
+    return fail('File too large: the limit is 5 MB.');
+  }
+
+  const records = readCsvRecords(text);
+  const header = records[0];
+  if (!header) return fail('Empty file.');
+  const map = mapHeader(header.fields);
+  if (!map) {
+    return fail(
+      'Unrecognized format: expected a Strong CSV export with the columns ' +
+        'Date, Workout Name, Exercise Name, Set Order, Weight, Reps.',
+    );
+  }
+
+  const dataRecords = records.slice(1);
+  if (dataRecords.length > STRONG_CSV_MAX_ROWS) {
+    return fail(
+      `Too many rows: ${dataRecords.length} (the limit is ${STRONG_CSV_MAX_ROWS}). Split the export and import in parts.`,
+    );
+  }
+
+  const effectiveUnit = map.forcedUnit ?? unit;
+  const rows: StrongCsvRow[] = [];
+  const errors: StrongCsvLineError[] = [];
+  let cardioSkipped = 0;
+
+  for (const record of dataRecords) {
+    const get = (idx: number | null) =>
+      idx === null ? undefined : record.fields[idx];
+
+    const dateKey = toDateKey(get(map.date) ?? '');
+    if (!dateKey) {
+      errors.push({ line: record.line, reason: 'Invalid or missing date.' });
+      continue;
+    }
+
+    const reps = asNumber(get(map.reps));
+    const weightRaw = asNumber(get(map.weight));
+    const distance = asNumber(get(map.distance));
+    const seconds = asNumber(get(map.seconds));
+
+    // Cardio / duration-only rows (no reps, but distance or time): skipped
+    // with a counted notice rather than reported as errors.
+    if (!(reps >= 1) && (distance > 0 || seconds > 0)) {
+      cardioSkipped++;
+      continue;
+    }
+
+    const weightKg =
+      effectiveUnit === 'LB' ? roundWeight(lbToKg(weightRaw), 2) : weightRaw;
+
+    const parsed = rowSchema.safeParse({
+      dateKey,
+      workoutName: get(map.workoutName) ?? '',
+      exerciseName: get(map.exerciseName) ?? '',
+      setOrder: get(map.setOrder),
+      weightKg,
+      reps,
+    });
+    if (!parsed.success) {
+      const issue = parsed.error.issues[0];
+      errors.push({
+        line: record.line,
+        reason: issue ? `${issue.path.join('.')}: ${issue.message}` : 'Invalid row.',
+      });
+      continue;
+    }
+    rows.push(parsed.data);
+  }
+
+  return { ok: true, fatalError: null, rows, errors, cardioSkipped };
+}
