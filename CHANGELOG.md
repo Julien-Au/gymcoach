@@ -83,6 +83,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   single field of the set logger to fill the weight, reps, and effort fields
   (RPE maps to the stored RIR). Deterministic parser in the user's display
   unit; the classic fields keep working unchanged.
+- Bodyweight tracking: log dated bodyweight entries from a trend card on the
+  progress page (12-week chart, quick add in your display unit, deletable
+  entries). The newest entry keeps the profile's current bodyweight in sync
+  (transactionally, locked against concurrent edits), which feeds the
+  effective-load math everywhere; editing the profile field directly never
+  creates an entry. Stored in a new additive `BodyweightEntry` table.
+- The AI coach now sees your per-exercise goals (with progress toward each)
+  and your fatigue signals (stalled lifts, deload-week recommendation) in its
+  payload, with prompt guidance to anchor advice on them; the structured
+  adjustments output contract is unchanged.
+- Import your training history from a Strong app CSV export: dry-run preview
+  (sessions/sets/new-exercise counts plus per-line errors), then a one-click
+  transactional import with exact-duplicate skipping. The file is treated as
+  untrusted input: 5 MB and 50000-row caps enforced while streaming the body,
+  every value Zod-validated after unit conversion, rate-limited, and the
+  whole import rolls back on any failure.
 - Per-exercise target goals: set one "weight x reps" goal per exercise, see a
   progress bar toward it on the progress page (best estimated 1RM vs the
   target's, Epley), and an "Achieved" badge stamped from the first set that
@@ -137,6 +153,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Neutralized leading formula characters in the CSV history export so
+  imported exercise names or notes cannot plant spreadsheet formulas
+  (CSV/DDE injection) in an exported file.
 - Mapped the popover color token so dropdown menus render opaque instead of
   transparent.
 - Used a literal `DATABASE_URL` in the E2E CI job environment.

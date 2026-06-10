@@ -50,13 +50,30 @@ more about *how a repo can maintain itself* than about the gym app, start there.
 ## Features
 
 - Multi-user accounts: sign up, profiles, per-user data isolation
-- Workout logging with sets, reps, RIR, warmups and drop sets
-- Progress charts and estimated 1RM tracking
-- Bodyweight-aware tonnage (pull-ups, dips, etc.)
-- AI coach: weekly debrief and assisted program adjustments
+- Workout logging with sets, reps, RIR, warmups and drop sets - plus shorthand
+  quick entry (`100x8@9`), a rest timer, a plate-loading calculator, and a
+  warm-up ramp calculator right in the set logger
+- Progress charts: estimated 1RM trends, weekly volume per muscle group with
+  MEV/MRV landmark bands, a training-consistency calendar, and personal-record
+  badges in session and on the post-session summary
+- Stalled-lift detection plus a deload-week recommendation derived from your
+  stalls and readiness trend
+- Per-exercise target goals (weight x reps) with a progress bar and an
+  achieved badge
+- Bodyweight tracking with a trend chart - and bodyweight-aware tonnage for
+  pull-ups, dips, etc.
+- Optional pre-session readiness/soreness check-in that auto-regulates
+  suggested loads and explains why a load was held or reduced
+- Built-in program templates (5/3/1 BBB, GZCLP, nSuns, PPL, Upper/Lower,
+  Starting Strength, StrongLifts 5x5, Madcow, PHUL, PHAT, Full Body),
+  runnable as written and editable like any program
+- AI coach: weekly debrief and assisted program adjustments, aware of your
+  goals and fatigue signals
 - Conversational AI coach: streaming chat grounded in your training data
 - AI program generation from a natural-language goal, editable before saving
 - Pluggable LLM provider: Anthropic SDK or any OpenRouter model
+- Import your training history from a Strong CSV export (dry-run preview,
+  duplicate-safe); export everything back out as CSV anytime
 - Train in kilograms or pounds, a per-user preference (data is always stored in kg)
 - Installable PWA with offline session logging
 
@@ -224,7 +241,9 @@ docker compose -f docker-compose.prod.yml exec app npx prisma migrate deploy
 - [x] AI program generation from a natural language goal
 - [x] Conversational AI coach (streaming chat with your training context)
 - [x] Test pyramid (unit, integration, E2E) and CI
-- [ ] In-session AI suggestions and natural-language set logging
+- [x] Shorthand set logging (`100x8@9`) - the deterministic slice of
+      natural-language logging
+- [ ] In-session AI suggestions and free-text set logging
 
 ## Contributing
 

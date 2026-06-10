@@ -56,6 +56,37 @@ name lives in the session notes) - a possible polish slice, not a defect.
 
 ---
 
+## 2026-06-10 (evening) - Fourth batch shipped, reviewed, hardened; README + demo media catch-up
+
+**Context.** The fourth ideate batch (#99/#100/#101, two of them deliberate re-evaluations
+of pre-directive rejections) was implemented by a background tick (PRs #103/#104/#105, all
+merged on green full CI, migrations validated, rollback baselines tagged). The tick again
+had no subagent tool and flagged all three for post-merge independent review per L8.
+
+**Decided / shipped.**
+- Three independent post-merge reviews ran in parallel: #104 CLEAN; #103 one REAL (sync
+  race window) + nits; #105 three REAL under the security lens (chunked-body bypass of the
+  5 MB cap, 5 s transaction timeout vs multi-year imports, CSV formula-injection chain
+  into the export).
+- Fixes shipped same-day: #108 (import hardening + lib/csv.ts extraction) and #109
+  (user-row lock + re-derivation, deterministic tie-break, 20-300 kg bounds), both with
+  tests pinning the failure modes and merged on green full CI.
+- Operator directive captured and graduated: README features/roadmap refresh EVERY
+  user-facing batch; screenshots when a captured page visibly changed; clips periodically
+  with a ~3-batch staleness cap. Codified in the write-up skill + 05-content-loop; this PR
+  does the catch-up (features list rewritten, roadmap split, all 4 screenshots re-shot,
+  all 4 GIFs re-recorded against a seeded demo with the new features visible - the demo
+  seed now also creates bodyweight entries, a goal, and readiness check-ins).
+
+**Challenged.** The L8 backstop is now proven twice (5 REAL defects caught post-merge
+across #95/#103/#105 that author self-review missed). The directive's trade - complexity
+allowed, controls scaled up - is holding: every defect was caught by the loop's own
+controls before any user impact.
+
+**Deferred to human.** Nothing. NITs not fixed are recorded in the review digest entries.
+
+---
+
 ## 2026-06-10 (later) - Post-merge backstop review of #95; fix #97; batch write-up
 
 **Context.** The background tick that shipped #94/#95 reported it could not spawn an

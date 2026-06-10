@@ -9,8 +9,9 @@ The tail of the pipeline and the actual growth engine. The product is the gym ap
 **story** - "this repo maintains itself with documented loops" - is what earns stars.
 This skill keeps that story current and truthful after work ships. Read `CLAUDE.md`.
 
-It writes **docs only** (CHANGELOG, `docs/loops/*`, README touch-ups). It never touches
-product code. Output is one focused docs PR via `implement-issue` conventions, or a
+It writes **docs and demo media only** (CHANGELOG, `docs/loops/*`, README touch-ups,
+`docs/screenshots/*` plus the demo-seed/recording scripts that produce them). It never
+touches product code. Output is one focused docs PR via `implement-issue` conventions, or a
 commit on an existing docs branch.
 
 ## Inputs
@@ -27,15 +28,28 @@ commit on an existing docs branch.
 2. **docs/loops/** - when a *new loop or skill* shipped, add or update its numbered
    playbook entry so anyone can reproduce it. The playbook is the content; keep it
    honest (document what actually runs, including failure modes you hit).
-3. **README** - only when a user-facing capability or the loop narrative changed enough
-   to matter (features list, roadmap checkboxes). Keep edits minimal.
-4. **docs/loops/lessons.md** - harvest any lesson the run surfaced (a failure mode, a
+3. **README** - the features list and roadmap checkboxes are updated EVERY batch that
+   ships a user-facing capability (operator directive 2026-06-10); other README edits only
+   when the loop narrative changed enough to matter. Keep edits minimal and truthful.
+4. **Demo media** (same directive, refined: periodic, not per-batch). Static screenshots
+   (`docs/screenshots/*.png`): re-shoot when a captured page (home / progress / generator /
+   catalog) visibly changed. Recorded clips (`docs/screenshots/*.gif`): re-record from time
+   to time with a staleness cap - never more than ~3 shipped feature batches of lag, and
+   never a flagship feature missing from a clip that claims to show that flow. All tooling
+   is in the repo: a throwaway Postgres (e.g. `docker run -d --name gymcoach-demo-db ...
+   -p 5435:5432 --tmpfs /var/lib/postgresql/data postgres:16-alpine`), a local gitignored
+   `.env` with `LLM_PROVIDER=demo`, `prisma migrate deploy` + `npm run db:seed` +
+   `npm run seed:demo` (extend `scripts/seed-demo-history.ts` when a new feature needs demo
+   data to be visible), `npm run build` + `npx next start -p 3032`, then
+   `node scripts/screenshots.mjs` and `node scripts/record.mjs <scenario>` + an ffmpeg
+   palette GIF conversion at 320 px / 12 fps. Tear the server and container down after.
+5. **docs/loops/lessons.md** - harvest any lesson the run surfaced (a failure mode, a
    surprise, a fix that should not have been needed). A lesson is only "learned" when it
    **graduates**: if it is general, edit the relevant skill or `CLAUDE.md`/charter so the
    behavior changes next time, then record the entry pointing at that change; otherwise mark
    it accepted risk. Do not just append prose - an un-acted lesson is noise. Prune/dedupe so
    the file stays high-signal. See `docs/loops/09-memory-and-learning.md`.
-5. **docs/loops/review-digest.md** - append a dated **comprehension digest**: the antidote to
+6. **docs/loops/review-digest.md** - append a dated **comprehension digest**: the antidote to
    comprehension debt (the loop ships faster than the human reads). For the batch, list what
    merged, then call out the **few diffs the human should read FIRST**, ranked by risk x
    impact - auth/security, schema/migrations, core behavior (progression/stats), LLM prompts,
@@ -52,7 +66,7 @@ commit on an existing docs branch.
    group and decide if it warrants a playbook/README change. **Verify each claim against
    the code or the merged diff** - never document a feature that is not actually there
    (this skill exists partly because a changelog drifts otherwise).
-3. **Write** the smallest accurate edits - and do not skip items 4 and 5 of "What to keep
+3. **Write** the smallest accurate edits - and do not skip items 4-6 of "What to keep
    current": harvest/graduate any lesson into `lessons.md` (+ the skill/charter it changes),
    and append the prioritized **comprehension digest** to `review-digest.md`. English only,
    regular hyphens (no em/en-dash), Keep a Changelog format.

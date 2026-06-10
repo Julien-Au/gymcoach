@@ -112,3 +112,37 @@ note RPE -> RIR mapping = 10 - RPE clamped to 0-5), #91 and the docs in this PR.
 > Honest note: #95 merged on the implementing agent's own review pass (no subagent tool in
 > its environment); the independent review happened post-merge and found #97. The protocol
 > now requires flagging that case explicitly (charter, L8).
+
+---
+
+## 2026-06-10 (later) - fourth ideate batch under the directive (#103-#105) + the review-driven fixes (#108/#109)
+
+Merged: #102 (ideate log), #103 (bodyweight tracking - new table + API + card), #104 (coach
+payload gains goals + fatigue), #105 (Strong CSV import - the biggest new surface to date),
+#108 (import hardening: streamed body cap, transaction timeout, CSV formula-injection fix),
+#109 (bodyweight sync race + bounds). All three features were flagged "needs post-merge
+independent review" by the implementing tick (L8) and got it; the reviews produced #108 and
+#109. This batch ranks **high**: untrusted file input, a new table, and a write-path fix.
+
+**Read first, in order:**
+
+1. **#105 + #108 together - the import pipeline.** `gh pr diff 105`, then `gh pr diff 108`.
+   Untrusted CSV -> parser caps/Zod -> dry-run plan -> one transaction. #108 is what the
+   security lens changed: a chunked body could bypass the 5 MB header check (now a streamed
+   cap in parseJsonBody), Prisma's 5 s default would abort big legit imports (now 60 s),
+   and imported names could plant spreadsheet formulas in the CSV export (now neutralized
+   in lib/csv.ts).
+2. **#103 + #109 - the bodyweight sync invariant.** `gh pr diff 103`, then `gh pr diff 109`.
+   User.bodyweight is now a mirror of the newest entry, kept in sync under a user-row lock;
+   #109 is the race the reviewer caught (POST trusted "stamped now = newest").
+3. **#104 - what the coach now knows.** `gh pr diff 104`. Input-side only: goals with
+   progress, stalled lifts, the deload recommendation. The adjustments output contract is
+   untouched (verdict CLEAN) - but the coach's advice will now reference goals, so read the
+   prompt addition.
+
+**Skim:** the README/media refresh in the write-up PR (new screenshots + re-recorded GIFs
+showing the current product; demo seed extended with bodyweight/goal/readiness data).
+
+> The L8 backstop is now proven twice: independent post-merge review found one REAL defect
+> in #95 and four across #103/#105. Author self-review keeps missing what independent eyes
+> catch in one pass.
