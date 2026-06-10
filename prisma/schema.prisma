@@ -123,6 +123,9 @@ enum MuscleGroup {
   CALVES
   ABS
   LOWER_BACK
+  // Fallback bucket for imported exercises that could not be classified
+  // (issue #100). The user can re-categorize them afterwards.
+  OTHER
 }
 
 enum ExerciseCategory {

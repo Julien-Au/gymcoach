@@ -36,6 +36,7 @@ export const MUSCLE_GROUP_LABELS: Record<MuscleGroup, string> = {
   CALVES: 'Calves',
   ABS: 'Abs',
   LOWER_BACK: 'Lower back',
+  OTHER: 'Other',
 };
 
 export const CATEGORY_LABELS: Record<ExerciseCategory, string> = {

@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { SettingsClient } from '@/components/settings/settings-client';
 import { ProfileSection } from '@/components/settings/profile-section';
+import { ImportSection } from '@/components/settings/import-section';
 
 export default async function SettingsPage() {
   const auth = await requireSession();
@@ -51,6 +52,8 @@ export default async function SettingsPage() {
             unit: user?.unit ?? 'KG',
           }}
         />
+
+        <ImportSection />
 
         <SettingsClient />
       </div>
