@@ -59,10 +59,12 @@ concrete, single-PR work rather than "needs a product call".
 Ideation only *files issues* - it never writes product code or merges. The issues it files
 are authored by the loop's own trusted account, so they are auto-actionable, but they are
 still subject to everything downstream: the green-gate, the subagent challenge, and the
-stop-for-human list (a filed idea whose safe slice turns out to need a non-additive
-migration, an auth change, an LLM-output-contract change, or a major dep bump gets a draft
-PR for a human). `docs/loops/ideas-backlog.md` is the durable log of proposed / shipped /
-rejected ideas, so the loop never repeats itself.
+stop-for-human list. Since the 2026-06-10 operator directive, complex ideas (data-safe
+migrations, LLM-output-contract changes, multi-surface features) are implementable without
+human review under the charter's reinforced non-regression controls; only destructive data
+migrations, auth/security changes, and major dep bumps still get a draft PR for a human.
+`docs/loops/ideas-backlog.md` is the durable log of proposed / shipped / rejected ideas, so
+the loop never repeats itself.
 
 ## The four rules, here
 
