@@ -15,8 +15,14 @@ import {
   WEEKLY_SETS_MEV,
   WEEKLY_SETS_MRV,
 } from '@/lib/stats';
+import {
+  DELOAD_READINESS_LOOKBACK,
+  DELOAD_READINESS_MAX_AGE_DAYS,
+  recommendDeload,
+} from '@/lib/deload';
 import { ProgressDashboard } from '@/components/progress/progress-dashboard';
 import { ConsistencyCard } from '@/components/progress/consistency-card';
+import { DeloadBanner } from '@/components/progress/deload-banner';
 
 interface SearchParams {
   exerciseId?: string;
@@ -241,6 +247,26 @@ export default async function ProgressPage({
     (r): r is NonNullable<typeof r> => r !== null,
   );
 
+  // Program-level deload recommendation: aggregates the stalled flags above
+  // with the most recent readiness check-ins. Display-only. Stale check-ins
+  // are excluded so the trigger reflects the current block, not dead data.
+  const readinessSince = new Date();
+  readinessSince.setUTCDate(
+    readinessSince.getUTCDate() - DELOAD_READINESS_MAX_AGE_DAYS,
+  );
+  const recentCheckins = await db.readinessCheckin.findMany({
+    where: { userId: auth.userId, createdAt: { gte: readinessSince } },
+    orderBy: { createdAt: 'desc' },
+    take: DELOAD_READINESS_LOOKBACK,
+    select: { readiness: true },
+  });
+  const deload = recommendDeload({
+    stalledExerciseNames: recap
+      .filter((r) => r.stalled)
+      .map((r) => r.exerciseName),
+    recentReadiness: recentCheckins.map((c) => c.readiness),
+  });
+
   return (
     <main className="flex-1 px-4 py-6">
       <div className="mx-auto flex max-w-3xl flex-col gap-6">
@@ -258,6 +284,7 @@ export default async function ProgressPage({
           />
         ) : (
           <>
+            {deload.recommended && <DeloadBanner reasons={deload.reasons} />}
             <ConsistencyCard
               weeks={consistency.weeks}
               currentStreak={consistency.currentStreak}
