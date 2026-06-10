@@ -165,6 +165,12 @@ non-trivial:
   Cosmetic nits do not block.
 - The reviewing subagent must be **independent** of the one that wrote the code - never let
   the author grade its own homework.
+- **If no independent reviewer can be spawned** (e.g. the subagent-spawning tool is
+  unavailable in a nested run), a self-executed "review pass" by the author does NOT
+  satisfy this protocol. Either hold the PR for the orchestrator to review, or - if it
+  merged on a green full gate - flag it explicitly in the run report so the orchestrator
+  runs an independent **post-merge** review as the very next action. (Lesson L8: this
+  backstop caught a real data-lifecycle defect in #95, fixed in #97.)
 
 Every subagent inherits this charter: same hard guardrails, same stop list.
 
