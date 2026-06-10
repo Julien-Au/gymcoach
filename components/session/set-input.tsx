@@ -17,6 +17,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { suggestNextWeight, weightIncrement, type ReadinessSignal } from '@/lib/progression';
+import { parseSetShorthand, rpeToRir } from '@/lib/set-shorthand';
 import { PlateCalculator } from '@/components/session/plate-calculator';
 import { WarmupCalculator } from '@/components/session/warmup-calculator';
 import type { PendingSet } from '@/lib/indexeddb';
@@ -62,10 +63,12 @@ export function SetInput({
   const initial = computeInitial(programExercise, existingSets, lastPerformance, readiness);
   const [form, setForm] = useState<FormState>(initial);
   const [submitting, setSubmitting] = useState(false);
+  const [quickEntry, setQuickEntry] = useState('');
 
   // Re-init when the exercise changes or a set changes.
   useEffect(() => {
     setForm(computeInitial(programExercise, existingSets, lastPerformance, readiness));
+    setQuickEntry('');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [programExercise.id, existingSets.length]);
 
@@ -85,6 +88,25 @@ export function SetInput({
   function adjustReps(delta: number) {
     setForm((f) => ({ ...f, reps: Math.max(0, f.reps + delta) }));
   }
+
+  // Quick entry: parse shorthand like "100x8@9" and fill the classic fields.
+  // The user still confirms with the log button; the classic fields keep
+  // working unchanged.
+  function handleQuickEntry(value: string) {
+    setQuickEntry(value);
+    const parsed = parseSetShorthand(value);
+    if (!parsed) return;
+    setForm((f) => ({
+      ...f,
+      // The shorthand weight is typed in the user's display unit, exactly
+      // like the classic weight field.
+      weight: fromDisplayWeight(parsed.weight, unit),
+      reps: parsed.reps,
+      rir: parsed.rpe !== undefined ? rpeToRir(parsed.rpe) : f.rir,
+    }));
+  }
+
+  const quickEntryInvalid = quickEntry.trim() !== '' && parseSetShorthand(quickEntry) === null;
 
   async function handleValidate() {
     setSubmitting(true);
@@ -106,6 +128,31 @@ export function SetInput({
   return (
     <Card>
       <CardContent className="flex flex-col gap-4 pt-6">
+        {/* Quick entry shorthand */}
+        <div className="space-y-1">
+          <Label
+            htmlFor="quick-entry"
+            className="text-xs uppercase tracking-wide text-muted-foreground"
+          >
+            Quick entry
+          </Label>
+          <Input
+            id="quick-entry"
+            type="text"
+            inputMode="text"
+            autoComplete="off"
+            value={quickEntry}
+            onChange={(e) => handleQuickEntry(e.target.value)}
+            placeholder={`e.g. 100x8@9 (${unitLabel(unit)} x reps @ RPE)`}
+            aria-invalid={quickEntryInvalid}
+          />
+          {quickEntryInvalid && (
+            <p className="text-xs text-muted-foreground">
+              Expected format: weight x reps, optionally @ RPE - e.g. 100x8 or 62.5x8@8.5
+            </p>
+          )}
+        </div>
+
         {/* Load */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
