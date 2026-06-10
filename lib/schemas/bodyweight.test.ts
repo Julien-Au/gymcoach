@@ -20,12 +20,17 @@ describe('bodyweightEntryInputSchema', () => {
     expect(bodyweightEntryInputSchema.parse({ weightKg: '75.5' }).weightKg).toBe(75.5);
   });
 
-  it.each([0, -5, 501, 'abc', null, undefined])(
+  it.each([0, -5, 19.9, 301, 'abc', null, undefined])(
     'rejects invalid weight %p',
     (weightKg) => {
       expect(bodyweightEntryInputSchema.safeParse({ weightKg }).success).toBe(false);
     },
   );
+
+  it('accepts the profile-route bounds (20-300 kg)', () => {
+    expect(bodyweightEntryInputSchema.safeParse({ weightKg: 20 }).success).toBe(true);
+    expect(bodyweightEntryInputSchema.safeParse({ weightKg: 300 }).success).toBe(true);
+  });
 
   it('rejects an oversized note', () => {
     const res = bodyweightEntryInputSchema.safeParse({

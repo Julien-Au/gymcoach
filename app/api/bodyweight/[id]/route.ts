@@ -21,10 +21,13 @@ export async function DELETE(_req: Request, { params }: Params) {
     }
 
     await db.$transaction(async (tx) => {
+      // Lock the user row first so the re-sync serializes with concurrent
+      // bodyweight mutations (issue #107), matching the POST route.
+      await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`;
       await tx.bodyweightEntry.delete({ where: { id: params.id } });
       const remaining = await tx.bodyweightEntry.findMany({
         where: { userId },
-        orderBy: { measuredAt: 'asc' },
+        orderBy: [{ measuredAt: 'asc' }, { id: 'asc' }],
         select: { weightKg: true, measuredAt: true },
       });
       const current = currentBodyweightFromEntries(remaining);
