@@ -38,17 +38,47 @@ These are absolute. Crossing one is a failure of the experiment, not a judgment 
 When a task falls into one of these, do the safe part, open a **draft** PR or a comment
 explaining the blocker, and move on to other work. Do not force it through.
 
-- **Schema/data migrations** that could lose or rewrite user data (Prisma migrations
-  beyond additive, backfills, destructive column changes).
+- **Destructive data migrations**: anything that could lose or rewrite existing user data
+  with no recovery path (dropping or retyping populated columns/tables, backfills that
+  overwrite values). Additive migrations and data-safe structural ones are fair game under
+  the reinforced controls below.
 - **Auth, security, rate-limiting, or permission** logic changes.
-- **Public API or LLM output-contract** changes that could break callers.
 - **Dependency major-version** bumps, or anything touching the build/release pipeline in a
   non-obvious way.
 - Anything **ambiguous or needing a product decision** - file a crisp issue instead of
   guessing.
 
-These are not forbidden; they just require a human in the loop. Everything else (bug
-fixes, tests, docs, additive features, UX polish, safe minor/patch deps) is fair game.
+These are not forbidden; they just require a human in the loop. Everything else - bug
+fixes, tests, docs, features (including complex, multi-surface ones), UX polish, safe
+minor/patch deps - is fair game, provided the controls below scale with the risk.
+
+## Complex features: reinforced non-regression controls (operator directive 2026-06-10)
+
+The operator widened the feature mandate: if a feature is a clear plus for the product, the
+loop ships it without human review even when it is complex - the compensation is **more
+non-regression control, not more human approval**. Concretely, a PR that touches a schema,
+an API contract, the LLM output contract, or several surfaces at once must carry ALL of:
+
+1. **Full local gate before the PR**: `bash scripts/verify.sh --full` (integration + E2E),
+   not just the fast tier. Green CI remains the merge boundary, but a complex change must
+   not discover its integration failures in CI.
+2. **Tests shipped with the change, at every touched layer**: unit tests for new logic,
+   integration tests for new/changed API routes, and an E2E step for a new user-visible
+   flow. A complex feature PR with no new tests is not ready by definition.
+3. **Migrations**: prefer additive; a non-additive but data-safe migration is allowed if it
+   is reversible and verified against a seeded database locally. Tag a fresh rollback
+   baseline (`autonomy-baseline-<date>`) before merging any PR with a migration.
+4. **LLM output-contract changes**: allowed, but the Zod schema, the demo provider's canned
+   responses, and every consumer must be updated in the same PR, with contract tests
+   exercising the demo provider so CI catches drift.
+5. **Multi-lens subagent challenge**: complex PRs get at least two independent review
+   lenses (correctness + does-it-actually-work; add security when input handling or data
+   exposure changes). One generic skeptic is enough only for simple additive changes.
+6. **Run it**: for a user-visible feature, verify the flow in the running app (the `verify`
+   skill) before merge, not only through tests.
+
+The hard guardrails and the untrusted-input rules below are unchanged by this directive:
+security boundaries are never traded for product velocity.
 
 ## Untrusted external input (public repo)
 

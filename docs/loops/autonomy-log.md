@@ -6,6 +6,32 @@ by the charter in [`07-autonomy.md`](07-autonomy.md).
 
 ---
 
+## 2026-06-10 - Operator directive: complex features with reinforced controls; third ideate batch
+
+**Context.** The operator widened the feature mandate in-session: complex features (data-safe
+migrations, LLM output-contract changes, multi-surface work) may now ship without human
+review when they are a clear product plus - compensated by MORE non-regression control, not
+more approval. Codified in the charter's new "Complex features" section; the ideate skill
+and `08-ideation-loop.md` updated to match. Unchanged: hard guardrails, untrusted-input
+rules, and stop-for-human for destructive data migrations, auth/security, major dep bumps.
+
+**Decided / shipped.**
+- Closed external test issue #57 (already triaged "not planned" in-thread, left open by
+  mistake).
+- Third ideate batch filed: #88 deload-week recommendation (display-only derivation), #89
+  set-logging shorthand parser (roadmap's natural-language logging, deterministic slice),
+  #90 per-exercise target goals (additive ExerciseGoal table + Zod API + progress UI).
+  Backlog logged via PR #91 (merged on green).
+- Charter amendment shipped via PR (this entry rides along).
+
+**Challenged.** Docs-only changes; the gate + a re-read of the security sections stood in
+for a code skeptic. The trust-model sections were verified unchanged.
+
+**Deferred to human.** Nothing; the directive explicitly removes the human from complex
+feature review while keeping the security stop-list.
+
+---
+
 ## 2026-06-09 - Second ideate batch (#80/#81/#82 via #84/#85/#86)
 
 **Context.** The second batch of ideate-produced product features shipped autonomously; this

@@ -60,9 +60,12 @@ ideas on top of unstarted ones.
   product call". Turning ambiguity into a defensible spec is the job.
 - Title + **Context** (the user value and where it lives, with file paths) + **Acceptance
   criteria** (a checkable list).
-- **Backward-compatible.** If the full idea would need a non-additive migration, an
-  auth/security change, an LLM-output-contract change, or a major dep bump, say so and scope
-  only the safe first slice; the rest is stop-for-human.
+- **Risk-scaled, not additive-only** (operator directive 2026-06-10). Complex ideas - new
+  tables, data-safe migrations, LLM-output-contract changes, multi-surface features - are
+  in scope when they are a clear product plus; the issue must then name the reinforced
+  non-regression controls that apply (full gate, tests at every touched layer, contract
+  tests, multi-lens review - see the charter's "Complex features" section). Still
+  stop-for-human: destructive data migrations, auth/security changes, major dep bumps.
 - Labels: `enhancement` and `idea`.
 - **De-dupe** against open AND recently-closed issues and `docs/loops/ideas-backlog.md`.
   Never re-file a shipped or rejected idea.
@@ -74,7 +77,8 @@ ideas on top of unstarted ones.
 2. **Ground.** Skim the current features, the research memory, the roadmap. Optionally one
    small web check within the budget.
 3. **Brainstorm** a short candidate list; rank by `(user value x fit-with-vision) /
-   implementation size`. Prefer high-value, low-risk, additive, single-PR slices.
+   implementation size`. Prefer high-value single-PR slices; complexity is acceptable when
+   the value justifies it and the controls scale with it.
 4. **File** the top up-to-3 non-duplicate, single-PR candidates as crisp issues with a
    sensible default spec + acceptance criteria:
    `gh issue create --label enhancement --label idea --title "..." --body "..."`.
