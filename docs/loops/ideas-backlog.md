@@ -19,3 +19,7 @@ research and the product wedge). See `docs/loops/08-ideation-loop.md` for how th
 - shipped - surface personal records hit during a session on the post-session summary (issue #80, 2026-06-09) - reuse lib/records.ts detectPRs in components/session/session-summary.tsx, additive
 - shipped - volume landmarks (MEV/MRV reference bands) on the weekly per-muscle volume chart (issue #81, 2026-06-09) - weekly working-set counts vs default 10/20 sets band in lib/stats.ts, display-only
 - shipped - detect stalled lifts (no e1RM progress over recent sessions) and flag them on the progress page (issue #82, 2026-06-09) - pure derivation over exerciseProgress/best1RM, display-only badge
+- proposed - recommend a deload week when multiple lifts stall or readiness is chronically low (issue #88, 2026-06-10) - pure lib/deload.ts over existing stall + readiness signals, display-only banner
+- proposed - quick set logging via shorthand input like 100x8@9 (issue #89, 2026-06-10) - deterministic parser, first slice of the roadmap's natural-language set logging, no LLM
+- proposed - per-exercise target goals (weight x reps) with progress toward goal (issue #90, 2026-06-10) - additive ExerciseGoal table + Zod API + progress bar on the per-exercise view
+- rejected - in-session exercise substitution picker (2026-06-10) - changes what a logged set refers to mid-session; needs a product call on program vs session scope, not a safe default
