@@ -10,6 +10,7 @@ const mockUserId = vi.mocked(getCurrentUserId);
 import { GET as listGoals, POST as postGoal } from '@/app/api/goals/route';
 import { DELETE as deleteGoal } from '@/app/api/goals/[id]/route';
 import { POST as postSet } from '@/app/api/sessions/[id]/sets/route';
+import { DELETE as deleteSet } from '@/app/api/sets/[id]/route';
 
 function actAs(userId: string) {
   mockUserId.mockResolvedValue(userId);
@@ -216,5 +217,58 @@ describe('goal achievement at set-save time', () => {
     );
     goal = await db.exerciseGoal.findFirst({ where: { exerciseId: pullups.id } });
     expect(goal?.achievedAt).not.toBeNull();
+  });
+});
+
+describe('goal re-derivation when the achieving set is deleted (issue #96)', () => {
+  it('clears achievedAt when no remaining set meets the target', async () => {
+    const { a, exercise, set } = await seed();
+    actAs(a.id);
+    // The seeded 100x5 set already beats this target -> stamped at creation.
+    await postGoal(jsonReq('POST', { exerciseId: exercise.id, targetWeight: 95, targetReps: 5 }));
+    let goal = await db.exerciseGoal.findFirst({ where: { userId: a.id } });
+    expect(goal?.achievedAt).not.toBeNull();
+
+    const res = await deleteSet(new Request('http://t/api', { method: 'DELETE' }), {
+      params: { id: set.id },
+    });
+    expect(res.status).toBe(200);
+    goal = await db.exerciseGoal.findFirst({ where: { userId: a.id } });
+    expect(goal?.achievedAt).toBeNull();
+  });
+
+  it('re-stamps with the earliest remaining achieving set', async () => {
+    const { a, exercise, session, set } = await seed();
+    actAs(a.id);
+    await postGoal(jsonReq('POST', { exerciseId: exercise.id, targetWeight: 95, targetReps: 5 }));
+
+    // A second, later set that also meets the target.
+    const later = await (
+      await postSet(
+        jsonReq('POST', { exerciseId: exercise.id, setNumber: 2, weight: 97.5, reps: 5 }),
+        { params: { id: session.id } },
+      )
+    ).json();
+
+    // Deleting the original achieving set must move achievedAt to the
+    // remaining one, not clear it and not keep the dead timestamp.
+    await deleteSet(new Request('http://t/api', { method: 'DELETE' }), {
+      params: { id: set.id },
+    });
+    const goal = await db.exerciseGoal.findFirst({ where: { userId: a.id } });
+    expect(goal?.achievedAt?.getTime()).toBe(new Date(later.completedAt).getTime());
+  });
+
+  it('leaves an unachieved goal untouched when an unrelated set is deleted', async () => {
+    const { a, exercise, set } = await seed();
+    actAs(a.id);
+    await postGoal(jsonReq('POST', { exerciseId: exercise.id, targetWeight: 120, targetReps: 5 }));
+
+    const res = await deleteSet(new Request('http://t/api', { method: 'DELETE' }), {
+      params: { id: set.id },
+    });
+    expect(res.status).toBe(200);
+    const goal = await db.exerciseGoal.findFirst({ where: { userId: a.id } });
+    expect(goal?.achievedAt).toBeNull();
   });
 });
