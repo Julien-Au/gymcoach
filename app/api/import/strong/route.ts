@@ -27,13 +27,19 @@ export async function POST(req: Request) {
       throw new ApiError(429, `Too many import requests. Retry in ${rl.retryAfterSec}s.`);
     }
 
-    // Cheap size guard before the body is even read into memory.
+    // Cheap early reject on a declared oversize. The header is advisory only
+    // (absent on chunked bodies, possibly malformed); the real control is the
+    // streamed byte cap inside parseJsonBody below.
     const contentLength = Number(req.headers.get('content-length') ?? 0);
     if (contentLength > STRONG_CSV_MAX_BYTES * 1.5) {
       throw new ApiError(413, 'File too large: the limit is 5 MB.');
     }
 
-    const data = await parseJsonBody(req, strongImportInputSchema);
+    const data = await parseJsonBody(req, strongImportInputSchema, {
+      // 1.5x leaves room for the JSON envelope and string escaping around the
+      // 5 MB CSV payload itself (which the schema caps exactly).
+      maxBytes: STRONG_CSV_MAX_BYTES * 1.5,
+    });
     const parsed = parseStrongCsv(data.csv, data.unit);
     if (!parsed.ok) {
       throw new ApiError(400, parsed.fatalError ?? 'Unreadable file.');
@@ -108,8 +114,12 @@ export async function POST(req: Request) {
     }
 
     // One transaction per import: a failure anywhere rolls back every row.
-    const result = await db.$transaction(async (tx) =>
-      executeStrongImport(tx, userId, plan),
+    // A multi-year export creates hundreds of sessions in sequential writes,
+    // so the 5 s Prisma default timeout would abort exactly the imports this
+    // feature exists for.
+    const result = await db.$transaction(
+      async (tx) => executeStrongImport(tx, userId, plan),
+      { timeout: 60_000, maxWait: 5_000 },
     );
 
     return NextResponse.json({

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { handleApiError, requireApiUserId } from '@/lib/api';
+import { csvEscape } from '@/lib/csv';
 import { effectiveWeight, estimate1RM, setVolume } from '@/lib/stats';
 
 // GET /api/history/csv?programId=...&month=YYYY-MM
@@ -128,15 +129,6 @@ export async function GET(req: Request) {
   } catch (err) {
     return handleApiError(err);
   }
-}
-
-// RFC 4180 escaping: double quotes + internal escape, on any field
-// containing , " \n or \r.
-function csvEscape(value: string): string {
-  if (/[",\n\r]/.test(value)) {
-    return `"${value.replace(/"/g, '""')}"`;
-  }
-  return value;
 }
 
 function buildFilename(month: string | null, programId: string | null): string {

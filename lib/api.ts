@@ -29,11 +29,17 @@ export async function requireApiUserId(): Promise<string> {
 export async function parseJsonBody<T extends z.ZodTypeAny>(
   req: Request,
   schema: T,
+  opts?: { maxBytes?: number },
 ): Promise<z.infer<T>> {
   let body: unknown;
   try {
-    body = await req.json();
-  } catch {
+    if (opts?.maxBytes !== undefined) {
+      body = JSON.parse(await readBodyWithCap(req, opts.maxBytes));
+    } else {
+      body = await req.json();
+    }
+  } catch (err) {
+    if (err instanceof ApiError) throw err;
     throw new ApiError(400, 'Invalid JSON');
   }
   const parsed = schema.safeParse(body);
@@ -41,6 +47,46 @@ export async function parseJsonBody<T extends z.ZodTypeAny>(
     throw new ApiError(400, parsed.error.issues[0]?.message ?? 'Invalid data');
   }
   return parsed.data;
+}
+
+// Reads the request body as text while enforcing a hard byte cap DURING the
+// read. The Content-Length header is attacker-controlled (absent on chunked
+// bodies, or malformed), and App Router route handlers have no built-in body
+// size limit, so `req.json()` would buffer an arbitrarily large body into
+// memory before any schema check runs. Aborts with 413 as soon as the
+// cumulative byte count exceeds the cap.
+export async function readBodyWithCap(
+  req: Request,
+  maxBytes: number,
+): Promise<string> {
+  if (!req.body) return '';
+  const reader = req.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let received = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      received += value.byteLength;
+      if (received > maxBytes) {
+        throw new ApiError(413, 'Request body too large.');
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+    if (received > maxBytes) {
+      // Stop pulling the rest of an oversized body.
+      await req.body.cancel().catch(() => {});
+    }
+  }
+  const merged = new Uint8Array(received);
+  let offset = 0;
+  for (const chunk of chunks) {
+    merged.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(merged);
 }
 
 export function handleApiError(err: unknown): NextResponse {
