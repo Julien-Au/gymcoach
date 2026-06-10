@@ -85,3 +85,55 @@ describe('parseJsonBody', () => {
     ).rejects.toMatchObject({ status: 400 });
   });
 });
+
+describe('parseJsonBody with a byte cap', () => {
+  const schema = z.object({ name: z.string() });
+
+  // A Request whose body is a stream WITHOUT a Content-Length header, like a
+  // chunked upload: the cap must hold from the bytes alone.
+  function chunkedRequest(chunks: string[]): Request {
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        for (const c of chunks) controller.enqueue(encoder.encode(c));
+        controller.close();
+      },
+    });
+    return new Request('http://test.local/api', {
+      method: 'POST',
+      body: stream,
+      // Required by undici for stream bodies; irrelevant to the cap logic.
+      duplex: 'half',
+    } as RequestInit);
+  }
+
+  it('accepts a streamed body under the cap', async () => {
+    const body = JSON.stringify({ name: 'ok' });
+    const data = await parseJsonBody(chunkedRequest([body]), schema, {
+      maxBytes: 1024,
+    });
+    expect(data).toEqual({ name: 'ok' });
+  });
+
+  it('rejects with 413 as soon as the streamed bytes exceed the cap, without a Content-Length', async () => {
+    const big = `{"name":"${'x'.repeat(5000)}"}`;
+    const halves = [big.slice(0, 2500), big.slice(2500)];
+    await expect(
+      parseJsonBody(chunkedRequest(halves), schema, { maxBytes: 1000 }),
+    ).rejects.toMatchObject({ status: 413 });
+  });
+
+  it('counts multibyte characters by their encoded size', async () => {
+    // 600 two-byte characters = 1200 bytes > 1000, though only 600 chars.
+    const big = `{"name":"${'é'.repeat(600)}"}`;
+    await expect(
+      parseJsonBody(chunkedRequest([big]), schema, { maxBytes: 1000 }),
+    ).rejects.toMatchObject({ status: 413 });
+  });
+
+  it('still validates the schema under the cap', async () => {
+    await expect(
+      parseJsonBody(chunkedRequest(['{"name":42}']), schema, { maxBytes: 1024 }),
+    ).rejects.toMatchObject({ status: 400 });
+  });
+});
