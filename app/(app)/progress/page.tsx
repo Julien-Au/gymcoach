@@ -5,6 +5,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { MUSCLE_GROUP_LABELS } from '@/lib/schemas/exercise';
 import {
   applyBodyweight,
+  best1RM,
   classifyWeeklySets,
   exerciseProgress,
   isStalled,
@@ -86,42 +87,55 @@ export default async function ProgressPage({
   const selectedExerciseId =
     searchParams.exerciseId ?? exercisesWithSets[0]?.id;
 
-  // Max load + 1RM for the selected exercise, over all available history.
-  const exerciseSets = selectedExerciseId
-    ? await db.set.findMany({
-        where: {
-          exerciseId: selectedExerciseId,
-          isWarmup: false,
-          session: { userId: auth.userId },
-        },
-        orderBy: { completedAt: 'asc' },
-        select: {
-          weight: true,
-          reps: true,
-          isWarmup: true,
-          sessionId: true,
-          session: { select: { startedAt: true } },
-        },
-      })
-    : [];
+  // Max load + 1RM for the selected exercise, over all available history,
+  // plus its target goal (issue #90) fetched in parallel.
+  const [exerciseSets, selectedGoal] = await Promise.all([
+    selectedExerciseId
+      ? db.set.findMany({
+          where: {
+            exerciseId: selectedExerciseId,
+            isWarmup: false,
+            session: { userId: auth.userId },
+          },
+          orderBy: { completedAt: 'asc' },
+          select: {
+            weight: true,
+            reps: true,
+            isWarmup: true,
+            sessionId: true,
+            session: { select: { startedAt: true } },
+          },
+        })
+      : Promise.resolve([]),
+    selectedExerciseId
+      ? db.exerciseGoal.findUnique({
+          where: {
+            userId_exerciseId: { userId: auth.userId, exerciseId: selectedExerciseId },
+          },
+        })
+      : Promise.resolve(null),
+  ]);
 
   const selectedUsesBodyweight =
     selectedExerciseId != null
       ? (usesBodyweightById.get(selectedExerciseId) ?? false)
       : false;
-  const exercisePoints = exerciseProgress(
-    applyBodyweight(
-      exerciseSets.map((s) => ({
-        weight: s.weight,
-        reps: s.reps,
-        isWarmup: s.isWarmup,
-        sessionId: s.sessionId,
-        sessionStartedAt: s.session.startedAt,
-        usesBodyweight: selectedUsesBodyweight,
-      })),
-      bodyweight,
-    ),
+  const adjustedExerciseSets = applyBodyweight(
+    exerciseSets.map((s) => ({
+      weight: s.weight,
+      reps: s.reps,
+      isWarmup: s.isWarmup,
+      sessionId: s.sessionId,
+      sessionStartedAt: s.session.startedAt,
+      usesBodyweight: selectedUsesBodyweight,
+    })),
+    bodyweight,
   );
+  const exercisePoints = exerciseProgress(adjustedExerciseSets);
+
+  // The goal is measured against the best bodyweight-adjusted e1RM over the
+  // full history loaded above.
+  const selectedBestE1RM = best1RM(adjustedExerciseSets);
 
   // Weekly volume by muscle group over the period (12 weeks).
   const weeklySetsRaw = await db.set.findMany({
@@ -307,6 +321,18 @@ export default async function ProgressPage({
               volumeLandmarks={volumeLandmarks}
               recap={recap}
               unit={unit}
+              selectedGoal={
+                selectedGoal
+                  ? {
+                      id: selectedGoal.id,
+                      targetWeight: selectedGoal.targetWeight,
+                      targetReps: selectedGoal.targetReps,
+                      achievedAt: selectedGoal.achievedAt?.toISOString() ?? null,
+                    }
+                  : null
+              }
+              selectedBestE1RM={selectedBestE1RM}
+              selectedUsesBodyweight={selectedUsesBodyweight}
             />
           </>
         )}

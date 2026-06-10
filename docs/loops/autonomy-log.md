@@ -6,6 +6,40 @@ by the charter in [`07-autonomy.md`](07-autonomy.md).
 
 ---
 
+## 2026-06-10 - Maintainer run: shipped #89 (set shorthand) and #90 (exercise goals)
+
+**Context.** Maintainer tick over the third ideate batch. Both issues trust-gated (author
+`JulienAu`), implemented in order, each behind its own PR and CI run. Merge budget 3; used 2.
+
+**Shipped.**
+- **#89 -> PR #94 (merged): quick set logging via shorthand.** Pure parser
+  `lib/set-shorthand.ts` (`100x8`, `100 8`, `100x8@9`, decimals, RPE 1-10) + a quick-entry
+  field in `set-input.tsx` that fills the classic weight/reps/RIR fields. The app tracks RIR,
+  not RPE, so `rpeToRir` maps RIR = 10 - RPE rounded, clamped to the API's 0-5. Weight read in
+  the display unit via `fromDisplayWeight`. No API/schema change. 28 new unit/component tests.
+- **#90 -> PR #95 (this PR): per-exercise target goals.** First feature shipped under the
+  charter's "complex features" directive, so it carries the reinforced controls: additive
+  `ExerciseGoal` migration (validated with `prisma migrate deploy` + `migrate diff` drift
+  check against the seeded test DB), Zod-validated upsert/list/delete routes with ownership
+  tests, pure `lib/goals.ts` (progress = best e1RM / target e1RM; achievement = working set
+  meeting both axes, stamped deterministically with the achieving set's `completedAt`),
+  effectiveWeight semantics for bodyweight exercises at every layer, goal card + dialog on the
+  progress page, and tests at all touched layers including a full E2E flow
+  (`tests/e2e/goals.spec.ts`: set -> track -> achieve -> remove). `verify.sh --full` run
+  locally before the PR; rollback baseline `autonomy-baseline-2026-06-10` tagged before merge.
+
+**Challenged.**
+- #89: independent skeptic on the staged diff. Caught early in self-review: a regex
+  backtracking trap (`100 89.5` would have parsed as reps 8 @ RPE 9.5) - fixed by requiring a
+  separator before the RPE; the skeptic pass then surfaced two cosmetic findings (a misleading
+  test name, fixed; keep-RIR-when-RPE-deleted judged the correct default).
+- #90: multi-lens review (correctness + does-it-actually-work), findings recorded in the PR.
+
+**Deferred to human.** Nothing blocking. Note for ops: the local Docker daemon was down at
+run start; the loop started Docker Desktop itself to run the full gate.
+
+---
+
 ## 2026-06-10 - Operator directive: complex features with reinforced controls; third ideate batch
 
 **Context.** The operator widened the feature mandate in-session: complex features (data-safe
