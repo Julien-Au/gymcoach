@@ -182,6 +182,61 @@ async function main() {
   }
 
   console.log(`Demo history: ${sessionCount} sessions, ${setCount} sets over ${WEEKS} weeks.`);
+
+  // The shipped feature surfaces the screenshots should show: a bodyweight
+  // trend, a per-exercise goal in progress, and recent readiness check-ins.
+  // Same clean-slate-then-recreate approach as the sessions above.
+  await prisma.bodyweightEntry.deleteMany({ where: { userId: user.id } });
+  const bodyweightEntries: { userId: string; weightKg: number; measuredAt: Date }[] = [];
+  for (let w = WEEKS - 1; w >= 0; w--) {
+    const measuredAt = sessionDate(w, 1);
+    if (measuredAt > now) continue;
+    // Slow recomp trend: ~82.5 kg drifting down toward ~80 kg with noise.
+    const weightKg = +(82.5 - (WEEKS - 1 - w) * 0.2 + (rng() - 0.5) * 0.6).toFixed(1);
+    bodyweightEntries.push({ userId: user.id, weightKg, measuredAt });
+  }
+  await prisma.bodyweightEntry.createMany({ data: bodyweightEntries });
+  const lastBodyweight = bodyweightEntries[bodyweightEntries.length - 1];
+  if (lastBodyweight) {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { bodyweight: lastBodyweight.weightKg },
+    });
+  }
+
+  // One in-progress goal on the program's first compound lift.
+  await prisma.exerciseGoal.deleteMany({ where: { userId: user.id } });
+  const firstCompound = program.workouts
+    .flatMap((w) => w.exercises)
+    .find((pe) => pe.exercise.category === ExerciseCategory.COMPOUND && !pe.exercise.usesBodyweight);
+  if (firstCompound) {
+    const load = workingLoad(baseWeight(firstCompound.exercise), WEEKS - 1, firstCompound.exercise);
+    await prisma.exerciseGoal.create({
+      data: {
+        userId: user.id,
+        exerciseId: firstCompound.exercise.id,
+        // A target a bit beyond the current working load: visibly in progress.
+        targetWeight: round(load * 1.15, 2.5),
+        targetReps: 5,
+      },
+    });
+  }
+
+  // A short run of readiness check-ins (the latest one recent enough to feed
+  // auto-regulation and the coach payload).
+  await prisma.readinessCheckin.deleteMany({ where: { userId: user.id } });
+  const readinessData = [4, 3, 4, 4, 3].map((readiness, i) => ({
+    userId: user.id,
+    readiness,
+    sleepQuality: Math.min(5, readiness + 1),
+    createdAt: new Date(now.getTime() - i * 2 * 24 * 60 * 60 * 1000),
+  }));
+  await prisma.readinessCheckin.createMany({ data: readinessData });
+
+  console.log(
+    `Demo extras: ${bodyweightEntries.length} bodyweight entries, ` +
+      `${firstCompound ? 1 : 0} goal, ${readinessData.length} readiness check-ins.`,
+  );
 }
 
 main()

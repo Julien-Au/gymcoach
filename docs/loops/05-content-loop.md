@@ -37,9 +37,16 @@ work as shipped; no marketing adjectives; skip internal churn unless the infrast
 
 ## Docs only, and it does not merge itself
 
-The content loop writes only docs (CHANGELOG, `docs/loops/*`, minimal README touch-ups)
-and opens a PR like any other change. The ship loop (`04`) merges it once CI is green.
-Same discipline as everything else: one small, verified change; the gate decides.
+The content loop writes only docs and demo media (CHANGELOG, `docs/loops/*`, README
+touch-ups, `docs/screenshots/*` and the scripts that produce them) and opens a PR like any
+other change. The ship loop (`04`) merges it once CI is green. Same discipline as
+everything else: one small, verified change; the gate decides.
+
+Per the 2026-06-10 operator directive: the README features list and roadmap are refreshed
+on EVERY batch that ships a user-facing capability; the screenshots/GIFs are refreshed
+periodically (re-shoot a screenshot when its page visibly changed; re-record the clips
+before they lag more than ~3 batches or misrepresent a flagship flow). The write-up skill
+carries the full procedure.
 
 ## How it chains
 
