@@ -4,6 +4,7 @@ import {
   DELOAD_READINESS_MIN_CHECKINS,
   DELOAD_READINESS_THRESHOLD,
   DELOAD_STALLED_LIFTS_MIN,
+  deloadReasonLine,
   recommendDeload,
 } from './deload';
 
@@ -103,5 +104,25 @@ describe('recommendDeload', () => {
     expect(result.reasons).toEqual([
       { kind: 'low-readiness', averageReadiness: 1.7, checkins: 3 },
     ]);
+  });
+});
+
+describe('deloadReasonLine', () => {
+  it('formats a single stalled lift', () => {
+    expect(
+      deloadReasonLine({ kind: 'stalled-lifts', exerciseNames: ['Bench'] }),
+    ).toBe('1 lift has stalled: Bench.');
+  });
+
+  it('formats several stalled lifts', () => {
+    expect(
+      deloadReasonLine({ kind: 'stalled-lifts', exerciseNames: ['Bench', 'Squat'] }),
+    ).toBe('2 lifts have stalled: Bench, Squat.');
+  });
+
+  it('formats chronically low readiness', () => {
+    expect(
+      deloadReasonLine({ kind: 'low-readiness', averageReadiness: 2.3, checkins: 4 }),
+    ).toBe('Your readiness has averaged 2.3/5 over your last 4 check-ins.');
   });
 });
