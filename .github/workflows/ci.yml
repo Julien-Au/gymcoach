@@ -86,6 +86,21 @@ jobs:
       - name: Start Postgres
         run: |
           docker network create smoke
+          # The ECR public mirror intermittently answers "toomanyrequests: Rate
+          # exceeded" (same transient the service-container jobs hit at
+          # "Initialize containers"); retry the pull with backoff instead of
+          # failing the whole job on the first 429.
+          for attempt in $(seq 1 5); do
+            if docker pull -q public.ecr.aws/docker/library/postgres:16-alpine; then
+              break
+            fi
+            if [ "$attempt" = "5" ]; then
+              echo "Could not pull the Postgres image after 5 attempts" >&2
+              exit 1
+            fi
+            echo "Pull attempt $attempt failed (rate limited?), retrying in 20s..."
+            sleep 20
+          done
           docker run -d --name smoke-db --network smoke \
             -e POSTGRES_USER=gymcoach -e POSTGRES_PASSWORD=gymcoach -e POSTGRES_DB=gymcoach \
             public.ecr.aws/docker/library/postgres:16-alpine
