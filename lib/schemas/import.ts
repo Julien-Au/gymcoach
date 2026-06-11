@@ -13,3 +13,13 @@ export const strongImportInputSchema = z.object({
 });
 
 export type StrongImportInput = z.infer<typeof strongImportInputSchema>;
+
+// Hevy CSV import request (issue #113). Same cap and modes; no unit field -
+// Hevy exports weight in kg (the lbs header variant is converted by the
+// parser, not chosen by the user).
+export const hevyImportInputSchema = z.object({
+  csv: z.string().min(1).max(STRONG_CSV_MAX_BYTES, 'File too large: the limit is 5 MB.'),
+  mode: z.enum(['preview', 'confirm']),
+});
+
+export type HevyImportInput = z.infer<typeof hevyImportInputSchema>;

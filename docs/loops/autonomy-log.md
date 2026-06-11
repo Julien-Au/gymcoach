@@ -6,7 +6,62 @@ by the charter in [`07-autonomy.md`](07-autonomy.md).
 
 ---
 
-## 2026-06-10 (evening) - Maintainer run: shipped #99, #101, #100 (fourth ideate batch)
+## 2026-06-11 - Maintainer run: shipped #112, #111, #113 (fifth ideate batch)
+
+**Context.** Maintainer tick over the fifth ideate batch, strictly serialized (lesson L7:
+the next issue's branch is cut only after the prior PR is MERGED). All three issues
+trust-gated (author `JulienAu`). All three are complex features under the 2026-06-10
+directive: each ran `verify.sh --full` locally before its PR and shipped tests at every
+touched layer (unit + integration + E2E). Merge budget 3; used 3.
+
+**Shipped.**
+- **#112 -> PR #115 (merged): one-tap deload week.** Additive nullable `User.deloadUntil`
+  migration (validated on :5434: `migrate deploy` + clean `migrate diff`; rollback baseline
+  `autonomy-baseline-2026-06-11` tagged on main before the merge). POST/DELETE
+  `/api/deload` (strict-empty-object Zod body so no client-chosen duration; operates only
+  on the caller's own row). New `'planned-deload'` suggestion reason: 10% step-down using
+  the existing `READINESS_DELOAD_FRACTION`, precedence over a programmed increment and a
+  readiness hold, never stacking with a readiness deload (one reduction, pinned by unit
+  tests). Banner start/end buttons, session-runner badge + explainer, coach payload
+  `fatigue.deloadActive` (additive; output contract untouched). One local gate red: an
+  existing exact-shape payload test needed the additive field - acknowledged and updated
+  with an extra active/expired case.
+- **#111 -> PR #116 (merged): ask the coach mid-session.** "Ask the coach" button in the
+  session runner -> `/chat?sessionId=...`. Chat payload gains the additive, compact,
+  ownership-checked `currentSession` section (`buildCurrentSessionContext` returns null
+  for a foreign/unknown id - the chat silently degrades). Prompt addition is input-side
+  ONLY; every structured output contract is unchanged and the existing contract tests
+  passed unmodified. Demo provider serves a canned in-session answer keyed on the quoted
+  `"currentSession"` payload marker, and the Playwright web server now runs
+  `LLM_PROVIDER=demo`, so the no-key flow is E2E-covered end to end (the canned answer
+  streaming back proves the live context reached the provider). One local gate red: the
+  suite's 6th parallel UI signup tripped the 5/min register rate limit - the new spec now
+  registers via the API in its own X-Forwarded-For bucket (test-side fix; the limit itself
+  is untouched).
+- **#113 -> PR #117 (this PR): Hevy CSV import.** Second import format behind the same
+  untrusted-input bar as #105: shared caps + RFC4180 reader extracted verbatim to
+  `lib/import/csv.ts` (Strong parser tests pass unmodified), new `hevy-csv.ts` parser
+  (set_type warmup/dropset mapping, both documented timestamp formats, lbs header variant,
+  0-based set_index hardened against silent defaults), planner/executor generalized with
+  optional flags/times that keep the Strong path byte-identical (pinned by a regression
+  test), mirrored `/api/import/hevy` route (streamed body cap, shared rate-limit budget,
+  dry-run preview, transactional confirm, duplicate skip), settings source-app selector
+  (unit toggle stays Strong-only).
+
+**Challenged.** No subagent-spawning tool exists in this environment, so the charter's
+independence requirement could not be met in-run: each PR got an inline multi-lens review
+pass by the author (correctness + does-it-actually-work; + security for #113) on top of the
+green full gate, and per the charter all three merges are flagged for an independent
+POST-MERGE review by the orchestrator as the next action. Findings worth recording from the
+inline passes: the deload step-down on negative (assisted) loads reduces assistance (a
+pre-existing semantic of the readiness deload, not a regression - candidate for a future
+issue), and an active deload cannot be ended early from the progress page when the user has
+no recent training data (bounded: it self-expires).
+
+**Deferred to a human / next run.**
+- Independent post-merge review of #115, #116, #117 (charter "Subagent challenge protocol"
+  backstop, lesson L8).
+- Possible product issue: deload semantics for assisted (negative-load) exercises.
 
 **Context.** Maintainer tick over the fourth ideate batch, strictly serialized (lesson L7:
 next issue only after the prior PR is MERGED). All three issues trust-gated (author
