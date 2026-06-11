@@ -236,6 +236,19 @@ docker compose -f docker-compose.prod.yml up -d --build
 docker compose -f docker-compose.prod.yml exec app npx prisma migrate deploy
 ```
 
+### Deploying a public demo instance
+
+Set `NEXT_PUBLIC_DEMO_MODE=true` (plus the throwaway demo credentials) in the
+instance's `.env`, then build with the demo profile and run the one-shot
+seeder. It fills the demo account with a rich deterministic dataset (12 weeks
+of sessions, a bodyweight trend, a goal, readiness check-ins); re-running it
+on every deploy also resets whatever visitors changed.
+
+```bash
+docker compose -f docker-compose.prod.yml --profile demo up -d --build
+docker compose -f docker-compose.prod.yml --profile demo run --rm seed-demo
+```
+
 ## Roadmap
 
 - [x] Single user MVP (logging, progress, weekly AI debrief, program adjustments)

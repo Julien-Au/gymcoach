@@ -83,6 +83,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   single field of the set logger to fill the weight, reps, and effort fields
   (RPE maps to the stored RIR). Deterministic parser in the user's display
   unit; the classic fields keep working unchanged.
+- Demo-mode production image: the Dockerfile and prod compose now accept the
+  build-time demo flags (one-click demo login), and a run-once `seed-demo`
+  compose service fills the demo account with the rich deterministic dataset
+  and resets it on every deploy. Normal self-host builds are unchanged.
 - One-tap deload week: the deload recommendation banner can now start a
   7-day planned deload; while active, every suggested load steps down 10%
   (reason "planned deload", shown in the suggestion badge), it never stacks

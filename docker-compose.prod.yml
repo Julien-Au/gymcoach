@@ -29,6 +29,12 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        # Demo mode is build-time (NEXT_PUBLIC_*). Defaults keep a normal
+        # self-host build unchanged; the public demo sets these in its .env.
+        NEXT_PUBLIC_DEMO_MODE: ${NEXT_PUBLIC_DEMO_MODE:-false}
+        NEXT_PUBLIC_DEMO_EMAIL: ${NEXT_PUBLIC_DEMO_EMAIL:-}
+        NEXT_PUBLIC_DEMO_PASSWORD: ${NEXT_PUBLIC_DEMO_PASSWORD:-}
     container_name: gymcoach-app
     restart: always
     depends_on:
@@ -55,6 +61,28 @@ services:
       # Bind local uniquement, Nginx fait le reverse proxy en frontal.
       # Port hôte 3010 (3000 est pris par lead-radar sur le VPS partagé).
       - '127.0.0.1:3010:3000'
+
+  # Run-once demo seeder (public demo only): resets the demo account to the
+  # rich deterministic dataset (12 weeks of sessions, bodyweight trend, a
+  # goal, readiness check-ins). Built from the builder stage, which still has
+  # the dev dependencies (tsx) the seed scripts need. Re-running it on every
+  # deploy doubles as the cleanup of whatever visitors did to the demo data.
+  #   docker compose -f docker-compose.prod.yml --profile demo run --rm seed-demo
+  seed-demo:
+    profiles: ['demo']
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      USER_EMAIL: ${USER_EMAIL}
+      USER_PASSWORD: ${USER_PASSWORD}
+    command: >
+      sh -c "npx prisma migrate deploy && npm run db:seed && npm run seed:demo"
 
 volumes:
   postgres-data:
