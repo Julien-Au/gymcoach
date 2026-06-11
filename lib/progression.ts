@@ -55,6 +55,10 @@ export const SORENESS_DELOAD_AT_OR_ABOVE = 5;
 // 10% is a light, evidence-informed deload that protects a fatigued muscle
 // without throwing away the training block.
 export const READINESS_DELOAD_FRACTION = 0.1;
+// The step-down math above relies on weights being >= 0 (the Zod input
+// schemas and both CSV importers clamp them): reducing a negative load by a
+// fraction would shrink assistance and make the set HARDER, not easier
+// (issue #118).
 
 // A recent readiness check-in, shaped for pure progression logic. The caller
 // resolves recency by passing `ageHours` (how old the check-in is), keeping this

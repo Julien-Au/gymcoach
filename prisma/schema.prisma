@@ -15,8 +15,8 @@ model User {
   email        String     @unique
   passwordHash String
   // Bodyweight in kg, used to compute the effective tonnage on bodyweight
-  // exercises (Set.weight = added load, can be negative for assistance
-  // machines). Null = not filled in yet, so no bodyweight bonus is applied
+  // exercises (Set.weight = added load, always >= 0; the input schemas clamp
+  // it). Null = not filled in yet, so no bodyweight bonus is applied
   // (backward-safe).
   bodyweight   Float?
   // Optional profile, used to tailor the AI coach output to the user.
@@ -101,7 +101,8 @@ model Exercise {
   notes            String?
   // For bodyweight exercises (pull-ups, dips, push-ups...): the effective
   // tonnage includes User.bodyweight. Set.weight remains the added load (0 by
-  // default, negative for an assistance machine).
+  // default, always >= 0 - the input schemas clamp it; negative loads for
+  // assistance machines are deliberately not supported, see issue #118).
   usesBodyweight   Boolean           @default(false)
   createdAt        DateTime          @default(now())
   programExercises ProgramExercise[]
