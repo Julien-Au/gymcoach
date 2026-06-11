@@ -1,6 +1,6 @@
 # CLAUDE.md — working agreement for agents on GymCoach
 
-GymCoach is an open source, self-hosted hypertrophy training tracker with a
+GymCoach is an open source, self-hosted training tracker with a
 built-in AI coach. This file tells any Claude Code agent (interactive or inside
 a loop) how to work in this repo so it does not have to re-derive conventions.
 
