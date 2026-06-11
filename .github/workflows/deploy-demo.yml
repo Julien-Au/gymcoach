@@ -1,0 +1,40 @@
+# Redeploys the public demo instance. Security model (see issue #123):
+# - triggers: weekly schedule + manual dispatch ONLY - never PR events, so
+#   fork PRs can not reach the secrets.
+# - permissions: none on the GitHub token.
+# - no third-party actions: plain ssh with a pinned host key.
+# - the SSH key is locked server-side to a forced command that runs the
+#   deploy script and nothing else (no pty, no forwarding); even a leaked
+#   key can only trigger a legitimate redeploy.
+# - the deploy script lives ON the VPS, outside this repo: a malicious
+#   change to this workflow can not change what executes server-side.
+name: Deploy demo
+
+on:
+  schedule:
+    # Weekly, Monday 05:00 UTC (after the nightly data reset at 04:00).
+    - cron: '0 5 * * 1'
+  workflow_dispatch: {}
+
+permissions: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Deploy via locked SSH key
+        env:
+          SSH_KEY: ${{ secrets.DEMO_DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEMO_DEPLOY_KNOWN_HOSTS }}
+          HOST: ${{ secrets.DEMO_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEMO_DEPLOY_USER }}
+        run: |
+          umask 077
+          printf '%s\n' "$SSH_KEY" > key
+          printf '%s\n' "$KNOWN_HOSTS" > known_hosts
+          # The remote forced command ignores whatever is requested and runs
+          # the deploy script; "deploy" below is documentation, not control.
+          ssh -i key -o UserKnownHostsFile=known_hosts -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes "$DEPLOY_USER@$HOST" deploy
+          rm -f key
