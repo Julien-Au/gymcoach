@@ -68,6 +68,107 @@ jobs:
           DATABASE_URL: postgresql://user:pass@localhost:5432/db
           JWT_SECRET: ci-build-placeholder-secret-at-least-32-chars
 
+  docker-smoke:
+    name: Docker smoke test (production image)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/setup-buildx-action@v3
+      - name: Build the production image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: gymcoach:smoke
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Start Postgres
+        run: |
+          docker network create smoke
+          # The ECR public mirror intermittently answers "toomanyrequests: Rate
+          # exceeded" (same transient the service-container jobs hit at
+          # "Initialize containers"); retry the pull with backoff instead of
+          # failing the whole job on the first 429.
+          for attempt in $(seq 1 5); do
+            if docker pull -q public.ecr.aws/docker/library/postgres:16-alpine; then
+              break
+            fi
+            if [ "$attempt" = "5" ]; then
+              echo "Could not pull the Postgres image after 5 attempts" >&2
+              exit 1
+            fi
+            echo "Pull attempt $attempt failed (rate limited?), retrying in 20s..."
+            sleep 20
+          done
+          docker run -d --name smoke-db --network smoke \
+            -e POSTGRES_USER=gymcoach -e POSTGRES_PASSWORD=gymcoach -e POSTGRES_DB=gymcoach \
+            public.ecr.aws/docker/library/postgres:16-alpine
+          for i in $(seq 1 30); do
+            if docker exec smoke-db pg_isready -U gymcoach -d gymcoach >/dev/null 2>&1; then
+              echo "Postgres is ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Postgres did not become ready in time" >&2
+          exit 1
+      - name: Start the app (migrate deploy + server, same command as prod compose)
+        run: |
+          docker run -d --name smoke-app --network smoke -p 3000:3000 \
+            -e DATABASE_URL=postgresql://gymcoach:gymcoach@smoke-db:5432/gymcoach \
+            -e JWT_SECRET=docker-smoke-ci-secret-at-least-32-characters \
+            gymcoach:smoke \
+            sh -c "node node_modules/prisma/build/index.js migrate deploy && node server.js"
+      - name: Probe the image (login page, register, login)
+        run: |
+          set -u
+          base=http://localhost:3000
+
+          # Wait for migrations + server startup, then require GET /login = 200.
+          code=000
+          for i in $(seq 1 45); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "$base/login" || true)
+            if [ "$code" = "200" ]; then break; fi
+            sleep 2
+          done
+          if [ "$code" != "200" ]; then
+            echo "GET /login never returned 200 (last status: $code)" >&2
+            exit 1
+          fi
+          echo "GET /login -> 200"
+
+          # Create the probe account through the image itself: exercises the
+          # bcrypt native binding (hash), Prisma writes, and the JWT signing
+          # that issue #127 showed can break only inside the standalone image.
+          code=$(curl -s -o /tmp/register.json -w '%{http_code}' -X POST "$base/api/auth/register" \
+            -H 'Content-Type: application/json' \
+            --data '{"email":"smoke@example.com","password":"smoke-test-password","displayName":"Smoke"}')
+          if [ "$code" != "200" ]; then
+            echo "POST /api/auth/register -> $code" >&2
+            cat /tmp/register.json >&2 || true
+            exit 1
+          fi
+          echo "POST /api/auth/register -> 200"
+
+          # The login probe proper: bcrypt.compare + JWT + DB (the #127 class).
+          code=$(curl -s -o /tmp/login.json -w '%{http_code}' -X POST "$base/api/auth/login" \
+            -H 'Content-Type: application/json' \
+            --data '{"email":"smoke@example.com","password":"smoke-test-password"}')
+          if [ "$code" != "200" ]; then
+            echo "POST /api/auth/login -> $code" >&2
+            cat /tmp/login.json >&2 || true
+            exit 1
+          fi
+          echo "POST /api/auth/login -> 200"
+      - name: Container logs (on failure)
+        if: failure()
+        run: |
+          echo "--- smoke-app logs ---"
+          docker logs smoke-app 2>&1 || true
+          echo "--- smoke-db logs ---"
+          docker logs smoke-db 2>&1 || true
+
   e2e:
     name: End to end (Playwright)
     runs-on: ubuntu-latest
