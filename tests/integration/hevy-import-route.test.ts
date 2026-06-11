@@ -50,10 +50,12 @@ describe('POST /api/import/hevy (preview)', () => {
     expect(body).toMatchObject({
       mode: 'preview',
       sessions: 2,
-      sets: 4,
-      newExercises: ['Bench Press', 'Imported Row'],
+      sets: 5,
+      newExercises: ['Bench Press', 'Imported Row', 'Running'],
       duplicatesSkipped: 0,
-      cardioSkipped: 1,
+      // The Running row is imported as a cardio set since #134.
+      cardioSets: 1,
+      cardioSkipped: 0,
       errorCount: 0,
     });
 
@@ -101,9 +103,10 @@ describe('POST /api/import/hevy (confirm)', () => {
     expect(body).toMatchObject({
       mode: 'confirm',
       createdSessions: 2,
-      createdSets: 4,
-      createdExercises: 2,
-      cardioSkipped: 1,
+      createdSets: 5,
+      createdExercises: 3,
+      cardioSets: 1,
+      cardioSkipped: 0,
     });
 
     const sessions = await db.session.findMany({
@@ -131,7 +134,20 @@ describe('POST /api/import/hevy (confirm)', () => {
     expect(created.map((e) => e.notes)).toEqual([
       'Imported from Hevy. Adjust the muscle group and category.',
       'Imported from Hevy. Adjust the muscle group and category.',
+      'Imported from Hevy.',
     ]);
+    // Cardio-only imported exercises are created as CARDIO (issue #134), and
+    // their sets carry the #133 model: km converted to meters, weight 0, reps 1.
+    expect(created.map((e) => e.category)).toEqual(['ISOLATION', 'ISOLATION', 'CARDIO']);
+    const cardioSet = await db.set.findFirst({
+      where: { exercise: { name: 'Running' } },
+    });
+    expect(cardioSet).toMatchObject({
+      durationSec: 1800,
+      distanceM: 5000,
+      weight: 0,
+      reps: 1,
+    });
   });
 
   it("never matches or touches another user's exercises", async () => {
@@ -159,7 +175,7 @@ describe('POST /api/import/hevy (confirm)', () => {
     expect((await res.json()).error).toMatch(/nothing to import/i);
 
     expect(await db.session.count({ where: { userId: user.id } })).toBe(2);
-    expect(await db.set.count({ where: { session: { userId: user.id } } })).toBe(4);
+    expect(await db.set.count({ where: { session: { userId: user.id } } })).toBe(5);
   });
 
   it('rejects invalid input (Zod) and writes nothing', async () => {

@@ -65,6 +65,8 @@ export async function POST(req: Request) {
               setNumber: true,
               weight: true,
               reps: true,
+              durationSec: true,
+              distanceM: true,
               exercise: { select: { name: true } },
             },
           },
@@ -75,7 +77,15 @@ export async function POST(req: Request) {
         existingSessionDates.add(dateKey);
         for (const set of session.sets) {
           existingSetKeys.add(
-            setDuplicateKey(dateKey, set.exercise.name, set.setNumber, set.weight, set.reps),
+            setDuplicateKey(
+              dateKey,
+              set.exercise.name,
+              set.setNumber,
+              set.weight,
+              set.reps,
+              set.durationSec,
+              set.distanceM,
+            ),
           );
         }
       }
@@ -93,6 +103,9 @@ export async function POST(req: Request) {
 
     const common = {
       duplicatesSkipped: plan.duplicateCount,
+      // Cardio sets among the planned sets (issue #134); cardioSkipped now
+      // only counts rows that cannot be represented (no usable duration).
+      cardioSets: plan.cardioSetCount,
       cardioSkipped: parsed.cardioSkipped,
       errorCount: parsed.errors.length,
       errors: parsed.errors.slice(0, MAX_REPORTED_ERRORS),

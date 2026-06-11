@@ -23,6 +23,11 @@ export interface NormalizedImportRow {
   // Optional extras (issue #113). Absent for Strong rows.
   isWarmup?: boolean;
   isDropSet?: boolean;
+  // Cardio rows (issue #134): duration in seconds and optional distance in
+  // meters, per the #133 set model (such rows carry weightKg 0 / reps 1).
+  // Absent/null on strength rows - their path is unchanged.
+  durationSec?: number | null;
+  distanceM?: number | null;
   // Real session times as ISO strings, when the source export has them.
   startedAtIso?: string | null;
   finishedAtIso?: string | null;
@@ -35,6 +40,8 @@ export interface PlannedSet {
   reps: number;
   isWarmup?: boolean;
   isDropSet?: boolean;
+  durationSec?: number | null;
+  distanceM?: number | null;
 }
 
 export interface PlannedSession {
@@ -52,21 +59,33 @@ export interface StrongImportPlan {
   // New exercise names to create (original casing of first occurrence),
   // sorted.
   newExerciseNames: string[];
+  // Subset of newExerciseNames whose every imported row is cardio (issue
+  // #134): created as CARDIO / OTHER instead of ISOLATION / OTHER.
+  newCardioExerciseNames: string[];
   totalSets: number;
+  // Cardio sets among totalSets (durationSec present), for the summary.
+  cardioSetCount: number;
   // Exact duplicates (same day, exercise, set order, weight, reps as an
   // existing set or an earlier row of this file), skipped.
   duplicateCount: number;
 }
 
-// Key for exact-duplicate detection.
+// Key for exact-duplicate detection. Strength keys are byte-identical to the
+// pre-#134 format; cardio sets (durationSec != null) append their
+// duration/distance so two different runs logged with the same set order on
+// the same day are not collapsed (they all share weight 0 / reps 1).
 export function setDuplicateKey(
   dateKey: string,
   exerciseName: string,
   setOrder: number,
   weightKg: number,
   reps: number,
+  durationSec?: number | null,
+  distanceM?: number | null,
 ): string {
-  return `${dateKey}|${exerciseName.trim().toLowerCase()}|${setOrder}|${weightKg}|${reps}`;
+  const base = `${dateKey}|${exerciseName.trim().toLowerCase()}|${setOrder}|${weightKg}|${reps}`;
+  if (durationSec == null) return base;
+  return `${base}|d${durationSec}|${distanceM ?? 0}`;
 }
 
 export function buildStrongImportPlan(
@@ -76,18 +95,24 @@ export function buildStrongImportPlan(
 ): StrongImportPlan {
   const known = new Set(existingExerciseNames.map((n) => n.trim().toLowerCase()));
   const newByLower = new Map<string, string>();
+  // For each NEW exercise name: true while every one of its rows is cardio.
+  const newAllCardioByLower = new Map<string, boolean>();
   const sessionsByKey = new Map<string, PlannedSession>();
   const seenKeys = new Set<string>(existingSetKeys);
   let totalSets = 0;
+  let cardioSetCount = 0;
   let duplicateCount = 0;
 
   for (const row of rows) {
+    const isCardio = row.durationSec != null;
     const dupKey = setDuplicateKey(
       row.dateKey,
       row.exerciseName,
       row.setOrder,
       row.weightKg,
       row.reps,
+      row.durationSec,
+      row.distanceM,
     );
     if (seenKeys.has(dupKey)) {
       duplicateCount++;
@@ -98,6 +123,10 @@ export function buildStrongImportPlan(
     const lower = row.exerciseName.trim().toLowerCase();
     if (!known.has(lower) && !newByLower.has(lower)) {
       newByLower.set(lower, row.exerciseName.trim());
+      newAllCardioByLower.set(lower, isCardio);
+    } else if (newAllCardioByLower.has(lower) && !isCardio) {
+      // Mixed strength + cardio rows: keep the conservative strength default.
+      newAllCardioByLower.set(lower, false);
     }
 
     const sessionKey = `${row.dateKey}|${row.workoutName}`;
@@ -113,8 +142,10 @@ export function buildStrongImportPlan(
       reps: row.reps,
       ...(row.isWarmup !== undefined && { isWarmup: row.isWarmup }),
       ...(row.isDropSet !== undefined && { isDropSet: row.isDropSet }),
+      ...(isCardio && { durationSec: row.durationSec, distanceM: row.distanceM ?? null }),
     });
     totalSets++;
+    if (isCardio) cardioSetCount++;
 
     // Track the earliest start / latest end across the session's rows.
     if (row.startedAtIso) {
@@ -142,7 +173,12 @@ export function buildStrongImportPlan(
   return {
     sessions,
     newExerciseNames: [...newByLower.values()].sort((a, b) => a.localeCompare(b)),
+    newCardioExerciseNames: [...newByLower.entries()]
+      .filter(([lower]) => newAllCardioByLower.get(lower))
+      .map(([, name]) => name)
+      .sort((a, b) => a.localeCompare(b)),
     totalSets,
+    cardioSetCount,
     duplicateCount,
   };
 }
@@ -179,17 +215,25 @@ export async function executeStrongImport(
   });
   const idByLower = new Map(existing.map((e) => [e.name.trim().toLowerCase(), e.id]));
 
+  // Exercises whose imported rows are all cardio are created as CARDIO
+  // (issue #134); everything else keeps the conservative ISOLATION default.
+  const cardioLowers = new Set(
+    plan.newCardioExerciseNames.map((n) => n.trim().toLowerCase()),
+  );
   let createdExercises = 0;
   for (const name of plan.newExerciseNames) {
     const lower = name.trim().toLowerCase();
     if (idByLower.has(lower)) continue;
+    const isCardio = cardioLowers.has(lower);
     const created = await tx.exercise.create({
       data: {
         userId,
         name,
         muscleGroup: 'OTHER',
-        category: 'ISOLATION',
-        notes: `Imported from ${sourceLabel}. Adjust the muscle group and category.`,
+        category: isCardio ? 'CARDIO' : 'ISOLATION',
+        notes: isCardio
+          ? `Imported from ${sourceLabel}.`
+          : `Imported from ${sourceLabel}. Adjust the muscle group and category.`,
       },
     });
     idByLower.set(lower, created.id);
@@ -237,6 +281,8 @@ export async function executeStrongImport(
           reps: s.reps,
           isWarmup: s.isWarmup ?? false,
           isDropSet: s.isDropSet ?? false,
+          durationSec: s.durationSec ?? null,
+          distanceM: s.distanceM ?? null,
           completedAt: startedAt,
         };
       }),

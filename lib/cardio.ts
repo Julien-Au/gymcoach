@@ -12,6 +12,9 @@
 export const MAX_DURATION_SEC = 86400;
 export const MAX_DISTANCE_M = 1000000;
 
+// Statute mile in meters, for imports from imperial-unit exports.
+export const MILES_TO_METERS = 1609.34;
+
 // True when a set-like record is a cardio set.
 export function isCardioSet(set: { durationSec?: number | null }): boolean {
   return set.durationSec != null;

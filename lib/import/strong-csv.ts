@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { WeightUnit } from '@prisma/client';
+import { MAX_DISTANCE_M, MAX_DURATION_SEC, MILES_TO_METERS } from '@/lib/cardio';
 import { lbToKg, roundWeight } from '@/lib/units';
 import {
   asNumber,
@@ -31,6 +32,10 @@ export interface StrongCsvRow {
   setOrder: number;
   weightKg: number;
   reps: number;
+  // Cardio rows (issue #134): duration in seconds, optional distance in
+  // meters (the #133 set model). Absent on strength rows.
+  durationSec?: number;
+  distanceM?: number | null;
 }
 
 export interface StrongCsvLineError {
@@ -45,7 +50,9 @@ export interface StrongCsvParseResult {
   fatalError: string | null;
   rows: StrongCsvRow[];
   errors: StrongCsvLineError[];
-  // Duration/distance-only rows (cardio) skipped with a counted notice.
+  // Cardio rows that still cannot be represented (issue #134: zero/negative
+  // or out-of-bounds duration), skipped with a counted notice. Representable
+  // cardio rows are imported as duration/distance sets since #133.
   cardioSkipped: number;
 }
 
@@ -58,6 +65,17 @@ const rowSchema = z.object({
   setOrder: z.coerce.number().int().min(1).max(50),
   weightKg: z.coerce.number().min(0).max(500),
   reps: z.coerce.number().int().min(1).max(100),
+});
+
+// Cardio rows (issue #134): same identity fields, plus the #133 set bounds
+// on duration/distance. weight/reps are forced to the cardio convention.
+const cardioRowSchema = z.object({
+  dateKey: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  workoutName: z.string().trim().min(1).max(200),
+  exerciseName: z.string().trim().min(1).max(120),
+  setOrder: z.coerce.number().int().min(1).max(50),
+  durationSec: z.number().int().min(1).max(MAX_DURATION_SEC),
+  distanceM: z.number().min(0).max(MAX_DISTANCE_M).nullable(),
 });
 
 interface HeaderMap {
@@ -199,10 +217,43 @@ export function parseStrongCsv(
     const distance = asNumber(get(map.distance));
     const seconds = asNumber(get(map.seconds));
 
-    // Cardio / duration-only rows (no reps, but distance or time): skipped
-    // with a counted notice rather than reported as errors.
+    // Cardio / duration-only rows (no reps, but distance or time) become
+    // duration/distance sets (issue #134). The qualifying condition is
+    // exactly the pre-#134 skip branch; only what happens to the row changed.
+    // Strong's Distance follows the export's unit setting: meters when the
+    // app is metric (kg), miles when imperial (lbs).
     if (!(reps >= 1) && (distance > 0 || seconds > 0)) {
-      cardioSkipped++;
+      // A representable cardio set needs a duration (the #133 model); a
+      // distance-only or out-of-bounds row stays a counted skip notice.
+      if (!(seconds >= 1) || seconds > MAX_DURATION_SEC) {
+        cardioSkipped++;
+        continue;
+      }
+      const distanceM =
+        distance > 0
+          ? +(effectiveUnit === 'LB' ? distance * MILES_TO_METERS : distance).toFixed(2)
+          : null;
+      if (distanceM !== null && distanceM > MAX_DISTANCE_M) {
+        cardioSkipped++;
+        continue;
+      }
+      const cardioParsed = cardioRowSchema.safeParse({
+        dateKey,
+        workoutName: get(map.workoutName) ?? '',
+        exerciseName: get(map.exerciseName) ?? '',
+        setOrder: get(map.setOrder),
+        durationSec: Math.round(seconds),
+        distanceM,
+      });
+      if (!cardioParsed.success) {
+        const issue = cardioParsed.error.issues[0];
+        errors.push({
+          line: record.line,
+          reason: issue ? `${issue.path.join('.')}: ${issue.message}` : 'Invalid row.',
+        });
+        continue;
+      }
+      rows.push({ ...cardioParsed.data, weightKg: 0, reps: 1 });
       continue;
     }
 

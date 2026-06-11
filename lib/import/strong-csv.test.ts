@@ -124,7 +124,9 @@ describe('parseStrongCsv malformed input', () => {
     expect(res.errors.map((e) => e.line)).toEqual([2, 3, 5, 6, 7]);
   });
 
-  it('skips cardio rows (duration or distance, no reps) with a count', () => {
+  // Cardio rows are imported as duration/distance sets since issue #134
+  // (they were skipped with a count before).
+  it('maps cardio rows (duration, optional distance) onto cardio sets', () => {
     const res = parseStrongCsv(
       csv(
         '2026-05-02,Cardio,Running,1,0,0,5000,1800',
@@ -132,9 +134,68 @@ describe('parseStrongCsv malformed input', () => {
         '2026-05-02,Push,Bench,1,80,8,0,0',
       ),
     );
-    expect(res.cardioSkipped).toBe(2);
-    expect(res.rows).toHaveLength(1);
+    expect(res.cardioSkipped).toBe(0);
     expect(res.errors).toEqual([]);
+    expect(res.rows).toHaveLength(3);
+    // Metric export: Distance is in meters.
+    expect(res.rows[0]).toEqual({
+      dateKey: '2026-05-02',
+      workoutName: 'Cardio',
+      exerciseName: 'Running',
+      setOrder: 1,
+      weightKg: 0,
+      reps: 1,
+      durationSec: 1800,
+      distanceM: 5000,
+    });
+    // Duration-only cardio: distance stays null.
+    expect(res.rows[1]).toMatchObject({
+      exerciseName: 'Plank',
+      durationSec: 60,
+      distanceM: null,
+    });
+    // The strength row is untouched (no cardio keys at all).
+    expect(res.rows[2]).toEqual({
+      dateKey: '2026-05-02',
+      workoutName: 'Push',
+      exerciseName: 'Bench',
+      setOrder: 1,
+      weightKg: 80,
+      reps: 8,
+    });
+  });
+
+  it('converts cardio distance from miles when the export unit is LB', () => {
+    const res = parseStrongCsv(csv('2026-05-02,Cardio,Running,1,0,0,3,1800'), 'LB');
+    expect(res.rows[0]).toMatchObject({
+      durationSec: 1800,
+      distanceM: +(3 * 1609.34).toFixed(2),
+    });
+  });
+
+  it('still skips unrepresentable cardio rows with a count (no usable duration)', () => {
+    const res = parseStrongCsv(
+      csv(
+        '2026-05-02,Cardio,Rowing,1,0,0,5000,0', // distance-only, no duration
+        '2026-05-02,Cardio,Running,1,0,0,0,90000', // duration above the 24h cap
+      ),
+    );
+    expect(res.cardioSkipped).toBe(2);
+    expect(res.rows).toHaveLength(0);
+    expect(res.errors).toEqual([]);
+  });
+
+  it('skips a cardio row whose converted distance exceeds the 1000 km cap', () => {
+    const res = parseStrongCsv(csv('2026-05-02,Cardio,Cycling,1,0,0,2000000,3600'));
+    expect(res.cardioSkipped).toBe(1);
+    expect(res.rows).toHaveLength(0);
+  });
+
+  it('reports a cardio row with a bad set order as a line error', () => {
+    const res = parseStrongCsv(csv('2026-05-02,Cardio,Running,zero,0,0,0,1800'));
+    expect(res.cardioSkipped).toBe(0);
+    expect(res.rows).toHaveLength(0);
+    expect(res.errors).toHaveLength(1);
   });
 
   it('reports a 0-rep row with no duration as an error, not cardio', () => {

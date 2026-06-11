@@ -15,6 +15,7 @@ const PREVIEW = {
   newExercises: ['Bench Press'],
   existingSessionDates: [],
   duplicatesSkipped: 0,
+  cardioSets: 1,
   cardioSkipped: 1,
   errorCount: 1,
   errors: [{ line: 4, reason: 'Invalid or missing date.' }],
@@ -60,7 +61,8 @@ describe('ImportSection', () => {
 
     expect(screen.getByText(/2 sessions, 3 sets to import/)).toBeInTheDocument();
     expect(screen.getByText(/1 new exercise will be created/)).toBeInTheDocument();
-    expect(screen.getByText(/1 cardio row/)).toBeInTheDocument();
+    expect(screen.getByText(/1 cardio set \(duration\/distance\) included/)).toBeInTheDocument();
+    expect(screen.getByText(/1 cardio row without a usable duration/)).toBeInTheDocument();
     expect(screen.getByText(/line 4: invalid or missing date/i)).toBeInTheDocument();
   });
 
