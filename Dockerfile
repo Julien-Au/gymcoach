@@ -61,6 +61,13 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modul
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
 
+# bcrypt 6 resolves its native binding from prebuilds/ via node-gyp-build at
+# runtime; the Next standalone tracer misses those .node files, which 500s
+# every auth route in the image (issue #127). Copy the full module from the
+# builder, where the binding is known-good.
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/bcrypt ./node_modules/bcrypt
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/node-gyp-build ./node_modules/node-gyp-build
+
 USER nextjs
 EXPOSE 3000
 ENV PORT=3000
