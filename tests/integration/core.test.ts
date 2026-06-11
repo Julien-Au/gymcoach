@@ -377,7 +377,25 @@ describe('buildCoachPayload fatigue (issue #101)', () => {
       stalledExercises: [],
       deloadRecommended: false,
       deloadReasons: [],
+      deloadActive: false,
     });
+  });
+
+  // Issue #112: the planned deload week surfaces as an additive input flag.
+  it('reports deloadActive while a planned deload week is running, and not after it expires', async () => {
+    const user = await makeUser('fatigue-deload-active@test.dev');
+
+    await db.user.update({
+      where: { id: user.id },
+      data: { deloadUntil: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000) },
+    });
+    expect((await buildCoachPayload(user.id)).fatigue.deloadActive).toBe(true);
+
+    await db.user.update({
+      where: { id: user.id },
+      data: { deloadUntil: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+    });
+    expect((await buildCoachPayload(user.id)).fatigue.deloadActive).toBe(false);
   });
 
   it('flags stalled lifts and recommends a deload at two stalls', async () => {

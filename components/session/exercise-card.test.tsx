@@ -45,9 +45,15 @@ const lastPerf: SerializedLastPerformance = {
   repsAtMaxWeight: 10,
 };
 
-function renderCard(readiness: ReadinessSignal | null) {
+function renderCard(readiness: ReadinessSignal | null, deloadActive = false) {
   return render(
-    <ExerciseCard programExercise={pe} lastPerformance={lastPerf} readiness={readiness} unit="KG" />,
+    <ExerciseCard
+      programExercise={pe}
+      lastPerformance={lastPerf}
+      readiness={readiness}
+      deloadActive={deloadActive}
+      unit="KG"
+    />,
   );
 }
 
@@ -81,5 +87,13 @@ describe('ExerciseCard readiness explainer', () => {
     renderCard({ readiness: 1, soreness: null, ageHours: READINESS_RECENCY_HOURS + 1 });
     expect(screen.queryByText(/Held -/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Lighter -/)).not.toBeInTheDocument();
+  });
+
+  it('explains the planned deload week when one is active', () => {
+    // No readiness signal at all: the planned deload alone drives the note,
+    // and the suggested load steps down 10% from the 100 kg working weight.
+    renderCard(null, true);
+    expect(screen.getByText('Lighter - planned deload week')).toBeInTheDocument();
+    expect(screen.getByText('90 kg')).toBeInTheDocument();
   });
 });

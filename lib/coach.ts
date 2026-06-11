@@ -12,6 +12,7 @@ import {
   DELOAD_READINESS_LOOKBACK,
   DELOAD_READINESS_MAX_AGE_DAYS,
   deloadReasonLine,
+  isDeloadActive,
   recommendDeload,
 } from '@/lib/deload';
 import { COACH_SYSTEM_PROMPT } from '@/lib/prompts/coach-system-prompt';
@@ -89,6 +90,10 @@ interface FatigueSummary {
   deloadRecommended: boolean;
   // Short human-readable reasons (same lines the progress page shows).
   deloadReasons: string[];
+  // True while the user runs a planned deload week (issue #112), so the coach
+  // supports the deload already underway instead of recommending one. Additive
+  // input signal; the output contract is unchanged.
+  deloadActive: boolean;
 }
 
 interface ReadinessSummary {
@@ -173,6 +178,7 @@ export async function buildCoachPayload(userId: string): Promise<CoachPayload> {
       bodyweight: true,
       goal: true,
       weeklyFrequency: true,
+      deloadUntil: true,
     },
   });
   const bodyweight = user?.bodyweight ?? null;
@@ -292,7 +298,12 @@ export async function buildCoachPayload(userId: string): Promise<CoachPayload> {
     activeProgram,
     latestReadiness,
     goals,
-    fatigue,
+    fatigue: {
+      ...fatigue,
+      // Planned deload week (issue #112): additive flag; an expired
+      // deloadUntil reads as inactive.
+      deloadActive: isDeloadActive(user?.deloadUntil ?? null, now),
+    },
     recentProgress: recentProgress.sort((a, b) =>
       a.exerciseName.localeCompare(b.exerciseName),
     ),
@@ -494,7 +505,9 @@ async function fetchFatigueSummary(
   userId: string,
   bodyweight: number | null,
   now: Date,
-): Promise<FatigueSummary> {
+  // deloadActive is derived from the user row in buildCoachPayload, so this
+  // helper returns everything but that flag.
+): Promise<Omit<FatigueSummary, 'deloadActive'>> {
   const since = new Date(now);
   since.setUTCHours(0, 0, 0, 0);
   since.setUTCDate(since.getUTCDate() - FATIGUE_WINDOW_WEEKS * 7);

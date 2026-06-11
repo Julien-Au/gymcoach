@@ -15,6 +15,7 @@ import type {
 } from '@prisma/client';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { acquireWakeLock, bindWakeLockToVisibility, releaseWakeLock } from '@/lib/wake-lock';
@@ -57,6 +58,9 @@ type SessionRunnerProps = {
   // Latest in-window readiness check-in (or null). Drives whether the load
   // suggestion is held/reduced and the matching explainer in the UI.
   readiness: ReadinessSignal | null;
+  // True while the user runs a planned deload week (issue #112): suggestions
+  // step down and the runner shows a "Deload week" badge.
+  deloadActive: boolean;
   unit: WeightUnit;
 };
 
@@ -65,7 +69,13 @@ type Mode =
   | { kind: 'rest'; endsAt: number; totalSec: number; nextExerciseIdx: number | null }
   | { kind: 'summary' };
 
-export function SessionRunner({ session, lastPerformances, readiness, unit }: SessionRunnerProps) {
+export function SessionRunner({
+  session,
+  lastPerformances,
+  readiness,
+  deloadActive,
+  unit,
+}: SessionRunnerProps) {
   const router = useRouter();
   const workout = session.workout!;
   const programExercises = workout.exercises;
@@ -304,6 +314,11 @@ export function SessionRunner({ session, lastPerformances, readiness, unit }: Se
             <p className="text-sm font-medium">
               Exercise {currentIdx + 1}/{programExercises.length} · {currentPE.exercise.name}
             </p>
+            {deloadActive && (
+              <Badge variant="secondary" className="mt-1 text-emerald-700 dark:text-emerald-400">
+                Deload week
+              </Badge>
+            )}
           </div>
           <Button
             variant="ghost"
@@ -325,6 +340,7 @@ export function SessionRunner({ session, lastPerformances, readiness, unit }: Se
           programExercise={currentPE}
           lastPerformance={lastPerf}
           readiness={effectiveReadiness}
+          deloadActive={deloadActive}
           unit={unit}
         />
 
@@ -342,6 +358,7 @@ export function SessionRunner({ session, lastPerformances, readiness, unit }: Se
             existingSets={currentSets}
             lastPerformance={lastPerf}
             readiness={effectiveReadiness}
+            deloadActive={deloadActive}
             unit={unit}
             onSubmit={handleValidate}
           />

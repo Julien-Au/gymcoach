@@ -28,6 +28,8 @@ interface Props {
   existingSets: PendingSet[];
   lastPerformance: SerializedLastPerformance | undefined;
   readiness: ReadinessSignal | null;
+  // True while a planned deload week is active (issue #112).
+  deloadActive: boolean;
   unit: WeightUnit;
   onSubmit: (values: {
     weight: number;
@@ -55,19 +57,28 @@ export function SetInput({
   existingSets,
   lastPerformance,
   readiness,
+  deloadActive,
   unit,
   onSubmit,
 }: Props) {
   // Pre-fill: last set of this exercise in the current session,
   // otherwise the last performance, otherwise defaults.
-  const initial = computeInitial(programExercise, existingSets, lastPerformance, readiness);
+  const initial = computeInitial(
+    programExercise,
+    existingSets,
+    lastPerformance,
+    readiness,
+    deloadActive,
+  );
   const [form, setForm] = useState<FormState>(initial);
   const [submitting, setSubmitting] = useState(false);
   const [quickEntry, setQuickEntry] = useState('');
 
   // Re-init when the exercise changes or a set changes.
   useEffect(() => {
-    setForm(computeInitial(programExercise, existingSets, lastPerformance, readiness));
+    setForm(
+      computeInitial(programExercise, existingSets, lastPerformance, readiness, deloadActive),
+    );
     setQuickEntry('');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [programExercise.id, existingSets.length]);
@@ -310,6 +321,7 @@ function computeInitial(
   existingSets: PendingSet[],
   lastPerf: SerializedLastPerformance | undefined,
   readiness: ReadinessSignal | null,
+  deloadActive: boolean,
 ): FormState {
   // 1. If a set already exists for this exercise in the current session,
   //    reuse its values (idea: you aim for the same load, adjust the reps).
@@ -328,7 +340,7 @@ function computeInitial(
   //    progressing, aim for the bottom of the rep range with the heavier
   //    load; otherwise try to beat the previous reps (at least match them).
   if (lastPerf) {
-    const suggestion = suggestNextWeight(pe, lastPerf.sets, readiness);
+    const suggestion = suggestNextWeight(pe, lastPerf.sets, readiness, deloadActive);
     const initialReps =
       suggestion.reason === 'progression'
         ? pe.targetRepsMin

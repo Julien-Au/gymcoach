@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { requireSession } from '@/lib/auth';
 import { getLastPerformances, type LastPerformance } from '@/lib/last-performance';
 import { READINESS_RECENCY_HOURS, type ReadinessSignal } from '@/lib/progression';
+import { isDeloadActive } from '@/lib/deload';
 import { SessionRunner, type SerializedLastPerformance } from '@/components/session/session-runner';
 
 interface Props {
@@ -39,7 +40,10 @@ export default async function SessionRunPage({ params }: Props) {
   const exerciseIds = session.workout.exercises.map((pe) => pe.exerciseId);
   const [lastPerformances, user, latestCheckin] = await Promise.all([
     getLastPerformances(auth.userId, exerciseIds, session.id),
-    db.user.findUnique({ where: { id: auth.userId }, select: { unit: true } }),
+    db.user.findUnique({
+      where: { id: auth.userId },
+      select: { unit: true, deloadUntil: true },
+    }),
     db.readinessCheckin.findFirst({
       where: { userId: auth.userId },
       orderBy: { createdAt: 'desc' },
@@ -52,12 +56,16 @@ export default async function SessionRunPage({ params }: Props) {
   }
 
   const readiness = buildReadinessSignal(latestCheckin);
+  // Planned deload week (issue #112): resolved against the clock here so the
+  // client never reasons about dates; an expired deloadUntil has no effect.
+  const deloadActive = isDeloadActive(user?.deloadUntil ?? null, new Date());
 
   return (
     <SessionRunner
       session={session}
       lastPerformances={lastPerfRecord}
       readiness={readiness}
+      deloadActive={deloadActive}
       unit={user?.unit ?? 'KG'}
     />
   );

@@ -47,6 +47,12 @@ describe('coach system prompt positioning', () => {
       /deloadRecommended is true, prefer recovery-oriented advice/i,
     );
   });
+
+  // Issue #112: planned deload week is an INPUT-side signal too.
+  it('tells the coach not to recommend a deload while one is already active', () => {
+    expect(COACH_SYSTEM_PROMPT).toMatch(/fatigue\.deloadActive/);
+    expect(COACH_SYSTEM_PROMPT).toMatch(/do not\s+recommend starting a deload then/i);
+  });
 });
 
 describe('program generation prompt positioning', () => {
