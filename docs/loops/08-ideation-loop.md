@@ -4,7 +4,7 @@
 But a repo that only tidies itself plateaus. The ideation loop is the head *above* triage:
 when even triage comes up dry, it manufactures **product** work - well-scoped feature ideas
 - so the Issue -> PR loop never starves for *direction*, and the product keeps moving
-toward the goal of being the most complete self-hosted AI hypertrophy/fitness app.
+toward the goal of being the most complete self-hosted AI training/fitness app.
 
 It is the cheap, recurring cousin of the one-off deep-research workflow we ran once to seed
 the roadmap (captured in Memory `research-product-direction.md`). That workflow spent ~100
