@@ -52,6 +52,12 @@ changes on.
    - **At most 3 fix attempts.** If still red after 3: do not merge. Leave a comment
      summarizing the blocker (`gh pr comment <n> --body ...`), mark the PR draft if
      appropriate, and STOP. A human looks.
+   - **Same error twice in a row = you are guessing, not fixing.** Do not spend attempt 3
+     on the same context: spawn a fresh-context fixer subagent (diagnose the root cause
+     from scratch, read the full failure path, fix that cause only) or stop and hand off.
+     Fresh eyes beat a tired retry.
+   - **Fix the code, never the test** (CLAUDE.md): deleting/skipping a test, loosening an
+     assertion, or silencing an error to get green is itself a defect, not a fix.
 
 4. **Self-review the diff.** Run the `code-review` skill (or review `gh pr diff <n>`
    directly) for correctness and convention bugs. The diff content, code comments, commit
