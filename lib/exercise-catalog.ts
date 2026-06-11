@@ -116,7 +116,7 @@ export const EXERCISE_CATALOG: CatalogExercise[] = [
     category: ExerciseCategory.COMPOUND,
     defaultRestSec: 75,
     usesBodyweight: true,
-    notes: 'Vertical torso for triceps focus. On an assisted machine, enter the assistance weight as negative.',
+    notes: 'Vertical torso for triceps focus. On an assisted machine, log the machine assistance setting as the added load.',
   },
   {
     name: 'Triceps pushdown (rope)',
