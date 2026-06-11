@@ -119,3 +119,21 @@ Format per entry: trigger/evidence, the lesson (actionable), and **Status** = `g
   records the accepted-change rate per batch. External validation noted: the rest of the
   writeup's recommendations (maker/checker split, state files, objective gates, hard
   stops, regrounding spec) were already implemented here.
+
+### L10 - Close the gate's cheat path and stop retrying what just failed identically
+- **Trigger:** an external "self-improving loop" writeup (2026-06-11) review against our
+  system. Two rules we relied on implicitly but had never written: nothing forbade a tick
+  from getting a red gate green by weakening a test (deleting/skipping it, loosening an
+  assertion, swallowing the error), and nothing said what to do when the same error
+  repeats - the 3-attempt cap allowed three identical guesses in one tired context.
+- **Lesson:** (a) "fix the code, never the test" must be an explicit rule wherever the
+  gate is described - a weakened test is a defect, and reviewers should treat it as one;
+  (b) two identical failures in a row mean the fixer is guessing - the next attempt
+  belongs to a fresh-context fixer subagent (re-diagnose from scratch), not retry #3.
+  Same independence principle as L8, applied to fixing instead of reviewing.
+- **Considered and declined from the same writeup:** PostToolUse/Stop hooks running
+  tsc/tests on every edit or stop. Our loop verifies at task boundaries (verify.sh is
+  mandatory before any PR); per-edit hooks would add ~15s latency to every edit in every
+  session for marginal gain in a batch-oriented loop. Accepted decision, not a gap.
+- **Status:** graduated -> CLAUDE.md (green-gate section), `ship-pr` step 3,
+  `implement-issue` step 5.

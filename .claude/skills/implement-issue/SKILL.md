@@ -54,6 +54,10 @@ for repo conventions; this skill assumes them.
    bcrypt` if its native binding is missing, and `prisma migrate deploy` against the test
    Postgres on :5434 before the integration/E2E tiers. Lesson L4.) If it fails:
    - Read the failing step (acknowledge what it actually says), fix the cause, re-run.
+   - **Fix the code, never the test** (CLAUDE.md): never delete/skip a test, loosen an
+     assertion, or silence an error to get green - that is a defect, not a fix.
+   - **Same error twice in a row means you are guessing**: stop retrying in this context;
+     spawn a fresh-context fixer subagent to re-diagnose from scratch, or stop and report.
    - Allow **at most 3** fix attempts. If still red after 3, do NOT open a normal
      PR: either open a **draft** PR describing what is blocked, or STOP and report.
    This is the hard feedback loop - never open a PR on a red gate.

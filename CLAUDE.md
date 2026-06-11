@@ -33,6 +33,11 @@ CI (`.github/workflows/ci.yml`) runs lint, typecheck, unit, integration, build
 and E2E on every PR. The default gate mirrors the fast, DB-free part so a loop
 can catch its own regressions locally.
 
+**Fix the code, never the test.** A red gate is fixed at its cause. Deleting or
+skipping a test, loosening an assertion, or silencing an error to get green is
+forbidden - it improves the scoreboard, not the code. A diff that weakens a test
+to pass the gate is itself a defect.
+
 ## Code conventions (from CONTRIBUTING.md — enforced)
 
 - TypeScript strict. Avoid `any` where it can be avoided.
