@@ -107,3 +107,96 @@ describe('SetInput quick entry', () => {
     );
   });
 });
+
+// Cardio mode (issue #133): the logger swaps weight/reps for duration and
+// optional distance and submits the normalized cardio payload.
+const cardioExo: Exercise = {
+  ...exo,
+  id: 'e2',
+  name: 'Running',
+  muscleGroup: 'OTHER',
+  category: 'CARDIO',
+};
+
+const cardioPE: ProgramExercise & { exercise: Exercise } = {
+  ...pe,
+  id: 'pe2',
+  exerciseId: 'e2',
+  targetSets: 1,
+  exercise: cardioExo,
+};
+
+function renderCardioInput() {
+  const onSubmit = vi.fn().mockResolvedValue(undefined);
+  render(
+    <SetInput
+      programExercise={cardioPE}
+      existingSets={[]}
+      lastPerformance={undefined}
+      readiness={null}
+      deloadActive={false}
+      unit="KG"
+      onSubmit={onSubmit}
+    />,
+  );
+  return { onSubmit };
+}
+
+describe('SetInput cardio mode', () => {
+  it('shows duration/distance inputs instead of load/reps', () => {
+    renderCardioInput();
+    expect(screen.getByLabelText(/duration/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/distance/i)).toBeInTheDocument();
+    expect(screen.queryByText(/load \(/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Quick entry')).not.toBeInTheDocument();
+    expect(screen.queryByText(/reps in reserve/i)).not.toBeInTheDocument();
+  });
+
+  it('submits duration in seconds and distance in meters with weight 0 / reps 1', async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderCardioInput();
+
+    await user.type(screen.getByLabelText(/duration/i), '12:30');
+    await user.type(screen.getByLabelText(/distance/i), '2.5');
+    await user.click(screen.getByRole('button', { name: /log the set/i }));
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        weight: 0,
+        reps: 1,
+        rir: null,
+        durationSec: 750,
+        distanceM: 2500,
+        isWarmup: false,
+        isDropSet: false,
+      }),
+    );
+  });
+
+  it('keeps the log button disabled until the duration is valid', async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderCardioInput();
+
+    const button = screen.getByRole('button', { name: /log the set/i });
+    expect(button).toBeDisabled();
+
+    await user.type(screen.getByLabelText(/duration/i), '12:30');
+    expect(button).toBeEnabled();
+    await user.click(button);
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ durationSec: 750, distanceM: null }),
+    );
+  });
+
+  it('strength submissions carry null cardio fields (pinned)', async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderSetInput('KG');
+
+    await user.type(screen.getByLabelText('Quick entry'), '100x8');
+    await user.click(screen.getByRole('button', { name: /log the set/i }));
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ weight: 100, reps: 8, durationSec: null, distanceM: null }),
+    );
+  });
+});

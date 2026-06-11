@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { Exercise, Set } from '@prisma/client';
 import { db } from '@/lib/db';
-import { setInputSchema } from '@/lib/schemas/set';
+import { setInputSchema, validateSetForCategory } from '@/lib/schemas/set';
 import { ApiError, handleApiError, parseJsonBody, requireApiUserId } from '@/lib/api';
 import { setAchievesGoal } from '@/lib/goals';
 import { effectiveWeight } from '@/lib/stats';
@@ -31,14 +31,26 @@ export async function POST(req: Request, { params }: Params) {
       throw new ApiError(400, 'Invalid exercise.');
     }
 
+    // Cardio cross-field rule (issue #133): duration/distance only on CARDIO
+    // exercises, and a cardio set requires a duration.
+    const categoryError = validateSetForCategory(exercise.category, data);
+    if (categoryError) {
+      throw new ApiError(400, categoryError);
+    }
+    const isCardio = exercise.category === 'CARDIO';
+
     const created = await db.set.create({
       data: {
         sessionId: params.id,
         exerciseId: data.exerciseId,
         setNumber: data.setNumber,
-        weight: data.weight,
-        reps: data.reps,
-        rir: data.rir ?? null,
+        // Cardio sets store weight = 0 / reps = 1 by convention (the columns
+        // are NOT NULL); the UI never shows them for CARDIO exercises.
+        weight: isCardio ? 0 : data.weight,
+        reps: isCardio ? 1 : data.reps,
+        rir: isCardio ? null : (data.rir ?? null),
+        durationSec: isCardio ? data.durationSec : null,
+        distanceM: isCardio ? (data.distanceM ?? null) : null,
         notes: data.notes ?? null,
         isWarmup: data.isWarmup ?? false,
         isDropSet: data.isDropSet ?? false,

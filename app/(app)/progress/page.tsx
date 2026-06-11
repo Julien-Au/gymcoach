@@ -50,6 +50,10 @@ export default async function ProgressPage({
     db.exercise.findMany({
       where: {
         userId: auth.userId,
+        // The lifting selector/recap only makes sense for weight x reps work;
+        // cardio exercises (issue #133) have no load chart to show here (a
+        // dedicated conditioning view is the follow-up, issue #135).
+        category: { not: 'CARDIO' },
         sets: {
           some: {
             isWarmup: false,
@@ -104,6 +108,7 @@ export default async function ProgressPage({
             weight: true,
             reps: true,
             isWarmup: true,
+            durationSec: true,
             sessionId: true,
             session: { select: { startedAt: true } },
           },
@@ -127,6 +132,7 @@ export default async function ProgressPage({
       weight: s.weight,
       reps: s.reps,
       isWarmup: s.isWarmup,
+      durationSec: s.durationSec,
       sessionId: s.sessionId,
       sessionStartedAt: s.session.startedAt,
       usesBodyweight: selectedUsesBodyweight,
@@ -150,6 +156,7 @@ export default async function ProgressPage({
       weight: true,
       reps: true,
       isWarmup: true,
+      durationSec: true,
       exercise: { select: { muscleGroup: true, usesBodyweight: true } },
       session: { select: { startedAt: true } },
     },
@@ -161,6 +168,7 @@ export default async function ProgressPage({
         weight: s.weight,
         reps: s.reps,
         isWarmup: s.isWarmup,
+        durationSec: s.durationSec,
         muscleGroup: s.exercise.muscleGroup,
         sessionStartedAt: s.session.startedAt,
         usesBodyweight: s.exercise.usesBodyweight,
@@ -174,6 +182,7 @@ export default async function ProgressPage({
   const weeklySetsPoints = weeklySetsByMuscleGroup(
     weeklySetsRaw.map((s) => ({
       isWarmup: s.isWarmup,
+      durationSec: s.durationSec,
       muscleGroup: s.exercise.muscleGroup,
       sessionStartedAt: s.session.startedAt,
     })),
@@ -221,6 +230,7 @@ export default async function ProgressPage({
           weight: true,
           reps: true,
           isWarmup: true,
+          durationSec: true,
           sessionId: true,
           session: { select: { startedAt: true } },
         },
@@ -231,6 +241,7 @@ export default async function ProgressPage({
             weight: s.weight,
             reps: s.reps,
             isWarmup: s.isWarmup,
+            durationSec: s.durationSec,
             sessionId: s.sessionId,
             sessionStartedAt: s.session.startedAt,
             usesBodyweight: exo.usesBodyweight,

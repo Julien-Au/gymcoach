@@ -17,6 +17,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { suggestNextWeight, weightIncrement, type ReadinessSignal } from '@/lib/progression';
+import { formatDuration, MAX_DISTANCE_M, parseDurationToSec } from '@/lib/cardio';
 import { parseSetShorthand, rpeToRir } from '@/lib/set-shorthand';
 import { PlateCalculator } from '@/components/session/plate-calculator';
 import { WarmupCalculator } from '@/components/session/warmup-calculator';
@@ -35,6 +36,8 @@ interface Props {
     weight: number;
     reps: number;
     rir: number | null;
+    durationSec: number | null;
+    distanceM: number | null;
     isWarmup: boolean;
     isDropSet: boolean;
     notes: string | null;
@@ -45,6 +48,10 @@ interface FormState {
   weight: number;
   reps: number;
   rir: number | null;
+  // Cardio inputs (issue #133), kept as raw strings while typing: duration as
+  // "mm:ss" (or plain minutes) and distance in km. Empty on strength exercises.
+  durationInput: string;
+  distanceInput: string;
   isWarmup: boolean;
   isDropSet: boolean;
   notes: string;
@@ -119,17 +126,47 @@ export function SetInput({
 
   const quickEntryInvalid = quickEntry.trim() !== '' && parseSetShorthand(quickEntry) === null;
 
+  // Cardio mode (issue #133): the logger swaps weight/reps for duration and
+  // optional distance. The set is stored with weight = 0 / reps = 1 (the API
+  // normalizes them too) and the UI never shows those fields for CARDIO.
+  const isCardio = programExercise.exercise.category === 'CARDIO';
+  const durationSec = parseDurationToSec(form.durationInput);
+  const durationInvalid = form.durationInput.trim() !== '' && durationSec === null;
+  const distanceKm = parseFloat(form.distanceInput);
+  const hasDistance = form.distanceInput.trim() !== '';
+  const distanceInvalid =
+    hasDistance &&
+    (!Number.isFinite(distanceKm) || distanceKm < 0 || distanceKm * 1000 > MAX_DISTANCE_M);
+  const cardioInvalid = isCardio && (durationSec === null || distanceInvalid);
+
   async function handleValidate() {
+    if (cardioInvalid) return;
     setSubmitting(true);
     try {
-      await onSubmit({
-        weight: form.weight,
-        reps: form.reps,
-        rir: form.rir,
-        isWarmup: form.isWarmup,
-        isDropSet: form.isDropSet,
-        notes: form.notes.trim() || null,
-      });
+      await onSubmit(
+        isCardio
+          ? {
+              weight: 0,
+              reps: 1,
+              rir: null,
+              durationSec: durationSec!,
+              // Stored in meters; the input is km with decimals.
+              distanceM: hasDistance && distanceKm > 0 ? Math.round(distanceKm * 1000) : null,
+              isWarmup: false,
+              isDropSet: false,
+              notes: form.notes.trim() || null,
+            }
+          : {
+              weight: form.weight,
+              reps: form.reps,
+              rir: form.rir,
+              durationSec: null,
+              distanceM: null,
+              isWarmup: form.isWarmup,
+              isDropSet: form.isDropSet,
+              notes: form.notes.trim() || null,
+            },
+      );
       // The transition animation to the rest timer is handled by the parent.
     } finally {
       setSubmitting(false);
@@ -139,6 +176,63 @@ export function SetInput({
   return (
     <Card>
       <CardContent className="flex flex-col gap-4 pt-6">
+        {isCardio ? (
+          <>
+            {/* Duration (required) */}
+            <div className="space-y-1">
+              <Label
+                htmlFor="cardio-duration"
+                className="text-xs uppercase tracking-wide text-muted-foreground"
+              >
+                Duration (mm:ss)
+              </Label>
+              <Input
+                id="cardio-duration"
+                type="text"
+                inputMode="numeric"
+                autoComplete="off"
+                value={form.durationInput}
+                onChange={(e) => setForm((f) => ({ ...f, durationInput: e.target.value }))}
+                placeholder="e.g. 12:30"
+                aria-invalid={durationInvalid}
+                className="h-14 text-center text-2xl font-semibold"
+              />
+              {durationInvalid && (
+                <p className="text-xs text-muted-foreground">
+                  Expected format: mm:ss (e.g. 12:30), h:mm:ss, or plain minutes.
+                </p>
+              )}
+            </div>
+
+            {/* Distance (optional) */}
+            <div className="space-y-1">
+              <Label
+                htmlFor="cardio-distance"
+                className="text-xs uppercase tracking-wide text-muted-foreground"
+              >
+                Distance (km, optional)
+              </Label>
+              <Input
+                id="cardio-distance"
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                min="0"
+                value={form.distanceInput}
+                onChange={(e) => setForm((f) => ({ ...f, distanceInput: e.target.value }))}
+                placeholder="e.g. 2.5"
+                aria-invalid={distanceInvalid}
+                className="h-14 text-center text-2xl font-semibold"
+              />
+              {distanceInvalid && (
+                <p className="text-xs text-muted-foreground">
+                  Enter a distance between 0 and 1000 km.
+                </p>
+              )}
+            </div>
+          </>
+        ) : (
+          <>
         {/* Quick entry shorthand */}
         <div className="space-y-1">
           <Label
@@ -287,6 +381,8 @@ export function SetInput({
             <span>Warmup</span>
           </label>
         </div>
+          </>
+        )}
 
         {/* Notes */}
         <div className="space-y-2">
@@ -305,7 +401,7 @@ export function SetInput({
         <Button
           type="button"
           onClick={handleValidate}
-          disabled={submitting}
+          disabled={submitting || cardioInvalid}
           className="h-20 w-full text-lg font-semibold"
         >
           <Check className="size-6" />
@@ -323,6 +419,26 @@ function computeInitial(
   readiness: ReadinessSignal | null,
   deloadActive: boolean,
 ): FormState {
+  // Cardio exercises (issue #133): prefill the duration/distance from the
+  // last cardio set of this session, otherwise leave the inputs empty. The
+  // weight/reps machinery below is strength-only.
+  if (pe.exercise.category === 'CARDIO') {
+    const lastCardio = existingSets.filter((s) => s.durationSec != null).at(-1);
+    return {
+      weight: 0,
+      reps: 1,
+      rir: null,
+      durationInput: lastCardio?.durationSec != null ? formatDuration(lastCardio.durationSec) : '',
+      distanceInput:
+        lastCardio?.distanceM != null && lastCardio.distanceM > 0
+          ? String(+(lastCardio.distanceM / 1000).toFixed(2))
+          : '',
+      isWarmup: false,
+      isDropSet: false,
+      notes: '',
+    };
+  }
+
   // 1. If a set already exists for this exercise in the current session,
   //    reuse its values (idea: you aim for the same load, adjust the reps).
   const lastInSession = existingSets.filter((s) => !s.isWarmup).at(-1);
@@ -331,6 +447,8 @@ function computeInitial(
       weight: lastInSession.weight,
       reps: lastInSession.reps,
       rir: lastInSession.rir,
+      durationInput: '',
+      distanceInput: '',
       isWarmup: false,
       isDropSet: false,
       notes: '',
@@ -349,6 +467,8 @@ function computeInitial(
       weight: suggestion.weight ?? lastPerf.maxWeight,
       reps: initialReps,
       rir: pe.targetRIR,
+      durationInput: '',
+      distanceInput: '',
       isWarmup: false,
       isDropSet: false,
       notes: '',
@@ -360,6 +480,8 @@ function computeInitial(
     weight: 0,
     reps: midReps,
     rir: pe.targetRIR,
+    durationInput: '',
+    distanceInput: '',
     isWarmup: false,
     isDropSet: false,
     notes: '',
