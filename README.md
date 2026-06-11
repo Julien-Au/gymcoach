@@ -1,6 +1,6 @@
 # GymCoach
 
-Open source, self hosted hypertrophy training tracker with a built in AI coach. Log your sessions, track your progress, and get evidence based weekly debriefs and program suggestions from the LLM of your choice (Anthropic Claude or any OpenRouter model).
+Open source, self hosted training tracker with a built in AI coach. Log your sessions, track your progress, and get evidence based weekly debriefs and program suggestions from the LLM of your choice (Anthropic Claude or any OpenRouter model).
 
 [![CI](https://github.com/Julien-Au/gymcoach/actions/workflows/ci.yml/badge.svg)](https://github.com/Julien-Au/gymcoach/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
