@@ -6,6 +6,25 @@ by the charter in [`07-autonomy.md`](07-autonomy.md).
 
 ---
 
+## 2026-06-11 - Operator decision: product vision broadened beyond hypertrophy
+
+**Context.** The operator decided (2026-06-11) that the product opens beyond pure
+hypertrophy. The aim becomes: **the most complete self-hosted AI training/fitness app** -
+strength, conditioning/cardio, endurance, mobility, and general fitness are all in scope.
+
+**Decided / shipped.** Updated the two spots that carried the old wording:
+`.claude/skills/ideate/SKILL.md` (three occurrences; the "The vision" item now records the
+broadening and the concrete opening: the Strong/Hevy CSV importers currently SKIP cardio
+rows and nothing tracks duration/distance work - that axis is now fair game) and
+`docs/loops/08-ideation-loop.md` (one occurrence). Docs-only PR, no code change.
+
+**Challenged.** Docs-only; merged on green CI per the charter (no independent review
+needed for wording-only changes).
+
+**Deferred to human.** Nothing.
+
+---
+
 ## 2026-06-11 - Fifth batch: roadmap's last AI item shipped; first zero-defect reviews; model routing live
 
 **Context.** Fifth ideate batch (#111 ask-the-coach mid-session, #112 one-tap deload,

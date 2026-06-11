@@ -7,7 +7,7 @@ description: When the backlog is empty, manufacture well-scoped PRODUCT feature 
 
 triage manufactures code-health work (tests, small bugs, deps); `ideate` manufactures
 **product** work when even triage comes up dry, so the loop keeps pushing the product
-toward the goal of being the most complete self-hosted AI hypertrophy/fitness app - not
+toward the goal of being the most complete self-hosted AI training/fitness app - not
 just keeping it tidy. The output is **issues, not code**: crisp, single-PR feature ideas a
 later `implement-issue` run picks up unattended. Read `CLAUDE.md` and
 `docs/loops/07-autonomy.md` first.
@@ -40,7 +40,11 @@ ideas on top of unstarted ones.
 
 ## Where ideas come from (grounded, not random)
 
-1. **The vision.** Aim: the most complete self-hosted AI hypertrophy/fitness app. Ask "what
+1. **The vision.** Aim: the most complete self-hosted AI training/fitness app. The operator
+   broadened the scope (2026-06-11) beyond pure hypertrophy: strength, conditioning/cardio,
+   endurance, mobility, and general fitness are all in scope. Concretely, the CSV importers
+   (`lib/import/strong-csv.ts`, `lib/import/hevy-csv.ts`) currently SKIP cardio rows and
+   nothing in the app tracks duration/distance work - that axis is now fair game. Ask "what
    would a serious lifter, a coach, or a leading competitor expect that we do not have yet?"
 2. **The captured research** (Memory: `research-product-direction.md`) and its wedge - AI
    that advises *within* the user's program, explains why, and respects data ownership.
@@ -50,7 +54,7 @@ ideas on top of unstarted ones.
    uses it next).
 4. **The README roadmap** - unchecked items.
 5. **Optional bounded web check** (<= ~6 searches) for what users want / what is missing in
-   AI hypertrophy apps lately - only if it beats the memory. No heavy fan-out.
+   AI training/fitness apps lately - only if it beats the memory. No heavy fan-out.
 
 ## What a good idea-issue looks like
 
