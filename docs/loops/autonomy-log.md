@@ -6,6 +6,49 @@ by the charter in [`07-autonomy.md`](07-autonomy.md).
 
 ---
 
+## 2026-06-11 - Docker smoke test in CI (#129) + first conditioning-axis ideate batch
+
+**Context.** Maintainer tick after the vision broadening (#130/#131). One trusted open
+issue (#129, author JulienAu, collaborator-verified) requesting a CI smoke test of the
+production Docker image, because #127 (bcrypt prebuilds missing from the standalone
+output) reached the live demo with all-green CI.
+
+**Decided / shipped.**
+- PR #132 (Closes #129): new required `docker-smoke` CI job - buildx build of the
+  production image (GHA layer cache), Postgres on a dedicated network, the image started
+  with the exact prod compose command (`migrate deploy` + `node server.js`), then three
+  probes from the job: GET /login, POST /api/auth/register, POST /api/auth/login all 200.
+  Default-decision substitution, documented in the PR: the probe account is created via
+  the image's own register route instead of a host-side seed (covers bcrypt hash AND
+  compare, Prisma writes, JWT, catalog seeding; no host npm ci, keeps the job lean).
+- Birth-proof (L9 gate spot-check) run locally before the PR: with the #128 COPY lines
+  reverted the probe fails (register 500, "No native build was found" from bcrypt); with
+  the fix restored all probes pass. The net provably catches the #127 class at birth.
+- First CI run hit the known ECR mirror transient ("toomanyrequests: Rate exceeded") on
+  the smoke job's own pull; hardened with a bounded 5-attempt pull retry instead of a
+  manual rerun. Second run all green, smoke job 2m39s warm (budget ~5 min). Merged on
+  green full CI; main synced.
+- Ideate batch (conditioning/cardio axis, per the broadened vision): filed #133
+  (first-class cardio sets - additive Set.durationSec/distanceM + CARDIO category +
+  logging UI, the foundation slice), #134 (importers map cardio rows onto the new fields
+  instead of skipping; depends on #133), #135 (conditioning card on the progress page
+  with a 150 min/week reference line; depends on #133). Recorded in ideas-backlog.md.
+  Deliberately not filed: supersets (stays deferred), free-text AI set logging (not on
+  the cardio axis; future batch), pace/speed analytics and coach-payload conditioning
+  (later slices of #133-#135).
+
+**Challenged.** Nested run, no independent reviewer spawnable: the #132 diff was
+self-reviewed plus proven by the two-leg birth-proof and green full CI, and is flagged
+in the run report for an independent post-merge review per the charter's no-reviewer
+backstop (lesson L8).
+
+**Deferred to human.** Nothing.
+
+**Next.** Implement #133 first (it unblocks #134/#135), under the complex-features
+controls (additive migration, full local gate, tests at every layer, multi-lens review).
+
+---
+
 ## 2026-06-11 - Operator decision: product vision broadened beyond hypertrophy
 
 **Context.** The operator decided (2026-06-11) that the product opens beyond pure
