@@ -6,6 +6,48 @@ by the charter in [`07-autonomy.md`](07-autonomy.md).
 
 ---
 
+## 2026-06-11 - Conditioning/cardio foundation batch shipped (#133, #134, #135)
+
+**Context.** Maintainer tick executing the conditioning batch ideated on 2026-06-11, in
+strict dependency order (each PR merged before the next branch was cut). All three issues
+authored by JulienAu (trust-gated, collaborator-verified 204).
+
+**Decided / shipped.**
+- PR #137 (Closes #133): first-class cardio sets. Additive migration
+  (`Set.durationSec`, `Set.distanceM`, `ExerciseCategory.CARDIO`) validated on the test
+  DB (migrate deploy + clean migrate diff); rollback baseline
+  `autonomy-baseline-2026-06-11b` tagged on main before merge. Cardio sets store
+  reps = 1 / weight = 0 (normalized server-side), Zod bounds 1..86400 s / 0..1000 km,
+  cross-field rule (duration/distance only on CARDIO exercises, duration required) in
+  the API route. Session logger swaps weight/reps for mm:ss + km inputs; sets list,
+  summary and history render `12:30 · 2.5 km`. Offline queue/sync/hydration carry the
+  fields. Tonnage/e1RM/PR/progress/MEV-MRV math skips cardio sets explicitly; CARDIO
+  excluded from the lifting selector. Catalog gains 4 cardio movements. Tests at every
+  layer (unit, integration incl. pinned strength path, new E2E). One local full-gate red
+  on the way: the new E2E spec's UI signup pushed the suite over the register limiter's
+  5/min budget - fixed with the established per-spec X-Forwarded-For bucket pattern, not
+  by touching the limiter.
+- PR #138 (Closes #134): the Strong/Hevy importers map cardio rows onto the new fields.
+  Qualifying condition is exactly the old skip branch; usable-duration rows import
+  (meters/miles conversion per export unit), the rest keep the counted skip notice.
+  Cardio-only new exercises are created CARDIO/OTHER. Dup keys byte-identical for
+  strength, extended for cardio so distinct runs do not collapse. #105/#106/#108
+  hardening untouched and re-pinned (strength-row shapes, dup-key format, caps).
+- PR #139 (Closes #135): conditioning card on the progress page - pure
+  `weeklyConditioning` derivation (8 zero-filled ISO weeks: minutes, km, sessions),
+  Recharts bar chart with the WHO 150 min/week reference line, hidden until the first
+  cardio set ever; strength charts untouched.
+
+**Challenged.** Nested run, no independent subagent spawnable: per the charter's
+backstop, all three PRs merged on green full CI (local `verify.sh --full` plus the
+5-check CI including docker-smoke) and are flagged for post-merge independent review as
+the orchestrator's next action - multi-lens (correctness + does-it-work) for #133,
+security lens for #134 (untrusted file input), correctness for #135.
+
+**Deferred.** Pace/speed analytics, conditioning in the AI coach payload, per-exercise
+cardio drill-down, CSV history export of duration/distance - future slices, not filed
+yet to respect anti-flood.
+
 ## 2026-06-11 - Docker smoke test in CI (#129) + first conditioning-axis ideate batch
 
 **Context.** Maintainer tick after the vision broadening (#130/#131). One trusted open

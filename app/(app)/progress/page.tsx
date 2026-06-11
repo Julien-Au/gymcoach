@@ -11,6 +11,7 @@ import {
   isStalled,
   isoWeekKey,
   trainingConsistency,
+  weeklyConditioning,
   weeklySetsByMuscleGroup,
   weeklyVolumeByMuscleGroup,
   WEEKLY_SETS_MEV,
@@ -26,6 +27,7 @@ import { ProgressDashboard } from '@/components/progress/progress-dashboard';
 import { ConsistencyCard } from '@/components/progress/consistency-card';
 import { DeloadBanner } from '@/components/progress/deload-banner';
 import { BodyweightCard } from '@/components/progress/bodyweight-card';
+import { ConditioningCard } from '@/components/progress/conditioning-card';
 
 interface SearchParams {
   exerciseId?: string;
@@ -157,6 +159,8 @@ export default async function ProgressPage({
       reps: true,
       isWarmup: true,
       durationSec: true,
+      distanceM: true,
+      sessionId: true,
       exercise: { select: { muscleGroup: true, usesBodyweight: true } },
       session: { select: { startedAt: true } },
     },
@@ -295,6 +299,30 @@ export default async function ProgressPage({
     select: { id: true, weightKg: true, measuredAt: true },
   });
 
+  // Conditioning card (issue #135, display-only): weekly cardio minutes /
+  // distance / sessions over the last 8 weeks, derived from the cardio sets
+  // already fetched for the window. The card stays hidden until the user has
+  // logged at least one cardio set EVER (not just in the window), so a brand
+  // new axis never shows an empty chart unprompted.
+  const hasCardioSets =
+    (await db.set.count({
+      where: { durationSec: { not: null }, session: { userId: auth.userId } },
+    })) > 0;
+  const conditioningWeeks = hasCardioSets
+    ? weeklyConditioning(
+        weeklySetsRaw
+          .filter((s) => s.durationSec != null)
+          .map((s) => ({
+            durationSec: s.durationSec,
+            distanceM: s.distanceM,
+            isWarmup: s.isWarmup,
+            sessionId: s.sessionId,
+            sessionStartedAt: s.session.startedAt,
+          })),
+        { windowWeeks: 8 },
+      )
+    : null;
+
   const deload = recommendDeload({
     stalledExerciseNames: recap
       .filter((r) => r.stalled)
@@ -323,6 +351,18 @@ export default async function ProgressPage({
           }))}
           unit={unit}
         />
+
+        {conditioningWeeks && (
+          <ConditioningCard
+            weeks={conditioningWeeks.map((w) => ({
+              weekKey: w.weekKey,
+              weekStartIso: w.weekStart.toISOString(),
+              minutes: w.minutes,
+              distanceKm: w.distanceKm,
+              sessions: w.sessions,
+            }))}
+          />
+        )}
 
         {exercisesWithSets.length === 0 ? (
           <EmptyState

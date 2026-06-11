@@ -14,6 +14,7 @@ import {
   STALL_TOLERANCE,
   totalVolume,
   trainingConsistency,
+  weeklyConditioning,
   weeklySetsByMuscleGroup,
   weeklyVolumeByMuscleGroup,
   WEEKLY_SETS_MEV,
@@ -505,5 +506,76 @@ describe('cardio set exclusion', () => {
     expect(counts).toHaveLength(1);
     expect(counts[0]!.byMuscleGroup).toEqual({ CHEST: 1 });
     expect(counts[0]!.total).toBe(1);
+  });
+});
+
+describe('weeklyConditioning (issue #135)', () => {
+  const NOW = new Date('2026-06-11T10:00:00Z'); // Thursday, ISO week 2026-W24
+  const run = (over: Record<string, unknown> = {}) => ({
+    durationSec: 1800,
+    distanceM: 5000,
+    isWarmup: false,
+    sessionId: 's1',
+    sessionStartedAt: new Date('2026-06-09T07:00:00Z'), // same ISO week as NOW
+    ...over,
+  });
+
+  it('returns a zero-filled window ending at the current week', () => {
+    const points = weeklyConditioning([], { windowWeeks: 8, now: NOW });
+    expect(points).toHaveLength(8);
+    expect(points[7]!.weekKey).toBe(isoWeekKey(NOW));
+    expect(points.every((p) => p.minutes === 0 && p.distanceKm === 0 && p.sessions === 0)).toBe(
+      true,
+    );
+    // Oldest first, consecutive weeks.
+    expect(points[0]!.weekStart.getTime()).toBeLessThan(points[7]!.weekStart.getTime());
+  });
+
+  it('aggregates minutes, distance and distinct sessions per ISO week', () => {
+    const points = weeklyConditioning(
+      [
+        run(),
+        run({ sessionId: 's1', durationSec: 600, distanceM: null }), // same session
+        run({ sessionId: 's2', durationSec: 900, distanceM: 2500 }),
+      ],
+      { windowWeeks: 4, now: NOW },
+    );
+    const current = points[3]!;
+    expect(current.minutes).toBe(Math.round((1800 + 600 + 900) / 60));
+    expect(current.distanceKm).toBe(7.5);
+    expect(current.sessions).toBe(2);
+  });
+
+  it('handles duration-only sets (distance stays 0)', () => {
+    const points = weeklyConditioning([run({ distanceM: null })], {
+      windowWeeks: 1,
+      now: NOW,
+    });
+    expect(points[0]!.minutes).toBe(30);
+    expect(points[0]!.distanceKm).toBe(0);
+  });
+
+  it('buckets sets into their own ISO weeks and ignores non-cardio or warmup sets', () => {
+    const points = weeklyConditioning(
+      [
+        run(),
+        run({ sessionId: 's0', sessionStartedAt: new Date('2026-06-01T07:00:00Z') }), // prior week
+        run({ isWarmup: true, sessionId: 's3' }), // warmup: ignored
+        run({ durationSec: null, sessionId: 's4' }), // not cardio: ignored
+      ],
+      { windowWeeks: 2, now: NOW },
+    );
+    expect(points[0]!.minutes).toBe(30);
+    expect(points[0]!.sessions).toBe(1);
+    expect(points[1]!.minutes).toBe(30);
+    expect(points[1]!.sessions).toBe(1);
+  });
+
+  it('drops cardio sets older than the window', () => {
+    const points = weeklyConditioning(
+      [run({ sessionStartedAt: new Date('2026-01-05T07:00:00Z') })],
+      { windowWeeks: 4, now: NOW },
+    );
+    expect(points.every((p) => p.minutes === 0)).toBe(true);
   });
 });

@@ -325,6 +325,78 @@ export function weeklySetsByMuscleGroup(
 }
 
 // ============================================================
+// Conditioning (weekly cardio minutes / distance / sessions)
+// ============================================================
+
+// WHO guideline for moderate aerobic activity, rendered as a display-only
+// reference line on the conditioning card (issue #135).
+export const WEEKLY_CONDITIONING_TARGET_MIN = 150;
+
+export interface ConditioningWeekPoint {
+  weekKey: string; // YYYY-Www
+  weekStart: Date; // Monday 00:00 UTC
+  minutes: number; // total cardio duration, rounded to whole minutes
+  distanceKm: number; // total distance, km with 2 decimals (0 when none)
+  sessions: number; // distinct sessions containing >= 1 cardio set
+}
+
+// Pure weekly aggregation of cardio sets (issue #135, display-only). Returns
+// exactly `windowWeeks` ISO weeks ending at the week of `now` (zero-filled,
+// oldest first) so the chart timeline has no gaps. Input: non-warmup cardio
+// sets (durationSec != null) with their session id and start date; non-cardio
+// sets are ignored defensively.
+export function weeklyConditioning(
+  sets: {
+    durationSec?: number | null;
+    distanceM?: number | null;
+    isWarmup: boolean;
+    sessionId: string;
+    sessionStartedAt: Date;
+  }[],
+  options: { windowWeeks?: number; now?: Date } = {},
+): ConditioningWeekPoint[] {
+  const windowWeeks = options.windowWeeks ?? 8;
+  const now = options.now ?? new Date();
+
+  interface Bucket {
+    seconds: number;
+    meters: number;
+    sessionIds: globalThis.Set<string>;
+  }
+  const byWeek = new Map<string, Bucket>();
+  for (const s of sets) {
+    if (s.isWarmup || !isCardioSet(s)) continue;
+    const key = isoWeekKey(s.sessionStartedAt);
+    let bucket = byWeek.get(key);
+    if (!bucket) {
+      bucket = { seconds: 0, meters: 0, sessionIds: new globalThis.Set<string>() };
+      byWeek.set(key, bucket);
+    }
+    bucket.seconds += s.durationSec ?? 0;
+    bucket.meters += s.distanceM ?? 0;
+    bucket.sessionIds.add(s.sessionId);
+  }
+
+  // Zero-filled window: the current ISO week and the (windowWeeks - 1) before.
+  const currentWeekStart = isoWeekStart(now);
+  const points: ConditioningWeekPoint[] = [];
+  for (let i = windowWeeks - 1; i >= 0; i--) {
+    const weekStart = new Date(currentWeekStart);
+    weekStart.setUTCDate(weekStart.getUTCDate() - i * 7);
+    const weekKey = isoWeekKey(weekStart);
+    const bucket = byWeek.get(weekKey);
+    points.push({
+      weekKey,
+      weekStart,
+      minutes: bucket ? Math.round(bucket.seconds / 60) : 0,
+      distanceKm: bucket ? +(bucket.meters / 1000).toFixed(2) : 0,
+      sessions: bucket ? bucket.sessionIds.size : 0,
+    });
+  }
+  return points;
+}
+
+// ============================================================
 // Training consistency (per-week trained days + current streak)
 // ============================================================
 
