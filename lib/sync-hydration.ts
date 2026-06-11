@@ -22,6 +22,8 @@ export async function hydrateFromServerSets(
     weight: s.weight,
     reps: s.reps,
     rir: s.rir,
+    durationSec: s.durationSec,
+    distanceM: s.distanceM,
     notes: s.notes,
     isWarmup: s.isWarmup,
     isDropSet: s.isDropSet,

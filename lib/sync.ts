@@ -59,6 +59,8 @@ async function doFlush(): Promise<FlushResult> {
           weight: item.weight,
           reps: item.reps,
           rir: item.rir,
+          durationSec: item.durationSec ?? null,
+          distanceM: item.distanceM ?? null,
           notes: item.notes,
           isWarmup: item.isWarmup,
           isDropSet: item.isDropSet,

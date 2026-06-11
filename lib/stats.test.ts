@@ -459,3 +459,51 @@ describe('isStalled', () => {
     expect(isStalled([100, 100, 100], 1)).toBe(false);
   });
 });
+
+// Cardio exclusion (issue #133): conditioning sets (durationSec != null) are
+// skipped by every lifting aggregation, even with a deliberately non-zero
+// weight/reps payload (the API normalizes them to 0/1, but the guard must not
+// depend on that convention).
+describe('cardio set exclusion', () => {
+  const cardio = { weight: 100, reps: 10, isWarmup: false, durationSec: 750 };
+  const strength = { weight: 100, reps: 10, isWarmup: false };
+
+  it('setVolume / totalVolume count cardio sets as 0', () => {
+    expect(setVolume(cardio)).toBe(0);
+    expect(totalVolume([cardio, strength])).toBe(1000);
+  });
+
+  it('best1RM ignores cardio sets', () => {
+    expect(best1RM([cardio])).toBe(0);
+    expect(best1RM([cardio, { weight: 80, reps: 5, isWarmup: false }])).toBeCloseTo(
+      estimate1RM(80, 5),
+    );
+  });
+
+  it('exerciseProgress produces no point from cardio-only sessions', () => {
+    const d = new Date('2026-06-01T10:00:00Z');
+    const points = exerciseProgress([
+      { ...cardio, sessionId: 's1', sessionStartedAt: d },
+    ]);
+    expect(points).toHaveLength(0);
+  });
+
+  it('weeklyVolumeByMuscleGroup and weeklySetsByMuscleGroup skip cardio sets', () => {
+    const d = new Date('2026-06-01T10:00:00Z');
+    const volume = weeklyVolumeByMuscleGroup([
+      { ...cardio, muscleGroup: 'OTHER', sessionStartedAt: d },
+      { ...strength, muscleGroup: 'CHEST', sessionStartedAt: d },
+    ]);
+    expect(volume).toHaveLength(1);
+    expect(volume[0]!.byMuscleGroup).toEqual({ CHEST: 1000 });
+    expect(volume[0]!.total).toBe(1000);
+
+    const counts = weeklySetsByMuscleGroup([
+      { isWarmup: false, durationSec: 750, muscleGroup: 'OTHER', sessionStartedAt: d },
+      { isWarmup: false, muscleGroup: 'CHEST', sessionStartedAt: d },
+    ]);
+    expect(counts).toHaveLength(1);
+    expect(counts[0]!.byMuscleGroup).toEqual({ CHEST: 1 });
+    expect(counts[0]!.total).toBe(1);
+  });
+});

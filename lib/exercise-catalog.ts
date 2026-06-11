@@ -427,6 +427,42 @@ export const EXERCISE_CATALOG: CatalogExercise[] = [
     defaultRestSec: 60,
     notes: 'Flex the spine against the resistance, ribs toward the pelvis. Controlled tempo, pause at the contraction.',
   },
+
+  // ============================================================
+  // Conditioning / cardio (issue #133)
+  // ============================================================
+  // Duration/distance based: sets on these log a time (and optionally a
+  // distance) instead of weight x reps. Grouped under OTHER - cardio does
+  // not map to a single muscle group.
+
+  {
+    name: 'Running',
+    muscleGroup: MuscleGroup.OTHER,
+    category: ExerciseCategory.CARDIO,
+    defaultRestSec: 60,
+    notes: 'Steady pace you could hold a conversation at, or intervals. Log the time and distance.',
+  },
+  {
+    name: 'Rowing machine',
+    muscleGroup: MuscleGroup.OTHER,
+    category: ExerciseCategory.CARDIO,
+    defaultRestSec: 60,
+    notes: 'Drive with the legs, then swing the hips, then pull. Log the time and distance.',
+  },
+  {
+    name: 'Cycling',
+    muscleGroup: MuscleGroup.OTHER,
+    category: ExerciseCategory.CARDIO,
+    defaultRestSec: 60,
+    notes: 'Outdoor or stationary bike. Log the time and distance.',
+  },
+  {
+    name: 'Jump rope',
+    muscleGroup: MuscleGroup.OTHER,
+    category: ExerciseCategory.CARDIO,
+    defaultRestSec: 60,
+    notes: 'Light on the feet, elbows close, turn from the wrists. Log the time.',
+  },
 ];
 
 // Upserts the default catalog for a user. Returns a name -> exercise id map so

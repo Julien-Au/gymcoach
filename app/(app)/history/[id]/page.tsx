@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { MUSCLE_GROUP_LABELS } from '@/lib/schemas/exercise';
 import { applyBodyweight, best1RM, totalVolume } from '@/lib/stats';
+import { formatCardioSet, formatDistance, formatDuration } from '@/lib/cardio';
 import { formatWeight } from '@/lib/units';
 import { DeleteSessionButton } from '@/components/history/delete-session-button';
 
@@ -32,6 +33,7 @@ export default async function HistorySessionPage({ params }: Params) {
                 id: true,
                 name: true,
                 muscleGroup: true,
+                category: true,
                 usesBodyweight: true,
               },
             },
@@ -74,6 +76,7 @@ export default async function HistorySessionPage({ params }: Params) {
       weight: s.weight,
       reps: s.reps,
       isWarmup: s.isWarmup,
+      durationSec: s.durationSec,
       usesBodyweight: s.exercise.usesBodyweight,
     })),
     bodyweight,
@@ -161,17 +164,26 @@ export default async function HistorySessionPage({ params }: Params) {
             {exerciseOrder.map((exerciseId) => {
               const entry = setsByExercise.get(exerciseId);
               if (!entry) return null;
+              const isCardio = entry.exercise.category === 'CARDIO';
               const enrichedExoSets = applyBodyweight(
                 entry.sets.map((s) => ({
                   weight: s.weight,
                   reps: s.reps,
                   isWarmup: s.isWarmup,
+                  durationSec: s.durationSec,
                   usesBodyweight: entry.exercise.usesBodyweight,
                 })),
                 bodyweight,
               );
               const exoVolume = totalVolume(enrichedExoSets);
               const e1rm = best1RM(enrichedExoSets);
+              // Cardio recap (issue #133): totals across the logged sets.
+              const cardioTotal = isCardio
+                ? formatCardioSet(
+                    entry.sets.reduce((acc, s) => acc + (s.durationSec ?? 0), 0),
+                    entry.sets.reduce((acc, s) => acc + (s.distanceM ?? 0), 0),
+                  )
+                : null;
               return (
                 <li key={exerciseId}>
                   <Card>
@@ -183,13 +195,17 @@ export default async function HistorySessionPage({ params }: Params) {
                         </Badge>
                       </div>
                       <div className="mt-1 flex gap-3 text-xs text-muted-foreground">
-                        <span>
-                          Volume:{' '}
-                          {formatWeight(exoVolume, unit, {
-                            decimals: 0,
-                            group: false,
-                          })}
-                        </span>
+                        {cardioTotal ? (
+                          <span>Total: {cardioTotal}</span>
+                        ) : (
+                          <span>
+                            Volume:{' '}
+                            {formatWeight(exoVolume, unit, {
+                              decimals: 0,
+                              group: false,
+                            })}
+                          </span>
+                        )}
                         {e1rm > 0 && (
                           <span>
                             Est. 1RM:{' '}
@@ -203,6 +219,32 @@ export default async function HistorySessionPage({ params }: Params) {
                       </div>
                     </CardHeader>
                     <CardContent className="pt-0">
+                      {isCardio ? (
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
+                              <th className="py-1.5 font-medium">#</th>
+                              <th className="py-1.5 font-medium">Duration</th>
+                              <th className="py-1.5 font-medium">Distance</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {entry.sets.map((s) => (
+                              <tr key={s.id} className="border-b border-border/40">
+                                <td className="py-1.5">{s.setNumber}</td>
+                                <td className="py-1.5">
+                                  {s.durationSec != null ? formatDuration(s.durationSec) : '-'}
+                                </td>
+                                <td className="py-1.5">
+                                  {s.distanceM != null && s.distanceM > 0
+                                    ? formatDistance(s.distanceM)
+                                    : '-'}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      ) : (
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
@@ -267,6 +309,7 @@ export default async function HistorySessionPage({ params }: Params) {
                           })}
                         </tbody>
                       </table>
+                      )}
                       {entry.sets.some((s) => s.notes) && (
                         <div className="mt-2 space-y-1 text-xs text-muted-foreground">
                           {entry.sets

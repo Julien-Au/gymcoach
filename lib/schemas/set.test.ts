@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { setInputSchema } from './set';
+import { setInputSchema, validateSetForCategory } from './set';
 
 describe('setInputSchema', () => {
   const valid = { exerciseId: 'ex1', setNumber: 1, weight: 60, reps: 10 };
@@ -41,5 +41,51 @@ describe('setInputSchema', () => {
   it('rejects non-integer reps and setNumber', () => {
     expect(setInputSchema.safeParse({ ...valid, reps: 8.5 }).success).toBe(false);
     expect(setInputSchema.safeParse({ ...valid, setNumber: 1.5 }).success).toBe(false);
+  });
+
+  it('leaves cardio fields undefined when absent (strength payloads unchanged)', () => {
+    const parsed = setInputSchema.parse(valid);
+    expect(parsed.durationSec).toBeUndefined();
+    expect(parsed.distanceM).toBeUndefined();
+  });
+
+  it('accepts in-range duration and distance and coerces numeric strings', () => {
+    const parsed = setInputSchema.parse({
+      ...valid,
+      durationSec: '750',
+      distanceM: '2500',
+    });
+    expect(parsed.durationSec).toBe(750);
+    expect(parsed.distanceM).toBe(2500);
+  });
+
+  it('rejects absurd duration and distance values', () => {
+    expect(setInputSchema.safeParse({ ...valid, durationSec: 0 }).success).toBe(false);
+    expect(setInputSchema.safeParse({ ...valid, durationSec: 86401 }).success).toBe(false);
+    expect(setInputSchema.safeParse({ ...valid, durationSec: 12.5 }).success).toBe(false);
+    expect(setInputSchema.safeParse({ ...valid, distanceM: -1 }).success).toBe(false);
+    expect(setInputSchema.safeParse({ ...valid, distanceM: 1000001 }).success).toBe(false);
+  });
+});
+
+describe('validateSetForCategory', () => {
+  it('accepts a strength set without cardio fields on any strength category', () => {
+    expect(validateSetForCategory('COMPOUND', {})).toBeNull();
+    expect(validateSetForCategory('ISOLATION', { durationSec: null, distanceM: null })).toBeNull();
+  });
+
+  it('rejects duration or distance on non-cardio exercises', () => {
+    expect(validateSetForCategory('COMPOUND', { durationSec: 600 })).toMatch(/cardio/i);
+    expect(validateSetForCategory('ISOLATION', { distanceM: 1000 })).toMatch(/cardio/i);
+  });
+
+  it('requires a duration on cardio exercises', () => {
+    expect(validateSetForCategory('CARDIO', {})).toMatch(/duration/i);
+    expect(validateSetForCategory('CARDIO', { distanceM: 1000 })).toMatch(/duration/i);
+  });
+
+  it('accepts a cardio set with a duration (distance optional)', () => {
+    expect(validateSetForCategory('CARDIO', { durationSec: 750 })).toBeNull();
+    expect(validateSetForCategory('CARDIO', { durationSec: 750, distanceM: 2500 })).toBeNull();
   });
 });

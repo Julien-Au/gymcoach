@@ -75,6 +75,10 @@ export function ExerciseCard({
   const [notesOpen, setNotesOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const exo = programExercise.exercise;
+  // Cardio exercises (issue #133) are duration/distance based: the weight x
+  // reps targets, load suggestion and last-performance load make no sense for
+  // them, so those blocks are hidden.
+  const isCardio = exo.category === 'CARDIO';
 
   const repsLabel =
     programExercise.targetRepsMin === programExercise.targetRepsMax
@@ -106,12 +110,21 @@ export function ExerciseCard({
 
       <CardContent className="flex flex-col gap-3 pt-0">
         <p className="text-sm font-medium">
-          {programExercise.targetSets} sets × {repsLabel} reps · RIR{' '}
-          {programExercise.targetRIR} · Rest {programExercise.restSec}s
-          {programExercise.tempo && ` · Tempo ${programExercise.tempo}`}
+          {isCardio ? (
+            <>
+              {programExercise.targetSets} set
+              {programExercise.targetSets > 1 ? 's' : ''} · Rest {programExercise.restSec}s
+            </>
+          ) : (
+            <>
+              {programExercise.targetSets} sets × {repsLabel} reps · RIR{' '}
+              {programExercise.targetRIR} · Rest {programExercise.restSec}s
+              {programExercise.tempo && ` · Tempo ${programExercise.tempo}`}
+            </>
+          )}
         </p>
 
-        {lastPerformance && (
+        {!isCardio && lastPerformance && (
           <div className="rounded-md bg-secondary/50 p-3 text-sm">
             <div className="flex items-center gap-2 text-muted-foreground">
               <span className="text-xs">Last session ({lastDate})</span>
@@ -124,7 +137,7 @@ export function ExerciseCard({
           </div>
         )}
 
-        {suggestion.weight != null && (
+        {!isCardio && suggestion.weight != null && (
           <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-sm">
             <div className="flex items-center gap-2">
               {suggestion.reason === 'progression' ? (

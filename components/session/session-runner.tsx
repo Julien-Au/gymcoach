@@ -167,6 +167,8 @@ export function SessionRunner({
     weight: number;
     reps: number;
     rir: number | null;
+    durationSec: number | null;
+    distanceM: number | null;
     isWarmup: boolean;
     isDropSet: boolean;
     notes: string | null;
@@ -185,6 +187,8 @@ export function SessionRunner({
       weight: values.weight,
       reps: values.reps,
       rir: values.rir,
+      durationSec: values.durationSec,
+      distanceM: values.distanceM,
       notes: values.notes,
       isWarmup: values.isWarmup,
       isDropSet: values.isDropSet,

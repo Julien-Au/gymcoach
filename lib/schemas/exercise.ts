@@ -42,4 +42,5 @@ export const MUSCLE_GROUP_LABELS: Record<MuscleGroup, string> = {
 export const CATEGORY_LABELS: Record<ExerciseCategory, string> = {
   COMPOUND: 'Compound',
   ISOLATION: 'Isolation',
+  CARDIO: 'Cardio',
 };

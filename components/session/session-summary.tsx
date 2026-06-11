@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import type { PendingSet } from '@/lib/indexeddb';
 import { formatWeight } from '@/lib/units';
 import { detectPRs, type PRType } from '@/lib/records';
+import { formatCardioSet } from '@/lib/cardio';
 
 // Prior (previous-session) non-warmup sets per exerciseId, used as the PR
 // baseline. Same source as the in-session badge (getLastPerformances): a PR
@@ -111,17 +112,31 @@ export function SessionSummary({
     (Date.now() - new Date(session.startedAt).getTime()) / 60000,
   );
   const totalSets = sets.filter((s) => !s.isWarmup).length;
-  const totalReps = sets.reduce((acc, s) => acc + s.reps, 0);
-  const totalVolume = sets.reduce((acc, s) => acc + s.weight * s.reps, 0);
+  // Cardio sets (issue #133) store reps = 1 / weight = 0 by convention, so
+  // they are excluded from the rep count (and contribute 0 to the volume).
+  const totalReps = sets.reduce((acc, s) => acc + (s.durationSec != null ? 0 : s.reps), 0);
+  const totalVolume = sets.reduce(
+    (acc, s) => acc + (s.durationSec != null ? 0 : s.weight * s.reps),
+    0,
+  );
 
   const exerciseStats = programExercises.map((pe) => {
     const exoSets = sets.filter((s) => s.exerciseId === pe.exerciseId && !s.isWarmup);
     const targetSets = pe.targetSets;
+    const isCardio = pe.exercise.category === 'CARDIO';
     return {
       pe,
       doneSets: exoSets.length,
       targetSets,
-      maxWeight: exoSets.length ? Math.max(...exoSets.map((s) => s.weight)) : 0,
+      maxWeight: isCardio || exoSets.length === 0 ? 0 : Math.max(...exoSets.map((s) => s.weight)),
+      // Cardio recap: total duration and distance across the logged sets.
+      cardioLabel:
+        isCardio && exoSets.length
+          ? formatCardioSet(
+              exoSets.reduce((acc, s) => acc + (s.durationSec ?? 0), 0),
+              exoSets.reduce((acc, s) => acc + (s.distanceM ?? 0), 0),
+            )
+          : null,
       complete: exoSets.length >= targetSets,
     };
   });
@@ -218,9 +233,11 @@ export function SessionSummary({
                   </div>
                   <span className="flex-shrink-0 text-xs text-muted-foreground">
                     {s.doneSets}/{s.targetSets} sets
-                    {s.maxWeight > 0
-                      ? ` · max ${formatWeight(s.maxWeight, unit, { decimals: 2, group: false })}`
-                      : ''}
+                    {s.cardioLabel
+                      ? ` · ${s.cardioLabel}`
+                      : s.maxWeight > 0
+                        ? ` · max ${formatWeight(s.maxWeight, unit, { decimals: 2, group: false })}`
+                        : ''}
                   </span>
                 </li>
               ))}

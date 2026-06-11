@@ -59,3 +59,18 @@ describe('detectPRs', () => {
     expect(isPR(set(90, 5), [set(100, 5)])).toBe(false);
   });
 });
+
+// Cardio sets (issue #133) can never set a lifting PR.
+describe('detectPRs - cardio exclusion', () => {
+  it('ignores a cardio candidate even with non-zero weight/reps', () => {
+    expect(
+      detectPRs({ weight: 100, reps: 10, isWarmup: false, durationSec: 750 }, []),
+    ).toEqual([]);
+  });
+
+  it('ignores a normalized cardio candidate (weight 0, reps 1)', () => {
+    expect(
+      detectPRs({ weight: 0, reps: 1, isWarmup: false, durationSec: 750 }, []),
+    ).toEqual([]);
+  });
+});

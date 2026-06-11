@@ -21,7 +21,12 @@ import { estimate1RM, best1RM } from '@/lib/stats';
 
 export type PRType = 'weight' | 'e1rm';
 
-type SetLike = Pick<Set, 'weight' | 'reps' | 'isWarmup'>;
+type SetLike = Pick<Set, 'weight' | 'reps' | 'isWarmup'> & {
+  // Cardio marker (issue #133): a set with a duration is conditioning work
+  // and can never set a lifting PR (it also stores weight = 0, so the load
+  // guard below would already exclude it - the explicit check documents it).
+  durationSec?: number | null;
+};
 
 // Heaviest non-warmup load in a list of sets (0 if none).
 function maxWorkingWeight(sets: SetLike[]): number {
@@ -38,7 +43,12 @@ function maxWorkingWeight(sets: SetLike[]): number {
 // warm-up (or has a non-positive load) - it can never set a PR. With
 // no prior working history, the first valid working set sets both PRs.
 export function detectPRs(candidate: SetLike, history: SetLike[]): PRType[] {
-  if (candidate.isWarmup || candidate.weight <= 0 || candidate.reps <= 0) {
+  if (
+    candidate.isWarmup ||
+    candidate.durationSec != null ||
+    candidate.weight <= 0 ||
+    candidate.reps <= 0
+  ) {
     return [];
   }
 

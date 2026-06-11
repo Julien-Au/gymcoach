@@ -23,10 +23,25 @@ describe('EXERCISE_CATALOG', () => {
   it('covers every muscle group at least once', () => {
     const covered = new Set(EXERCISE_CATALOG.map((e) => e.muscleGroup));
     for (const group of Object.values(MuscleGroup)) {
-      // OTHER is the fallback bucket for imported exercises (issue #100);
-      // the curated catalog intentionally has no exercise in it.
+      // OTHER holds the cardio entries (issue #133) and the fallback bucket
+      // for imported exercises (issue #100); coverage is asserted separately.
       if (group === 'OTHER') continue;
       expect(covered, `missing exercises for ${group}`).toContain(group);
+    }
+  });
+
+  it('includes cardio entries, all grouped under OTHER (issue #133)', () => {
+    const cardio = EXERCISE_CATALOG.filter((e) => e.category === ExerciseCategory.CARDIO);
+    expect(cardio.length).toBeGreaterThanOrEqual(3);
+    expect(cardio.map((e) => e.name)).toContain('Running');
+    for (const e of cardio) {
+      expect(e.muscleGroup).toBe(MuscleGroup.OTHER);
+    }
+    // And no non-cardio entry sits in the OTHER bucket.
+    for (const e of EXERCISE_CATALOG) {
+      if (e.muscleGroup === MuscleGroup.OTHER) {
+        expect(e.category).toBe(ExerciseCategory.CARDIO);
+      }
     }
   });
 });

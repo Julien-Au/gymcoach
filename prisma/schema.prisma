@@ -136,6 +136,11 @@ enum MuscleGroup {
 enum ExerciseCategory {
   COMPOUND
   ISOLATION
+  // Conditioning work (issue #133): running, rowing, cycling... Sets on a
+  // CARDIO exercise are duration/distance based (durationSec required,
+  // distanceM optional) and store reps = 1 / weight = 0 to keep the existing
+  // NOT NULL columns untouched. They are excluded from tonnage/e1RM/PR math.
+  CARDIO
 }
 
 model Program {
@@ -207,6 +212,11 @@ model Set {
   weight      Float
   reps        Int
   rir         Int?
+  // Cardio sets (issue #133, additive): duration in seconds (>= 1 when set)
+  // and optional distance in meters. NULL on strength sets - existing rows
+  // are untouched and lifting flows never write these.
+  durationSec Int?
+  distanceM   Float?
   notes       String?
   isWarmup    Boolean  @default(false)
   isDropSet   Boolean  @default(false)

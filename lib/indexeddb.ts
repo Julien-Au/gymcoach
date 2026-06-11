@@ -28,6 +28,11 @@ export interface PendingSet {
   weight: number;
   reps: number;
   rir: number | null;
+  // Cardio sets (issue #133): duration in seconds and optional distance in
+  // meters. Null on strength sets. Optional so records written before the
+  // field existed (which lack the keys entirely) stay valid.
+  durationSec?: number | null;
+  distanceM?: number | null;
   notes: string | null;
   isWarmup: boolean;
   isDropSet: boolean;

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import type { PendingSet } from '@/lib/indexeddb';
 import { detectPRs, type PRType } from '@/lib/records';
+import { formatCardioSet } from '@/lib/cardio';
 
 interface Props {
   programExercise: ProgramExercise & { exercise: Exercise };
@@ -81,6 +82,8 @@ function RowDone({
   onDelete: () => void;
 }) {
   const weightLabel = set.weight === 0 ? 'BW' : `${set.weight} kg`;
+  // Cardio sets (issue #133) render as duration/distance, never weight x reps.
+  const isCardio = set.durationSec != null;
   return (
     <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2 last:border-b-0">
       <div className="flex min-w-0 items-center gap-2">
@@ -91,8 +94,14 @@ function RowDone({
           {set.isDropSet ? ' (drop)' : ''}
         </span>
         <span className="truncate text-sm text-muted-foreground">
-          {weightLabel} × {set.reps}
-          {set.rir != null && ` · RIR ${set.rir}`}
+          {isCardio ? (
+            formatCardioSet(set.durationSec!, set.distanceM)
+          ) : (
+            <>
+              {weightLabel} × {set.reps}
+              {set.rir != null && ` · RIR ${set.rir}`}
+            </>
+          )}
         </span>
         {prs.map((pr) => (
           <Badge key={pr} className="gap-1 text-xs" title={PR_TITLE[pr]}>

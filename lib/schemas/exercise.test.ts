@@ -17,7 +17,11 @@ describe('exerciseInputSchema', () => {
 
   it('rejects an unknown muscle group or category', () => {
     expect(exerciseInputSchema.safeParse({ ...valid, muscleGroup: 'NECK' }).success).toBe(false);
-    expect(exerciseInputSchema.safeParse({ ...valid, category: 'CARDIO' }).success).toBe(false);
+    expect(exerciseInputSchema.safeParse({ ...valid, category: 'STRETCHING' }).success).toBe(false);
+  });
+
+  it('accepts the CARDIO category (issue #133)', () => {
+    expect(exerciseInputSchema.safeParse({ ...valid, category: 'CARDIO' }).success).toBe(true);
   });
 
   it('coerces usesBodyweight with JS Boolean semantics (any non-empty string is true)', () => {

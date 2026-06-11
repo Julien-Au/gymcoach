@@ -1,8 +1,18 @@
 import type { Set } from '@prisma/client';
+import { isCardioSet } from '@/lib/cardio';
 
 // ============================================================
 // Training stats - volume, estimated 1RM, weekly aggregation
 // ============================================================
+// Cardio sets (issue #133): a set with durationSec != null is conditioning
+// work (stored as weight = 0 / reps = 1 by convention). It carries no
+// meaningful load, so every aggregation here skips it explicitly - tonnage,
+// e1RM, per-session progress points and the weekly volume/set-count
+// landmarks all describe lifting only. The `durationSec` field is optional
+// on the input types so strength-only callers are unchanged.
+
+// Set-like input that may carry the cardio marker.
+type MaybeCardio = { durationSec?: number | null };
 
 // ============================================================
 // Bodyweight: effective tonnage on bodyweight exercises
@@ -38,13 +48,18 @@ export function applyBodyweight<
 
 // Volume of a set = load × reps. For bodyweight (weight = 0),
 // we return 0 by convention (impossible to compare with a load).
-export function setVolume(set: Pick<Set, 'weight' | 'reps' | 'isWarmup'>): number {
-  if (set.isWarmup) return 0;
+// Cardio sets carry no tonnage and always count 0.
+export function setVolume(
+  set: Pick<Set, 'weight' | 'reps' | 'isWarmup'> & MaybeCardio,
+): number {
+  if (set.isWarmup || isCardioSet(set)) return 0;
   return set.weight * set.reps;
 }
 
-// Total volume of a list of sets (sum, excluding warmups).
-export function totalVolume(sets: Pick<Set, 'weight' | 'reps' | 'isWarmup'>[]): number {
+// Total volume of a list of sets (sum, excluding warmups and cardio).
+export function totalVolume(
+  sets: (Pick<Set, 'weight' | 'reps' | 'isWarmup'> & MaybeCardio)[],
+): number {
   return sets.reduce((acc, s) => acc + setVolume(s), 0);
 }
 
@@ -56,11 +71,14 @@ export function estimate1RM(weight: number, reps: number): number {
 }
 
 // Best estimated 1RM over a list of sets (warmups and drop sets included
-// since they are technically valid for estimating strength).
-export function best1RM(sets: Pick<Set, 'weight' | 'reps' | 'isWarmup'>[]): number {
+// since they are technically valid for estimating strength). Cardio sets
+// are skipped: they have no load to estimate from.
+export function best1RM(
+  sets: (Pick<Set, 'weight' | 'reps' | 'isWarmup'> & MaybeCardio)[],
+): number {
   let best = 0;
   for (const s of sets) {
-    if (s.isWarmup) continue;
+    if (s.isWarmup || isCardioSet(s)) continue;
     const e = estimate1RM(s.weight, s.reps);
     if (e > best) best = e;
   }
@@ -106,14 +124,15 @@ export interface ExerciseChartPoint {
 // For an exercise, aggregates each session into a progression point.
 // Input: sets ordered by session, with sessionStartedAt joined.
 export function exerciseProgress(
-  sets: (Pick<Set, 'weight' | 'reps' | 'isWarmup'> & { sessionId: string; sessionStartedAt: Date })[],
+  sets: (Pick<Set, 'weight' | 'reps' | 'isWarmup'> &
+    MaybeCardio & { sessionId: string; sessionStartedAt: Date })[],
 ): ExerciseChartPoint[] {
   const bySession = new Map<
     string,
     { startedAt: Date; sets: typeof sets }
   >();
   for (const s of sets) {
-    if (s.isWarmup) continue;
+    if (s.isWarmup || isCardioSet(s)) continue;
     const entry = bySession.get(s.sessionId);
     if (entry) {
       entry.sets.push(s);
@@ -199,14 +218,15 @@ export interface WeeklyVolumePoint {
 // Aggregates the weekly volume by muscle group.
 // Input: non-warmup sets with their muscle group and the session date.
 export function weeklyVolumeByMuscleGroup(
-  sets: (Pick<Set, 'weight' | 'reps' | 'isWarmup'> & {
-    muscleGroup: string;
-    sessionStartedAt: Date;
-  })[],
+  sets: (Pick<Set, 'weight' | 'reps' | 'isWarmup'> &
+    MaybeCardio & {
+      muscleGroup: string;
+      sessionStartedAt: Date;
+    })[],
 ): WeeklyVolumePoint[] {
   const byWeek = new Map<string, WeeklyVolumePoint>();
   for (const s of sets) {
-    if (s.isWarmup) continue;
+    if (s.isWarmup || isCardioSet(s)) continue;
     const key = isoWeekKey(s.sessionStartedAt);
     let entry = byWeek.get(key);
     if (!entry) {
@@ -275,14 +295,15 @@ export interface WeeklySetsPoint {
 // but counts sets instead of summing load × reps. Display-only: this feeds the
 // MEV/MRV reference band and does not influence progression or coach logic.
 export function weeklySetsByMuscleGroup(
-  sets: (Pick<Set, 'isWarmup'> & {
-    muscleGroup: string;
-    sessionStartedAt: Date;
-  })[],
+  sets: (Pick<Set, 'isWarmup'> &
+    MaybeCardio & {
+      muscleGroup: string;
+      sessionStartedAt: Date;
+    })[],
 ): WeeklySetsPoint[] {
   const byWeek = new Map<string, WeeklySetsPoint>();
   for (const s of sets) {
-    if (s.isWarmup) continue;
+    if (s.isWarmup || isCardioSet(s)) continue;
     const key = isoWeekKey(s.sessionStartedAt);
     let entry = byWeek.get(key);
     if (!entry) {
