@@ -2,11 +2,13 @@ import { db } from '@/lib/db';
 import {
   applyBodyweight,
   best1RM,
+  effectiveWeight,
   exerciseProgress,
   isStalled,
   isoWeekStart,
   totalVolume,
 } from '@/lib/stats';
+import { READINESS_RECENCY_HOURS } from '@/lib/progression';
 import { goalProgress } from '@/lib/goals';
 import {
   DELOAD_READINESS_LOOKBACK,
@@ -54,6 +56,10 @@ export interface CoachPayload {
   // isStalled over the progress page's 12-week window, plus the program-level
   // deload recommendation from lib/deload.ts with its human-readable reasons.
   fatigue: FatigueSummary;
+  // The workout the user is in RIGHT NOW (issue #111), attached only when the
+  // chat is opened from the session runner with a session the user owns.
+  // Additive and input-side only; the output contract is unchanged.
+  currentSession?: CurrentSessionContext;
   // For each program exercise: the progression over the last 8 weeks
   // (max loads + 1RM per session, effective values with bodyweight included).
   recentProgress: Array<{
@@ -94,6 +100,46 @@ interface FatigueSummary {
   // supports the deload already underway instead of recommending one. Additive
   // input signal; the output contract is unchanged.
   deloadActive: boolean;
+}
+
+// Compact snapshot of the workout in progress (issue #111): what was logged so
+// far against the program targets, plus a fresh readiness check-in when one
+// exists. No history dump - the rest of the payload already carries recent
+// progress. Weights are effective loads (bodyweight included when applicable),
+// consistent with the rest of the payload.
+export interface CurrentSessionContext {
+  workoutName: string | null;
+  startedAt: string;
+  exercises: Array<{
+    exerciseName: string;
+    muscleGroup: string;
+    usesBodyweight: boolean;
+    // Program targets for this exercise in the running workout; null for an
+    // exercise logged ad hoc outside the plan.
+    target: {
+      targetSets: number;
+      targetRepsMin: number;
+      targetRepsMax: number;
+      targetRIR: number;
+      restSec: number;
+    } | null;
+    // Sets logged so far in this session, in order.
+    setsLogged: Array<{
+      setNumber: number;
+      weight: number;
+      reps: number;
+      rir: number | null;
+      isWarmup: boolean;
+      isDropSet: boolean;
+    }>;
+  }>;
+  // Today's readiness check-in (same recency window that auto-regulates the
+  // load suggestions), or null.
+  readinessToday: {
+    readiness: number;
+    sleepQuality: number;
+    soreness: Record<string, number> | null;
+  } | null;
 }
 
 interface ReadinessSummary {
@@ -613,6 +659,133 @@ async function fetchLatestReadiness(
     sleepQuality: checkin.sleepQuality,
     soreness,
     note: checkin.note,
+  };
+}
+
+// ============================================================
+// Live session context for the in-session chat (issue #111)
+// ============================================================
+
+// Builds the compact currentSession section. Ownership-checked: returns null
+// when the session does not exist or belongs to another user, so a tampered
+// sessionId silently degrades to a normal chat instead of erroring or leaking.
+export async function buildCurrentSessionContext(
+  userId: string,
+  sessionId: string,
+  now: Date = new Date(),
+): Promise<CurrentSessionContext | null> {
+  const [session, user] = await Promise.all([
+    db.session.findFirst({
+      where: { id: sessionId, userId },
+      include: {
+        workout: {
+          include: {
+            exercises: {
+              orderBy: { order: 'asc' },
+              include: {
+                exercise: {
+                  select: { id: true, name: true, muscleGroup: true, usesBodyweight: true },
+                },
+              },
+            },
+          },
+        },
+        sets: {
+          orderBy: [{ exerciseId: 'asc' }, { setNumber: 'asc' }],
+          include: {
+            exercise: {
+              select: { id: true, name: true, muscleGroup: true, usesBodyweight: true },
+            },
+          },
+        },
+      },
+    }),
+    db.user.findUnique({ where: { id: userId }, select: { bodyweight: true } }),
+  ]);
+  if (!session) return null;
+  const bodyweight = user?.bodyweight ?? null;
+
+  const setsByExercise = new Map<string, typeof session.sets>();
+  for (const s of session.sets) {
+    const arr = setsByExercise.get(s.exerciseId);
+    if (arr) arr.push(s);
+    else setsByExercise.set(s.exerciseId, [s]);
+  }
+
+  const serializeSets = (sets: typeof session.sets, usesBodyweight: boolean) =>
+    sets.map((s) => ({
+      setNumber: s.setNumber,
+      // Effective load, consistent with the rest of the payload.
+      weight: effectiveWeight(s.weight, usesBodyweight, bodyweight),
+      reps: s.reps,
+      rir: s.rir,
+      isWarmup: s.isWarmup,
+      isDropSet: s.isDropSet,
+    }));
+
+  // Planned exercises first, in workout order, then anything logged ad hoc.
+  const exercises: CurrentSessionContext['exercises'] = [];
+  const covered = new Set<string>();
+  for (const pe of session.workout?.exercises ?? []) {
+    covered.add(pe.exerciseId);
+    exercises.push({
+      exerciseName: pe.exercise.name,
+      muscleGroup: pe.exercise.muscleGroup,
+      usesBodyweight: pe.exercise.usesBodyweight,
+      target: {
+        targetSets: pe.targetSets,
+        targetRepsMin: pe.targetRepsMin,
+        targetRepsMax: pe.targetRepsMax,
+        targetRIR: pe.targetRIR,
+        restSec: pe.restSec,
+      },
+      setsLogged: serializeSets(
+        setsByExercise.get(pe.exerciseId) ?? [],
+        pe.exercise.usesBodyweight,
+      ),
+    });
+  }
+  for (const [exerciseId, sets] of setsByExercise) {
+    if (covered.has(exerciseId)) continue;
+    const first = sets[0];
+    if (!first) continue;
+    exercises.push({
+      exerciseName: first.exercise.name,
+      muscleGroup: first.exercise.muscleGroup,
+      usesBodyweight: first.exercise.usesBodyweight,
+      target: null,
+      setsLogged: serializeSets(sets, first.exercise.usesBodyweight),
+    });
+  }
+
+  // Today's check-in: same recency window that auto-regulates the in-session
+  // load suggestions, so the chat and the runner read the same signal.
+  const readinessSince = new Date(now.getTime() - READINESS_RECENCY_HOURS * 60 * 60 * 1000);
+  const checkin = await db.readinessCheckin.findFirst({
+    where: { userId, createdAt: { gte: readinessSince } },
+    orderBy: { createdAt: 'desc' },
+  });
+  let readinessToday: CurrentSessionContext['readinessToday'] = null;
+  if (checkin) {
+    let soreness: Record<string, number> | null = null;
+    if (checkin.soreness && typeof checkin.soreness === 'object' && !Array.isArray(checkin.soreness)) {
+      const entries = Object.entries(checkin.soreness as Record<string, unknown>).filter(
+        ([, v]) => typeof v === 'number',
+      ) as Array<[string, number]>;
+      if (entries.length > 0) soreness = Object.fromEntries(entries);
+    }
+    readinessToday = {
+      readiness: checkin.readiness,
+      sleepQuality: checkin.sleepQuality,
+      soreness,
+    };
+  }
+
+  return {
+    workoutName: session.workout?.name ?? null,
+    startedAt: session.startedAt.toISOString(),
+    exercises,
+    readinessToday,
   };
 }
 

@@ -4,13 +4,16 @@ import { db } from '@/lib/db';
 import { ApiError, handleApiError, parseJsonBody, requireApiUserId } from '@/lib/api';
 import { rateLimit } from '@/lib/rate-limit';
 import { getLlmProvider, LlmError } from '@/lib/llm';
-import { buildCoachPayload } from '@/lib/coach';
+import { buildCoachPayload, buildCurrentSessionContext } from '@/lib/coach';
 import { CHAT_SYSTEM_PROMPT } from '@/lib/prompts/chat-system-prompt';
 import { deriveConversationTitle } from '@/lib/chat';
 
 const bodySchema = z.object({
   conversationId: z.string().cuid().optional(),
   message: z.string().trim().min(1).max(4000),
+  // In-session chat (issue #111): attaches the live workout as context. The
+  // session must belong to the caller; a foreign or unknown id is ignored.
+  sessionId: z.string().cuid().optional(),
 });
 
 // POST /api/coach/chat: appends a user message and streams the assistant reply
@@ -28,7 +31,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const { conversationId: existingId, message } = await parseJsonBody(req, bodySchema);
+    const { conversationId: existingId, message, sessionId } = await parseJsonBody(req, bodySchema);
 
     let conversationId: string;
     if (existingId) {
@@ -62,6 +65,13 @@ export async function POST(req: Request) {
     }));
 
     const payload = await buildCoachPayload(userId);
+    // In-session context (issue #111): additive payload section, input-side
+    // only. Ownership is enforced in the builder (null for a foreign id), so
+    // the chat silently stays a normal chat on a bad sessionId.
+    if (sessionId) {
+      const currentSession = await buildCurrentSessionContext(userId, sessionId);
+      if (currentSession) payload.currentSession = currentSession;
+    }
     const system = `${CHAT_SYSTEM_PROMPT}\n\n# Trainee's current training data (JSON)\n${JSON.stringify(payload, null, 2)}`;
 
     const provider = getLlmProvider();

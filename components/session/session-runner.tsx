@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Flag, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Flag, MessageSquare, X } from 'lucide-react';
 import type {
   Exercise,
   Program,
@@ -376,6 +376,16 @@ export function SessionRunner({
             onAdd30={handleAdd30s}
           />
         )}
+
+        {/* In-session coach access (issue #111): opens the chat with this
+            session attached so the advice is grounded in the live workout.
+            Always available, never auto-triggered. */}
+        <Button variant="outline" size="sm" asChild className="min-h-tap">
+          <Link href={`/chat?sessionId=${session.id}`}>
+            <MessageSquare className="size-4" />
+            <span className="ml-2">Ask the coach</span>
+          </Link>
+        </Button>
 
         <div className="flex items-center justify-between gap-2 border-t border-border pt-4">
           <Button
