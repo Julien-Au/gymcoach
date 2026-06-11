@@ -27,3 +27,6 @@ research and the product wedge). See `docs/loops/08-ideation-loop.md` for how th
 - shipped - import training history from a Strong app CSV export (issue #100, 2026-06-10, PR #105 + hardening #108) - re-evaluated rejection; security review found and fixed body-cap bypass, transaction timeout, CSV formula injection
 - shipped - give the AI coach the user's goals and fatigue signals (issue #101, 2026-06-10, PR #104) - payload + prompt input-side only; post-merge review verdict CLEAN
 - deferred - supersets/circuits (2026-06-10) - now allowed by the directive (nullable group column is additive) but the session-runner UX surface is too heavy for one tight PR; revisit as its own batch with a UX-first slice
+- proposed - ask the coach mid-session with live session context (issue #111, 2026-06-11) - the AI half of the last roadmap item; chat payload gains currentSession, output contract unchanged
+- proposed - start a deload week in one tap from the recommendation (issue #112, 2026-06-11) - additive User.deloadUntil + 'planned-deload' suggestion reason, no-stacking precedence
+- proposed - import training history from a Hevy CSV export (issue #113, 2026-06-11) - second format on the hardened import pipeline; real session times, set_type mapping
