@@ -1,6 +1,13 @@
 import { z } from 'zod';
 import type { WeightUnit } from '@prisma/client';
 import { lbToKg, roundWeight } from '@/lib/units';
+import {
+  asNumber,
+  headerKey,
+  IMPORT_CSV_MAX_BYTES,
+  IMPORT_CSV_MAX_ROWS,
+  readCsvRecords,
+} from '@/lib/import/csv';
 
 // ============================================================
 // Strong app CSV export parser (issue #100) - pure, no DB
@@ -11,9 +18,9 @@ import { lbToKg, roundWeight } from '@/lib/units';
 // instead of failing the whole file; only an unrecognized header or a blown
 // cap is fatal.
 
-// Hard caps on the untrusted input.
-export const STRONG_CSV_MAX_BYTES = 5 * 1024 * 1024; // 5 MB of text
-export const STRONG_CSV_MAX_ROWS = 50000; // data rows, header excluded
+// Hard caps on the untrusted input (shared across import formats).
+export const STRONG_CSV_MAX_BYTES = IMPORT_CSV_MAX_BYTES;
+export const STRONG_CSV_MAX_ROWS = IMPORT_CSV_MAX_ROWS;
 
 // One normalized working-set row. Weight is in kg, like everything stored.
 export interface StrongCsvRow {
@@ -52,81 +59,6 @@ const rowSchema = z.object({
   weightKg: z.coerce.number().min(0).max(500),
   reps: z.coerce.number().int().min(1).max(100),
 });
-
-// ------------------------------------------------------------
-// Minimal RFC4180-style CSV reader (quoted fields, "" escapes, quoted
-// newlines, CRLF). Returns one string[] per record plus the 1-based line
-// number the record starts on. No regex backtracking, single pass.
-// ------------------------------------------------------------
-function readCsvRecords(text: string): Array<{ line: number; fields: string[] }> {
-  const records: Array<{ line: number; fields: string[] }> = [];
-  let fields: string[] = [];
-  let field = '';
-  let inQuotes = false;
-  let line = 1;
-  let recordStartLine = 1;
-  let recordHasContent = false;
-
-  const pushField = () => {
-    fields.push(field);
-    field = '';
-  };
-  const pushRecord = () => {
-    pushField();
-    // Skip records that are entirely empty (blank lines).
-    if (recordHasContent || fields.length > 1 || (fields[0] ?? '') !== '') {
-      records.push({ line: recordStartLine, fields });
-    }
-    fields = [];
-    recordHasContent = false;
-    recordStartLine = line;
-  };
-
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i]!;
-    if (inQuotes) {
-      if (ch === '"') {
-        if (text[i + 1] === '"') {
-          field += '"';
-          i++;
-        } else {
-          inQuotes = false;
-        }
-      } else {
-        if (ch === '\n') line++;
-        field += ch;
-      }
-      continue;
-    }
-    if (ch === '"') {
-      inQuotes = true;
-      recordHasContent = true;
-    } else if (ch === ',') {
-      pushField();
-      recordHasContent = true;
-    } else if (ch === '\n') {
-      line++;
-      pushRecord();
-    } else if (ch === '\r') {
-      // Swallow; the following \n (if any) ends the record.
-      if (text[i + 1] !== '\n') {
-        line++;
-        pushRecord();
-      }
-    } else {
-      field += ch;
-      recordHasContent = true;
-    }
-  }
-  // Final record without a trailing newline.
-  if (recordHasContent || field !== '' || fields.length > 0) pushRecord();
-  return records;
-}
-
-// Normalize a header cell for matching: lowercase, trimmed, collapsed spaces.
-function headerKey(cell: string): string {
-  return cell.trim().toLowerCase().replace(/\s+/g, ' ');
-}
 
 interface HeaderMap {
   date: number;
@@ -209,14 +141,6 @@ function toDateKey(cell: string): string | null {
     return null;
   }
   return `${y}-${mo}-${d}`;
-}
-
-function asNumber(cell: string | undefined): number {
-  if (cell === undefined) return 0;
-  const trimmed = cell.trim();
-  if (trimmed === '') return 0;
-  const n = Number(trimmed);
-  return Number.isFinite(n) ? n : NaN;
 }
 
 // Parse a Strong CSV export. `unit` is the unit the Strong app was set to

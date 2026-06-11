@@ -44,18 +44,54 @@ interface Preview {
   errors: LineError[];
 }
 
-// Strong CSV import (issue #100): pick the export file, dry-run preview
-// (counts + per-line errors, nothing written), then explicitly confirm.
+type ImportFormat = 'STRONG' | 'HEVY';
+
+// Copy and endpoint per supported source app. Strong keeps its unit toggle
+// (its export follows the app's unit setting); Hevy always exports kg, so the
+// toggle is hidden for it.
+const FORMAT_META: Record<
+  ImportFormat,
+  { label: string; endpoint: string; exportHint: string; hasUnitToggle: boolean }
+> = {
+  STRONG: {
+    label: 'Strong',
+    endpoint: '/api/import/strong',
+    exportHint: 'export it as CSV (Settings, then Export data)',
+    hasUnitToggle: true,
+  },
+  HEVY: {
+    label: 'Hevy',
+    endpoint: '/api/import/hevy',
+    exportHint: 'export it as CSV (Settings, then Export & Import Data)',
+    hasUnitToggle: false,
+  },
+};
+
+// CSV import from another tracker (issues #100/#113): pick the source app and
+// the export file, dry-run preview (counts + per-line errors, nothing
+// written), then explicitly confirm.
 export function ImportSection() {
   const fileRef = useRef<HTMLInputElement>(null);
+  const [format, setFormat] = useState<ImportFormat>('STRONG');
   const [unit, setUnit] = useState<'KG' | 'LB'>('KG');
   const [fileName, setFileName] = useState<string | null>(null);
   const [csvText, setCsvText] = useState<string | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
   const [busy, setBusy] = useState(false);
 
+  const meta = FORMAT_META[format];
+
   function pickFile() {
     fileRef.current?.click();
+  }
+
+  function switchFormat(next: ImportFormat) {
+    if (busy) return;
+    setFormat(next);
+    // A pending preview was produced by the other parser; drop it.
+    setCsvText(null);
+    setFileName(null);
+    setPreview(null);
   }
 
   async function onFilePicked(e: React.ChangeEvent<HTMLInputElement>) {
@@ -74,10 +110,14 @@ export function ImportSection() {
   }
 
   async function callApi(csv: string, mode: 'preview' | 'confirm') {
-    const res = await fetch('/api/import/strong', {
+    const res = await fetch(meta.endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ csv, unit, mode }),
+      // The Hevy route has no unit field (kg always); sending it would be
+      // rejected by Zod only if unknown keys were stripped - keep it clean.
+      body: JSON.stringify(
+        meta.hasUnitToggle ? { csv, unit, mode } : { csv, mode },
+      ),
     });
     const json = (await res.json().catch(() => null)) as
       | (Preview & {
@@ -137,26 +177,43 @@ export function ImportSection() {
   return (
     <Card>
       <CardHeader className="pb-3">
-        <h2 className="text-base font-semibold">Import from Strong</h2>
+        <h2 className="text-base font-semibold">Import from {meta.label}</h2>
         <p className="text-xs text-muted-foreground">
-          Bring your training history from the Strong app: export it as CSV
-          (Settings, then Export data), preview it here, then confirm.
+          Bring your training history from the {meta.label} app:{' '}
+          {meta.exportHint}, preview it here, then confirm.
         </p>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         <div className="flex items-end gap-2">
           <div className="space-y-1">
-            <Label htmlFor="strong-unit">Strong weight unit</Label>
-            <Select value={unit} onValueChange={(v) => setUnit(v as 'KG' | 'LB')}>
-              <SelectTrigger id="strong-unit" className="h-9 w-28">
+            <Label htmlFor="import-format">Source app</Label>
+            <Select
+              value={format}
+              onValueChange={(v) => switchFormat(v as ImportFormat)}
+            >
+              <SelectTrigger id="import-format" className="h-9 w-28">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="KG">kg</SelectItem>
-                <SelectItem value="LB">lb</SelectItem>
+                <SelectItem value="STRONG">Strong</SelectItem>
+                <SelectItem value="HEVY">Hevy</SelectItem>
               </SelectContent>
             </Select>
           </div>
+          {meta.hasUnitToggle && (
+            <div className="space-y-1">
+              <Label htmlFor="strong-unit">Strong weight unit</Label>
+              <Select value={unit} onValueChange={(v) => setUnit(v as 'KG' | 'LB')}>
+                <SelectTrigger id="strong-unit" className="h-9 w-28">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="KG">kg</SelectItem>
+                  <SelectItem value="LB">lb</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <Button
             variant="outline"
             onClick={pickFile}
@@ -168,7 +225,7 @@ export function ImportSection() {
             ) : (
               <FileUp className="size-4" />
             )}
-            <span className="ml-2">Choose a Strong CSV file</span>
+            <span className="ml-2">Choose a {meta.label} CSV file</span>
           </Button>
         </div>
         <input
