@@ -105,3 +105,17 @@ Format per entry: trigger/evidence, the lesson (actionable), and **Status** = `g
   multiple "lenses" - independence, not effort, is what catches the defect.
 - **Status:** graduated -> charter (`07-autonomy.md`, "Subagent challenge protocol"): the
   no-reviewer-available case is now an explicit rule with the post-merge backstop.
+
+### L9 - Gates rot, permissions creep: schedule the meta-checks
+- **Trigger:** an external loop-engineering writeup (2026-06-11) listed two failure modes
+  our system had no answer for: a test that approved a fix can silently stop catching the
+  regression it was written for ("gates rot" - we had never reverted a fix to confirm its
+  test fails), and permission scope creep in an unattended loop's settings.
+- **Lesson:** the loop's own controls need periodic verification, not just existence. A
+  gate is only as good as the last time someone proved it can fail; a permission list is
+  only as tight as its last re-read.
+- **Status:** graduated -> `triage` skill (sources 6 and 7: monthly gate spot-check with
+  revert-the-fix verification, ~30-day permissions re-audit), and the write-up skill now
+  records the accepted-change rate per batch. External validation noted: the rest of the
+  writeup's recommendations (maker/checker split, state files, objective gates, hard
+  stops, regrounding spec) were already implemented here.

@@ -41,6 +41,16 @@ later `implement-issue` run can pick up unattended.
    (only file if concrete and locatable).
 5. **Dependency hygiene** - `npm outdated` for clearly safe minor/patch bumps, or a
    flagged advisory from `npm audit`. One issue per coherent group, not per package.
+6. **Gate spot-check ("gates rot")** - periodically (roughly monthly, or when no other
+   source yields work): pick 1-2 recently merged fix/feature PRs, revert the core change
+   locally (never push), and confirm the tests that approved the PR actually FAIL. A test
+   that still passes with the fix reverted is a rotten gate - file an issue naming the
+   test and the uncovered failure mode. Record the spot-check (date + PRs checked) in
+   `docs/loops/autonomy-log.md` even when everything fails correctly.
+7. **Permissions re-audit** - roughly every 30 days, re-read `.claude/settings.json` /
+   `.claude/settings.local.json` allow/deny lists against what the loop actually needs
+   now. Scope creep (a permission added "temporarily" and never removed) becomes an
+   issue; the deny list (curl/wget, force-push, hard reset) must still be intact.
 
 Prefer the source that yields the most concrete, lowest-ambiguity item. A good triage
 issue names the file(s) and the acceptance check.

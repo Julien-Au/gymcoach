@@ -82,6 +82,13 @@ commit on an existing docs branch.
 - Docs only - no product code, no merges (let `ship-pr` merge it).
 - Do not document unmerged work as shipped (it belongs in the PR, not `main`'s story).
 
+## One metric per batch
+
+Each batch write-up records, in the autonomy-log entry, the cheap acceptance metric:
+PRs merged vs PRs abandoned/reverted this batch (the accepted-change rate), and the
+approximate token spend of the implementing tick when known. Cost per accepted change -
+not tokens spent - is the number that says whether the loop is winning.
+
 ## What success looks like
 
 The CHANGELOG and the `docs/loops/` playbook always reflect what actually shipped, so the
