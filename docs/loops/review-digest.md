@@ -146,3 +146,34 @@ showing the current product; demo seed extended with bodyweight/goal/readiness d
 > The L8 backstop is now proven twice: independent post-merge review found one REAL defect
 > in #95 and four across #103/#105. Author self-review keeps missing what independent eyes
 > catch in one pass.
+
+---
+
+## 2026-06-11 - fifth batch (#115/#116/#117): three CLEAN verdicts, first zero-defect batch
+
+Merged: #114 (ideate log), #115 (one-tap deload week - migration + progression + API),
+#116 (ask the coach mid-session - live session context in the chat payload), #117 (Hevy
+CSV import on the hardened pipeline). All three were flagged for post-merge independent
+review (L8) and all three came back CLEAN - the first batch with zero REAL defects. Also
+the first batch under the model-routing directive (Fable implements, Opus reviews).
+
+**Read first, in order:**
+
+1. **#115 - the deload precedence rule.** `gh pr diff 115`. suggestNextWeight now has a
+   planned-deload branch that pre-empts progression AND readiness adjustments (one 10%
+   step-down, never stacked). This changes what weight the app tells you to lift - the
+   reviewer verified every branch, but it is core training behavior, worth your eyes.
+2. **#116 - what the chat can see now.** `gh pr diff 116`. A sessionId query param attaches
+   your live workout to the chat payload; two independent ownership gates (page + API),
+   foreign ids degrade to null. The structured contracts are byte-identical.
+3. **#117 - the import surface doubled.** `gh pr diff 117`. New Hevy parser + shared
+   executor refactor; the Strong path is pinned byte-identical by a regression test and
+   the rate-limit bucket is genuinely shared across both routes.
+
+**Skim:** #114 and this write-up. **Follow-up filed:** #118 (latent doc-vs-validation
+contradiction on negative assisted loads - unreachable today, option-A doc fix specced).
+
+> Screenshots note: none of the four captured pages (home/progress/generator/catalog)
+> visibly changed in this batch (the new surfaces live in the session runner, the chat,
+> and settings), and the GIFs were re-recorded yesterday - so per the media rule (refresh
+> on visible change; clips max ~3 batches lag) the media stands as-is at 1 batch of lag.

@@ -6,6 +6,34 @@ by the charter in [`07-autonomy.md`](07-autonomy.md).
 
 ---
 
+## 2026-06-11 - Fifth batch: roadmap's last AI item shipped; first zero-defect reviews; model routing live
+
+**Context.** Fifth ideate batch (#111 ask-the-coach mid-session, #112 one-tap deload,
+#113 Hevy import) filed and logged (#114), implemented by a Fable background tick (PRs
+#115/#116/#117, all merged on green full CI, budget 3/3, rollback baseline tagged before
+the migration). First cycle under the operator's model-routing directive: Fable for the
+implementing tick, Opus 4.8 for the three independent post-merge reviews.
+
+**Decided / shipped.**
+- All three post-merge reviews came back CLEAN - the first batch with zero REAL defects
+  since the L8 backstop exists. Notable verifications: deload precedence on every branch
+  incl. no-stacking; double ownership gate on the chat sessionId; shared import rate
+  bucket and a byte-identical Strong path.
+- The tick's flagged product concern (deload step-down on negative assisted loads) was
+  requalified by the reviewer as a pre-existing, currently unreachable doc-vs-validation
+  contradiction; filed as #118 with a default option-A (docs) resolution.
+- Write-up: CHANGELOG, README features + roadmap (in-session AI suggestions checked;
+  free-text AI set logging is the remaining open item), backlog, this entry. Media
+  unchanged per the rule (no captured page changed; clips at 1 batch of lag).
+
+**Challenged.** Three independent Opus reviews in parallel; all CLEAN. The quality
+signal survived the model split - the cheaper review lane still verified empirically
+(ran tests, checked diffs byte-level) rather than rubber-stamping.
+
+**Deferred to human.** Nothing. #118 awaits a normal loop pick-up (option A specced).
+
+---
+
 ## 2026-06-11 - Maintainer run: shipped #112, #111, #113 (fifth ideate batch)
 
 **Context.** Maintainer tick over the fifth ideate batch, strictly serialized (lesson L7:

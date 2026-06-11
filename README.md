@@ -57,7 +57,8 @@ more about *how a repo can maintain itself* than about the gym app, start there.
   MEV/MRV landmark bands, a training-consistency calendar, and personal-record
   badges in session and on the post-session summary
 - Stalled-lift detection plus a deload-week recommendation derived from your
-  stalls and readiness trend
+  stalls and readiness trend - and a one-tap planned deload week that lightens
+  every suggested load by 10% until it expires
 - Per-exercise target goals (weight x reps) with a progress bar and an
   achieved badge
 - Bodyweight tracking with a trend chart - and bodyweight-aware tonnage for
@@ -69,11 +70,13 @@ more about *how a repo can maintain itself* than about the gym app, start there.
   runnable as written and editable like any program
 - AI coach: weekly debrief and assisted program adjustments, aware of your
   goals and fatigue signals
-- Conversational AI coach: streaming chat grounded in your training data
+- Conversational AI coach: streaming chat grounded in your training data -
+  including mid-session, with the live workout (sets so far, targets, today's
+  readiness) attached in one tap
 - AI program generation from a natural-language goal, editable before saving
 - Pluggable LLM provider: Anthropic SDK or any OpenRouter model
-- Import your training history from a Strong CSV export (dry-run preview,
-  duplicate-safe); export everything back out as CSV anytime
+- Import your training history from a Strong or Hevy CSV export (dry-run
+  preview, duplicate-safe); export everything back out as CSV anytime
 - Train in kilograms or pounds, a per-user preference (data is always stored in kg)
 - Installable PWA with offline session logging
 
@@ -243,7 +246,9 @@ docker compose -f docker-compose.prod.yml exec app npx prisma migrate deploy
 - [x] Test pyramid (unit, integration, E2E) and CI
 - [x] Shorthand set logging (`100x8@9`) - the deterministic slice of
       natural-language logging
-- [ ] In-session AI suggestions and free-text set logging
+- [x] In-session AI suggestions (ask the coach mid-workout with the live
+      session attached)
+- [ ] Free-text (AI-parsed) set logging
 
 ## Contributing
 

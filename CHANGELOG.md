@@ -83,6 +83,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   single field of the set logger to fill the weight, reps, and effort fields
   (RPE maps to the stored RIR). Deterministic parser in the user's display
   unit; the classic fields keep working unchanged.
+- One-tap deload week: the deload recommendation banner can now start a
+  7-day planned deload; while active, every suggested load steps down 10%
+  (reason "planned deload", shown in the suggestion badge), it never stacks
+  with a readiness step-down, a session badge shows the state, and the AI
+  coach is told a deload is underway. Ends automatically or in one tap.
+- Ask the coach mid-session: a button in the session runner opens the
+  streaming chat with the live workout attached (sets logged so far, program
+  targets, today's readiness check-in) so advice is immediate and grounded;
+  the chat stays free-form and all structured output contracts are unchanged.
+- Import from Hevy: the CSV import now accepts Hevy exports too (real session
+  times, warmup and drop-set markers), behind the same hardened pipeline as
+  the Strong format - shared size/row caps, streamed body limit, shared rate
+  limit, dry-run preview, transactional confirm with duplicate skipping.
 - Bodyweight tracking: log dated bodyweight entries from a trend card on the
   progress page (12-week chart, quick add in your display unit, deletable
   entries). The newest entry keeps the profile's current bodyweight in sync
