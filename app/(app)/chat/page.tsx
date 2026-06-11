@@ -8,8 +8,28 @@ import {
   type ConversationSummary,
 } from '@/components/coach/chat-client';
 
-export default async function ChatPage() {
+interface SearchParams {
+  sessionId?: string;
+}
+
+export default async function ChatPage({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}) {
   const auth = await requireSession();
+
+  // In-session chat (issue #111): the session runner links here with
+  // ?sessionId=... . Only forward an id that belongs to the caller; anything
+  // else degrades to a normal chat (the API re-checks ownership anyway).
+  let sessionId: string | null = null;
+  if (searchParams.sessionId) {
+    const owned = await db.session.findFirst({
+      where: { id: searchParams.sessionId, userId: auth.userId },
+      select: { id: true },
+    });
+    sessionId = owned?.id ?? null;
+  }
 
   const conversations = await db.conversation.findMany({
     where: { userId: auth.userId },
@@ -18,7 +38,9 @@ export default async function ChatPage() {
     select: { id: true, title: true, updatedAt: true },
   });
 
-  const active = conversations[0] ?? null;
+  // With a live session attached, start on a fresh conversation so the
+  // mid-workout question is not appended to an old thread.
+  const active = sessionId ? null : (conversations[0] ?? null);
   let initialMessages: ChatMessage[] = [];
   if (active) {
     const msgs = await db.message.findMany({
@@ -57,6 +79,7 @@ export default async function ChatPage() {
           initialConversations={initialConversations}
           initialActiveId={active?.id ?? null}
           initialMessages={initialMessages}
+          sessionId={sessionId}
           hasApiKey={provider.isConfigured()}
           providerLabel={provider.label}
           apiKeyEnvVar={provider.apiKeyEnvVar}

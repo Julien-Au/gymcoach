@@ -65,6 +65,16 @@ Solid week: 3 sessions logged, total working volume up about 4% versus last week
 ]
 </adjustments>`;
 
+// In-session chat (issue #111): canned answer keyed to the live-session
+// context so the no-key flow demonstrates mid-workout coaching.
+const CHAT_IN_SESSION = `Got it - looking at your live session.
+
+- **Right now**: your logged sets are at or above target reps, so the load is well chosen. Keep it for the remaining sets and stop at RIR 2.
+- **Shoulder caution**: if a press feels off, drop the load about 10% for the next set or swap to the next exercise in your plan and come back; never push through joint pain.
+- **Rest**: take the full programmed rest before the next set - rushing it costs reps.
+
+Log how the next set feels and ask me again if it does not improve.`;
+
 const CHAT = `Short version: your bench is moving and your chest volume is in a good spot.
 
 - **Bench press**: estimated 1RM is trending up (about +6% over the last 8 weeks) while your RIR stays around 2, so the stimulus is sustainable. Keep adding ~2.5 kg once you hit the top of the rep range on all sets.
@@ -121,6 +131,10 @@ const DEMO_PROGRAM = {
 function cannedResponse(system: string): string {
   if (system.includes('<adjustments>')) return DEBRIEF; // weekly debrief prompt
   if (system.includes('SINGLE JSON object')) return JSON.stringify(DEMO_PROGRAM, null, 2); // program generation prompt
+  // In-session chat: the appended payload JSON carries a "currentSession" key
+  // only when a live session is attached (the quoted form cannot appear in the
+  // stable prompt text, which mentions currentSession without quotes).
+  if (system.includes('"currentSession"')) return CHAT_IN_SESSION;
   return CHAT; // conversational coach
 }
 

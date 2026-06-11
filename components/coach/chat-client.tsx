@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Loader2, MessageSquarePlus, Send } from 'lucide-react';
+import { Dumbbell, Loader2, MessageSquarePlus, Send } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,9 @@ interface Props {
   initialConversations: ConversationSummary[];
   initialActiveId: string | null;
   initialMessages: ChatMessage[];
+  // Live session attached from the session runner (issue #111), or null for a
+  // normal chat. Sent with each message so the coach sees the workout so far.
+  sessionId?: string | null;
   hasApiKey: boolean;
   providerLabel: string;
   apiKeyEnvVar: string;
@@ -32,6 +35,7 @@ export function ChatClient({
   initialConversations,
   initialActiveId,
   initialMessages,
+  sessionId = null,
   hasApiKey,
   providerLabel,
   apiKeyEnvVar,
@@ -74,7 +78,11 @@ export function ChatClient({
       const res = await fetch('/api/coach/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ conversationId: activeId ?? undefined, message: text }),
+        body: JSON.stringify({
+          conversationId: activeId ?? undefined,
+          message: text,
+          sessionId: sessionId ?? undefined,
+        }),
       });
 
       if (!res.ok || !res.body) {
@@ -155,6 +163,17 @@ export function ChatClient({
         </div>
       )}
 
+      {sessionId && (
+        <div className="flex items-center gap-2 rounded-md border border-primary/30 bg-primary/5 p-3 text-sm">
+          <Dumbbell className="size-4 shrink-0 text-primary" />
+          <p className="text-xs text-muted-foreground">
+            <span className="font-medium text-foreground">Live session attached.</span>{' '}
+            The coach sees the sets you have logged so far and your program
+            targets for this workout.
+          </p>
+        </div>
+      )}
+
       <div className="flex items-center gap-2 overflow-x-auto pb-1">
         <Button
           type="button"
@@ -189,8 +208,9 @@ export function ChatClient({
       >
         {messages.length === 0 ? (
           <p className="m-auto max-w-sm text-center text-sm text-muted-foreground">
-            Ask your coach anything: how to break a plateau, whether your volume
-            is on track, how to adjust around an injury...
+            {sessionId
+              ? 'Mid-workout question? Ask about your next set, a load that feels off, or whether to swap an exercise.'
+              : 'Ask your coach anything: how to break a plateau, whether your volume is on track, how to adjust around an injury...'}
           </p>
         ) : (
           messages.map((m, i) => (

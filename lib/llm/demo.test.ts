@@ -43,4 +43,29 @@ describe('demo provider', () => {
     });
     expect(chat.text.toLowerCase()).toContain('volume');
   });
+
+  // Issue #111: a live session in the appended payload selects the in-session
+  // canned answer, so the no-key flow demonstrates mid-workout coaching.
+  it('serves the in-session answer when the payload carries a currentSession section', async () => {
+    process.env.LLM_PROVIDER = 'demo';
+    const p = getLlmProvider();
+
+    const inSession = await p.complete({
+      // Mimics the chat route: stable prompt (mentions currentSession without
+      // quotes) + JSON payload where the quoted key appears.
+      system:
+        'You are GymCoach. When the JSON contains a currentSession section...\n{ "currentSession": { "workoutName": "Push" } }',
+      messages: [{ role: 'user', content: 'shoulder feels off' }],
+    });
+    expect(inSession.text).toContain('live session');
+    expect(inSession.text).not.toContain('<adjustments>');
+
+    // Without the quoted JSON key (prompt prose alone) it stays the normal
+    // chat answer - the marker must not false-positive on the stable prompt.
+    const normal = await p.complete({
+      system: 'You are GymCoach. When the JSON contains a currentSession section...',
+      messages: [{ role: 'user', content: 'x' }],
+    });
+    expect(normal.text.toLowerCase()).toContain('volume');
+  });
 });
