@@ -32,6 +32,17 @@ export const DELOAD_READINESS_MAX_AGE_DAYS = 14;
 // window, justify a planned week of reduced load instead.
 export const DELOAD_READINESS_THRESHOLD = READINESS_HOLD_AT_OR_BELOW;
 
+// Length of a one-tap planned deload week (issue #112): POST /api/deload sets
+// User.deloadUntil this many days ahead.
+export const DELOAD_DURATION_DAYS = 7;
+
+// Whether a planned deload is currently active. Null or a timestamp at/in the
+// past means no active deload, so an expired deloadUntil silently returns the
+// app to normal progression without any cleanup write.
+export function isDeloadActive(deloadUntil: Date | null, now: Date): boolean {
+  return deloadUntil != null && deloadUntil.getTime() > now.getTime();
+}
+
 export type DeloadReason =
   | { kind: 'stalled-lifts'; exerciseNames: string[] }
   | { kind: 'low-readiness'; averageReadiness: number; checkins: number };

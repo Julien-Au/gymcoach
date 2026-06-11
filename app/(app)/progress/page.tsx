@@ -19,6 +19,7 @@ import {
 import {
   DELOAD_READINESS_LOOKBACK,
   DELOAD_READINESS_MAX_AGE_DAYS,
+  isDeloadActive,
   recommendDeload,
 } from '@/lib/deload';
 import { ProgressDashboard } from '@/components/progress/progress-dashboard';
@@ -62,7 +63,7 @@ export default async function ProgressPage({
     }),
     db.user.findUnique({
       where: { id: auth.userId },
-      select: { bodyweight: true, unit: true, weeklyFrequency: true },
+      select: { bodyweight: true, unit: true, weeklyFrequency: true, deloadUntil: true },
     }),
   ]);
   const bodyweight = user?.bodyweight ?? null;
@@ -290,6 +291,11 @@ export default async function ProgressPage({
     recentReadiness: recentCheckins.map((c) => c.readiness),
   });
 
+  // Active planned deload week (issue #112): only a future deloadUntil counts;
+  // an expired one reads as inactive without any cleanup write.
+  const deloadActive = isDeloadActive(user?.deloadUntil ?? null, new Date());
+  const deloadUntilIso = deloadActive ? user!.deloadUntil!.toISOString() : null;
+
   return (
     <main className="flex-1 px-4 py-6">
       <div className="mx-auto flex max-w-3xl flex-col gap-6">
@@ -316,7 +322,9 @@ export default async function ProgressPage({
           />
         ) : (
           <>
-            {deload.recommended && <DeloadBanner reasons={deload.reasons} />}
+            {(deload.recommended || deloadActive) && (
+              <DeloadBanner reasons={deload.reasons} deloadUntil={deloadUntilIso} />
+            )}
             <ConsistencyCard
               weeks={consistency.weeks}
               currentStreak={consistency.currentStreak}

@@ -39,6 +39,7 @@ function renderSetInput(unit: 'KG' | 'LB' = 'KG') {
       existingSets={[]}
       lastPerformance={undefined}
       readiness={null}
+      deloadActive={false}
       unit={unit}
       onSubmit={onSubmit}
     />,

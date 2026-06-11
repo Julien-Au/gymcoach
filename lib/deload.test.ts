@@ -5,6 +5,7 @@ import {
   DELOAD_READINESS_THRESHOLD,
   DELOAD_STALLED_LIFTS_MIN,
   deloadReasonLine,
+  isDeloadActive,
   recommendDeload,
 } from './deload';
 
@@ -124,5 +125,24 @@ describe('deloadReasonLine', () => {
     expect(
       deloadReasonLine({ kind: 'low-readiness', averageReadiness: 2.3, checkins: 4 }),
     ).toBe('Your readiness has averaged 2.3/5 over your last 4 check-ins.');
+  });
+});
+
+// One-tap planned deload week (issue #112): activity window semantics.
+describe('isDeloadActive', () => {
+  const now = new Date('2026-06-11T12:00:00Z');
+
+  it('is inactive when deloadUntil is null', () => {
+    expect(isDeloadActive(null, now)).toBe(false);
+  });
+
+  it('is active while deloadUntil is in the future', () => {
+    expect(isDeloadActive(new Date('2026-06-18T12:00:00Z'), now)).toBe(true);
+    expect(isDeloadActive(new Date('2026-06-11T12:00:01Z'), now)).toBe(true);
+  });
+
+  it('expires: a past or exactly-now deloadUntil has no effect', () => {
+    expect(isDeloadActive(new Date('2026-06-04T12:00:00Z'), now)).toBe(false);
+    expect(isDeloadActive(new Date('2026-06-11T12:00:00Z'), now)).toBe(false);
   });
 });

@@ -319,3 +319,64 @@ describe('readinessForSuggestion - auto-regulation preference gate (issue #61)',
     expect(gatedOn.weight).toBe(+(80 * (1 - READINESS_DELOAD_FRACTION)).toFixed(2));
   });
 });
+
+// Planned deload week (issue #112). The boolean is resolved by the caller from
+// User.deloadUntil (lib/deload.ts isDeloadActive); these tests pin the
+// step-down, its precedence over progression/hold, and the no-stacking rule
+// against a simultaneous readiness deload.
+describe('suggestNextWeight planned deload', () => {
+  const progressingSets = [
+    { weight: 80, reps: 10, rir: 2 },
+    { weight: 80, reps: 10, rir: 2 },
+    { weight: 80, reps: 10, rir: 2 },
+  ];
+
+  it('steps the working load down 10% with the planned-deload reason', () => {
+    const res = suggestNextWeight(makePe(compoundExo), progressingSets, null, true);
+    expect(res).toMatchObject({
+      weight: 72,
+      reason: 'planned-deload',
+      workingWeight: 80,
+      targetRepsMax: 10,
+    });
+  });
+
+  it('takes precedence over a programmed increment', () => {
+    // Without the deload these sets progress to 82.5.
+    const baseline = suggestNextWeight(makePe(compoundExo), progressingSets);
+    expect(baseline.reason).toBe('progression');
+    const deload = suggestNextWeight(makePe(compoundExo), progressingSets, null, true);
+    expect(deload.reason).toBe('planned-deload');
+    expect(deload.weight).toBeLessThan(baseline.weight!);
+  });
+
+  it('does not stack with a readiness deload: one 10% reduction, never both', () => {
+    const drained: ReadinessSignal = { readiness: 1, soreness: null, ageHours: 1 };
+    const readinessOnly = suggestNextWeight(makePe(compoundExo), progressingSets, drained);
+    expect(readinessOnly.reason).toBe('readiness-deload');
+    const both = suggestNextWeight(makePe(compoundExo), progressingSets, drained, true);
+    // The same single reduction is applied (80 * 0.9 = 72, not 80 * 0.81).
+    expect(both.weight).toBe(readinessOnly.weight);
+    expect(both.weight).toBe(+(80 * (1 - READINESS_DELOAD_FRACTION)).toFixed(2));
+    expect(both.reason).toBe('planned-deload');
+  });
+
+  it('wins over a readiness hold (the larger reduction applies)', () => {
+    const poor: ReadinessSignal = { readiness: 2, soreness: null, ageHours: 1 };
+    const holdOnly = suggestNextWeight(makePe(compoundExo), progressingSets, poor);
+    expect(holdOnly).toMatchObject({ reason: 'readiness-hold', weight: 80 });
+    const withDeload = suggestNextWeight(makePe(compoundExo), progressingSets, poor, true);
+    expect(withDeload).toMatchObject({ reason: 'planned-deload', weight: 72 });
+  });
+
+  it('inactive (false/omitted) leaves the suggestion byte-identical to before', () => {
+    const before = suggestNextWeight(makePe(compoundExo), progressingSets);
+    const explicit = suggestNextWeight(makePe(compoundExo), progressingSets, null, false);
+    expect(explicit).toEqual(before);
+  });
+
+  it('still reports no-history when there are no previous sets', () => {
+    const res = suggestNextWeight(makePe(compoundExo), [], null, true);
+    expect(res).toEqual({ weight: null, reason: 'no-history' });
+  });
+});

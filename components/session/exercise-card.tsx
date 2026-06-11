@@ -21,19 +21,23 @@ interface Props {
   programExercise: ProgramExercise & { exercise: Exercise };
   lastPerformance: SerializedLastPerformance | undefined;
   readiness: ReadinessSignal | null;
+  // True while a planned deload week is active (issue #112).
+  deloadActive: boolean;
   unit: WeightUnit;
 }
 
-// Short, plain-language explainer shown next to the suggested load when a recent
-// readiness/soreness check-in made the suggestion more conservative. Returns
-// null for the normal (non-readiness) reasons so the UI is unchanged then. The
-// note names the likelier cause - reported soreness for the trained muscle, or
-// low overall readiness - so the adjustment reads as deliberate, not arbitrary.
+// Short, plain-language explainer shown next to the suggested load when a
+// planned deload week or a recent readiness/soreness check-in made the
+// suggestion more conservative. Returns null for the normal reasons so the UI
+// is unchanged then. The note names the likelier cause - the planned deload,
+// reported soreness for the trained muscle, or low overall readiness - so the
+// adjustment reads as deliberate, not arbitrary.
 function readinessExplainer(
   reason: SuggestionReason,
   readiness: ReadinessSignal | null,
   muscleGroup: MuscleGroup,
 ): string | null {
+  if (reason === 'planned-deload') return 'Lighter - planned deload week';
   if (reason !== 'readiness-hold' && reason !== 'readiness-deload') return null;
   const verb = reason === 'readiness-deload' ? 'Lighter' : 'Held';
   const groupSoreness = readiness?.soreness?.[muscleGroup];
@@ -54,12 +58,20 @@ function helpText(suggestion: SuggestionResult, unit: WeightUnit): string {
       return `A recent readiness check-in flagged poor recovery, so the load stays at ${working} instead of increasing today. Push the reps, not the weight.`;
     case 'readiness-deload':
       return `A recent readiness check-in flagged very poor recovery, so the load steps down from ${working} for a lighter session. It will climb back as recovery improves.`;
+    case 'planned-deload':
+      return `You are in a planned deload week, so the load steps down about 10% from ${working}. Normal progression resumes when the week ends (you can end it early on the progress page).`;
     default:
       return `Keep the same load and try to beat your reps. Progression unlocks once all working sets reach ${suggestion.targetRepsMax} reps.`;
   }
 }
 
-export function ExerciseCard({ programExercise, lastPerformance, readiness, unit }: Props) {
+export function ExerciseCard({
+  programExercise,
+  lastPerformance,
+  readiness,
+  deloadActive,
+  unit,
+}: Props) {
   const [notesOpen, setNotesOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const exo = programExercise.exercise;
@@ -69,7 +81,12 @@ export function ExerciseCard({ programExercise, lastPerformance, readiness, unit
       ? `${programExercise.targetRepsMin}`
       : `${programExercise.targetRepsMin}-${programExercise.targetRepsMax}`;
 
-  const suggestion = suggestNextWeight(programExercise, lastPerformance?.sets ?? [], readiness);
+  const suggestion = suggestNextWeight(
+    programExercise,
+    lastPerformance?.sets ?? [],
+    readiness,
+    deloadActive,
+  );
   const readinessNote = readinessExplainer(suggestion.reason, readiness, exo.muscleGroup);
   const lastDate = lastPerformance
     ? new Intl.DateTimeFormat('en-US', { day: '2-digit', month: '2-digit' }).format(

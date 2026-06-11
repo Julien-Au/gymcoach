@@ -19,7 +19,8 @@ export type SuggestionReason =
   | 'same-as-last'
   | 'progression'
   | 'readiness-hold'
-  | 'readiness-deload';
+  | 'readiness-deload'
+  | 'planned-deload';
 
 export interface SuggestionResult {
   weight: number | null;
@@ -83,6 +84,10 @@ export function suggestNextWeight(
   programExercise: ProgramExercise & { exercise: Exercise },
   lastSets: Pick<Set, 'weight' | 'reps' | 'rir'>[],
   readiness?: ReadinessSignal | null,
+  // True while the user runs a planned deload week (issue #112). The caller
+  // resolves User.deloadUntil against the clock (lib/deload.ts isDeloadActive)
+  // so this module stays deterministic.
+  plannedDeload?: boolean,
 ): SuggestionResult {
   if (lastSets.length === 0) {
     return { weight: null, reason: 'no-history' };
@@ -112,6 +117,20 @@ export function suggestNextWeight(
         workingWeight,
         targetRepsMax,
       };
+
+  // Planned deload week (issue #112): one conservative step-down from the
+  // working load, taking precedence over a programmed increment and over a
+  // readiness hold. A simultaneous readiness deload is the SAME single 10%
+  // reduction (both use READINESS_DELOAD_FRACTION of the working load), so the
+  // two never stack - the larger single reduction is applied, never both.
+  if (plannedDeload) {
+    return {
+      weight: +(workingWeight * (1 - READINESS_DELOAD_FRACTION)).toFixed(2),
+      reason: 'planned-deload',
+      workingWeight,
+      targetRepsMax,
+    };
+  }
 
   const recovery = assessRecovery(readiness, programExercise.exercise.muscleGroup);
   if (recovery === 'ok') {
