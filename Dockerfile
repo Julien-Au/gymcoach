@@ -21,6 +21,16 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+# Demo-mode flags are NEXT_PUBLIC_* and therefore baked in at build time.
+# Default off: a normal self-host build is unchanged. The public demo passes
+# these as build args (see docker-compose.prod.yml).
+ARG NEXT_PUBLIC_DEMO_MODE=false
+ARG NEXT_PUBLIC_DEMO_EMAIL=
+ARG NEXT_PUBLIC_DEMO_PASSWORD=
+ENV NEXT_PUBLIC_DEMO_MODE=$NEXT_PUBLIC_DEMO_MODE \
+    NEXT_PUBLIC_DEMO_EMAIL=$NEXT_PUBLIC_DEMO_EMAIL \
+    NEXT_PUBLIC_DEMO_PASSWORD=$NEXT_PUBLIC_DEMO_PASSWORD
+
 # Génération du client Prisma puis build Next.js
 RUN npx prisma generate
 RUN npm run build
