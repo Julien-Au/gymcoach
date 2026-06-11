@@ -50,10 +50,12 @@ describe('POST /api/import/strong (preview)', () => {
     expect(body).toMatchObject({
       mode: 'preview',
       sessions: 2,
-      sets: 3,
-      newExercises: ['Bench Press', 'Imported Row'],
+      sets: 4,
+      newExercises: ['Bench Press', 'Imported Row', 'Running'],
       duplicatesSkipped: 0,
-      cardioSkipped: 1,
+      // The Running row is imported as a cardio set since #134.
+      cardioSets: 1,
+      cardioSkipped: 0,
       errorCount: 0,
     });
 
@@ -103,9 +105,10 @@ describe('POST /api/import/strong (confirm)', () => {
     expect(body).toMatchObject({
       mode: 'confirm',
       createdSessions: 2,
-      createdSets: 3,
-      createdExercises: 2,
-      cardioSkipped: 1,
+      createdSets: 4,
+      createdExercises: 3,
+      cardioSets: 1,
+      cardioSkipped: 0,
     });
 
     const sessions = await db.session.findMany({
@@ -120,9 +123,29 @@ describe('POST /api/import/strong (confirm)', () => {
     expect(sessions[0]?.notes).toBe('Imported from Strong - Push Day');
     expect(sessions[0]?.sets).toHaveLength(2);
 
-    const created = await db.exercise.findMany({ where: { userId: user.id } });
-    expect(created.map((e) => e.muscleGroup)).toEqual(['OTHER', 'OTHER']);
-    expect(created.map((e) => e.category)).toEqual(['ISOLATION', 'ISOLATION']);
+    const created = await db.exercise.findMany({
+      where: { userId: user.id },
+      orderBy: { name: 'asc' },
+    });
+    expect(created.map((e) => e.muscleGroup)).toEqual(['OTHER', 'OTHER', 'OTHER']);
+    // Cardio-only imported exercises are created as CARDIO (issue #134).
+    expect(created.map((e) => e.category)).toEqual(['ISOLATION', 'ISOLATION', 'CARDIO']);
+
+    // The cardio set carries the #133 model: duration/distance, weight 0, reps 1.
+    const cardioSet = await db.set.findFirst({
+      where: { exercise: { name: 'Running' } },
+    });
+    expect(cardioSet).toMatchObject({
+      durationSec: 1800,
+      distanceM: 5000,
+      weight: 0,
+      reps: 1,
+    });
+    // Strength sets keep NULL cardio columns (pinned).
+    const benchSet = await db.set.findFirst({
+      where: { exercise: { name: 'Bench Press' } },
+    });
+    expect(benchSet).toMatchObject({ durationSec: null, distanceM: null });
   });
 
   it('matches existing exercises case-insensitively instead of duplicating them', async () => {
@@ -135,7 +158,7 @@ describe('POST /api/import/strong (confirm)', () => {
     const body = await (
       await postImport(importReq({ csv: CSV, mode: 'confirm' }))
     ).json();
-    expect(body.createdExercises).toBe(1); // only "Imported Row"
+    expect(body.createdExercises).toBe(2); // "Imported Row" and "Running"
 
     const benchSets = await db.set.count({ where: { exerciseId: bench.id } });
     expect(benchSets).toBe(2);
@@ -168,7 +191,7 @@ describe('POST /api/import/strong (confirm)', () => {
     expect((await res.json()).error).toMatch(/nothing to import/i);
 
     expect(await db.session.count({ where: { userId: user.id } })).toBe(2);
-    expect(await db.set.count({ where: { session: { userId: user.id } } })).toBe(3);
+    expect(await db.set.count({ where: { session: { userId: user.id } } })).toBe(4);
   });
 
   it('rejects invalid input (Zod) and writes nothing', async () => {

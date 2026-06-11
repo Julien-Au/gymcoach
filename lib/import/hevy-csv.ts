@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { MAX_DISTANCE_M, MAX_DURATION_SEC, MILES_TO_METERS } from '@/lib/cardio';
 import { lbToKg, roundWeight } from '@/lib/units';
 import {
   asNumber,
@@ -41,7 +42,9 @@ export interface HevyCsvParseResult {
   fatalError: string | null;
   rows: HevyCsvRow[];
   errors: CsvLineError[];
-  // Duration/distance-only rows (cardio) skipped with a counted notice.
+  // Cardio rows that still cannot be represented (issue #134: zero/negative
+  // or out-of-bounds duration), skipped with a counted notice. Representable
+  // cardio rows are imported as duration/distance sets since #133.
   cardioSkipped: number;
 }
 
@@ -56,6 +59,17 @@ const rowSchema = z.object({
   reps: z.coerce.number().int().min(1).max(100),
 });
 
+// Cardio rows (issue #134): same identity fields, plus the #133 set bounds
+// on duration/distance. weight/reps are forced to the cardio convention.
+const cardioRowSchema = z.object({
+  dateKey: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  workoutName: z.string().trim().min(1).max(200),
+  exerciseName: z.string().trim().min(1).max(120),
+  setOrder: z.coerce.number().int().min(1).max(50),
+  durationSec: z.number().int().min(1).max(MAX_DURATION_SEC),
+  distanceM: z.number().min(0).max(MAX_DISTANCE_M).nullable(),
+});
+
 interface HeaderMap {
   title: number;
   startTime: number;
@@ -68,6 +82,8 @@ interface HeaderMap {
   weightIsLbs: boolean;
   reps: number;
   distance: number | null;
+  // True when the distance column is the miles variant (issue #134).
+  distanceIsMiles: boolean;
   duration: number | null;
 }
 
@@ -107,7 +123,12 @@ function mapHeader(cells: string[]): HeaderMap | null {
   }
   const endTime = find('end_time');
   const setType = find('set_type');
-  const distance = find('distance_km', 'distance_miles');
+  let distanceIsMiles = false;
+  let distance = find('distance_km');
+  if (distance === -1) {
+    distance = find('distance_miles');
+    if (distance !== -1) distanceIsMiles = true;
+  }
   const duration = find('duration_seconds');
   return {
     title,
@@ -120,6 +141,7 @@ function mapHeader(cells: string[]): HeaderMap | null {
     weightIsLbs,
     reps,
     distance: distance === -1 ? null : distance,
+    distanceIsMiles,
     duration: duration === -1 ? null : duration,
   };
 }
@@ -221,10 +243,58 @@ export function parseHevyCsv(text: string): HevyCsvParseResult {
     const distance = asNumber(get(map.distance));
     const duration = asNumber(get(map.duration));
 
-    // Cardio / duration-only rows (no reps, but distance or time): skipped
-    // with a counted notice rather than reported as errors.
+    // Cardio / duration-only rows (no reps, but distance or time) become
+    // duration/distance sets (issue #134). The qualifying condition is
+    // exactly the pre-#134 skip branch; only what happens to the row changed.
     if (!(reps >= 1) && (distance > 0 || duration > 0)) {
-      cardioSkipped++;
+      // A representable cardio set needs a duration (the #133 model); a
+      // distance-only or out-of-bounds row stays a counted skip notice.
+      if (!(duration >= 1) || duration > MAX_DURATION_SEC) {
+        cardioSkipped++;
+        continue;
+      }
+      // distance_km in km, distance_miles in miles; stored in meters.
+      const distanceM =
+        distance > 0
+          ? +(distance * (map.distanceIsMiles ? MILES_TO_METERS : 1000)).toFixed(2)
+          : null;
+      if (distanceM !== null && distanceM > MAX_DISTANCE_M) {
+        cardioSkipped++;
+        continue;
+      }
+      // Same set_index handling as strength rows: 0-based, a missing index
+      // fails the row instead of colliding with real first sets.
+      const cardioSetIndexCell = get(map.setIndex);
+      const cardioSetIndex =
+        cardioSetIndexCell === undefined || cardioSetIndexCell.trim() === ''
+          ? NaN
+          : asNumber(cardioSetIndexCell);
+      const cardioParsed = cardioRowSchema.safeParse({
+        dateKey: start.dateKey,
+        workoutName: get(map.title) ?? '',
+        exerciseName: get(map.exerciseTitle) ?? '',
+        setOrder: cardioSetIndex + 1,
+        durationSec: Math.round(duration),
+        distanceM,
+      });
+      if (!cardioParsed.success) {
+        const issue = cardioParsed.error.issues[0];
+        errors.push({
+          line: record.line,
+          reason: issue ? `${issue.path.join('.')}: ${issue.message}` : 'Invalid row.',
+        });
+        continue;
+      }
+      const cardioSetType = headerKey(get(map.setType) ?? '');
+      rows.push({
+        ...cardioParsed.data,
+        weightKg: 0,
+        reps: 1,
+        isWarmup: cardioSetType === 'warmup',
+        isDropSet: cardioSetType === 'dropset',
+        startedAtIso: start.iso,
+        finishedAtIso: end?.iso ?? null,
+      });
       continue;
     }
 

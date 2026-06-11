@@ -39,6 +39,9 @@ interface Preview {
   newExercises: string[];
   existingSessionDates: string[];
   duplicatesSkipped: number;
+  // Cardio sets to import (issue #134) vs rows that still cannot be
+  // represented (no usable duration) and are skipped with a notice.
+  cardioSets: number;
   cardioSkipped: number;
   errorCount: number;
   errors: LineError[];
@@ -256,8 +259,18 @@ export function ImportSection() {
               {preview.duplicatesSkipped > 0 && (
                 <li>{preview.duplicatesSkipped} exact duplicates will be skipped</li>
               )}
+              {preview.cardioSets > 0 && (
+                <li>
+                  {preview.cardioSets} cardio set{preview.cardioSets === 1 ? '' : 's'}{' '}
+                  (duration/distance) included
+                </li>
+              )}
               {preview.cardioSkipped > 0 && (
-                <li>{preview.cardioSkipped} cardio rows (no reps) will be skipped</li>
+                <li>
+                  {preview.cardioSkipped} cardio row
+                  {preview.cardioSkipped === 1 ? '' : 's'} without a usable duration will
+                  be skipped
+                </li>
               )}
               {preview.existingSessionDates.length > 0 && (
                 <li className="text-amber-700 dark:text-amber-400">

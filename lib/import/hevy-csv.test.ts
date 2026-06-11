@@ -198,7 +198,9 @@ describe('parseHevyCsv malformed input', () => {
     expect(res.rows[0]?.finishedAtIso).toBeNull();
   });
 
-  it('skips cardio rows (duration or distance, no reps) with a count', () => {
+  // Cardio rows are imported as duration/distance sets since issue #134
+  // (they were skipped with a count before).
+  it('maps cardio rows (duration, optional distance) onto cardio sets', () => {
     const res = parseHevyCsv(
       csv(
         line({ exercise_title: 'Running', reps: '', distance_km: '5', duration_seconds: '1800', weight_kg: '' }),
@@ -206,9 +208,63 @@ describe('parseHevyCsv malformed input', () => {
         line({ set_index: '1' }),
       ),
     );
-    expect(res.cardioSkipped).toBe(2);
-    expect(res.rows).toHaveLength(1);
+    expect(res.cardioSkipped).toBe(0);
     expect(res.errors).toEqual([]);
+    expect(res.rows).toHaveLength(3);
+    // distance_km converted to meters; cardio convention weight 0 / reps 1.
+    expect(res.rows[0]).toMatchObject({
+      exerciseName: 'Running',
+      setOrder: 1,
+      weightKg: 0,
+      reps: 1,
+      durationSec: 1800,
+      distanceM: 5000,
+      isWarmup: false,
+      isDropSet: false,
+      startedAtIso: '2026-05-02T09:13:00.000Z',
+    });
+    expect(res.rows[1]).toMatchObject({
+      exerciseName: 'Plank',
+      durationSec: 60,
+      distanceM: null,
+    });
+    // The strength row is untouched (no cardio keys at all).
+    expect(res.rows[2]).not.toHaveProperty('durationSec');
+    expect(res.rows[2]).toMatchObject({ weightKg: 80, reps: 8, setOrder: 2 });
+  });
+
+  it('converts cardio distance from the distance_miles header variant', () => {
+    const header =
+      'title,start_time,exercise_title,set_index,set_type,weight_kg,reps,distance_miles,duration_seconds';
+    const res = parseHevyCsv(
+      [header, 'Run Day,2026-05-02 09:13:00,Running,0,normal,,,3,1800'].join('\n'),
+    );
+    expect(res.errors).toEqual([]);
+    expect(res.rows[0]).toMatchObject({
+      durationSec: 1800,
+      distanceM: +(3 * 1609.34).toFixed(2),
+    });
+  });
+
+  it('still skips unrepresentable cardio rows with a count (no usable duration)', () => {
+    const res = parseHevyCsv(
+      csv(
+        line({ exercise_title: 'Rowing', reps: '', distance_km: '5', duration_seconds: '', weight_kg: '' }),
+        line({ exercise_title: 'Running', reps: '', duration_seconds: '90000', weight_kg: '' }),
+      ),
+    );
+    expect(res.cardioSkipped).toBe(2);
+    expect(res.rows).toHaveLength(0);
+    expect(res.errors).toEqual([]);
+  });
+
+  it('reports a cardio row with a missing set_index as a line error', () => {
+    const res = parseHevyCsv(
+      csv(line({ exercise_title: 'Running', reps: '', duration_seconds: '1800', weight_kg: '', set_index: '' })),
+    );
+    expect(res.cardioSkipped).toBe(0);
+    expect(res.rows).toHaveLength(0);
+    expect(res.errors).toHaveLength(1);
   });
 
   it('reports a 0-rep row with no duration as an error, not cardio', () => {

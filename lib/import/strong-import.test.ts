@@ -92,3 +92,73 @@ describe('sessionDateFromKey', () => {
     );
   });
 });
+
+// Cardio rows in the plan (issue #134).
+describe('buildStrongImportPlan - cardio sets', () => {
+  const cardioRow = (over: Partial<StrongCsvRow> = {}): StrongCsvRow =>
+    row({
+      exerciseName: 'Running',
+      weightKg: 0,
+      reps: 1,
+      durationSec: 1800,
+      distanceM: 5000,
+      ...over,
+    });
+
+  it('carries duration/distance onto planned sets and counts them', () => {
+    const plan = buildStrongImportPlan([cardioRow(), row({ setOrder: 2 })], [], new Set());
+    expect(plan.totalSets).toBe(2);
+    expect(plan.cardioSetCount).toBe(1);
+    const sets = plan.sessions[0]!.sets;
+    const cardio = sets.find((s) => s.exerciseName === 'Running')!;
+    expect(cardio.durationSec).toBe(1800);
+    expect(cardio.distanceM).toBe(5000);
+    const strength = sets.find((s) => s.exerciseName === 'Bench')!;
+    expect(strength).not.toHaveProperty('durationSec');
+  });
+
+  it('flags a new exercise as cardio only when every row of it is cardio', () => {
+    const plan = buildStrongImportPlan(
+      [
+        cardioRow(),
+        cardioRow({ exerciseName: 'Rowing', setOrder: 2, distanceM: null }),
+        // Mixed: one cardio row and one strength row for the same name.
+        cardioRow({ exerciseName: 'Mixed Thing', setOrder: 3 }),
+        row({ exerciseName: 'Mixed Thing', setOrder: 4 }),
+      ],
+      [],
+      new Set(),
+    );
+    expect(plan.newExerciseNames).toEqual(['Mixed Thing', 'Rowing', 'Running']);
+    expect(plan.newCardioExerciseNames).toEqual(['Rowing', 'Running']);
+  });
+
+  it('does not collapse two different cardio efforts at the same set order as duplicates', () => {
+    const plan = buildStrongImportPlan(
+      [
+        cardioRow({ workoutName: 'AM Run' }),
+        cardioRow({ workoutName: 'PM Run', durationSec: 2400, distanceM: 7000 }),
+      ],
+      [],
+      new Set(),
+    );
+    expect(plan.duplicateCount).toBe(0);
+    expect(plan.totalSets).toBe(2);
+  });
+
+  it('still skips an exact cardio duplicate (same duration and distance)', () => {
+    const key = setDuplicateKey('2026-05-02', 'Running', 1, 0, 1, 1800, 5000);
+    const plan = buildStrongImportPlan([cardioRow()], [], new Set([key]));
+    expect(plan.duplicateCount).toBe(1);
+    expect(plan.totalSets).toBe(0);
+  });
+
+  it('keeps strength duplicate keys byte-identical to the pre-cardio format', () => {
+    expect(setDuplicateKey('2026-05-02', 'Bench', 1, 80, 8)).toBe(
+      '2026-05-02|bench|1|80|8',
+    );
+    expect(setDuplicateKey('2026-05-02', 'Bench', 1, 80, 8, null, null)).toBe(
+      '2026-05-02|bench|1|80|8',
+    );
+  });
+});
