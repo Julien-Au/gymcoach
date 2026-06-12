@@ -9,6 +9,7 @@ import {
   totalVolume,
 } from '@/lib/stats';
 import { READINESS_RECENCY_HOURS } from '@/lib/progression';
+import { isCardioSet } from '@/lib/cardio';
 import { goalProgress } from '@/lib/goals';
 import {
   DELOAD_READINESS_LOOKBACK,
@@ -402,6 +403,11 @@ async function weekSummary(
         }
       >();
       for (const set of s.sets) {
+        // Cardio sets are excluded from the strength summary: they would
+        // surface as phantom 0-volume lifts and inflate workingSetCount, the
+        // training-load signal the coach reads (issue #140). A deliberate
+        // conditioning payload section is a separate, future slice.
+        if (isCardioSet(set)) continue;
         const key = set.exerciseId;
         let entry = setsByExo.get(key);
         if (!entry) {
@@ -450,7 +456,7 @@ async function weekSummary(
         durationMin,
         notes: s.notes,
         totalVolume: sessionTotalVolume,
-        workingSetCount: s.sets.filter((set) => !set.isWarmup).length,
+        workingSetCount: s.sets.filter((set) => !set.isWarmup && !isCardioSet(set)).length,
         exercises,
       };
     }),
