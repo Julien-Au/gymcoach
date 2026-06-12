@@ -1,5 +1,36 @@
 import { describe, it, expect } from 'vitest';
-import { csvEscape } from './csv';
+import { csvEscape, HISTORY_CSV_HEADERS } from './csv';
+
+describe('HISTORY_CSV_HEADERS', () => {
+  it('pins the column order: pre-cardio columns byte-identical, cardio columns trailing', () => {
+    // Downstream scripts key on column positions. Never reorder or insert;
+    // new columns may only be appended after the last entry.
+    expect([...HISTORY_CSV_HEADERS]).toEqual([
+      'session_id',
+      'session_date',
+      'session_started_at',
+      'session_finished_at',
+      'duration_min',
+      'program',
+      'workout',
+      'exercise',
+      'muscle_group',
+      'uses_bodyweight',
+      'set_number',
+      'external_load_kg',
+      'effective_weight_kg',
+      'reps',
+      'rir',
+      'is_warmup',
+      'is_drop_set',
+      'volume_kg',
+      'estimated_1rm_kg',
+      'set_notes',
+      'duration_sec',
+      'distance_m',
+    ]);
+  });
+});
 
 describe('csvEscape', () => {
   it('passes plain values through unchanged', () => {

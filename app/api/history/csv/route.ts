@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { handleApiError, requireApiUserId } from '@/lib/api';
-import { csvEscape } from '@/lib/csv';
+import { csvEscape, HISTORY_CSV_HEADERS } from '@/lib/csv';
 import { effectiveWeight, estimate1RM, setVolume } from '@/lib/stats';
 
 // GET /api/history/csv?programId=...&month=YYYY-MM
@@ -53,30 +53,7 @@ export async function GET(req: Request) {
     ]);
     const bodyweight = user?.bodyweight ?? null;
 
-    const HEADERS = [
-      'session_id',
-      'session_date',
-      'session_started_at',
-      'session_finished_at',
-      'duration_min',
-      'program',
-      'workout',
-      'exercise',
-      'muscle_group',
-      'uses_bodyweight',
-      'set_number',
-      'external_load_kg', // entered value (added weight for bodyweight exercises, total load otherwise)
-      'effective_weight_kg', // = bodyweight + external for bodyweight exercises, otherwise = external
-      'reps',
-      'rir',
-      'is_warmup',
-      'is_drop_set',
-      'volume_kg', // based on effective weight
-      'estimated_1rm_kg', // based on effective weight
-      'set_notes',
-    ];
-
-    const lines: string[] = [HEADERS.join(',')];
+    const lines: string[] = [HISTORY_CSV_HEADERS.join(',')];
 
     for (const s of sessions) {
       const durationMin =
@@ -112,6 +89,9 @@ export async function GET(req: Request) {
           String(setVolume(effSet)),
           set.isWarmup ? '' : estimate1RM(eff, set.reps).toFixed(2),
           set.notes ?? '',
+          // Cardio columns (issue #144): raw storage units, empty on strength sets.
+          set.durationSec != null ? String(set.durationSec) : '',
+          set.distanceM != null ? String(set.distanceM) : '',
         ];
         lines.push(row.map(csvEscape).join(','));
       }
