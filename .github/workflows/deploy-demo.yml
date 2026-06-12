@@ -35,6 +35,19 @@ jobs:
           printf '%s\n' "$KNOWN_HOSTS" > known_hosts
           # The remote forced command ignores whatever is requested and runs
           # the deploy script; "deploy" below is documentation, not control.
-          ssh -i key -o UserKnownHostsFile=known_hosts -o IdentitiesOnly=yes \
-            -o StrictHostKeyChecking=yes "$DEPLOY_USER@$HOST" deploy
+          # Runner-to-VPS connects time out transiently (~50% of observed
+          # runs), so retry the connection a bounded 3 times. ConnectTimeout
+          # keeps each attempt short; a genuine deploy failure (non-timeout)
+          # still fails fast on its real exit code.
+          attempt=1
+          until ssh -i key -o UserKnownHostsFile=known_hosts -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes -o ConnectTimeout=20 \
+            "$DEPLOY_USER@$HOST" deploy; do
+            code=$?
+            if [ "$code" -ne 255 ] || [ "$attempt" -ge 3 ]; then
+              echo "deploy failed (exit $code, attempt $attempt)"; rm -f key; exit "$code"
+            fi
+            echo "ssh connect failed (attempt $attempt), retrying in 30s"
+            attempt=$((attempt+1)); sleep 30
+          done
           rm -f key
