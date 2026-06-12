@@ -2,15 +2,18 @@ import { Sparkles } from 'lucide-react';
 import { db } from '@/lib/db';
 import { requireSession } from '@/lib/auth';
 import { getLlmProvider } from '@/lib/llm';
+import { buildCoachPayload } from '@/lib/coach';
+import { summarizeCoachPayload } from '@/lib/coach-context';
 import {
   CoachClient,
   type ProgramExerciseDefaults,
 } from '@/components/coach/coach-client';
+import { CoachContextCard } from '@/components/coach/coach-context-card';
 
 export default async function CoachPage() {
   const auth = await requireSession();
 
-  const [history, activeProgram] = await Promise.all([
+  const [history, activeProgram, coachPayload] = await Promise.all([
     db.coachSession.findMany({
       where: { userId: auth.userId },
       orderBy: { createdAt: 'desc' },
@@ -36,7 +39,12 @@ export default async function CoachPage() {
         },
       },
     }),
+    // "What your coach sees" (issue #154): the SAME builder the debrief and
+    // chat routes use, so the card cannot drift from the payload the AI gets.
+    buildCoachPayload(auth.userId),
   ]);
+
+  const coachContext = summarizeCoachPayload(coachPayload);
 
   // Map exerciseName -> current program values (to pre-fill adjustments when
   // the coach does not provide an explicit value).
@@ -82,6 +90,8 @@ export default async function CoachPage() {
             </p>
           </div>
         </div>
+
+        <CoachContextCard summary={coachContext} />
 
         <CoachClient
           initialHistory={initialHistory}
