@@ -6,6 +6,55 @@ by the charter in [`07-autonomy.md`](07-autonomy.md).
 
 ---
 
+## 2026-06-12 (third run) - Seventh batch ships: coach transparency (#154), interference awareness (#153), TCX import (#152)
+
+**Context.** Maintainer tick executing the seventh ideate batch, strictly serialized by
+ascending size, each PR merged on green full CI before the next branch was cut. All three
+issues authored by JulienAu (trust-gated). No subagent-spawning tool available in this
+tick, so per the charter's no-self-certification rule every PR merged on green full CI and
+is flagged for an independent POST-MERGE review by the orchestrator.
+
+**Decided / shipped.**
+- PR #156 (Closes #154): "What your coach sees" transparency card on the coach page,
+  collapsed by default. Display-only: the page calls the SHARED buildCoachPayload and a
+  pure mapper (lib/coach-context.ts) reshapes it - no duplicated derivations, no prompt or
+  payload change (payload tests untouched). Unit + component tests incl. fresh-user empty
+  states. Fast gate green locally; CI green; merged. Post-merge review lens: correctness.
+- PR #157 (Closes #153): per-day conditioning for hybrid interference awareness.
+  `conditioning.days` (current ISO week, `{ date, minutes, km }`, zero days omitted -
+  documented as the compact choice) via a new shared dailyConditioning derivation in
+  lib/stats.ts over the already-fetched sets. Input-side prompt guidance only (flag hard
+  cardio adjacent to heavy lower-body days, explain why, prose only); demo provider gained
+  one interference line. Purely additive diff; the adjustments contract tests passed
+  UNMODIFIED. Full gate green locally; CI green; merged. Post-merge review: multi-lens.
+- PR #158 (Closes #152): TCX file import as one cardio session - the riskiest item
+  (untrusted XML). Security bar implemented as specified: lib/import/tcx.ts is a minimal
+  indexOf-based extractor over the narrow TCX shape, NOT an XML parser - no entity table,
+  no entity decoding, so XXE and billion-laughs are impossible by construction; any
+  `<!DOCTYPE`/`<!ENTITY` rejected outright; value/attribute scans capped; hostile fixtures
+  in tests (internal DTD, external entity, entity bomb, truncated file, huge attributes,
+  oversize). Decision documented in-module: no XML dependency added - a general parser IS
+  the attack surface and the TCX subset needed is tiny. Additive Set.avgHr migration
+  (bounds 40..250 enforced in the set schema, the sets route and the importer) validated
+  on the test DB (migrate deploy + clean migrate diff); fresh rollback baseline
+  `autonomy-baseline-2026-06-12b` tagged on main before merge. Route mirrors the hardened
+  CSV imports: shared `import:userId` rate bucket, streamed body cap, dry-run preview with
+  a +/-2 min near-duplicate warning, transactional confirm, ownership-scoped exercise
+  reuse (409 on a non-cardio name conflict, nothing written). avgHr renders in the session
+  detail; the conditioning card and coach payload pick imported sessions up automatically.
+  Tests at every layer (parser unit incl. hostile, route integration, E2E
+  upload -> preview -> confirm -> history detail). Post-merge review: SECURITY (mandatory).
+
+**Challenged.** No in-tick independent reviewer could be spawned; the charter's backstop
+applies - all three PRs are explicitly queued for post-merge independent review
+(correctness #156, multi-lens #157, security #158).
+
+**Deferred to human / next run.** The three post-merge reviews. FIT and GPX import are
+later slices; maxHr deferred; TCX exercise picker (user-chosen target exercise) deferred -
+the Sport-based default shipped.
+
+---
+
 ## 2026-06-12 (later) - Sixth batch: zero-finding reviews; supersets land; two process lessons
 
 **Context.** Sixth ideate batch (#144 export columns, #145 coach conditioning, #146
