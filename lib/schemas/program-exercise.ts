@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { MAX_SUPERSET_GROUP, MIN_SUPERSET_GROUP } from '@/lib/supersets';
 
 export const programExerciseInputSchema = z
   .object({
@@ -10,6 +11,16 @@ export const programExerciseInputSchema = z
     restSec: z.coerce.number().int().min(15).max(600),
     tempo: z.string().trim().max(20).optional().nullable(),
     notes: z.string().trim().max(2000).optional().nullable(),
+    // Superset pairing (issue #146, slice 1): exercises of one workout sharing
+    // a group number form a superset. null clears the pairing; ABSENT leaves
+    // it unchanged on update (so the edit form never wipes a pairing).
+    supersetGroup: z
+      .number()
+      .int()
+      .min(MIN_SUPERSET_GROUP)
+      .max(MAX_SUPERSET_GROUP)
+      .nullable()
+      .optional(),
   })
   .refine((v) => v.targetRepsMax >= v.targetRepsMin, {
     message: 'Reps max must be >= reps min',

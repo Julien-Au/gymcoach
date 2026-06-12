@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { Link2, MoreHorizontal, Pencil, Trash2, Unlink } from 'lucide-react';
 import type { Exercise, ProgramExercise } from '@prisma/client';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -22,9 +22,21 @@ type ProgramExerciseWithExercise = ProgramExercise & { exercise: Exercise };
 interface Props {
   programExercise: ProgramExerciseWithExercise;
   catalog: Exercise[];
+  // Superset pairing (issue #146, slice 1). The label ("A1") is derived by the
+  // parent from group membership and order; the actions are null when not
+  // applicable (first row cannot pair up, a standalone row cannot unpair).
+  supersetLabel?: string | null;
+  onPairWithPrevious?: (() => void) | null;
+  onUnpair?: (() => void) | null;
 }
 
-export function ProgramExerciseRow({ programExercise, catalog }: Props) {
+export function ProgramExerciseRow({
+  programExercise,
+  catalog,
+  supersetLabel = null,
+  onPairWithPrevious = null,
+  onUnpair = null,
+}: Props) {
   const router = useRouter();
   const [editOpen, setEditOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -60,6 +72,7 @@ export function ProgramExerciseRow({ programExercise, catalog }: Props) {
           <div className="min-w-0">
             <p className="truncate text-sm font-medium">{programExercise.exercise.name}</p>
             <div className="mt-1 flex flex-wrap gap-1.5 text-xs text-muted-foreground">
+              {supersetLabel && <Badge>Superset {supersetLabel}</Badge>}
               <Badge variant="secondary">
                 {MUSCLE_GROUP_LABELS[programExercise.exercise.muscleGroup]}
               </Badge>
@@ -94,6 +107,18 @@ export function ProgramExerciseRow({ programExercise, catalog }: Props) {
                 <Pencil className="mr-2 size-4" />
                 Edit
               </DropdownMenuItem>
+              {onPairWithPrevious && (
+                <DropdownMenuItem onSelect={() => onPairWithPrevious()}>
+                  <Link2 className="mr-2 size-4" />
+                  Pair with previous
+                </DropdownMenuItem>
+              )}
+              {onUnpair && (
+                <DropdownMenuItem onSelect={() => onUnpair()}>
+                  <Unlink className="mr-2 size-4" />
+                  Unpair superset
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onSelect={handleDelete}

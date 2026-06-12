@@ -40,6 +40,9 @@ export async function PUT(req: Request, { params }: Params) {
         restSec: data.restSec,
         tempo: data.tempo ?? null,
         notes: data.notes ?? null,
+        // Superset pairing (issue #146): absent = leave unchanged (Prisma
+        // skips undefined), null = unpair, number = (re)pair.
+        supersetGroup: data.supersetGroup,
       },
       include: { exercise: true },
     });

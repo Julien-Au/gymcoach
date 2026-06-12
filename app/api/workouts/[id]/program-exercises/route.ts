@@ -47,6 +47,8 @@ export async function POST(req: Request, { params }: Params) {
         restSec: data.restSec,
         tempo: data.tempo ?? null,
         notes: data.notes ?? null,
+        // Superset pairing (issue #146): optional at creation, null = standalone.
+        supersetGroup: data.supersetGroup ?? null,
       },
       include: { exercise: true },
     });

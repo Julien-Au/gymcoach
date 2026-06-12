@@ -184,6 +184,10 @@ model ProgramExercise {
   restSec       Int
   tempo         String?
   notes         String?
+  // Superset pairing (issue #146, slice 1, additive): exercises of the same
+  // workout sharing a group number form a superset; NULL = standalone. The
+  // stored number is arbitrary - A1/A2 labels renumber on read (lib/supersets).
+  supersetGroup Int?
 }
 
 model Session {

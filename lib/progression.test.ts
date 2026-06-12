@@ -49,6 +49,7 @@ function makePe(
     restSec: 120,
     tempo: null,
     notes: null,
+    supersetGroup: null,
     ...overrides,
     exercise,
   };
