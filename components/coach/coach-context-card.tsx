@@ -130,7 +130,7 @@ export function CoachContextCard({ summary }: Props) {
           </Section>
 
           <p className="border-t pt-3 text-xs text-muted-foreground">
-            This structured summary - never your raw rows - is what the AI receives.
+            A compact summary like this, plus your recent set-by-set training logs, is what the AI receives - never your account data or anything outside your training history.
           </p>
         </CardContent>
       )}

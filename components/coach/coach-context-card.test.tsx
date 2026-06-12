@@ -81,7 +81,7 @@ describe('CoachContextCard', () => {
       screen.getByText(/Last check-in 2 days ago: readiness 4\/5, sleep 3\/5\./),
     ).toBeInTheDocument();
     expect(
-      screen.getByText('This structured summary - never your raw rows - is what the AI receives.'),
+      screen.getByText('A compact summary like this, plus your recent set-by-set training logs, is what the AI receives - never your account data or anything outside your training history.'),
     ).toBeInTheDocument();
   });
 
