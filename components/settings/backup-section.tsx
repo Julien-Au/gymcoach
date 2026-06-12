@@ -124,7 +124,8 @@ export function BackupSection() {
                 <p className="mt-1 text-xs text-muted-foreground">
                   The file <code>{confirmingFile.name}</code> will replace{' '}
                   <strong>all</strong> your current data (programs,
-                  sessions, sets, debriefs). This action cannot be undone.
+                  sessions, sets, goals, bodyweight history, check-ins,
+                  coach conversations). This action cannot be undone.
                 </p>
                 <div className="mt-3 flex gap-2">
                   <Button
