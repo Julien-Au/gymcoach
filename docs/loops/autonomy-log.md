@@ -6,6 +6,42 @@ by the charter in [`07-autonomy.md`](07-autonomy.md).
 
 ---
 
+## 2026-06-12 (day) - Backup export/restore made complete (#168)
+
+**Context.** Maintainer tick on issue #168 (author JulienAu, trust-gated: login allowlist
+plus collaborator check HTTP 204): the backup route - the data-ownership wedge - silently
+dropped everything added since it shipped. Data-integrity work, so the reinforced
+controls applied: full local gate, tests at every touched layer, no migration needed
+(purely additive).
+
+**Decided / shipped.**
+- app/api/backup/route.ts rewritten against a systematic schema inventory (now documented
+  in the route header): export gains Set.durationSec/distanceM/avgHr,
+  ProgramExercise.supersetGroup, Exercise.usesBodyweight (a fourth silent drop the issue
+  had not listed), the profile incl deloadUntil, and the ExerciseGoal / BodyweightEntry /
+  ReadinessCheckin / Conversation+Message models. VERSION bumped to 2; version 1 files
+  keep importing (every v2 field/model is optional, defaulting to null/absent).
+- Restore hardened as untrusted input: 50 MiB streaming byte cap (readBodyWithCap),
+  bounds on every value reusing the writer schemas' limits (cardio caps, superset group
+  range, profile ranges, soreness map), array caps, dates must parse (400 instead of a
+  Prisma 500), enum fields validated with nativeEnum instead of the old `as any` casts.
+  The transaction (still all-or-nothing) now also purges/recreates the new models.
+- tests/integration/backup-route.test.ts: lossless round trip into a SECOND user
+  (field-for-field, order-insensitive re-export comparison) with ownership assertions;
+  a version-1-file restore; and adversarial cases - out-of-bounds value, non-JSON,
+  missing confirmReplace, mid-transaction unique-violation rollback leaving prior data
+  byte-identical, 50 MiB+ body (413), 20k+ array (400).
+- Full local gate (verify.sh --full) before the PR.
+
+**Challenged.** No subagent-spawning tool in this tick: per the charter backstop the PR
+merged on green full CI and is flagged for independent POST-MERGE review - correctness
+lens on the round trip and a security lens on the untrusted restore path.
+
+**Deferred to human.** Post-merge review above. #169 (major-version dep bumps) remains
+stop-for-human from the previous tick.
+
+---
+
 ## 2026-06-12 (night) - TCX hardening nits land (#161); triage follows
 
 **Context.** Maintainer tick. One implementation item: issue #161 (the advisory nits the
