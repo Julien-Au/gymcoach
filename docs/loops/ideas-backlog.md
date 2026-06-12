@@ -33,3 +33,6 @@ research and the product wedge). See `docs/loops/08-ideation-loop.md` for how th
 - shipped - first-class cardio sets (duration/distance + CARDIO category) (issue #133, 2026-06-11, PR #137 + fix #141) - multi-lens review CLEAN; one coach-payload pollution finding fixed same-day
 - shipped - importers map cardio rows onto the new fields (issue #134, 2026-06-11, PR #138) - security review CLEAN incl. 8 adversarial probes
 - shipped - conditioning card on the progress page (issue #135, 2026-06-11, PR #139) - correctness review CLEAN
+- proposed - include cardio duration/distance in the CSV history export (issue #144, 2026-06-12) - data-ownership gap confirmed by the #138 review; two trailing columns, positions pinned
+- proposed - dedicated conditioning section in the AI coach payload (issue #145, 2026-06-12) - the deliberate counterpart of the #141 pollution fix; #101 pattern, output contract unchanged
+- proposed - supersets slice 1: program-level pairing + A1/A2 session flow (issue #146, 2026-06-12) - the twice-deferred item, finally sliced; logging semantics untouched, later slices for rest/circuit behavior
