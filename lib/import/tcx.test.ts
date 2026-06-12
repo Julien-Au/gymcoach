@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseTcx, tcxExerciseName, TCX_MAX_BYTES } from './tcx';
+import { parseTcx, tcxExerciseName, TCX_MAX_BYTES, TCX_MIN_STARTED_AT } from './tcx';
 
 // ============================================================
 // Happy-path fixtures
@@ -240,6 +240,77 @@ describe('parseTcx (hostile input)', () => {
     expect(parseTcx('not xml at all').ok).toBe(false);
   });
 
+  it('ignores an <Activity> smuggled inside an XML comment', () => {
+    // A real XML parser never sees commented-out markup; neither do we.
+    const res = parseTcx(
+      minimalTcx(
+        `<!-- <Activity Sport="Biking"><Id>2026-06-01T05:00:00Z</Id>` +
+          `<Lap><TotalTimeSeconds>9999</TotalTimeSeconds>` +
+          `<DistanceMeters>999999</DistanceMeters></Lap></Activity> -->` +
+          `<Activity Sport="Running"><Id>2026-06-08T07:00:00Z</Id>` +
+          `<Lap><TotalTimeSeconds>60</TotalTimeSeconds></Lap></Activity>`,
+      ),
+    );
+    expect(res.ok).toBe(true);
+    expect(res.activity).toMatchObject({
+      startedAt: new Date('2026-06-08T07:00:00Z'),
+      durationSec: 60,
+      distanceM: null,
+      sport: 'Running',
+    });
+  });
+
+  it('accepts a file whose DTD is commented out (inert by construction)', () => {
+    // Comments are stripped first, so a commented DOCTYPE is simply absent -
+    // exactly what a real XML parser would conclude.
+    const res = parseTcx(
+      `<?xml version="1.0"?><!-- <!DOCTYPE TrainingCenterDatabase SYSTEM "http://evil.example/x.dtd"> -->` +
+        minimalTcx(
+          `<Activity Sport="Running"><Id>2026-06-08T07:00:00Z</Id>` +
+            `<Lap><TotalTimeSeconds>60</TotalTimeSeconds></Lap></Activity>`,
+        ),
+    );
+    expect(res.ok).toBe(true);
+    expect(res.activity?.durationSec).toBe(60);
+  });
+
+  it('drops everything after an unterminated comment instead of scanning it', () => {
+    const res = parseTcx(
+      minimalTcx(
+        `<!-- never closed <Activity Sport="Running"><Id>2026-06-08T07:00:00Z</Id>` +
+          `<Lap><TotalTimeSeconds>60</TotalTimeSeconds></Lap></Activity>`,
+      ),
+    );
+    expect(res.ok).toBe(false);
+    expect(res.fatalError).toMatch(/No activity found/);
+  });
+
+  it('rejects a null-byte-split <!DOCTYPE as a malformed markup declaration', () => {
+    // "<!" + NUL + "DOCTYPE" dodges the plain substring check but is not
+    // well-formed XML; the tightened "<!" scan rejects it outright, proving
+    // it can never smuggle a DTD past the gate.
+    const res = parseTcx(
+      `<?xml version="1.0"?><!\u0000DOCTYPE foo [<!\u0000ENTITY xxe SYSTEM "file:///etc/passwd">]>` +
+        minimalTcx(
+          `<Activity Sport="Running"><Id>2026-06-08T07:00:00Z</Id>` +
+            `<Lap><TotalTimeSeconds>60</TotalTimeSeconds></Lap></Activity>`,
+        ),
+    );
+    expect(res.ok).toBe(false);
+    expect(res.fatalError).toMatch(/malformed markup declaration/);
+  });
+
+  it('rejects CDATA sections (no real TCX export emits them)', () => {
+    const res = parseTcx(
+      minimalTcx(
+        `<Activity Sport="Running"><Id>2026-06-08T07:00:00Z</Id>` +
+          `<Lap><TotalTimeSeconds><![CDATA[60]]></TotalTimeSeconds></Lap></Activity>`,
+      ),
+    );
+    expect(res.ok).toBe(false);
+    expect(res.fatalError).toMatch(/malformed markup declaration/);
+  });
+
   it('rejects an activity with no usable start time', () => {
     const res = parseTcx(
       minimalTcx(
@@ -290,6 +361,98 @@ describe('parseTcx (bounds)', () => {
     );
     expect(res.ok).toBe(true);
     expect(res.activity?.avgHr).toBeNull();
+  });
+
+  // Number() accepts exponent and hex notation; lock in that both stay
+  // inside the same bounds as plain decimals (no notation slips past them).
+  it('accepts exponent notation but still enforces the bounds', () => {
+    const ok = parseTcx(
+      minimalTcx(
+        `<Activity Sport="Running"><Id>2026-06-08T07:00:00Z</Id>` +
+          `<Lap><TotalTimeSeconds>1.8e3</TotalTimeSeconds></Lap></Activity>`,
+      ),
+    );
+    expect(ok.ok).toBe(true);
+    expect(ok.activity?.durationSec).toBe(1800);
+
+    const overflow = parseTcx(
+      minimalTcx(
+        `<Activity Sport="Running"><Id>2026-06-08T07:00:00Z</Id>` +
+          `<Lap><TotalTimeSeconds>9e99</TotalTimeSeconds></Lap></Activity>`,
+      ),
+    );
+    expect(overflow.ok).toBe(false);
+    expect(overflow.fatalError).toMatch(/out of bounds/);
+  });
+
+  it('accepts hex notation as its numeric value, bounds still applied', () => {
+    // Number('0x3C') is 60; an absurd hex duration still hits the 24 h cap.
+    const ok = parseTcx(
+      minimalTcx(
+        `<Activity Sport="Running"><Id>2026-06-08T07:00:00Z</Id>` +
+          `<Lap><TotalTimeSeconds>0x3C</TotalTimeSeconds></Lap></Activity>`,
+      ),
+    );
+    expect(ok.ok).toBe(true);
+    expect(ok.activity?.durationSec).toBe(60);
+
+    const overflow = parseTcx(
+      minimalTcx(
+        `<Activity Sport="Running"><Id>2026-06-08T07:00:00Z</Id>` +
+          `<Lap><TotalTimeSeconds>0xFFFFFFFF</TotalTimeSeconds></Lap></Activity>`,
+      ),
+    );
+    expect(overflow.ok).toBe(false);
+    expect(overflow.fatalError).toMatch(/out of bounds/);
+  });
+
+  it('treats Infinity and NaN text as garbage laps', () => {
+    const res = parseTcx(
+      minimalTcx(
+        `<Activity Sport="Running"><Id>2026-06-08T07:00:00Z</Id>` +
+          `<Lap><TotalTimeSeconds>Infinity</TotalTimeSeconds></Lap>` +
+          `<Lap><TotalTimeSeconds>NaN</TotalTimeSeconds></Lap>` +
+          `<Lap><TotalTimeSeconds>60</TotalTimeSeconds></Lap></Activity>`,
+      ),
+    );
+    expect(res.ok).toBe(true);
+    expect(res.activity?.durationSec).toBe(60);
+  });
+});
+
+// ============================================================
+// Start-time clamp (issue #161): 2000-01-01 .. now + 1 day
+// ============================================================
+
+describe('parseTcx (startedAt clamp)', () => {
+  const lapWith = (id: string) =>
+    minimalTcx(
+      `<Activity Sport="Running"><Id>${id}</Id>` +
+        `<Lap><TotalTimeSeconds>60</TotalTimeSeconds></Lap></Activity>`,
+    );
+
+  it('rejects a start before 2000-01-01', () => {
+    const res = parseTcx(lapWith('1999-12-31T23:59:59Z'));
+    expect(res.ok).toBe(false);
+    expect(res.fatalError).toMatch(/start time out of range/);
+  });
+
+  it('rejects an extreme past and an extreme future start', () => {
+    expect(parseTcx(lapWith('1970-01-01T00:00:00Z')).ok).toBe(false);
+    expect(parseTcx(lapWith('9999-01-01T00:00:00Z')).ok).toBe(false);
+  });
+
+  it('accepts the 2000-01-01 boundary and a slightly future start (clock skew)', () => {
+    expect(parseTcx(lapWith(TCX_MIN_STARTED_AT.toISOString())).ok).toBe(true);
+    const soon = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    expect(parseTcx(lapWith(soon)).ok).toBe(true);
+  });
+
+  it('rejects a start more than a day in the future', () => {
+    const farFuture = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
+    const res = parseTcx(lapWith(farFuture));
+    expect(res.ok).toBe(false);
+    expect(res.fatalError).toMatch(/start time out of range/);
   });
 });
 

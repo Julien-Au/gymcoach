@@ -6,6 +6,35 @@ by the charter in [`07-autonomy.md`](07-autonomy.md).
 
 ---
 
+## 2026-06-12 (night) - TCX hardening nits land (#161); triage follows
+
+**Context.** Maintainer tick. One implementation item: issue #161 (the advisory nits the
+hostile security review of #158 suggested for the TCX importer). Author JulienAu,
+trust-gated (login allowlist + collaborator check HTTP 204). Additive, no migration.
+
+**Decided / shipped.**
+- PR closing #161: lib/import/tcx.ts now strips XML comments before any scanning (indexOf
+  single pass; an unterminated comment drops the rest, like a real parser), so a
+  comment-smuggled <Activity> is never seen and a commented-out DTD is correctly treated
+  as inert and accepted. The advisory DTD reject is tightened: after comment stripping,
+  any "<!" not followed by a letter (null-byte-split <!DOCTYPE, <![CDATA[, bare <!>) is
+  rejected as a malformed markup declaration. startedAt is clamped to 2000-01-01 .. now +
+  1 day (small clock skew tolerated). New fixtures lock every verified behavior in:
+  comment smuggling, commented DTD, unterminated comment, null-byte-split DOCTYPE,
+  CDATA, exponent/hex/Infinity/NaN numerics (notation cannot bypass the bounds), the
+  clamp boundaries, and a route-level re-confirm inside the duplicate window creating a
+  deliberate second session while reusing the exercise.
+- Full local gate (verify.sh --full) before the PR; merged on green CI.
+
+**Challenged.** No subagent-spawning tool available in this tick: per the charter's
+no-self-certification backstop, the PR merged on green full CI and is flagged for an
+independent POST-MERGE review (security lens - it touches the untrusted-XML parser).
+
+**Deferred to human.** Nothing. Triage ran after the merge; its outcome is in the run
+report (and amended here by a docs PR if it filed issues).
+
+---
+
 ## 2026-06-12 (evening) - Seventh batch: research-grounded; one trust fix; UTC helpers settled
 
 **Context.** The operator funded a deeper research pass this cycle (~26 searches, Opus).

@@ -18,8 +18,18 @@ import { IMPORT_CSV_MAX_BYTES } from '@/lib/import/csv';
 //   - NO entity resolution exists: there is no entity table and no decoding
 //     of any "&...;" sequence, so internal entities cannot expand (billion
 //     laughs) and external entities cannot be fetched (XXE).
+//   - XML comments are stripped before any scanning, so content smuggled
+//     inside "<!-- -->" (e.g. a fake <Activity>) is never seen - matching
+//     what a real XML parser would do. A DTD inside a comment is inert and
+//     therefore accepted after stripping.
 //   - Any document containing "<!DOCTYPE" or "<!ENTITY" is rejected outright
-//     before extraction, so a DTD is never even scanned past.
+//     before extraction, so a DTD is never even scanned past. After comments
+//     are stripped, any remaining "<!" not followed by a letter (a null-byte-
+//     split "<!\0DOCTYPE", "<![CDATA[", a bare "<!>") is rejected as a
+//     malformed markup declaration - none of these appear in a real export.
+//   - The activity start time is clamped to a sane window (2000-01-01 to
+//     now + 1 day), so an extreme or hostile timestamp cannot land a session
+//     in year 0 or 9999.
 //   - All scans are indexOf-based (no regex over attacker-sized input), so a
 //     huge attribute or a truncated tag cannot trigger pathological
 //     backtracking; unterminated structures simply stop matching.
@@ -65,6 +75,11 @@ const activitySchema = z.object({
 // Longest value we ever need (an ISO timestamp); anything longer is hostile
 // or garbage and is treated as absent.
 const MAX_VALUE_CHARS = 64;
+
+// Sane window for the activity start: nothing before consumer GPS watches
+// existed, nothing further out than tomorrow (small clock skew is fine).
+export const TCX_MIN_STARTED_AT = new Date('2000-01-01T00:00:00.000Z');
+const STARTED_AT_FUTURE_SLACK_MS = 24 * 60 * 60 * 1000;
 
 // ------------------------------------------------------------
 // indexOf-based tag helpers. They handle the narrow, non-nested TCX layout
@@ -165,6 +180,25 @@ function stripBlocks(xml: string, tag: string): string {
   }
 }
 
+// Removes every "<!-- ... -->" comment, single pass, indexOf-based. An
+// unterminated comment drops the rest of the document, exactly like a real
+// XML parser refusing to see past it.
+function stripComments(xml: string): string {
+  const open = '<!--';
+  const close = '-->';
+  if (!xml.includes(open)) return xml;
+  let out = '';
+  let from = 0;
+  for (;;) {
+    const at = xml.indexOf(open, from);
+    if (at === -1) return out + xml.slice(from);
+    out += xml.slice(from, at);
+    const end = xml.indexOf(close, at + open.length);
+    if (end === -1) return out; // unterminated comment: drop the rest
+    from = end + close.length;
+  }
+}
+
 function asFiniteNumber(text: string | null): number | null {
   if (text === null) return null;
   const n = Number(text);
@@ -180,16 +214,37 @@ function asFiniteNumber(text: string | null): number | null {
 const MAX_ACTIVITIES = 20;
 const MAX_LAPS = 1000;
 
-export function parseTcx(xml: string): TcxParseResult {
-  if (xml.length > TCX_MAX_BYTES) {
+export function parseTcx(input: string): TcxParseResult {
+  if (input.length > TCX_MAX_BYTES) {
     return fatal('File too large: the limit is 5 MB.');
   }
+
+  // Strip comments BEFORE any scanning so commented-out markup (a smuggled
+  // <Activity>, an inert commented DTD) is never seen, matching a real XML
+  // parser's view of the document.
+  const xml = stripComments(input);
 
   // Reject any DTD or entity declaration outright (XXE / billion-laughs by
   // construction cannot happen: we also never decode entities anywhere).
   const upper = xml.toUpperCase();
   if (upper.includes('<!DOCTYPE') || upper.includes('<!ENTITY')) {
     return fatal('Invalid TCX file: DTD and entity declarations are not allowed.');
+  }
+
+  // With comments already stripped, every remaining "<!" must open a normal
+  // markup declaration (a letter follows). Anything else - "<!\0DOCTYPE",
+  // "<![CDATA[", "<!>" - is malformed or evasive and no real export emits it.
+  {
+    let bang = xml.indexOf('<!');
+    while (bang !== -1) {
+      const next = xml[bang + 2];
+      const isLetter =
+        next !== undefined && ((next >= 'a' && next <= 'z') || (next >= 'A' && next <= 'Z'));
+      if (!isLetter) {
+        return fatal('Invalid TCX file: malformed markup declaration.');
+      }
+      bang = xml.indexOf('<!', bang + 2);
+    }
   }
 
   if (!xml.includes('<TrainingCenterDatabase')) {
@@ -280,6 +335,12 @@ export function parseTcx(xml: string): TcxParseResult {
   }
   if (!earliestStart) {
     return fatal('No activity start time found (missing or invalid Id / Lap StartTime).');
+  }
+  if (
+    earliestStart < TCX_MIN_STARTED_AT ||
+    earliestStart.getTime() > Date.now() + STARTED_AT_FUTURE_SLACK_MS
+  ) {
+    return fatal('Activity start time out of range: it must be between 2000-01-01 and tomorrow.');
   }
 
   const durationSec = Math.round(totalSeconds);

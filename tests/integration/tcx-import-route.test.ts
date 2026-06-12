@@ -180,6 +180,29 @@ describe('POST /api/import/tcx (confirm)', () => {
     expect(set?.exerciseId).toBe(own?.id);
   });
 
+  it('re-confirming inside the duplicate window still creates a second session (re-import on purpose)', async () => {
+    const user = await seedUser('tcx-reconfirm@test.dev');
+    actAs(user.id);
+
+    const first = await postImport(importReq({ xml: RUN_TCX, mode: 'confirm' }));
+    expect(first.status).toBe(200);
+
+    // The preview now warns about the just-imported session...
+    const preview = await postImport(importReq({ xml: RUN_TCX, mode: 'preview' }));
+    expect((await preview.json()).duplicateSessions).toEqual(['2026-05-20T07:30:00.000Z']);
+
+    // ...but confirm is never blocked by the warning: deliberate re-import works.
+    const second = await postImport(importReq({ xml: RUN_TCX, mode: 'confirm' }));
+    expect(second.status).toBe(200);
+    const body = await second.json();
+    expect(body.createdSessions).toBe(1);
+    expect(body.duplicateSessions).toEqual(['2026-05-20T07:30:00.000Z']);
+
+    expect(await db.session.count({ where: { userId: user.id } })).toBe(2);
+    // The exercise is reused, not duplicated.
+    expect(await db.exercise.count({ where: { userId: user.id, name: 'Running' } })).toBe(1);
+  });
+
   it('refuses to write cardio onto a non-cardio exercise with the default name', async () => {
     const user = await seedUser('tcx-conflict@test.dev');
     actAs(user.id);
