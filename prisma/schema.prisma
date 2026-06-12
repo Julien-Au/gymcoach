@@ -221,6 +221,10 @@ model Set {
   // are untouched and lifting flows never write these.
   durationSec Int?
   distanceM   Float?
+  // Average heart rate in bpm (issue #152, additive): the extra signal a TCX
+  // file import carries over manual logging. 40..250 when present (enforced
+  // by every writer), NULL on strength sets and on cardio logged without it.
+  avgHr       Int?
   notes       String?
   isWarmup    Boolean  @default(false)
   isDropSet   Boolean  @default(false)

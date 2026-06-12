@@ -226,6 +226,7 @@ export default async function HistorySessionPage({ params }: Params) {
                               <th className="py-1.5 font-medium">#</th>
                               <th className="py-1.5 font-medium">Duration</th>
                               <th className="py-1.5 font-medium">Distance</th>
+                              <th className="py-1.5 font-medium">Avg HR</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -239,6 +240,9 @@ export default async function HistorySessionPage({ params }: Params) {
                                   {s.distanceM != null && s.distanceM > 0
                                     ? formatDistance(s.distanceM)
                                     : '-'}
+                                </td>
+                                <td className="py-1.5">
+                                  {s.avgHr != null ? `${s.avgHr} bpm` : '-'}
                                 </td>
                               </tr>
                             ))}

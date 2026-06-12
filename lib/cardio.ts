@@ -12,6 +12,11 @@
 export const MAX_DURATION_SEC = 86400;
 export const MAX_DISTANCE_M = 1000000;
 
+// Average heart rate bounds in bpm (issue #152): enforced by every writer
+// of Set.avgHr (the set API schema and the TCX importer).
+export const AVG_HR_MIN = 40;
+export const AVG_HR_MAX = 250;
+
 // Statute mile in meters, for imports from imperial-unit exports.
 export const MILES_TO_METERS = 1609.34;
 

@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { formatCardioSet } from '@/lib/cardio';
 import {
   Select,
   SelectContent,
@@ -47,26 +48,58 @@ interface Preview {
   errors: LineError[];
 }
 
-type ImportFormat = 'STRONG' | 'HEVY';
+// TCX preview/confirm payload (issue #152): one activity = one session, so
+// the shape is a single summary instead of the CSV counts.
+interface TcxPreview {
+  sport: string;
+  exerciseName: string;
+  startedAt: string;
+  durationSec: number;
+  distanceM: number | null;
+  avgHr: number | null;
+  duplicateSessions: string[];
+}
+
+type ImportFormat = 'STRONG' | 'HEVY' | 'TCX';
 
 // Copy and endpoint per supported source app. Strong keeps its unit toggle
 // (its export follows the app's unit setting); Hevy always exports kg, so the
-// toggle is hidden for it.
+// toggle is hidden for it. TCX is a single-activity cardio file (issue #152).
 const FORMAT_META: Record<
   ImportFormat,
-  { label: string; endpoint: string; exportHint: string; hasUnitToggle: boolean }
+  {
+    label: string;
+    endpoint: string;
+    exportHint: string;
+    hasUnitToggle: boolean;
+    accept: string;
+    fileKind: string;
+  }
 > = {
   STRONG: {
     label: 'Strong',
     endpoint: '/api/import/strong',
     exportHint: 'export it as CSV (Settings, then Export data)',
     hasUnitToggle: true,
+    accept: '.csv,text/csv',
+    fileKind: 'CSV',
   },
   HEVY: {
     label: 'Hevy',
     endpoint: '/api/import/hevy',
     exportHint: 'export it as CSV (Settings, then Export & Import Data)',
     hasUnitToggle: false,
+    accept: '.csv,text/csv',
+    fileKind: 'CSV',
+  },
+  TCX: {
+    label: 'TCX file',
+    endpoint: '/api/import/tcx',
+    exportHint:
+      'export the activity as TCX from your watch platform (Garmin Connect, Polar Flow, ...) and it becomes one cardio session with duration, distance and heart rate',
+    hasUnitToggle: false,
+    accept: '.tcx,application/vnd.garmin.tcx+xml,application/xml,text/xml',
+    fileKind: 'TCX',
   },
 };
 
@@ -80,9 +113,11 @@ export function ImportSection() {
   const [fileName, setFileName] = useState<string | null>(null);
   const [csvText, setCsvText] = useState<string | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
+  const [tcxPreview, setTcxPreview] = useState<TcxPreview | null>(null);
   const [busy, setBusy] = useState(false);
 
   const meta = FORMAT_META[format];
+  const isTcx = format === 'TCX';
 
   function pickFile() {
     fileRef.current?.click();
@@ -95,6 +130,7 @@ export function ImportSection() {
     setCsvText(null);
     setFileName(null);
     setPreview(null);
+    setTcxPreview(null);
   }
 
   async function onFilePicked(e: React.ChangeEvent<HTMLInputElement>) {
@@ -109,26 +145,32 @@ export function ImportSection() {
     setFileName(file.name);
     setCsvText(text);
     setPreview(null);
+    setTcxPreview(null);
     await requestPreview(text);
   }
 
-  async function callApi(csv: string, mode: 'preview' | 'confirm') {
+  async function callApi(fileText: string, mode: 'preview' | 'confirm') {
     const res = await fetch(meta.endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      // The Hevy route has no unit field (kg always); sending it would be
-      // rejected by Zod only if unknown keys were stripped - keep it clean.
+      // Each route's Zod schema defines its exact body: TCX carries the file
+      // as xml; the CSV routes as csv (unit only where the app exports both).
       body: JSON.stringify(
-        meta.hasUnitToggle ? { csv, unit, mode } : { csv, mode },
+        isTcx
+          ? { xml: fileText, mode }
+          : meta.hasUnitToggle
+            ? { csv: fileText, unit, mode }
+            : { csv: fileText, mode },
       ),
     });
     const json = (await res.json().catch(() => null)) as
-      | (Preview & {
-          createdSessions?: number;
-          createdSets?: number;
-          createdExercises?: number;
-          error?: string;
-        })
+      | (Preview &
+          TcxPreview & {
+            createdSessions?: number;
+            createdSets?: number;
+            createdExercises?: number;
+            error?: string;
+          })
       | null;
     if (!res.ok) {
       throw new Error(json?.error ?? `Error ${res.status}`);
@@ -136,11 +178,12 @@ export function ImportSection() {
     return json;
   }
 
-  async function requestPreview(csv: string) {
+  async function requestPreview(fileText: string) {
     setBusy(true);
     try {
-      const json = await callApi(csv, 'preview');
-      if (json) setPreview(json);
+      const json = await callApi(fileText, 'preview');
+      if (json && isTcx) setTcxPreview(json);
+      else if (json) setPreview(json);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Preview failed.');
       setCsvText(null);
@@ -156,14 +199,19 @@ export function ImportSection() {
     try {
       const json = await callApi(csvText, 'confirm');
       toast.success(
-        `Imported ${json?.createdSessions ?? 0} sessions, ${json?.createdSets ?? 0} sets` +
+        `Imported ${json?.createdSessions ?? 0} session${
+          (json?.createdSessions ?? 0) === 1 ? '' : 's'
+        }, ${json?.createdSets ?? 0} set${(json?.createdSets ?? 0) === 1 ? '' : 's'}` +
           ((json?.createdExercises ?? 0) > 0
-            ? `, ${json?.createdExercises} new exercises.`
+            ? `, ${json?.createdExercises} new exercise${
+                (json?.createdExercises ?? 0) === 1 ? '' : 's'
+              }.`
             : '.'),
       );
       setCsvText(null);
       setFileName(null);
       setPreview(null);
+      setTcxPreview(null);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Import failed.');
     } finally {
@@ -175,15 +223,19 @@ export function ImportSection() {
     setCsvText(null);
     setFileName(null);
     setPreview(null);
+    setTcxPreview(null);
   }
 
   return (
     <Card>
       <CardHeader className="pb-3">
-        <h2 className="text-base font-semibold">Import from {meta.label}</h2>
+        <h2 className="text-base font-semibold">
+          {isTcx ? 'Import a TCX activity' : `Import from ${meta.label}`}
+        </h2>
         <p className="text-xs text-muted-foreground">
-          Bring your training history from the {meta.label} app:{' '}
-          {meta.exportHint}, preview it here, then confirm.
+          {isTcx
+            ? `Bring a cardio workout from your watch: ${meta.exportHint}. Preview it here, then confirm.`
+            : `Bring your training history from the ${meta.label} app: ${meta.exportHint}, preview it here, then confirm.`}
         </p>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
@@ -200,6 +252,7 @@ export function ImportSection() {
               <SelectContent>
                 <SelectItem value="STRONG">Strong</SelectItem>
                 <SelectItem value="HEVY">Hevy</SelectItem>
+                <SelectItem value="TCX">TCX file</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -228,16 +281,58 @@ export function ImportSection() {
             ) : (
               <FileUp className="size-4" />
             )}
-            <span className="ml-2">Choose a {meta.label} CSV file</span>
+            <span className="ml-2">
+              {isTcx ? 'Choose a TCX file' : `Choose a ${meta.label} ${meta.fileKind} file`}
+            </span>
           </Button>
         </div>
         <input
           ref={fileRef}
           type="file"
-          accept=".csv,text/csv"
+          accept={meta.accept}
           className="hidden"
           onChange={onFilePicked}
         />
+
+        {tcxPreview && (
+          <div className="rounded-md border p-3 text-sm" data-testid="import-preview">
+            <p className="font-medium">
+              Preview of <code>{fileName}</code>
+            </p>
+            <ul className="mt-2 list-disc space-y-1 pl-5">
+              <li>
+                1 cardio session ({tcxPreview.sport}) on{' '}
+                {new Intl.DateTimeFormat('en-US', {
+                  day: '2-digit',
+                  month: 'long',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                }).format(new Date(tcxPreview.startedAt))}
+              </li>
+              <li>
+                {formatCardioSet(tcxPreview.durationSec, tcxPreview.distanceM)}
+                {tcxPreview.avgHr != null ? ` · avg HR ${tcxPreview.avgHr} bpm` : ''}{' '}
+                logged as {tcxPreview.exerciseName}
+              </li>
+              {tcxPreview.duplicateSessions.length > 0 && (
+                <li className="text-amber-700 dark:text-amber-400">
+                  Possible duplicate: you already have a session starting within 2
+                  minutes of this activity.
+                </li>
+              )}
+            </ul>
+            <div className="mt-3 flex gap-2">
+              <Button size="sm" onClick={confirmImport} disabled={busy} className="min-h-tap">
+                {busy ? <Loader2 className="size-4 animate-spin" /> : null}
+                <span className={busy ? 'ml-2' : ''}>Confirm import</span>
+              </Button>
+              <Button size="sm" variant="ghost" onClick={cancel} disabled={busy}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
 
         {preview && (
           <div className="rounded-md border p-3 text-sm" data-testid="import-preview">

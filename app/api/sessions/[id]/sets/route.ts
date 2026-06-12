@@ -51,6 +51,7 @@ export async function POST(req: Request, { params }: Params) {
         rir: isCardio ? null : (data.rir ?? null),
         durationSec: isCardio ? data.durationSec : null,
         distanceM: isCardio ? (data.distanceM ?? null) : null,
+        avgHr: isCardio ? (data.avgHr ?? null) : null,
         notes: data.notes ?? null,
         isWarmup: data.isWarmup ?? false,
         isDropSet: data.isDropSet ?? false,
