@@ -53,6 +53,20 @@ describe('coach system prompt positioning', () => {
     expect(COACH_SYSTEM_PROMPT).toMatch(/fatigue\.deloadActive/);
     expect(COACH_SYSTEM_PROMPT).toMatch(/do not\s+recommend starting a deload then/i);
   });
+
+  // Issue #145: conditioning is an INPUT-side signal; the output contract
+  // (the <adjustments> block) stays about the lifting program.
+  it('tells the coach to factor conditioning into recovery, without medical advice', () => {
+    expect(COACH_SYSTEM_PROMPT).toMatch(/conditioning\.weekCurrent/);
+    expect(COACH_SYSTEM_PROMPT).toMatch(/conditioning\.weeklyTargetMin/);
+    expect(COACH_SYSTEM_PROMPT).toMatch(
+      /high-cardio week compounds the fatigue from lifting/i,
+    );
+    expect(COACH_SYSTEM_PROMPT).toMatch(/never give\s+medical advice/i);
+    expect(COACH_SYSTEM_PROMPT).toMatch(
+      /do not propose program\s+adjustments to chase the cardio target/i,
+    );
+  });
 });
 
 describe('program generation prompt positioning', () => {

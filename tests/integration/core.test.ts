@@ -4,6 +4,7 @@ import { seedExerciseCatalog, EXERCISE_CATALOG } from '@/lib/exercise-catalog';
 import { buildProgramFromGenerated } from '@/lib/program-generation';
 import type { GeneratedProgram } from '@/lib/schemas/program-generation';
 import { buildCoachPayload } from '@/lib/coach';
+import { isoWeekStart } from '@/lib/stats';
 import { programTemplates, getTemplateBySlug } from '@/lib/programs/templates';
 
 async function makeUser(email: string) {
@@ -225,6 +226,101 @@ describe('buildCoachPayload cardio exclusion (issue #140)', () => {
     const exerciseNames = week?.exercises.map((e) => e.exerciseName) ?? [];
     expect(exerciseNames).toContain('Bench');
     expect(exerciseNames).not.toContain('Running');
+  });
+});
+
+describe('buildCoachPayload conditioning (issue #145)', () => {
+  async function makeCardioUser(email: string) {
+    const user = await makeUser(email);
+    const run = await db.exercise.create({
+      data: { userId: user.id, name: 'Running', muscleGroup: 'OTHER', category: 'CARDIO' },
+    });
+    return { user, run };
+  }
+
+  async function cardioSession(
+    userId: string,
+    exerciseId: string,
+    startedAt: Date,
+    sets: Array<{ durationSec: number; distanceM?: number }>,
+  ) {
+    const session = await db.session.create({
+      data: { userId, startedAt, finishedAt: startedAt },
+    });
+    for (const [i, s] of sets.entries()) {
+      await db.set.create({
+        data: {
+          sessionId: session.id,
+          exerciseId,
+          setNumber: i + 1,
+          weight: 0,
+          reps: 1,
+          durationSec: s.durationSec,
+          distanceM: s.distanceM ?? null,
+        },
+      });
+    }
+    return session;
+  }
+
+  it('aggregates current and previous ISO week via the shared derivation', async () => {
+    const { user, run } = await makeCardioUser('conditioning@test.dev');
+    // Deterministic anchors: Monday 00:00 UTC of the current ISO week.
+    const weekStart = isoWeekStart(new Date());
+    const inCurrentWeek = new Date(weekStart.getTime() + 60 * 60 * 1000);
+    const inPreviousWeek = new Date(weekStart.getTime() - 7 * 24 * 60 * 60 * 1000 + 60 * 60 * 1000);
+
+    // Two cardio sessions this week (30 min / 5 km and 10 min), one last week.
+    await cardioSession(user.id, run.id, inCurrentWeek, [
+      { durationSec: 1800, distanceM: 5000 },
+    ]);
+    await cardioSession(user.id, run.id, inCurrentWeek, [{ durationSec: 600 }]);
+    await cardioSession(user.id, run.id, inPreviousWeek, [
+      { durationSec: 3600, distanceM: 10000 },
+    ]);
+
+    const payload = await buildCoachPayload(user.id);
+    expect(payload.conditioning.weekCurrent).toEqual({
+      minutes: 40,
+      km: 5,
+      sessions: 2,
+    });
+    expect(payload.conditioning.weekPrevious).toEqual({
+      minutes: 60,
+      km: 10,
+      sessions: 1,
+    });
+    expect(payload.conditioning.weeklyTargetMin).toBe(150);
+  });
+
+  it('yields zeros (not nulls or crashes) for a zero-cardio user', async () => {
+    const user = await makeUser('no-cardio@test.dev');
+    const bench = await db.exercise.create({
+      data: { userId: user.id, name: 'Bench', muscleGroup: 'CHEST', category: 'COMPOUND' },
+    });
+    const session = await db.session.create({ data: { userId: user.id } });
+    await db.set.create({
+      data: { sessionId: session.id, exerciseId: bench.id, setNumber: 1, weight: 80, reps: 8 },
+    });
+
+    const payload = await buildCoachPayload(user.id);
+    expect(payload.conditioning.weekCurrent).toEqual({ minutes: 0, km: 0, sessions: 0 });
+    expect(payload.conditioning.weekPrevious).toBeNull();
+    expect(payload.conditioning.weeklyTargetMin).toBe(150);
+  });
+
+  it("does not count another user's cardio", async () => {
+    const { user: userA } = await makeCardioUser('conditioning-a@test.dev');
+    const { user: userB, run: runB } = await makeCardioUser('conditioning-b@test.dev');
+    const weekStart = isoWeekStart(new Date());
+    const inCurrentWeek = new Date(weekStart.getTime() + 60 * 60 * 1000);
+    await cardioSession(userB.id, runB.id, inCurrentWeek, [
+      { durationSec: 1800, distanceM: 5000 },
+    ]);
+
+    const payload = await buildCoachPayload(userA.id);
+    expect(payload.conditioning.weekCurrent).toEqual({ minutes: 0, km: 0, sessions: 0 });
+    expect(payload.conditioning.weekPrevious).toBeNull();
   });
 });
 

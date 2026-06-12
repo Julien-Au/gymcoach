@@ -7,6 +7,8 @@ import {
   isStalled,
   isoWeekStart,
   totalVolume,
+  weeklyConditioning,
+  WEEKLY_CONDITIONING_TARGET_MIN,
 } from '@/lib/stats';
 import { READINESS_RECENCY_HOURS } from '@/lib/progression';
 import { isCardioSet } from '@/lib/cardio';
@@ -57,6 +59,13 @@ export interface CoachPayload {
   // isStalled over the progress page's 12-week window, plus the program-level
   // deload recommendation from lib/deload.ts with its human-readable reasons.
   fatigue: FatigueSummary;
+  // Weekly conditioning aggregates (issue #145). Cardio is deliberately
+  // excluded from the strength signals above (issue #140), so this dedicated
+  // section keeps the coach aware of it: current and previous ISO week via
+  // the same lib/stats.ts weeklyConditioning derivation the progress page
+  // uses. Input signal only; the output contract (the <adjustments> block)
+  // is unchanged.
+  conditioning: ConditioningSummary;
   // The workout the user is in RIGHT NOW (issue #111), attached only when the
   // chat is opened from the session runner with a session the user owns.
   // Additive and input-side only; the output contract is unchanged.
@@ -78,6 +87,25 @@ export interface CoachPayload {
       estimated1RM: number;
     }>;
   }>;
+}
+
+interface ConditioningWeek {
+  // Total cardio duration, whole minutes.
+  minutes: number;
+  // Total cardio distance, km with 2 decimals (0 when none logged).
+  km: number;
+  // Distinct sessions containing at least one cardio set.
+  sessions: number;
+}
+
+interface ConditioningSummary {
+  // Always present: a zero-cardio user reads as zeros, never null.
+  weekCurrent: ConditioningWeek;
+  // Null when the previous ISO week had no cardio session (mirrors the
+  // strength summary's weekPrevious semantics).
+  weekPrevious: ConditioningWeek | null;
+  // The weekly guideline the progress page tracks (150 min/week).
+  weeklyTargetMin: number;
 }
 
 interface GoalSummary {
@@ -257,6 +285,7 @@ export async function buildCoachPayload(userId: string): Promise<CoachPayload> {
         reps: true,
         isWarmup: true,
         durationSec: true,
+        distanceM: true,
         sessionId: true,
         exerciseId: true,
         exercise: {
@@ -271,6 +300,37 @@ export async function buildCoachPayload(userId: string): Promise<CoachPayload> {
       },
     }),
   ]);
+
+  // Conditioning aggregates (issue #145): the shared weeklyConditioning
+  // derivation over the already-fetched recent sets, windowed to the previous
+  // and current ISO weeks (oldest first, zero-filled).
+  const conditioningWeeks = weeklyConditioning(
+    recentSets.map((s) => ({
+      durationSec: s.durationSec,
+      distanceM: s.distanceM,
+      isWarmup: s.isWarmup,
+      sessionId: s.sessionId,
+      sessionStartedAt: s.session.startedAt,
+    })),
+    { windowWeeks: 2, now },
+  );
+  const [conditioningPrev, conditioningCurrent] = conditioningWeeks;
+  const conditioning: ConditioningSummary = {
+    weekCurrent: {
+      minutes: conditioningCurrent?.minutes ?? 0,
+      km: conditioningCurrent?.distanceKm ?? 0,
+      sessions: conditioningCurrent?.sessions ?? 0,
+    },
+    weekPrevious:
+      conditioningPrev && conditioningPrev.sessions > 0
+        ? {
+            minutes: conditioningPrev.minutes,
+            km: conditioningPrev.distanceKm,
+            sessions: conditioningPrev.sessions,
+          }
+        : null,
+    weeklyTargetMin: WEEKLY_CONDITIONING_TARGET_MIN,
+  };
 
   // Current load per exercise = workingWeight of the last session.
   const currentLoadByExercise = new Map<string, number>();
@@ -353,6 +413,7 @@ export async function buildCoachPayload(userId: string): Promise<CoachPayload> {
       // deloadUntil reads as inactive.
       deloadActive: isDeloadActive(user?.deloadUntil ?? null, now),
     },
+    conditioning,
     recentProgress: recentProgress.sort((a, b) =>
       a.exerciseName.localeCompare(b.exerciseName),
     ),
