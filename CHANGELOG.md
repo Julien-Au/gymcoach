@@ -83,6 +83,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   single field of the set logger to fill the weight, reps, and effort fields
   (RPE maps to the stored RIR). Deterministic parser in the user's display
   unit; the classic fields keep working unchanged.
+- Import a TCX file as a cardio session: duration, distance, and average
+  heart rate land on the first-class cardio model, with a dry-run preview
+  and duplicate warning - file-based, no cloud account, no OAuth. The
+  parser is a minimal extractor with no entity decoding at all, so XML
+  attacks (XXE, entity bombs) are impossible by construction; verified by a
+  hostile independent security review.
+- "What your coach sees": a transparency card on the coach page showing the
+  exact structured context the AI receives (goals and progress, stalled
+  lifts, deload state, conditioning vs target, readiness), with a truthful
+  note about what is and is not sent.
+- The AI coach now sees conditioning per day (current week) and is guided
+  to flag interference - a long run the day before heavy lower-body work -
+  and to suggest sequencing, with reasons; the structured output contract
+  is unchanged.
+- Average heart rate on cardio sets (new optional field, also importable
+  from TCX), shown in the session detail.
 - Supersets in programs (slice 1): pair exercises in the program builder and
   they run as A1/A2 in the session - consecutive presentation, group badge,
   and Next cycling within the group - while set logging, rest timing, and

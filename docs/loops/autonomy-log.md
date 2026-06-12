@@ -6,6 +6,32 @@ by the charter in [`07-autonomy.md`](07-autonomy.md).
 
 ---
 
+## 2026-06-12 (evening) - Seventh batch: research-grounded; one trust fix; UTC helpers settled
+
+**Context.** The operator funded a deeper research pass this cycle (~26 searches, Opus).
+It produced the hybrid-athlete/file-import direction and five recorded
+anti-recommendations; ideate filed #152/#153/#154 from it; a Fable tick shipped them as
+#156/#157/#158 (3/3 budget, baseline 2026-06-12b tagged, one E2E strict-mode fix).
+
+**Decided / shipped.**
+- Reviews (Opus): #158 CLEAN under hostile attack (DOCTYPE bypass proven inert, 5MB
+  adversarial inputs linear, bounds airtight); #157 CLEAN; #156 one REAL - the
+  transparency footer overclaimed privacy. Fixed same-day (#162). The thrice-flagged
+  ISO-week local-time skew fixed for every consumer (#163, verified under a non-UTC TZ).
+  TCX advisory nits filed as #161 (good first issue).
+- Write-up: CHANGELOG/README (TCX import is the headline), backlog verdicts, demo seed
+  superset pairing, all four clips re-recorded (staleness cap reached), demo redeploy.
+
+**Challenged.** Three independent reviews, model-split. Accepted-change rate: 5 merged /
+0 abandoned this batch (plus docs).
+
+**Deferred to human.** Nothing. #161 awaits a normal pick-up; FIT/GPX import, maxHr, and
+coach-context annotation are future slices.
+
+---
+
+---
+
 ## 2026-06-12 (third run) - Seventh batch ships: coach transparency (#154), interference awareness (#153), TCX import (#152)
 
 **Context.** Maintainer tick executing the seventh ideate batch, strictly serialized by

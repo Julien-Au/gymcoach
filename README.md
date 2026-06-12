@@ -79,11 +79,14 @@ more about *how a repo can maintain itself* than about the gym app, start there.
 - Conversational AI coach: streaming chat grounded in your training data -
   including mid-session, with the live workout (sets so far, targets, today's
   readiness) attached in one tap
+- "What your coach sees": a transparency card showing the exact structured
+  context the AI receives, so its advice is explainable and checkable
 - AI program generation from a natural-language goal, editable before saving
 - Pluggable LLM provider: Anthropic SDK or any OpenRouter model
 - Import your training history from a Strong or Hevy CSV export (dry-run
-  preview, duplicate-safe, cardio rows included); export everything back out
-  as CSV anytime, duration and distance included
+  preview, duplicate-safe, cardio rows included), and bring watch workouts in
+  as TCX files (duration, distance, heart rate - no cloud account, no OAuth);
+  export everything back out as CSV anytime, duration and distance included
 - Train in kilograms or pounds, a per-user preference (data is always stored in kg)
 - Installable PWA with offline session logging
 

@@ -234,3 +234,32 @@ reviewer additionally scanned for injected code after a zombie-writer episode (c
 **Process note:** lesson L11 (zombie writer after a crashed tick - stop the dead task
 before relaunching; see lessons.md) and the L3 reminder that background ticks must poll
 CI in-process landed this cycle.
+
+---
+
+## 2026-06-12 (evening) - seventh batch (#156/#157/#158 + fixes #162/#163): the research-grounded cycle
+
+This cycle started with an operator-funded research refresh (~26 searches; see Memory
+research-product-direction) that found the hybrid-athlete white space, the Garmin API
+lockout, and "explainable memory beats autonomy" - and the batch implements exactly that:
+#158 TCX file import (the wedge feature vendors cannot copy), #157 per-day conditioning +
+interference guidance, #156 the coach-context transparency card. Post-merge: #158 CLEAN
+under a genuinely hostile security review (the reviewer bypassed the DOCTYPE check and
+proved it inert - no entity decoding exists; 5MB adversarial inputs parse linearly);
+#157 CLEAN; #156 had ONE REAL finding - the footer claimed the AI never receives raw
+rows, which is false (week summaries carry per-set data) - reworded to the truth in #162.
+The thrice-flagged local-vs-UTC week-helper skew was fixed for all consumers in #163.
+
+**Read first, in order:**
+
+1. **#158 - the hand-rolled TCX extractor.** `gh pr diff 158`. Read lib/import/tcx.ts
+   with the security review's findings in hand: security-by-construction (no entity
+   table) rather than by filtering. Remaining advisory nits are #161.
+2. **#162 - the one-line trust fix.** `gh pr diff 162`. What the AI actually receives,
+   stated truthfully. If you read one diff, read this one - it is the product's promise.
+3. **#157 - what the coach can now reason about.** `gh pr diff 157`. Daily cardio next
+   to dated strength sessions; prose-only interference advice.
+
+**Skim:** #156 (display-only card), #163 (UTC getters, 2-line change, suite verified
+under TZ=America/New_York for the first time), this write-up (demo seed gains a superset
+pairing; all four clips re-recorded at the staleness cap).
