@@ -30,6 +30,6 @@ research and the product wedge). See `docs/loops/08-ideation-loop.md` for how th
 - shipped - ask the coach mid-session with live session context (issue #111, 2026-06-11, PR #116) - post-merge review CLEAN (double ownership gate, contracts byte-identical)
 - shipped - start a deload week in one tap from the recommendation (issue #112, 2026-06-11, PR #115) - post-merge review CLEAN; latent negative-weight doc contradiction filed as #118
 - shipped - import training history from a Hevy CSV export (issue #113, 2026-06-11, PR #117) - security review CLEAN (shared caps/rate budget verified, Strong path byte-identical)
-- proposed - first-class cardio sets (duration/distance) - foundation for the conditioning axis (issue #133, 2026-06-11) - additive Set.durationSec/distanceM + CARDIO category + logging UI; first slice of the broadened vision
-- proposed - import cardio rows from Strong/Hevy CSV instead of skipping them (issue #134, 2026-06-11) - maps today's cardioSkipped branch onto the new fields; depends on #133
-- proposed - conditioning card on the progress page (weekly cardio minutes/distance) (issue #135, 2026-06-11) - pure derivation + 150 min/week reference line; depends on #133
+- shipped - first-class cardio sets (duration/distance + CARDIO category) (issue #133, 2026-06-11, PR #137 + fix #141) - multi-lens review CLEAN; one coach-payload pollution finding fixed same-day
+- shipped - importers map cardio rows onto the new fields (issue #134, 2026-06-11, PR #138) - security review CLEAN incl. 8 adversarial probes
+- shipped - conditioning card on the progress page (issue #135, 2026-06-11, PR #139) - correctness review CLEAN

@@ -83,6 +83,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   single field of the set logger to fill the weight, reps, and effort fields
   (RPE maps to the stored RIR). Deterministic parser in the user's display
   unit; the classic fields keep working unchanged.
+- Cardio, first-class: exercises can be CARDIO and their sets log duration
+  (mm:ss) and distance instead of weight x reps - offline queue included -
+  while staying out of every lifting metric (tonnage, e1RM, PRs, MEV/MRV,
+  stalled lifts, goals, and the AI coach's strength signals).
+- The Strong and Hevy CSV imports now map cardio rows onto duration/distance
+  (meters/miles and km variants) instead of skipping them; unusable rows are
+  still counted and reported, and the strength import paths are pinned
+  unchanged.
+- Conditioning card on the progress page: weekly cardio minutes, distance,
+  and session count over the last 8 weeks against the 150 min/week guideline,
+  shown as soon as any cardio has ever been logged (including for
+  cardio-only users).
+- CI now smoke-tests the production Docker image on every PR (build + real
+  register/login probes), the regression net for image-only failures like
+  the bcrypt one that briefly broke the public demo's login.
 - Demo-mode production image: the Dockerfile and prod compose now accept the
   build-time demo flags (one-click demo login), and a run-once `seed-demo`
   compose service fills the demo account with the rich deterministic dataset
