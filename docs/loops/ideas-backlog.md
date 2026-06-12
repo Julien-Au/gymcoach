@@ -36,3 +36,7 @@ research and the product wedge). See `docs/loops/08-ideation-loop.md` for how th
 - shipped - include cardio duration/distance in the CSV history export (issue #144, 2026-06-12, PR #148) - column order pinned; closes the data-ownership gap
 - shipped - dedicated conditioning section in the AI coach payload (issue #145, 2026-06-12, PR #149) - review CLEAN on all seven lenses incl. the two-writers scan
 - shipped - supersets slice 1: program-level pairing + A1/A2 session flow (issue #146, 2026-06-12, PR #150) - review CLEAN; E2E proven live; later slices (shared rest, circuits) still un-filed
+- proposed - import a TCX file as a cardio session (duration/distance/HR) (issue #152, 2026-06-12) - the research-refresh killer wedge: file-based, no OAuth; hostile-XML security bar; additive Set.avgHr
+- proposed - interference awareness: per-day conditioning in the coach payload (issue #153, 2026-06-12) - the hybrid-athlete #1 pain; input-side only, contract unchanged
+- proposed - "What your coach sees" transparency card (issue #154, 2026-06-12) - explainable AI memory, display-only first slice
+- rejected - OAuth cloud integrations (Garmin/Strava/Apple Health), watch companion / rep auto-counting, black-box auto-push program generator, nutrition/macro tracking, real-time GPS recorder (2026-06-12 research anti-recommendations) - recorded so future runs never propose them
