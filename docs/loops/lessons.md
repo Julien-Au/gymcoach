@@ -151,3 +151,23 @@ Format per entry: trigger/evidence, the lesson (actionable), and **Status** = `g
 - **Status:** graduated -> `06-orchestration.md` (relaunch-after-crash rule) and the
   orchestrator's memory; review prompts after any two-writer episode must include an
   injected-code scan (done for #149, verdict clean).
+
+### L12 - Recorded demo media was never verified for content: a clip of an error page passed every gate
+- **Trigger:** the operator reported "Application error" showing in the README demo videos.
+  The committed GIFs are produced by scripts/record.mjs, which used a `tryClick` that
+  swallowed every failure and never asserted the app was healthy - so a recording made
+  against a crashed/stale server (which happened twice this session when a zombie next-server
+  held the port) produces a webm of the Next.js error overlay, and nothing downstream
+  (verify.sh, CI, docker-smoke, the human skim) ever looks at the *content* of a clip. Green
+  everywhere, broken on the page.
+- **Lesson:** generated media is an output that needs its own gate. The cheapest correct
+  place is at capture: the recorder must fail loudly (non-zero exit, footage discarded) if
+  the page ever shows an error overlay / a 404 / a 5xx / an uncaught pageerror. Because the
+  only way a committed GIF is produced is through the recorder, a self-verifying recorder
+  closes the loop without OCR on the committed file.
+- **Status:** graduated -> scripts/record.mjs now watches pageerror + >=500 responses and
+  asserts on-screen error text after every click and at each scenario's key step, exiting 1
+  and discarding the webm on any hit (proven with a negative probe: pointing it at a 404
+  route aborts). The write-up skill's media step references this. Also a reminder of L11:
+  the stale-server episodes that caused the bad captures were zombie next-server processes -
+  kill servers/ports before recording.
