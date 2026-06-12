@@ -209,3 +209,28 @@ extra adversarial import probes - all passed.
 local-vs-UTC ISO-week doc mismatch repo-wide, and the warmup-only-cardio empty card),
 this write-up (incl. demo seed gaining 23 deterministic cardio sessions + fresh
 screenshots).
+
+---
+
+## 2026-06-12 (later) - sixth batch (#148/#149/#150): export round-trip, coach conditioning, supersets
+
+Merged: #148 (cardio columns in the CSV export), #149 (dedicated conditioning section in
+the coach payload), #150 (supersets slice 1: builder pairing + A1/A2 session flow). All
+three independent Opus reviews: CLEAN - the first zero-finding batch. The #150 reviewer
+proved the flow live on a production build (pair -> A1 badge -> log -> auto-advance to A2
+-> Next cycles back) and exhaustively checked the no-trap navigation property; the #149
+reviewer additionally scanned for injected code after a zombie-writer episode (clean).
+
+**Read first, in order:**
+
+1. **#150 - the superset structure.** `gh pr diff 150`. One nullable column; ALL
+   semantics derive on read in lib/supersets.ts. This is the foundation later slices
+   (shared rest, circuits) build on - worth understanding the renumber-on-read model.
+2. **#149 - what the coach knows now.** `gh pr diff 149`. Conditioning aggregates join
+   goals and fatigue in the payload; output contract byte-identical.
+3. **#148 - the export contract.** `gh pr diff 148`. Two trailing columns; existing
+   column positions pinned by test.
+
+**Process note:** lesson L11 (zombie writer after a crashed tick - stop the dead task
+before relaunching; see lessons.md) and the L3 reminder that background ticks must poll
+CI in-process landed this cycle.

@@ -86,3 +86,12 @@ occasional "this PR needs a human". Everything mechanical between "there is work
 is shipped and documented" runs without a click. The job moved up an altitude: from
 writing the code to **authoring the loops that write it** - and this file is the loop that
 runs the loops.
+
+## Relaunch after a crashed tick (lesson L11)
+
+When a background tick dies mid-run (API error, harness kill), do not immediately relaunch
+into the same checkout: the dead agent can re-wake and write concurrently. First stop the
+dead task explicitly (TaskStop) or confirm it is gone; then `git status` - committed work
+survives in branches/PRs (resume from there), but unexpected working-tree changes are a
+stop-and-reground signal. The replacement tick's prompt should state what is already
+merged so it never redoes or fights prior work.

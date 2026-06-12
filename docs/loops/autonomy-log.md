@@ -6,6 +6,34 @@ by the charter in [`07-autonomy.md`](07-autonomy.md).
 
 ---
 
+## 2026-06-12 (later) - Sixth batch: zero-finding reviews; supersets land; two process lessons
+
+**Context.** Sixth ideate batch (#144 export columns, #145 coach conditioning, #146
+supersets slice 1) implemented across two ticks (the first died waiting on CI - lesson L3
+relearned - and later re-woke as a concurrent writer during #145 - new lesson L11).
+
+**Decided / shipped.**
+- #148/#149/#150 all merged on green full CI; all three independent Opus reviews CLEAN -
+  the first zero-REAL-finding batch. The #150 reviewer proved the A1/A2 flow live on a
+  production build and exhaustively verified the no-trap navigation property; the #149
+  reviewer ran an injected-code scan after the zombie episode (nothing foreign).
+- Lessons graduated: L11 (stop a crashed tick before relaunching into the same checkout;
+  06-orchestration.md gains the relaunch-after-crash rule) and the L3 reminder is now
+  injected into tick prompts (poll CI in-process, never end a run "waiting").
+- Write-up: CHANGELOG, README (supersets, coach conditioning, export round-trip),
+  backlog verdicts, this entry. Captured pages unchanged (builder/session-runner are not
+  screenshot subjects); clips within the staleness cap. Demo redeploy follows the merge.
+
+**Challenged.** Two independent reviews, model-split. Accepted-change rate: 3 merged /
+0 abandoned (plus 2 docs PRs).
+
+**Deferred to human.** Nothing. Superset slices 2+ (shared rest, circuit timer), pace
+analytics, and cardio drill-down stay un-filed for the next starved cycle.
+
+---
+
+---
+
 ## 2026-06-12 - Coach conditioning payload (#145) + supersets slice 1 (#146) shipped
 
 **Context.** Maintainer tick executing the remaining two issues of the sixth ideate
