@@ -137,3 +137,17 @@ Format per entry: trigger/evidence, the lesson (actionable), and **Status** = `g
   session for marginal gain in a batch-oriented loop. Accepted decision, not a gap.
 - **Status:** graduated -> CLAUDE.md (green-gate section), `ship-pr` step 3,
   `implement-issue` step 5.
+
+### L11 - A tick that died mid-run can come back as a zombie writer: stop it before relaunching
+- **Trigger:** a maintainer tick died on a transient API 529, the orchestrator relaunched a
+  fresh tick into the same checkout, and the dead tick later re-woke and wrote concurrently
+  in the working tree while the new tick was implementing #145 (the new tick caught it,
+  verified every line against the spec, and the independent review confirmed nothing
+  foreign landed - but only luck made the two writers converge on the same spec).
+- **Lesson:** "one writer per checkout" applies to dead agents too. Before relaunching a
+  replacement tick into the same working tree, explicitly stop the dead task (TaskStop) or
+  confirm it can no longer wake; on relaunch, the new tick should `git status` first and
+  treat unexpected tree changes as a stop-and-reground signal, not something to absorb.
+- **Status:** graduated -> `06-orchestration.md` (relaunch-after-crash rule) and the
+  orchestrator's memory; review prompts after any two-writer episode must include an
+  injected-code scan (done for #149, verdict clean).

@@ -69,11 +69,13 @@ more about *how a repo can maintain itself* than about the gym app, start there.
   pull-ups, dips, etc.
 - Optional pre-session readiness/soreness check-in that auto-regulates
   suggested loads and explains why a load was held or reduced
+- Supersets: pair exercises in the program builder and run them as A1/A2 in
+  the session, with grouped navigation
 - Built-in program templates (5/3/1 BBB, GZCLP, nSuns, PPL, Upper/Lower,
   Starting Strength, StrongLifts 5x5, Madcow, PHUL, PHAT, Full Body),
   runnable as written and editable like any program
 - AI coach: weekly debrief and assisted program adjustments, aware of your
-  goals and fatigue signals
+  goals, fatigue signals, and weekly conditioning volume
 - Conversational AI coach: streaming chat grounded in your training data -
   including mid-session, with the live workout (sets so far, targets, today's
   readiness) attached in one tap
@@ -81,7 +83,7 @@ more about *how a repo can maintain itself* than about the gym app, start there.
 - Pluggable LLM provider: Anthropic SDK or any OpenRouter model
 - Import your training history from a Strong or Hevy CSV export (dry-run
   preview, duplicate-safe, cardio rows included); export everything back out
-  as CSV anytime
+  as CSV anytime, duration and distance included
 - Train in kilograms or pounds, a per-user preference (data is always stored in kg)
 - Installable PWA with offline session logging
 

@@ -83,6 +83,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   single field of the set logger to fill the weight, reps, and effort fields
   (RPE maps to the stored RIR). Deterministic parser in the user's display
   unit; the classic fields keep working unchanged.
+- Supersets in programs (slice 1): pair exercises in the program builder and
+  they run as A1/A2 in the session - consecutive presentation, group badge,
+  and Next cycling within the group - while set logging, rest timing, and
+  program generation stay exactly as before.
+- The AI coach now sees your conditioning: weekly cardio minutes, distance,
+  and sessions (current and previous week) against the 150 min/week
+  guideline, as a dedicated payload section; the structured output contract
+  is unchanged.
+- The CSV history export now includes duration_sec and distance_m columns,
+  so cardio work round-trips out of the app just like it comes in; existing
+  column positions are unchanged.
 - Cardio, first-class: exercises can be CARDIO and their sets log duration
   (mm:ss) and distance instead of weight x reps - offline queue included -
   while staying out of every lifting metric (tonnage, e1RM, PRs, MEV/MRV,
