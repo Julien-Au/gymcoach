@@ -67,6 +67,20 @@ describe('coach system prompt positioning', () => {
       /do not propose program\s+adjustments to chase the cardio target/i,
     );
   });
+
+  // Issue #153: per-day conditioning is an INPUT-side interference signal;
+  // cardio scheduling advice stays in prose, never in <adjustments>.
+  it('tells the coach to manage cardio/strength interference from the daily breakdown', () => {
+    expect(COACH_SYSTEM_PROMPT).toMatch(/conditioning\.days/);
+    expect(COACH_SYSTEM_PROMPT).toMatch(/days without cardio are omitted/i);
+    expect(COACH_SYSTEM_PROMPT).toMatch(
+      /separate hard runs from heavy\s+lower-body days/i,
+    );
+    expect(COACH_SYSTEM_PROMPT).toMatch(/explain WHY the timing matters/);
+    expect(COACH_SYSTEM_PROMPT).toMatch(
+      /cardio scheduling never goes in the <adjustments> block/i,
+    );
+  });
 });
 
 describe('program generation prompt positioning', () => {

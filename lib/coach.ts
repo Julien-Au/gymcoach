@@ -3,6 +3,7 @@ import {
   applyBodyweight,
   best1RM,
   effectiveWeight,
+  dailyConditioning,
   exerciseProgress,
   isStalled,
   isoWeekStart,
@@ -104,6 +105,12 @@ interface ConditioningSummary {
   // Null when the previous ISO week had no cardio session (mirrors the
   // strength summary's weekPrevious semantics).
   weekPrevious: ConditioningWeek | null;
+  // Per-day cardio of the CURRENT ISO week (issue #153): the interference
+  // signal - WHEN the cardio happened, so the coach can spot a hard run next
+  // to a heavy lower-body day. Days without cardio are omitted (compact; a
+  // zero-cardio week is an empty array), sorted ascending by date. Input
+  // signal only; the output contract (the <adjustments> block) is unchanged.
+  days: Array<{ date: string; minutes: number; km: number }>;
   // The weekly guideline the progress page tracks (150 min/week).
   weeklyTargetMin: number;
 }
@@ -315,6 +322,17 @@ export async function buildCoachPayload(userId: string): Promise<CoachPayload> {
     { windowWeeks: 2, now },
   );
   const [conditioningPrev, conditioningCurrent] = conditioningWeeks;
+  // Per-day breakdown of the current ISO week (issue #153): the shared
+  // dailyConditioning derivation over the same already-fetched recent sets.
+  const conditioningDays = dailyConditioning(
+    recentSets.map((s) => ({
+      durationSec: s.durationSec,
+      distanceM: s.distanceM,
+      isWarmup: s.isWarmup,
+      sessionStartedAt: s.session.startedAt,
+    })),
+    { now },
+  );
   const conditioning: ConditioningSummary = {
     weekCurrent: {
       minutes: conditioningCurrent?.minutes ?? 0,
@@ -329,6 +347,7 @@ export async function buildCoachPayload(userId: string): Promise<CoachPayload> {
             sessions: conditioningPrev.sessions,
           }
         : null,
+    days: conditioningDays,
     weeklyTargetMin: WEEKLY_CONDITIONING_TARGET_MIN,
   };
 

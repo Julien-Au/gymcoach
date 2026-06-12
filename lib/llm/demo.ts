@@ -33,6 +33,7 @@ Solid week: 3 sessions logged, total working volume up about 4% versus last week
 
 **Conditioning**
 - 95 of your 150 weekly target minutes logged (9.6 km across 2 cardio sessions), up from 60 minutes last week. Aerobic volume is climbing but still moderate, so it is not cutting into lifting recovery yet - keep the easy pace.
+- Interference check: your longer run landed the day before your leg session, so the same recovery budget got hit twice - move hard runs away from heavy lower-body days (easy cardio after lifting or on rest days) to protect leg progress.
 
 **Suggestions for next week**
 - Push bench to 72.5 kg for the first working sets - that lines up with your stated goal.

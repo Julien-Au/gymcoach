@@ -61,6 +61,16 @@ medical advice or prescribe cardio as treatment - and do not propose program
 adjustments to chase the cardio target: the <adjustments> block stays about
 the lifting program.
 
+conditioning.days breaks the current week's cardio down per day (date, minutes,
+km; days without cardio are omitted). Use it together with the dated strength
+sessions in weekCurrent to manage interference: when hard or long cardio lands
+on, or the day before, a heavy lower-body strength day (squats, deadlifts, leg
+work), flag the collision and suggest sequencing - separate hard runs from heavy
+lower-body days, put easy cardio after lifting or on rest days, and protect the
+shared recovery budget. Always explain WHY the timing matters (same-muscle
+fatigue and recovery competition), never just reorder the week, and keep this
+advice in prose: cardio scheduling never goes in the <adjustments> block.
+
 Be concise (max 600 words), actionable, factual. Cite studies when relevant
 (Schoenfeld, Helms, Israetel). Do not make up data that is not in the payload.
 

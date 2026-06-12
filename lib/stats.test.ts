@@ -3,6 +3,7 @@ import {
   applyBodyweight,
   best1RM,
   classifyWeeklySets,
+  dailyConditioning,
   effectiveWeight,
   estimate1RM,
   exerciseProgress,
@@ -577,5 +578,59 @@ describe('weeklyConditioning (issue #135)', () => {
       { windowWeeks: 4, now: NOW },
     );
     expect(points.every((p) => p.minutes === 0)).toBe(true);
+  });
+});
+
+describe('dailyConditioning (issue #153)', () => {
+  const NOW = new Date('2026-06-11T10:00:00Z'); // Thursday, ISO week 2026-W24 (Mon 06-08)
+  const run = (over: Record<string, unknown> = {}) => ({
+    durationSec: 1800,
+    distanceM: 5000,
+    isWarmup: false,
+    sessionStartedAt: new Date('2026-06-09T07:00:00Z'), // Tuesday of the current week
+    ...over,
+  });
+
+  it('returns an empty array for a zero-cardio week (days omitted, not zero-filled)', () => {
+    expect(dailyConditioning([], { now: NOW })).toEqual([]);
+    // A strength-only set is not cardio: still empty.
+    expect(dailyConditioning([run({ durationSec: null })], { now: NOW })).toEqual([]);
+  });
+
+  it('aggregates minutes and km per UTC calendar day, ascending', () => {
+    const days = dailyConditioning(
+      [
+        run({ sessionStartedAt: new Date('2026-06-10T18:00:00Z'), durationSec: 600, distanceM: null }),
+        run(), // Tuesday 30 min / 5 km
+        run({ sessionStartedAt: new Date('2026-06-09T18:30:00Z'), durationSec: 900, distanceM: 2500 }),
+      ],
+      { now: NOW },
+    );
+    expect(days).toEqual([
+      { date: '2026-06-09', minutes: 45, km: 7.5 },
+      { date: '2026-06-10', minutes: 10, km: 0 },
+    ]);
+  });
+
+  it('only covers the current ISO week and ignores warmup or non-cardio sets', () => {
+    const days = dailyConditioning(
+      [
+        run(),
+        run({ sessionStartedAt: new Date('2026-06-07T07:00:00Z') }), // Sunday of the prior week
+        run({ sessionStartedAt: new Date('2026-06-15T07:00:00Z') }), // Monday of the next week
+        run({ isWarmup: true, sessionStartedAt: new Date('2026-06-12T07:00:00Z') }),
+        run({ durationSec: null, sessionStartedAt: new Date('2026-06-12T07:00:00Z') }),
+      ],
+      { now: NOW },
+    );
+    expect(days).toEqual([{ date: '2026-06-09', minutes: 30, km: 5 }]);
+  });
+
+  it('includes the Monday boundary of the current week', () => {
+    const days = dailyConditioning(
+      [run({ sessionStartedAt: new Date('2026-06-08T00:00:00Z'), durationSec: 1200, distanceM: null })],
+      { now: NOW },
+    );
+    expect(days).toEqual([{ date: '2026-06-08', minutes: 20, km: 0 }]);
   });
 });
