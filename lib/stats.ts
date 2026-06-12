@@ -90,8 +90,11 @@ export function best1RM(
 // ============================================================
 
 // Returns the ISO key of a date in the "YYYY-Www" format (week starting Monday).
+// UTC-only: the calendar day is read with UTC getters so week bucketing is
+// identical on every host timezone (issue #160 - three reviews flagged the
+// latent local-time skew).
 export function isoWeekKey(date: Date): string {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
   // Thursday of the current week (ISO: the week belongs to the year its Thursday falls in).
   const dayNum = d.getUTCDay() || 7;
   d.setUTCDate(d.getUTCDate() + 4 - dayNum);
@@ -101,8 +104,9 @@ export function isoWeekKey(date: Date): string {
 }
 
 // Date of the Monday (00:00 UTC) of the ISO week containing the given date.
+// UTC-only, like isoWeekKey above.
 export function isoWeekStart(date: Date): Date {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
   const dayNum = d.getUTCDay() || 7;
   d.setUTCDate(d.getUTCDate() - (dayNum - 1));
   return d;
