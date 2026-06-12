@@ -233,6 +233,23 @@ async function main() {
   }));
   await prisma.readinessCheckin.createMany({ data: readinessData });
 
+  // Superset pairing (issue #146): pair the first workout's first two
+  // strength exercises so the demo program and the session clip show the
+  // A1/A2 flow.
+  const firstWorkout = program.workouts[0];
+  if (firstWorkout) {
+    const pairables = firstWorkout.exercises
+      .filter((pe) => pe.exercise.category !== ExerciseCategory.CARDIO)
+      .slice(0, 2);
+    if (pairables.length === 2) {
+      await prisma.programExercise.updateMany({
+        where: { id: { in: pairables.map((pe) => pe.id) } },
+        data: { supersetGroup: 1 },
+      });
+      console.log(`Demo superset: paired ${pairables.map((pe) => pe.exercise.name).join(' + ')}.`);
+    }
+  }
+
   // Conditioning history (issue #133 batch): two cardio sessions per week so
   // the conditioning card and cardio rendering show up in the demo and the
   // screenshots. Deterministic like everything else.
