@@ -21,8 +21,45 @@ const ctx = await browser.newContext({
 });
 const page = await ctx.newPage();
 const video = page.video();
+
+// Self-verification: a recording must never silently capture a broken app.
+// We watch for the things a clip would otherwise show without anyone noticing -
+// the Next.js client error overlay, uncaught page exceptions, and 5xx
+// responses - and abort with a non-zero exit so no error footage is ever
+// converted to a committed GIF (the gap that shipped "Application error" clips).
+const failures = [];
+page.on('pageerror', (err) => failures.push(`pageerror: ${err.message}`));
+page.on('response', (res) => {
+  if (res.status() >= 500) failures.push(`HTTP ${res.status()} ${res.url()}`);
+});
+// Surface the actual on-screen error text in the abort message.
+const ERROR_TEXTS = [
+  'Application error',
+  'client-side exception',
+  'Internal Server Error',
+  'This page could not be found',
+  'Unhandled Runtime Error',
+];
+async function assertHealthy(stepLabel) {
+  const body = (await page.locator('body').innerText().catch(() => '')) || '';
+  const hit = ERROR_TEXTS.find((t) => body.includes(t));
+  if (hit) failures.push(`on-screen "${hit}" at step: ${stepLabel}`);
+  if (failures.length > 0) {
+    console.error(`\n[record] ABORT (${scenario}) - the app was not healthy:`);
+    for (const f of failures) console.error('  - ' + f);
+    await ctx.close().catch(() => {});
+    await browser.close().catch(() => {});
+    process.exit(1);
+  }
+}
+
 const pause = (ms) => page.waitForTimeout(ms);
-const tryClick = (loc) => loc.click({ timeout: 5000 }).catch(() => {});
+// Click, then assert the page is still healthy - a click that navigates into
+// an error page must fail the recording, not be swallowed.
+const tryClick = async (loc) => {
+  await loc.click({ timeout: 5000 }).catch(() => {});
+  await assertHealthy('after click');
+};
 const intoView = (loc) => loc.scrollIntoViewIfNeeded({ timeout: 3000 }).catch(() => {});
 
 // Sign in
@@ -31,6 +68,7 @@ await page.getByLabel('Email').fill(email);
 await page.getByLabel('Password').fill(password);
 await page.getByRole('button', { name: 'Sign in' }).click();
 await page.waitForURL(`${base}/`);
+await assertHealthy('after sign in');
 await pause(600);
 
 if (scenario === 'session') {
@@ -78,6 +116,7 @@ if (scenario === 'session') {
   await pause(400);
   await ta.press('Enter');
   await page.getByText(/next push day/i).waitFor({ timeout: 25000 });
+  await assertHealthy('chat response');
   await pause(1800);
 } else if (scenario === 'debrief') {
   await page.goto(`${base}/coach`, { waitUntil: 'networkidle' });
@@ -90,6 +129,7 @@ if (scenario === 'session') {
   await pause(1300);
   await applyBtn.click();
   await page.getByText(/adjustments? applied/i).waitFor({ timeout: 15000 });
+  await assertHealthy('debrief applied');
   await pause(1900);
 } else if (scenario === 'program') {
   await page.goto(`${base}/programs/generate`, { waitUntil: 'networkidle' });
@@ -103,6 +143,7 @@ if (scenario === 'session') {
   await pause(400);
   await page.getByRole('button', { name: 'Generate' }).click();
   await page.getByText('Review and edit').waitFor({ timeout: 25000 });
+  await assertHealthy('program generated');
   await pause(1300);
   await page.mouse.wheel(0, 420);
   await pause(1400);
@@ -110,10 +151,17 @@ if (scenario === 'session') {
   await pause(1600);
 }
 
+await assertHealthy('final');
 await pause(400);
 await ctx.close();
 const src = await video.path();
 await browser.close();
+if (failures.length > 0) {
+  // Belt and suspenders: any late failure means we must not keep the footage.
+  fs.rmSync(src, { force: true });
+  console.error(`[record] discarded ${scenario}.webm - app errors detected`);
+  process.exit(1);
+}
 const dest = `${outDir}/${scenario}.webm`;
 fs.renameSync(src, dest);
-console.log('WEBM', dest);
+console.log('WEBM', dest, '- healthy, no app errors');

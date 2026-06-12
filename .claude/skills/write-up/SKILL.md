@@ -42,7 +42,7 @@ commit on an existing docs branch.
    `npm run seed:demo` (extend `scripts/seed-demo-history.ts` when a new feature needs demo
    data to be visible), `npm run build` + `npx next start -p 3032`, then
    `node scripts/screenshots.mjs` and `node scripts/record.mjs <scenario>` + an ffmpeg
-   palette GIF conversion at 320 px / 12 fps. Tear the server and container down after.
+   palette GIF conversion at 320 px / 12 fps. Tear the server and container down after. The recorder (scripts/record.mjs) self-verifies - it exits non-zero and discards the clip if the page shows an error overlay / 404 / 5xx / uncaught error (lesson L12); a `record.mjs` abort means the app is broken, not the script. Kill any stale next-server / free the port before recording (lesson L11).
 5. **docs/loops/lessons.md** - harvest any lesson the run surfaced (a failure mode, a
    surprise, a fix that should not have been needed). A lesson is only "learned" when it
    **graduates**: if it is general, edit the relevant skill or `CLAUDE.md`/charter so the
