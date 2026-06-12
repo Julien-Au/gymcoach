@@ -188,6 +188,46 @@ describe('buildCoachPayload isolation', () => {
   });
 });
 
+describe('buildCoachPayload cardio exclusion (issue #140)', () => {
+  it('keeps cardio sets out of the week summary and workingSetCount', async () => {
+    const user = await makeUser('cardio-coach@test.dev');
+    const bench = await db.exercise.create({
+      data: { userId: user.id, name: 'Bench', muscleGroup: 'CHEST', category: 'COMPOUND' },
+    });
+    const run = await db.exercise.create({
+      data: { userId: user.id, name: 'Running', muscleGroup: 'OTHER', category: 'CARDIO' },
+    });
+
+    const session = await db.session.create({ data: { userId: user.id } });
+    await db.set.create({
+      data: { sessionId: session.id, exerciseId: bench.id, setNumber: 1, weight: 80, reps: 8 },
+    });
+    await db.set.create({
+      data: { sessionId: session.id, exerciseId: bench.id, setNumber: 2, weight: 40, reps: 10, isWarmup: true },
+    });
+    await db.set.create({
+      data: {
+        sessionId: session.id,
+        exerciseId: run.id,
+        setNumber: 1,
+        weight: 0,
+        reps: 1,
+        durationSec: 1800,
+        distanceM: 5000,
+      },
+    });
+
+    const payload = await buildCoachPayload(user.id);
+    const week = payload.weekCurrent.sessions.find((s) => s.sessionId === session.id);
+    expect(week).toBeDefined();
+    // Only the strength working set counts; the cardio set is not a lift.
+    expect(week?.workingSetCount).toBe(1);
+    const exerciseNames = week?.exercises.map((e) => e.exerciseName) ?? [];
+    expect(exerciseNames).toContain('Bench');
+    expect(exerciseNames).not.toContain('Running');
+  });
+});
+
 describe('buildCoachPayload readiness (issue #38)', () => {
   it('surfaces the latest recent readiness check-in into the payload', async () => {
     const user = await makeUser('readiness@test.dev');
