@@ -258,11 +258,26 @@ export async function GET() {
 // size-capped while being read. Version 1 files (pre-#168) stay importable:
 // every field/model added in v2 is optional and defaults to null/absent.
 
-// A date string that must actually parse (a legit export always writes ISO).
+// A date string that must actually parse AND fall within PostgreSQL's
+// timestamp range. JS Date.parse accepts dates far outside it (e.g. year
+// 275760), which would pass Zod and then throw deep in Prisma as a 500; we
+// reject them here so a malformed file is a clean 400 with the user's data
+// untouched (the route's documented contract).
 const dateString = z
   .string()
   .max(40)
-  .refine((s) => !Number.isNaN(Date.parse(s)), { message: 'Invalid date' });
+  .refine(
+    (s) => {
+      const t = Date.parse(s);
+      if (Number.isNaN(t)) return false;
+      // Postgres timestamp years run 4713 BC .. 294276 AD; JS Date itself
+      // caps at +/-8.64e15 ms. Bound to years [1, 9999] - well within both
+      // and far beyond any real training date.
+      const year = new Date(t).getUTCFullYear();
+      return year >= 1 && year <= 9999;
+    },
+    { message: 'Invalid or out-of-range date' },
+  );
 
 const importSchema = z.object({
   version: z.number().int().min(1).max(VERSION),

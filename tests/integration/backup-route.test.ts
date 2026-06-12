@@ -462,6 +462,20 @@ describe('POST /api/backup - malformed and oversized input (issue #168)', () => 
     expect(await countsFor(user.id)).toEqual(before);
   });
 
+  it('rejects an out-of-range date as a clean 400, not a Prisma 500', async () => {
+    const user = await seedFullUser('victim-date@test.dev');
+    actAs(user.id);
+    const before = await countsFor(user.id);
+    const dump = await (await getBackup()).json();
+
+    // Year 275760 parses in JS Date but is far outside PostgreSQL's range;
+    // it must be rejected by validation, not 500 deep in Prisma.
+    dump.sessions[0].startedAt = '+275760-09-13T00:00:00.000Z';
+    const res = await postBackup(jsonReq({ payload: dump, confirmReplace: true }));
+    expect(res.status).toBe(400);
+    expect(await countsFor(user.id)).toEqual(before);
+  });
+
   it('rejects a non-JSON body and a missing confirmReplace', async () => {
     const user = await seedFullUser('victim2@test.dev');
     actAs(user.id);
