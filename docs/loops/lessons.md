@@ -165,7 +165,8 @@ Format per entry: trigger/evidence, the lesson (actionable), and **Status** = `g
   the page ever shows an error overlay / a 404 / a 5xx / an uncaught pageerror. Because the
   only way a committed GIF is produced is through the recorder, a self-verifying recorder
   closes the loop without OCR on the committed file.
-- **Status:** graduated -> scripts/record.mjs now watches pageerror + >=500 responses and
+- **Update (2026-06-12):** the SAME gap existed in scripts/screenshots.mjs - two of the four committed README screenshots (progress.png, catalog.png) were the "Application error" page, captured during the same stale-server episode. Both scripts now self-verify identically.
+- **Status:** graduated -> scripts/record.mjs AND scripts/screenshots.mjs now watch pageerror + >=500 responses and
   asserts on-screen error text after every click and at each scenario's key step, exiting 1
   and discarding the webm on any hit (proven with a negative probe: pointing it at a 404
   route aborts). The write-up skill's media step references this. Also a reminder of L11:
