@@ -24,14 +24,24 @@ trust-gated (login allowlist + collaborator check HTTP 204). Additive, no migrat
   CDATA, exponent/hex/Infinity/NaN numerics (notation cannot bypass the bounds), the
   clamp boundaries, and a route-level re-confirm inside the duplicate window creating a
   deliberate second session while reusing the exercise.
-- Full local gate (verify.sh --full) before the PR; merged on green CI.
+- Full local gate (verify.sh --full) before the PR; PR #167 merged on green 5-check CI.
 
 **Challenged.** No subagent-spawning tool available in this tick: per the charter's
 no-self-certification backstop, the PR merged on green full CI and is flagged for an
 independent POST-MERGE review (security lens - it touches the untrusted-XML parser).
 
-**Deferred to human.** Nothing. Triage ran after the merge; its outcome is in the run
-report (and amended here by a docs PR if it filed issues).
+**Deferred to human.** Triage ran after the merge (this amendment rides in a docs PR):
+- Filed #168: the backup export/restore route silently drops everything added since it
+  shipped (Set.durationSec/distanceM/avgHr, ProgramExercise.supersetGroup, and the
+  ExerciseGoal / BodyweightEntry / ReadinessCheckin models) and has zero integration
+  coverage - the L8 silent-data-loss class on the one route meant to prevent it.
+- Filed #169 (STOP-FOR-HUMAN): npm audit reports 6 high / 1 moderate advisories, all
+  fixable only by major bumps - next 14.2.35 needs >=15.5.16 for its runtime advisories;
+  the eslint-config-next/glob and next-pwa/workbox chains are dev/build-time. Per the
+  charter the loop must not auto-implement this; the issue records the decision needed.
+- Not due / nothing to file: gate spot-check (last run 2026-06-11); permissions re-audit
+  (hardened 2026-06-09; deny list re-read this run and intact - rm -rf, force-push
+  variants, reset --hard, curl, wget all still denied; no allow-list scope creep found).
 
 ---
 
