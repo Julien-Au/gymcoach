@@ -6,6 +6,48 @@ by the charter in [`07-autonomy.md`](07-autonomy.md).
 
 ---
 
+## 2026-06-12 - Coach conditioning payload (#145) + supersets slice 1 (#146) shipped
+
+**Context.** Maintainer tick executing the remaining two issues of the sixth ideate
+batch, strictly serialized (PR merged before the next branch). Both issues authored by
+JulienAu (trust-gated, collaborator-verified 204). PR #148 (#144, cardio CSV export) had
+already merged.
+
+**Decided / shipped.**
+- PR #149 (Closes #145): dedicated `CoachPayload.conditioning` section -
+  weekCurrent/weekPrevious `{ minutes, km, sessions }` plus the 150 min/week guideline -
+  computed via the SHARED lib/stats.ts weeklyConditioning derivation over the
+  already-fetched recent sets (no duplication). Input-side prompt guidance only; the
+  `<adjustments>` output contract untouched and its tests passed unmodified. Demo
+  provider's canned debrief exercises the section. Tests: prompt positioning, demo
+  contract-closure pin, integration suite (aggregation, zero-cardio user -> zeros + null
+  weekPrevious, isolation). Full local gate green before the PR; CI green; squash-merged.
+- PR #150 (Closes #146): supersets slice 1, program-level only. Additive nullable
+  `ProgramExercise.supersetGroup` migration validated on the test DB (migrate deploy +
+  clean migrate diff); rollback baseline `autonomy-baseline-2026-06-12` tagged on main
+  before merge. All user-facing semantics derive on read in the new pure lib
+  (`lib/supersets.ts`): A1/A2/B1 labels, presentation order (group members consecutive),
+  auto-advance alternation, Next-button cycling that never traps the user in an
+  unfinished group. Builder gains pair-with-previous / unpair menu actions riding the
+  existing PUT route (absent field preserves pairing, null unpairs - pinned). Logging
+  semantics, rest timer, generation/templates/imports/coach payload untouched. Tests at
+  every layer: 14 unit (derivations), schema bounds, route integration (persistence,
+  absent-vs-null, ownership), new E2E pairing two exercises and running the A1/A2 flow;
+  standalone flows pinned by the existing suite plus explicit pinned-behavior unit cases.
+- One local typecheck red on the way (stale `.next` types; cleared) and one expected
+  fixture fallout (ProgramExercise test fixtures gained `supersetGroup: null`) - no
+  assertion weakened.
+
+**Challenged.** No subagent spawning available in this nested run, so per the charter's
+no-self-certify rule both PRs merged on green FULL CI (integration + E2E) and are flagged
+for independent post-merge review: multi-lens for both, does-it-actually-work for #146.
+
+**Deferred to human.** Nothing blocked. Later superset slices (shared-rest enforcement,
+circuit timer, logging semantics, generation/template awareness) stay un-filed until a
+starved cycle.
+
+---
+
 ## 2026-06-12 - Conditioning batch reviewed (3x CLEAN + 1 fix); write-up + demo refresh
 
 **Context.** The cardio foundation batch (#137/#138/#139) merged yesterday with the

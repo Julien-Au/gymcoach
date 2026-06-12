@@ -28,6 +28,7 @@ const pe: ProgramExercise & { exercise: Exercise } = {
   restSec: 120,
   tempo: null,
   notes: null,
+  supersetGroup: null,
   exercise: exo,
 };
 

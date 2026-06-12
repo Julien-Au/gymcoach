@@ -26,6 +26,7 @@ import {
   type PendingSet,
 } from '@/lib/indexeddb';
 import { readinessForSuggestion, type ReadinessSignal } from '@/lib/progression';
+import { buildSupersetView, nextAutoAdvanceIndex, nextNavIndex } from '@/lib/supersets';
 import { isReadinessAutoRegulationEnabled } from '@/lib/preferences';
 import { bindAutoSync, flushPendingSets, queueSet } from '@/lib/sync';
 import { hydrateFromServerSets } from '@/lib/sync-hydration';
@@ -78,7 +79,11 @@ export function SessionRunner({
 }: SessionRunnerProps) {
   const router = useRouter();
   const workout = session.workout!;
-  const programExercises = workout.exercises;
+  // Supersets (issue #146, slice 1): run the workout in presentation order -
+  // members of a superset group come consecutively with A1/A2 labels. For a
+  // workout without supersets this is exactly the stored order.
+  const supersetView = useMemo(() => buildSupersetView(workout.exercises), [workout.exercises]);
+  const programExercises = supersetView.ordered;
 
   const [hydrated, setHydrated] = useState(false);
   const [currentIdx, setCurrentIdx] = useState(0);
@@ -196,13 +201,18 @@ export function SessionRunner({
 
     vibrate(VIBRATION_PATTERNS.validate);
 
-    // Start the rest. If the set completes the goal and there is a next
-    // exercise, prepare the auto-advance at the end of the timer.
-    const isLastTargetSet =
-      !values.isWarmup &&
-      existing.filter((s) => !s.isWarmup).length + 1 >= currentPE.targetSets;
-    const nextIdx =
-      isLastTargetSet && currentIdx + 1 < programExercises.length ? currentIdx + 1 : null;
+    // Start the rest, preparing the auto-advance at the end of the timer.
+    // Standalone exercise (unchanged behavior): advance once the set
+    // completes the target. Superset member (issue #146): alternate to the
+    // next member of the group that still has sets, the A1/A2 flow.
+    const remainingAfterThisSet = (pe: ProgramExerciseWithExercise) => {
+      const logged = setsByExercise.get(pe.exerciseId)?.filter((s) => !s.isWarmup).length ?? 0;
+      const justLogged = pe.exerciseId === currentPE.exerciseId ? 1 : 0;
+      return pe.targetSets - logged - justLogged;
+    };
+    const nextIdx = values.isWarmup
+      ? null
+      : nextAutoAdvanceIndex(supersetView, currentIdx, remainingAfterThisSet);
 
     setMode({
       kind: 'rest',
@@ -277,8 +287,14 @@ export function SessionRunner({
     setCurrentIdx((i) => Math.max(0, i - 1));
     setMode({ kind: 'input' });
   }
+  // Next is linear for standalone exercises (unchanged) and cycles within a
+  // superset group before advancing past it (issue #146).
+  const remainingNow = (pe: ProgramExerciseWithExercise) =>
+    pe.targetSets - (setsByExercise.get(pe.exerciseId)?.filter((s) => !s.isWarmup).length ?? 0);
+  const navNextIdx = nextNavIndex(supersetView, currentIdx, remainingNow);
   function goNext() {
-    setCurrentIdx((i) => Math.min(programExercises.length - 1, i + 1));
+    if (navNextIdx == null) return;
+    setCurrentIdx(navNextIdx);
     setMode({ kind: 'input' });
   }
 
@@ -318,6 +334,11 @@ export function SessionRunner({
             <p className="text-sm font-medium">
               Exercise {currentIdx + 1}/{programExercises.length} · {currentPE.exercise.name}
             </p>
+            {supersetView.labels.has(currentPE.id) && (
+              <Badge variant="secondary" className="mt-1">
+                Superset {supersetView.labels.get(currentPE.id)}
+              </Badge>
+            )}
             {deloadActive && (
               <Badge variant="secondary" className="mt-1 text-emerald-700 dark:text-emerald-400">
                 Deload week
@@ -417,9 +438,7 @@ export function SessionRunner({
             variant="outline"
             size="sm"
             onClick={goNext}
-            disabled={
-              currentIdx === programExercises.length - 1 || mode.kind !== 'input'
-            }
+            disabled={navNextIdx == null || mode.kind !== 'input'}
             className="min-h-tap"
           >
             <span className="mr-1">Next</span>

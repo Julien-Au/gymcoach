@@ -40,4 +40,23 @@ describe('programExerciseInputSchema', () => {
     expect(programExerciseInputSchema.safeParse({ ...valid, targetRIR: 6 }).success).toBe(false);
     expect(programExerciseInputSchema.safeParse({ ...valid, restSec: 14 }).success).toBe(false);
   });
+
+  // Superset pairing (issue #146, slice 1).
+  it('accepts a superset group within bounds, null, or absent (distinct states)', () => {
+    const withGroup = programExerciseInputSchema.parse({ ...valid, supersetGroup: 3 });
+    expect(withGroup.supersetGroup).toBe(3);
+
+    const cleared = programExerciseInputSchema.parse({ ...valid, supersetGroup: null });
+    expect(cleared.supersetGroup).toBeNull();
+
+    // Absent stays absent (undefined), so an update can leave it unchanged.
+    const absent = programExerciseInputSchema.parse(valid);
+    expect(absent.supersetGroup).toBeUndefined();
+  });
+
+  it('rejects out-of-bounds or non-integer superset groups', () => {
+    expect(programExerciseInputSchema.safeParse({ ...valid, supersetGroup: 0 }).success).toBe(false);
+    expect(programExerciseInputSchema.safeParse({ ...valid, supersetGroup: 10 }).success).toBe(false);
+    expect(programExerciseInputSchema.safeParse({ ...valid, supersetGroup: 1.5 }).success).toBe(false);
+  });
 });
