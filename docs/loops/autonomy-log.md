@@ -6,6 +6,33 @@ by the charter in [`07-autonomy.md`](07-autonomy.md).
 
 ---
 
+## 2026-06-12 - Conditioning batch reviewed (3x CLEAN + 1 fix); write-up + demo refresh
+
+**Context.** The cardio foundation batch (#137/#138/#139) merged yesterday with the
+no-reviewer flag; the three independent Opus reviews ran as the orchestrator's next
+action.
+
+**Decided / shipped.**
+- Verdicts: #138 CLEAN (security; reviewer added 8 adversarial probes), #139 CLEAN
+  (correctness; 2 cosmetic NITs noted), #137 CLEAN with ONE minor REAL finding - the
+  coach payload counted cardio sets as working sets and emitted phantom 0-volume CARDIO
+  "lifts". Fixed same-day as #140 -> PR #141 (merged on green incl. the new docker-smoke
+  job), exclusion pinned by an integration test.
+- The #137 reviewer satisfied charter control 6 by running the flow live (production
+  build, logged 30:00 / 5 km, read it back, E2E spec green).
+- Write-up: CHANGELOG, README features (cardio + conditioning card + importers),
+  backlog verdicts, this entry. Demo seed extended with 23 deterministic cardio
+  sessions; all four screenshots re-shot (progress now shows the conditioning card);
+  demo redeploy via the deploy-demo workflow follows the merge.
+
+**Challenged.** Three independent reviews, model-split (Fable implemented, Opus
+reviewed). Accepted-change rate this batch: 5 merged / 0 abandoned.
+
+**Deferred to human.** Nothing. Future slices stay un-filed until the next starved
+cycle (pace analytics, conditioning in the coach payload, cardio drill-down).
+
+---
+
 ## 2026-06-11 - Conditioning/cardio foundation batch shipped (#133, #134, #135)
 
 **Context.** Maintainer tick executing the conditioning batch ideated on 2026-06-11, in

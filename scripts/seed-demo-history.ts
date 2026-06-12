@@ -233,9 +233,58 @@ async function main() {
   }));
   await prisma.readinessCheckin.createMany({ data: readinessData });
 
+  // Conditioning history (issue #133 batch): two cardio sessions per week so
+  // the conditioning card and cardio rendering show up in the demo and the
+  // screenshots. Deterministic like everything else.
+  let cardio = await prisma.exercise.findFirst({
+    where: { userId: user.id, category: ExerciseCategory.CARDIO },
+    orderBy: { name: 'asc' },
+  });
+  if (!cardio) {
+    cardio = await prisma.exercise.create({
+      data: {
+        userId: user.id,
+        name: 'Running',
+        muscleGroup: MuscleGroup.OTHER,
+        category: ExerciseCategory.CARDIO,
+      },
+    });
+  }
+  let cardioSessions = 0;
+  for (let w = WEEKS - 1; w >= 0; w--) {
+    for (const day of [2, 6]) {
+      const startedAt = sessionDate(w, day);
+      if (startedAt > now) continue;
+      // 25-40 min easy runs, pace drifting with the seeded RNG.
+      const durationSec = Math.round((25 + rng() * 15) * 60);
+      const distanceM = Math.round(durationSec * (2.6 + rng() * 0.5));
+      const session = await prisma.session.create({
+        data: {
+          userId: user.id,
+          startedAt,
+          finishedAt: new Date(startedAt.getTime() + durationSec * 1000),
+        },
+      });
+      await prisma.set.create({
+        data: {
+          sessionId: session.id,
+          exerciseId: cardio.id,
+          setNumber: 1,
+          weight: 0,
+          reps: 1,
+          durationSec,
+          distanceM,
+          completedAt: new Date(startedAt.getTime() + durationSec * 1000),
+        },
+      });
+      cardioSessions += 1;
+    }
+  }
+
   console.log(
     `Demo extras: ${bodyweightEntries.length} bodyweight entries, ` +
-      `${firstCompound ? 1 : 0} goal, ${readinessData.length} readiness check-ins.`,
+      `${firstCompound ? 1 : 0} goal, ${readinessData.length} readiness check-ins, ` +
+      `${cardioSessions} cardio sessions.`,
   );
 }
 

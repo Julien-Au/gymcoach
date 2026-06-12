@@ -59,6 +59,10 @@ more about *how a repo can maintain itself* than about the gym app, start there.
 - Stalled-lift detection plus a deload-week recommendation derived from your
   stalls and readiness trend - and a one-tap planned deload week that lightens
   every suggested load by 10% until it expires
+- Cardio too: CARDIO exercises log duration and distance (not weight x reps),
+  show up in session history and summaries, and feed a weekly conditioning
+  card (minutes, km, sessions vs the 150 min/week guideline) - without ever
+  polluting the lifting metrics
 - Per-exercise target goals (weight x reps) with a progress bar and an
   achieved badge
 - Bodyweight tracking with a trend chart - and bodyweight-aware tonnage for
@@ -76,7 +80,8 @@ more about *how a repo can maintain itself* than about the gym app, start there.
 - AI program generation from a natural-language goal, editable before saving
 - Pluggable LLM provider: Anthropic SDK or any OpenRouter model
 - Import your training history from a Strong or Hevy CSV export (dry-run
-  preview, duplicate-safe); export everything back out as CSV anytime
+  preview, duplicate-safe, cardio rows included); export everything back out
+  as CSV anytime
 - Train in kilograms or pounds, a per-user preference (data is always stored in kg)
 - Installable PWA with offline session logging
 

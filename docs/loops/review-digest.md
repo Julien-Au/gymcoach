@@ -177,3 +177,35 @@ contradiction on negative assisted loads - unreachable today, option-A doc fix s
 > visibly changed in this batch (the new surfaces live in the session runner, the chat,
 > and settings), and the GIFs were re-recorded yesterday - so per the media rule (refresh
 > on visible change; clips max ~3 batches lag) the media stands as-is at 1 batch of lag.
+
+---
+
+## 2026-06-12 - the conditioning batch (#137-#139, fix #141): cardio becomes first-class
+
+Merged: #137 (cardio sets: additive migration, Zod cross-field rule, logging UI, offline
+path), #138 (importers map cardio rows), #139 (conditioning card), #141 (the one REAL
+review finding: coach payload no longer counts cardio as strength signals), plus #132
+earlier (docker-smoke CI job, reviewed CLEAN). This is the first batch on the broadened
+training/fitness vision. All three feature reviews ran on Opus per the model-routing
+directive; the #137 reviewer ran the flow live (logged 30:00 / 5 km on a production
+build and read it back) and threw adversarial Zod probes; the #138 reviewer wrote 8
+extra adversarial import probes - all passed.
+
+**Read first, in order:**
+
+1. **#137 - the schema and the exclusion contract.** `gh pr diff 137`. Two nullable
+   columns + a CARDIO enum value, and the promise that cardio NEVER pollutes lifting
+   math - verified exclusion-by-exclusion (stats, records, goals, MEV/MRV, stalls).
+   This contract is what every future conditioning feature builds on.
+2. **#141 - the one place the contract leaked.** `gh pr diff 141`. weekSummary fed
+   cardio to the LLM as phantom 0-volume lifts; now excluded, pinned by an
+   integration test. Proof the L8 review lane still earns its cost (4 batches, 6 REAL
+   findings, all caught before users).
+3. **#138 - untrusted cardio numbers.** `gh pr diff 138`. Duration/distance bounds
+   shared with the API schema, applied after unit conversion; strength dup-keys pinned
+   byte-identical.
+
+**Skim:** #139 (display-only card; review CLEAN with two cosmetic NITs: the pre-existing
+local-vs-UTC ISO-week doc mismatch repo-wide, and the warmup-only-cardio empty card),
+this write-up (incl. demo seed gaining 23 deterministic cardio sessions + fresh
+screenshots).

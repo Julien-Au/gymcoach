@@ -82,6 +82,13 @@ commit on an existing docs branch.
 - Docs only - no product code, no merges (let `ship-pr` merge it).
 - Do not document unmerged work as shipped (it belongs in the PR, not `main`'s story).
 
+## Demo freshness (after the docs PR merges)
+
+When the batch changed anything user-visible, trigger the demo redeploy
+(`gh workflow run deploy-demo.yml`, or let the Monday schedule take it) and probe
+https://demo-gymcoach.mesureprivee.com/login afterwards - the public demo is part of the
+story and must not lag the README it advertises.
+
 ## One metric per batch
 
 Each batch write-up records, in the autonomy-log entry, the cheap acceptance metric:
