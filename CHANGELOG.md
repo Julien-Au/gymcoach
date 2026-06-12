@@ -83,6 +83,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   single field of the set logger to fill the weight, reps, and effort fields
   (RPE maps to the stored RIR). Deterministic parser in the user's display
   unit; the classic fields keep working unchanged.
+- Complete backup export/restore: the JSON backup now round-trips every
+  piece of your data - cardio duration/distance/heart rate, supersets,
+  per-exercise goals, bodyweight history, readiness check-ins, and coach
+  conversations - not just sessions and programs. Restore validates the file
+  as untrusted input (size-capped, every value bounded, all-or-nothing) and
+  still accepts older backup files.
 - Import a TCX file as a cardio session: duration, distance, and average
   heart rate land on the first-class cardio model, with a dry-run preview
   and duplicate warning - file-based, no cloud account, no OAuth. The
