@@ -86,4 +86,20 @@ describe('demo provider', () => {
     // <adjustments> block still closes the response.
     expect(debrief.text.trimEnd().endsWith('</adjustments>')).toBe(true);
   });
+
+  // Issue #153: the canned debrief exercises the interference guidance so the
+  // no-key flow demonstrates the coach reasoning about cardio timing.
+  it('includes an interference-aware line in the canned debrief', async () => {
+    process.env.LLM_PROVIDER = 'demo';
+    const p = getLlmProvider();
+
+    const debrief = await p.complete({
+      system: 'You produce a debrief and an <adjustments> block.',
+      messages: [{ role: 'user', content: 'x' }],
+    });
+    expect(debrief.text).toMatch(/Interference check/i);
+    expect(debrief.text).toMatch(/move hard runs away from heavy lower-body days/i);
+    // Still ends with the unchanged output contract.
+    expect(debrief.text.trimEnd().endsWith('</adjustments>')).toBe(true);
+  });
 });

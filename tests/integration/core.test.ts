@@ -291,6 +291,27 @@ describe('buildCoachPayload conditioning (issue #145)', () => {
       sessions: 1,
     });
     expect(payload.conditioning.weeklyTargetMin).toBe(150);
+    // Per-day breakdown (issue #153): both current-week sessions started on
+    // the same UTC day; the previous-week session is outside the window.
+    expect(payload.conditioning.days).toEqual([
+      { date: inCurrentWeek.toISOString().slice(0, 10), minutes: 40, km: 5 },
+    ]);
+  });
+
+  it('splits the current week per day for the interference signal (issue #153)', async () => {
+    const { user, run } = await makeCardioUser('conditioning-days@test.dev');
+    const weekStart = isoWeekStart(new Date());
+    const monday = new Date(weekStart.getTime() + 60 * 60 * 1000);
+    const tuesday = new Date(weekStart.getTime() + 24 * 60 * 60 * 1000 + 60 * 60 * 1000);
+
+    await cardioSession(user.id, run.id, monday, [{ durationSec: 1800, distanceM: 5000 }]);
+    await cardioSession(user.id, run.id, tuesday, [{ durationSec: 600 }]);
+
+    const payload = await buildCoachPayload(user.id);
+    expect(payload.conditioning.days).toEqual([
+      { date: monday.toISOString().slice(0, 10), minutes: 30, km: 5 },
+      { date: tuesday.toISOString().slice(0, 10), minutes: 10, km: 0 },
+    ]);
   });
 
   it('yields zeros (not nulls or crashes) for a zero-cardio user', async () => {
@@ -307,6 +328,8 @@ describe('buildCoachPayload conditioning (issue #145)', () => {
     expect(payload.conditioning.weekCurrent).toEqual({ minutes: 0, km: 0, sessions: 0 });
     expect(payload.conditioning.weekPrevious).toBeNull();
     expect(payload.conditioning.weeklyTargetMin).toBe(150);
+    // Zero-cardio week: days is an empty array, never null (issue #153).
+    expect(payload.conditioning.days).toEqual([]);
   });
 
   it("does not count another user's cardio", async () => {
@@ -321,6 +344,7 @@ describe('buildCoachPayload conditioning (issue #145)', () => {
     const payload = await buildCoachPayload(userA.id);
     expect(payload.conditioning.weekCurrent).toEqual({ minutes: 0, km: 0, sessions: 0 });
     expect(payload.conditioning.weekPrevious).toBeNull();
+    expect(payload.conditioning.days).toEqual([]);
   });
 });
 

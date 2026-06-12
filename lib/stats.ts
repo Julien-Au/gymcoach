@@ -396,6 +396,56 @@ export function weeklyConditioning(
   return points;
 }
 
+export interface ConditioningDayPoint {
+  date: string; // YYYY-MM-DD, UTC calendar day
+  minutes: number; // total cardio duration that day, rounded to whole minutes
+  km: number; // total distance that day, km with 2 decimals (0 when none)
+}
+
+// Pure DAILY aggregation of cardio sets over the current ISO week (issue
+// #153): the interference signal for the coach - WHEN the cardio happened,
+// not just how much. Same rules as weeklyConditioning (non-warmup cardio
+// sets only; non-cardio sets ignored defensively), bucketed by UTC calendar
+// day of the session start. Days without cardio are OMITTED rather than
+// zero-filled: the payload stays compact (a zero-cardio week is an empty
+// array) and the dates make gaps unambiguous to the model.
+export function dailyConditioning(
+  sets: {
+    durationSec?: number | null;
+    distanceM?: number | null;
+    isWarmup: boolean;
+    sessionStartedAt: Date;
+  }[],
+  options: { now?: Date } = {},
+): ConditioningDayPoint[] {
+  const now = options.now ?? new Date();
+  const weekStart = isoWeekStart(now);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setUTCDate(weekEnd.getUTCDate() + 7);
+
+  const byDay = new Map<string, { seconds: number; meters: number }>();
+  for (const s of sets) {
+    if (s.isWarmup || !isCardioSet(s)) continue;
+    if (s.sessionStartedAt < weekStart || s.sessionStartedAt >= weekEnd) continue;
+    const day = s.sessionStartedAt.toISOString().slice(0, 10);
+    let bucket = byDay.get(day);
+    if (!bucket) {
+      bucket = { seconds: 0, meters: 0 };
+      byDay.set(day, bucket);
+    }
+    bucket.seconds += s.durationSec ?? 0;
+    bucket.meters += s.distanceM ?? 0;
+  }
+
+  return [...byDay.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, bucket]) => ({
+      date,
+      minutes: Math.round(bucket.seconds / 60),
+      km: +(bucket.meters / 1000).toFixed(2),
+    }));
+}
+
 // ============================================================
 // Training consistency (per-week trained days + current streak)
 // ============================================================

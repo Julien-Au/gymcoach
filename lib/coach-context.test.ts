@@ -31,6 +31,7 @@ function emptyPayload(): CoachPayload {
     conditioning: {
       weekCurrent: { minutes: 0, km: 0, sessions: 0 },
       weekPrevious: null,
+      days: [],
       weeklyTargetMin: 150,
     },
     recentProgress: [],
@@ -75,6 +76,7 @@ describe('summarizeCoachPayload', () => {
     payload.conditioning = {
       weekCurrent: { minutes: 75, km: 12.5, sessions: 2 },
       weekPrevious: { minutes: 60, km: 10, sessions: 2 },
+      days: [{ date: '2026-06-09', minutes: 75, km: 12.5 }],
       weeklyTargetMin: 150,
     };
     payload.latestReadiness = {
