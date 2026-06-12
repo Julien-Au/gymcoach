@@ -31,6 +31,9 @@ Solid week: 3 sessions logged, total working volume up about 4% versus last week
 **Fatigue signals**
 - RIR is holding around 2 and no deload is recommended this week, so keep pushing.
 
+**Conditioning**
+- 95 of your 150 weekly target minutes logged (9.6 km across 2 cardio sessions), up from 60 minutes last week. Aerobic volume is climbing but still moderate, so it is not cutting into lifting recovery yet - keep the easy pace.
+
 **Suggestions for next week**
 - Push bench to 72.5 kg for the first working sets - that lines up with your stated goal.
 - Bias a little more side-delt volume.

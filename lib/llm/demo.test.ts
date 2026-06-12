@@ -68,4 +68,22 @@ describe('demo provider', () => {
     });
     expect(normal.text.toLowerCase()).toContain('volume');
   });
+
+  // Issue #145: the canned debrief exercises the conditioning payload section
+  // so the no-key flow demonstrates the coach reading cardio volume.
+  it('references the conditioning numbers in the canned debrief', async () => {
+    process.env.LLM_PROVIDER = 'demo';
+    const p = getLlmProvider();
+
+    const debrief = await p.complete({
+      system: 'You produce a debrief and an <adjustments> block.',
+      messages: [{ role: 'user', content: 'x' }],
+    });
+    expect(debrief.text).toMatch(/\*\*Conditioning\*\*/);
+    expect(debrief.text).toMatch(/150 weekly target minutes/i);
+    expect(debrief.text).toMatch(/cardio sessions/i);
+    // The conditioning section must not displace the output contract: the
+    // <adjustments> block still closes the response.
+    expect(debrief.text.trimEnd().endsWith('</adjustments>')).toBe(true);
+  });
 });
