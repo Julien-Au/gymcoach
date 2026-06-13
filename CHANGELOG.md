@@ -83,6 +83,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   single field of the set logger to fill the weight, reps, and effort fields
   (RPE maps to the stored RIR). Deterministic parser in the user's display
   unit; the classic fields keep working unchanged.
+- A free-text note to your coach: write a short note the AI coach reads -
+  injuries, illness, life constraints - so its advice accounts for your own
+  current context. It is the correctable half of "what your coach sees"; the
+  note is sent as data, never as instructions, and the output contract is
+  unchanged.
+- Records board: an all-time-bests section on the progress page showing your
+  heaviest set and best estimated 1RM for each lift, with dates.
+- Superset rest timer: in a paired (A1/A2) superset the rest is short between
+  the two exercises and full only after the group, instead of a full rest
+  after every set.
 - Export a cardio session as a TCX file: download a finished cardio session
   (duration, distance, average heart rate) as a standard .tcx you can import
   into Strava or any analysis tool - the outbound half of file-based data

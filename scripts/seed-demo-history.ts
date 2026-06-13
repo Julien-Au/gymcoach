@@ -197,12 +197,16 @@ async function main() {
   }
   await prisma.bodyweightEntry.createMany({ data: bodyweightEntries });
   const lastBodyweight = bodyweightEntries[bodyweightEntries.length - 1];
-  if (lastBodyweight) {
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { bodyweight: lastBodyweight.weightKg },
-    });
-  }
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      ...(lastBodyweight ? { bodyweight: lastBodyweight.weightKg } : {}),
+      // A coach note (issue #188) so the demo shows the correctable-memory
+      // feature: the AI reads this when it advises.
+      coachNote:
+        'Left shoulder is a bit cranky lately - go easy on overhead pressing. Also travelling next week, so expect one or two missed sessions.',
+    },
+  });
 
   // One in-progress goal on the program's first compound lift.
   await prisma.exerciseGoal.deleteMany({ where: { userId: user.id } });

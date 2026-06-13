@@ -43,6 +43,6 @@ research and the product wedge). See `docs/loops/08-ideation-loop.md` for how th
 - shipped - export a cardio session as a TCX file (issue #175, 2026-06-13, PR #181 + hardening #182) - the outbound data-ownership half; hostile review CLEAN (escaping + ownership), round-trips through the parser
 - shipped - show last-time cardio performance in the session (issue #176, 2026-06-13, PR #179) - review CLEAN; ungated the cardio branch, HR averaged
 - shipped - cardio pace and speed (derived) on the session summary and history (issue #177, 2026-06-13, PR #180) - review CLEAN, math re-derived; warmup-totals inconsistency filed as #183
-- proposed - a free-text note to your coach (correctable AI memory) (issue #188, 2026-06-13) - research opp #3 (praised AI = correctable memory); additive User.coachNote, input-side payload, output contract unchanged
-- proposed - supersets slice 2: superset-aware rest timer (issue #189, 2026-06-13) - completes #146; short rest between A1/A2, full after the group; presentation/timer only, no logging change
-- proposed - a Records board (all-time bests per exercise) on the progress page (issue #190, 2026-06-13) - pure derivation over best1RM/max weight; the motivating PR board, display-only
+- shipped - a free-text note to your coach (correctable AI memory) (issue #188, 2026-06-13, PR #194) - multi-lens review CLEAN incl. injection posture (note is JSON data, not instructions; contract byte-identical)
+- shipped - supersets slice 2: superset-aware rest timer (issue #189, 2026-06-13, PR #193) - review CLEAN, E2E proven live (short between members, full after group)
+- shipped - a Records board (all-time bests per exercise) (issue #190, 2026-06-13, PR #192 + fix #196) - review CLEAN; tie-break date made deterministic
