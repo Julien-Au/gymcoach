@@ -6,6 +6,50 @@ by the charter in [`07-autonomy.md`](07-autonomy.md).
 
 ---
 
+## 2026-06-13 - Cardio axis rounded out: last-time reference, pace/speed, TCX export (#176/#177/#175)
+
+**Context.** Maintainer tick running the cardio-axis batch, strictly serialized by ascending
+size (each PR MERGED before the next branch was cut). All three issues authored by JulienAu,
+trust-gated (login allowlist + collaborator check HTTP 204). Inherited model this cycle (Fable
+unavailable) - fine, proceeded. #169 (Next.js major bump) left untouched as stop-for-human.
+
+**Decided / shipped.**
+- **#176 (PR #179, merged).** The in-session "Last session" reference was gated off for cardio
+  (`!isCardio` in exercise-card.tsx). Extended the last-performance shape to carry summed cardio
+  totals (durationSec/distanceM averaged-HR; null for strength) and branched the card on isCardio
+  so cardio shows "<mm:ss> . <distance> . <avgHr> bpm" via the shared lib/cardio formatters.
+  Display-only, no schema/API/prompt change. Component tests cover the cardio branch (full data,
+  duration-only, no-history, defensive no-cardio-record); integration test pins the totals math.
+- **#177 (PR #180, merged).** Pure, unit-aware pace/speed derivations in lib/cardio.ts
+  (paceSecPerKm, speedKmh, formatPace, formatSpeed) returning null on zero/absent distance - no
+  divide-by-zero, no NaN/Infinity. Surfaced on the post-session summary recap and the history
+  detail (totals + a per-set Pace column), in the user's unit (min/km+km/h metric, min/mi+mph
+  imperial). Display-only. Colocated unit tests (metric/imperial/zero) + summary component tests.
+- **#175 (PR #181, merged on green --full).** The outbound half of data ownership: GET
+  /api/cardio/tcx?sessionId=... emits a minimal valid TCX 1.0 Activity (one Lap per cardio set),
+  ownership-scoped exactly like the CSV export (foreign session -> 404; 400 on a non-cardio
+  session or missing sessionId). Pure serializer lib/import/tcx-export.ts emits a FIXED minimal
+  structure (no DTD/entities) and xmlEscapes the five XML metacharacters on every interpolated
+  value; sport mapping is the inverse of the import's name<->sport. A "Download .tcx" action
+  sits on the finished-session detail page, shown only when the session has cardio.
+  - *Deviation noted:* the issue named app/(app)/session/[id] for the button, but that route
+    redirects finished sessions to home; the session-detail surface that actually renders a
+    completed session is app/(app)/history/[id], so the action landed there (the issue's clear
+    intent - download a completed cardio session from its detail view).
+  - Round-trip test (serializeTcx -> parseTcx) pins identical duration/distance/avgHr; xmlEscape
+    unit tests cover all five metacharacters and a markup-injection attempt; integration tests
+    pin ownership (404), cardio-only (400), missing-sessionId (400), and the round trip through
+    the route. Complex change (new route + new surface), so ran verify.sh --full before the PR.
+
+**Challenged.** No subagent-spawning tool available in this nested tick. Per the charter
+backstop, each PR merged only on green full CI and is FLAGGED here for independent POST-MERGE
+review: correctness lens on #176/#177; correctness + an XML-escaping/ownership lens on #175.
+
+**Deferred to human.** The post-merge review above. #169 (Next.js major bump) remains
+stop-for-human, untouched.
+
+---
+
 ## 2026-06-12 (day) - Backup export/restore made complete (#168)
 
 **Context.** Maintainer tick on issue #168 (author JulienAu, trust-gated: login allowlist
