@@ -10,6 +10,7 @@ import {
   paceSecPerKm,
   parseDurationToSec,
   speedKmh,
+  sumCardioWorkingSets,
 } from './cardio';
 
 describe('isCardioSet', () => {
@@ -137,5 +138,25 @@ describe('formatSpeed', () => {
   it('returns null when there is no distance', () => {
     expect(formatSpeed(1800, 0, 'KG')).toBeNull();
     expect(formatSpeed(1800, null, 'LB')).toBeNull();
+  });
+});
+
+describe('sumCardioWorkingSets (issue #183)', () => {
+  it('excludes warmup sets from the duration and distance totals', () => {
+    const sets = [
+      { durationSec: 300, distanceM: 800, isWarmup: true }, // warmup, excluded
+      { durationSec: 1800, distanceM: 5000, isWarmup: false },
+      { durationSec: 600, distanceM: 2000, isWarmup: false },
+    ];
+    expect(sumCardioWorkingSets(sets)).toEqual({ durationSec: 2400, distanceM: 7000 });
+  });
+
+  it('treats absent duration/distance as 0 and handles an all-warmup list', () => {
+    expect(
+      sumCardioWorkingSets([{ durationSec: 1800, distanceM: null, isWarmup: false }]),
+    ).toEqual({ durationSec: 1800, distanceM: 0 });
+    expect(
+      sumCardioWorkingSets([{ durationSec: 300, distanceM: 800, isWarmup: true }]),
+    ).toEqual({ durationSec: 0, distanceM: 0 });
   });
 });

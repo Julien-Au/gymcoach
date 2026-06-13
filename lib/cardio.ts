@@ -27,6 +27,23 @@ export function isCardioSet(set: { durationSec?: number | null }): boolean {
   return set.durationSec != null;
 }
 
+// Sums duration and distance over the WORKING sets only (warmups excluded),
+// matching the working-set / last-performance convention used everywhere else
+// (issue #183). Used for the per-exercise cardio recap totals.
+export function sumCardioWorkingSets(
+  sets: { durationSec?: number | null; distanceM?: number | null; isWarmup: boolean }[],
+): { durationSec: number; distanceM: number } {
+  return sets
+    .filter((s) => !s.isWarmup)
+    .reduce(
+      (acc, s) => ({
+        durationSec: acc.durationSec + (s.durationSec ?? 0),
+        distanceM: acc.distanceM + (s.distanceM ?? 0),
+      }),
+      { durationSec: 0, distanceM: 0 },
+    );
+}
+
 // Parses a user-typed duration into seconds. Accepted formats:
 //   "mm:ss"    -> minutes and seconds (e.g. "12:30")
 //   "h:mm:ss"  -> hours, minutes, seconds (e.g. "1:05:00")
