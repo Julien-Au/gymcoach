@@ -58,7 +58,7 @@ describe('POST /api/sessions/[id]/sets - cardio sets (issue #133)', () => {
         durationSec: 750,
         distanceM: 2500,
       }),
-      { params: { id: session.id } },
+      { params: Promise.resolve({ id: session.id }) },
     );
     expect(res.status).toBe(201);
     const created = await res.json();
@@ -81,7 +81,7 @@ describe('POST /api/sessions/[id]/sets - cardio sets (issue #133)', () => {
         reps: 1,
         durationSec: 60,
       }),
-      { params: { id: session.id } },
+      { params: Promise.resolve({ id: session.id }) },
     );
     expect(res.status).toBe(201);
     const created = await res.json();
@@ -101,7 +101,7 @@ describe('POST /api/sessions/[id]/sets - cardio sets (issue #133)', () => {
         reps: 1,
         distanceM: 2500,
       }),
-      { params: { id: session.id } },
+      { params: Promise.resolve({ id: session.id }) },
     );
     expect(res.status).toBe(400);
     expect((await res.json()).error).toMatch(/duration/i);
@@ -119,7 +119,7 @@ describe('POST /api/sessions/[id]/sets - cardio sets (issue #133)', () => {
         reps: 5,
         durationSec: 750,
       }),
-      { params: { id: session.id } },
+      { params: Promise.resolve({ id: session.id }) },
     );
     expect(res.status).toBe(400);
     expect((await res.json()).error).toMatch(/cardio/i);
@@ -137,7 +137,7 @@ describe('POST /api/sessions/[id]/sets - cardio sets (issue #133)', () => {
         reps: 1,
         durationSec: 86401,
       }),
-      { params: { id: session.id } },
+      { params: Promise.resolve({ id: session.id }) },
     );
     expect(tooLong.status).toBe(400);
 
@@ -150,7 +150,7 @@ describe('POST /api/sessions/[id]/sets - cardio sets (issue #133)', () => {
         durationSec: 600,
         distanceM: 1000001,
       }),
-      { params: { id: session.id } },
+      { params: Promise.resolve({ id: session.id }) },
     );
     expect(tooFar.status).toBe(400);
   });
@@ -167,7 +167,7 @@ describe('POST /api/sessions/[id]/sets - cardio sets (issue #133)', () => {
         reps: 5,
         rir: 2,
       }),
-      { params: { id: session.id } },
+      { params: Promise.resolve({ id: session.id }) },
     );
     expect(res.status).toBe(201);
     const created = await res.json();
@@ -189,7 +189,7 @@ describe('POST /api/sessions/[id]/sets - cardio sets (issue #133)', () => {
         durationSec: null,
         distanceM: null,
       }),
-      { params: { id: session.id } },
+      { params: Promise.resolve({ id: session.id }) },
     );
     expect(withNulls.status).toBe(201);
   });
@@ -209,7 +209,7 @@ describe('POST /api/sessions/[id]/sets - cardio sets (issue #133)', () => {
         reps: 1,
         durationSec: 600,
       }),
-      { params: { id: session.id } },
+      { params: Promise.resolve({ id: session.id }) },
     );
     expect(res.status).toBe(404);
   });

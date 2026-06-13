@@ -12,11 +12,12 @@ interface SearchParams {
   sessionId?: string;
 }
 
-export default async function ChatPage({
-  searchParams,
-}: {
-  searchParams: SearchParams;
-}) {
+export default async function ChatPage(
+  props: {
+    searchParams: Promise<SearchParams>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const auth = await requireSession();
 
   // In-session chat (issue #111): the session runner links here with

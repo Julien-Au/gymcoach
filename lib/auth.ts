@@ -45,7 +45,7 @@ export async function verifySession(token: string): Promise<SessionClaims | null
 
 // To be called in server components / API routes (Node runtime).
 export async function getCurrentSession(): Promise<SessionClaims | null> {
-  const token = cookies().get(SESSION_COOKIE)?.value;
+  const token = (await cookies()).get(SESSION_COOKIE)?.value;
   if (!token) return null;
   return verifySession(token);
 }

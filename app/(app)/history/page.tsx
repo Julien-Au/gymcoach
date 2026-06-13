@@ -14,11 +14,12 @@ interface SearchParams {
   month?: string; // YYYY-MM
 }
 
-export default async function HistoryPage({
-  searchParams,
-}: {
-  searchParams: SearchParams;
-}) {
+export default async function HistoryPage(
+  props: {
+    searchParams: Promise<SearchParams>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const session = await requireSession();
 
   const hasActiveFilters = Boolean(searchParams.programId || searchParams.month);

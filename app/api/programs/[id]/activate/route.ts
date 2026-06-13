@@ -3,14 +3,15 @@ import { db } from '@/lib/db';
 import { ApiError, handleApiError, requireApiUserId } from '@/lib/api';
 
 interface Params {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 // POST /api/programs/[id]/activate
 // Activates this program and deactivates all the others for this user.
 // Optional body: { active: boolean } (default true). If active=false,
 // we simply deactivate this program (no auto-activation of another one).
-export async function POST(req: Request, { params }: Params) {
+export async function POST(req: Request, props: Params) {
+  const params = await props.params;
   try {
     const userId = await requireApiUserId();
     const program = await db.program.findUnique({ where: { id: params.id } });

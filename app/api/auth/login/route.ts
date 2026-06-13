@@ -41,7 +41,7 @@ export async function POST(req: Request) {
     if (!ok) return invalid;
 
     const token = await signSession({ userId: user.id, email: user.email });
-    cookies().set(SESSION_COOKIE, token, SESSION_COOKIE_OPTIONS);
+    (await cookies()).set(SESSION_COOKIE, token, SESSION_COOKIE_OPTIONS);
 
     return NextResponse.json({ ok: true });
   } catch (err) {

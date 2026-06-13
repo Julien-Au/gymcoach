@@ -61,14 +61,14 @@ describe('program-exercise routes - supersetGroup (issue #146)', () => {
 
     const standalone = await postProgramExercise(
       jsonReq('POST', { exerciseId: bench.id, ...targets }),
-      { params: { id: workout.id } },
+      { params: Promise.resolve({ id: workout.id }) },
     );
     expect(standalone.status).toBe(201);
     expect((await standalone.json()).supersetGroup).toBeNull();
 
     const paired = await postProgramExercise(
       jsonReq('POST', { exerciseId: row.id, ...targets, supersetGroup: 2 }),
-      { params: { id: workout.id } },
+      { params: Promise.resolve({ id: workout.id }) },
     );
     expect(paired.status).toBe(201);
     expect((await paired.json()).supersetGroup).toBe(2);
@@ -84,7 +84,7 @@ describe('program-exercise routes - supersetGroup (issue #146)', () => {
     // Pair.
     const pairRes = await putProgramExercise(
       jsonReq('PUT', { exerciseId: bench.id, ...targets, supersetGroup: 1 }),
-      { params: { id: pe.id } },
+      { params: Promise.resolve({ id: pe.id }) },
     );
     expect(pairRes.status).toBe(200);
     expect((await pairRes.json()).supersetGroup).toBe(1);
@@ -93,7 +93,7 @@ describe('program-exercise routes - supersetGroup (issue #146)', () => {
     // the pairing.
     const editRes = await putProgramExercise(
       jsonReq('PUT', { exerciseId: bench.id, ...targets, targetSets: 4 }),
-      { params: { id: pe.id } },
+      { params: Promise.resolve({ id: pe.id }) },
     );
     expect(editRes.status).toBe(200);
     const edited = await editRes.json();
@@ -103,7 +103,7 @@ describe('program-exercise routes - supersetGroup (issue #146)', () => {
     // Explicit null unpairs.
     const unpairRes = await putProgramExercise(
       jsonReq('PUT', { exerciseId: bench.id, ...targets, supersetGroup: null }),
-      { params: { id: pe.id } },
+      { params: Promise.resolve({ id: pe.id }) },
     );
     expect(unpairRes.status).toBe(200);
     expect((await unpairRes.json()).supersetGroup).toBeNull();
@@ -115,7 +115,7 @@ describe('program-exercise routes - supersetGroup (issue #146)', () => {
 
     const res = await postProgramExercise(
       jsonReq('POST', { exerciseId: bench.id, ...targets, supersetGroup: 10 }),
-      { params: { id: workout.id } },
+      { params: Promise.resolve({ id: workout.id }) },
     );
     expect(res.status).toBe(400);
   });
@@ -132,7 +132,7 @@ describe('program-exercise routes - supersetGroup (issue #146)', () => {
     actAs(intruder.id);
     const res = await putProgramExercise(
       jsonReq('PUT', { exerciseId: bench.id, ...targets, supersetGroup: 1 }),
-      { params: { id: pe.id } },
+      { params: Promise.resolve({ id: pe.id }) },
     );
     expect(res.status).toBe(404);
     expect((await db.programExercise.findUnique({ where: { id: pe.id } }))?.supersetGroup).toBeNull();

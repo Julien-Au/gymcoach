@@ -13,7 +13,8 @@ async function ensureOwnership(id: string, userId: string) {
 }
 
 // GET /api/coach/chat/[id]: messages of a conversation (owner only).
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+export async function GET(_req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const userId = await requireApiUserId();
     await ensureOwnership(params.id, userId);
@@ -29,7 +30,8 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 }
 
 // DELETE /api/coach/chat/[id]: deletes a conversation and its messages.
-export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const userId = await requireApiUserId();
     await ensureOwnership(params.id, userId);
