@@ -9,6 +9,7 @@ import {
   type ProgramExerciseDefaults,
 } from '@/components/coach/coach-client';
 import { CoachContextCard } from '@/components/coach/coach-context-card';
+import { CoachNoteCard } from '@/components/coach/coach-note-card';
 
 export default async function CoachPage() {
   const auth = await requireSession();
@@ -92,6 +93,8 @@ export default async function CoachPage() {
         </div>
 
         <CoachContextCard summary={coachContext} />
+
+        <CoachNoteCard initialNote={coachPayload.userProfile.coachNote} />
 
         <CoachClient
           initialHistory={initialHistory}

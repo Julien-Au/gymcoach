@@ -32,6 +32,12 @@ model User {
   // is in the future, load suggestions apply the planned-deload step-down.
   // Null or in the past = no planned deload (backward-safe additive column).
   deloadUntil     DateTime?
+  // Free-text note the user writes to their AI coach (issue #188): their own
+  // current context for the coach to weigh - injuries, illness, life
+  // constraints ("shoulder is bothering me, go easy on pressing"). Input-side
+  // only and correctable by the user. Null = no note (backward-safe additive
+  // column); the set/clear route bounds it to 500 chars.
+  coachNote       String?
   createdAt    DateTime   @default(now())
   programs      Program[]
   sessions      Session[]

@@ -102,4 +102,20 @@ describe('demo provider', () => {
     // Still ends with the unchanged output contract.
     expect(debrief.text.trimEnd().endsWith('</adjustments>')).toBe(true);
   });
+
+  // Issue #188: the canned debrief references the user's free-text note to the
+  // coach so the no-key flow demonstrates the correctable-memory behavior.
+  it('acknowledges the user note to the coach in the canned debrief', async () => {
+    process.env.LLM_PROVIDER = 'demo';
+    const p = getLlmProvider();
+
+    const debrief = await p.complete({
+      system: 'You produce a debrief and an <adjustments> block.',
+      messages: [{ role: 'user', content: 'x' }],
+    });
+    expect(debrief.text).toMatch(/Your note to me/i);
+    expect(debrief.text).toMatch(/go easy on pressing/i);
+    // The note line must not displace the output contract.
+    expect(debrief.text.trimEnd().endsWith('</adjustments>')).toBe(true);
+  });
 });

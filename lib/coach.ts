@@ -42,6 +42,11 @@ export interface CoachPayload {
     bodyweight: number | null;
     goal: string | null;
     weeklyFrequency: number | null;
+    // The user's own free-text note to the coach (issue #188): their current
+    // context to weigh (injuries, illness, life constraints). Null = no note.
+    // Input signal only; the output contract (the <adjustments> block) is
+    // unchanged.
+    coachNote: string | null;
   };
   weekCurrent: WeekSummary;
   weekPrevious: WeekSummary | null;
@@ -260,6 +265,7 @@ export async function buildCoachPayload(userId: string): Promise<CoachPayload> {
       bodyweight: true,
       goal: true,
       weeklyFrequency: true,
+      coachNote: true,
       deloadUntil: true,
     },
   });
@@ -420,6 +426,7 @@ export async function buildCoachPayload(userId: string): Promise<CoachPayload> {
       bodyweight,
       goal: user?.goal ?? null,
       weeklyFrequency: user?.weeklyFrequency ?? null,
+      coachNote: user?.coachNote ?? null,
     },
     weekCurrent: currentWeek,
     weekPrevious: previousWeek.sessions.length === 0 ? null : previousWeek,
