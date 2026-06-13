@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   buildSupersetView,
+  isSupersetTransitionRest,
   nextAutoAdvanceIndex,
   nextNavIndex,
   smallestFreeGroup,
@@ -137,5 +138,49 @@ describe('smallestFreeGroup', () => {
       item(`x${i}`, i, i + 1),
     );
     expect(smallestFreeGroup(items)).toBeNull();
+  });
+});
+
+// Superset-aware rest (issue #189): the transition-vs-full-rest decision.
+describe('isSupersetTransitionRest', () => {
+  it('is a full rest for a standalone exercise (next never matters)', () => {
+    const view = buildSupersetView([item('a', 1), item('b', 2)]);
+    // Standalone: full rest whether it advances to the next exercise or stays.
+    expect(isSupersetTransitionRest(view, 0, 1)).toBe(false);
+    expect(isSupersetTransitionRest(view, 0, null)).toBe(false);
+  });
+
+  it('is a transition rest when advancing A1 -> A2 within a 2-member group', () => {
+    const view = buildSupersetView([item('a1', 1, 1), item('a2', 2, 1), item('b', 3)]);
+    // A1 logged, auto-advance to A2 (same group) -> short transition rest.
+    expect(isSupersetTransitionRest(view, 0, 1)).toBe(true);
+  });
+
+  it('is a full rest after the last member advances past the group', () => {
+    const view = buildSupersetView([item('a1', 1, 1), item('a2', 2, 1), item('b', 3)]);
+    // A2 logged, auto-advance back to A1 (same group, repeat) -> transition.
+    expect(isSupersetTransitionRest(view, 1, 0)).toBe(true);
+    // A2 logged, group complete, advance to the standalone B -> full rest.
+    expect(isSupersetTransitionRest(view, 1, 2)).toBe(false);
+  });
+
+  it('is a full rest when staying put to finish the current member', () => {
+    const view = buildSupersetView([item('a1', 1, 1), item('a2', 2, 1)]);
+    // null (no auto-advance, the other member is done) -> full rest.
+    expect(isSupersetTransitionRest(view, 0, null)).toBe(false);
+  });
+
+  it('handles a 3-member group: transition between members, full after', () => {
+    const view = buildSupersetView([
+      item('a1', 1, 1),
+      item('a2', 2, 1),
+      item('a3', 3, 1),
+      item('b', 4),
+    ]);
+    expect(isSupersetTransitionRest(view, 0, 1)).toBe(true); // A1 -> A2
+    expect(isSupersetTransitionRest(view, 1, 2)).toBe(true); // A2 -> A3
+    expect(isSupersetTransitionRest(view, 2, 0)).toBe(true); // A3 -> A1 (repeat)
+    expect(isSupersetTransitionRest(view, 2, 3)).toBe(false); // A3 -> B (full)
+    expect(isSupersetTransitionRest(view, 2, null)).toBe(false); // stay (full)
   });
 });

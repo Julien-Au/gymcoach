@@ -26,7 +26,13 @@ import {
   type PendingSet,
 } from '@/lib/indexeddb';
 import { readinessForSuggestion, type ReadinessSignal } from '@/lib/progression';
-import { buildSupersetView, nextAutoAdvanceIndex, nextNavIndex } from '@/lib/supersets';
+import {
+  buildSupersetView,
+  isSupersetTransitionRest,
+  nextAutoAdvanceIndex,
+  nextNavIndex,
+  SUPERSET_TRANSITION_REST_SEC,
+} from '@/lib/supersets';
 import { isReadinessAutoRegulationEnabled } from '@/lib/preferences';
 import { bindAutoSync, flushPendingSets, queueSet } from '@/lib/sync';
 import { hydrateFromServerSets } from '@/lib/sync-hydration';
@@ -218,10 +224,16 @@ export function SessionRunner({
       ? null
       : nextAutoAdvanceIndex(supersetView, currentIdx, remainingAfterThisSet);
 
+    // Superset-aware rest (issue #189): a short transition rest when the
+    // auto-advance moves to another member of the same group (A1 -> A2); the
+    // full per-exercise rest after the last member and for standalone work.
+    const transition = isSupersetTransitionRest(supersetView, currentIdx, nextIdx);
+    const restSec = transition ? SUPERSET_TRANSITION_REST_SEC : currentPE.restSec;
+
     setMode({
       kind: 'rest',
-      endsAt: Date.now() + currentPE.restSec * 1000,
-      totalSec: currentPE.restSec,
+      endsAt: Date.now() + restSec * 1000,
+      totalSec: restSec,
       nextExerciseIdx: nextIdx,
     });
   }

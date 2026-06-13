@@ -46,7 +46,7 @@ export function RestTimer({ endsAt, totalSec, nextLabel, onEnd, onSkip, onAdd30 
 
         <div className="relative">
           <p className="text-7xl font-bold tabular-nums">
-            {remainingSec}
+            <span data-testid="rest-remaining">{remainingSec}</span>
             <span className="ml-2 text-2xl text-muted-foreground">s</span>
           </p>
         </div>

@@ -157,6 +157,41 @@ export function nextNavIndex<T extends SupersetItem>(
   return span.end + 1 < items.length ? span.end + 1 : null;
 }
 
+// ============================================================
+// Superset rest (issue #189, slice 2) - transition vs full rest
+// ============================================================
+// A short transition rest (a few seconds to breathe and switch stations) runs
+// between members of a superset group; the full per-exercise rest runs only
+// after the LAST member of the group, before the group repeats. Standalone
+// exercises always take the full rest.
+
+// Default transition rest between superset members, in seconds. Short on
+// purpose - the point of a superset is minimal rest between paired moves - but
+// non-zero so the user can breathe and move to the next station.
+export const SUPERSET_TRANSITION_REST_SEC = 20;
+
+// Decides which rest follows the set just logged on `currentIdx`, given where
+// the runner will auto-advance (`nextIdx`, from nextAutoAdvanceIndex). It is a
+// transition rest ONLY when the auto-advance stays inside the current item's
+// own superset group (the A1 -> A2 move). Every other case - a standalone
+// exercise, the last member of the group (advance past it), or staying put
+// (null) to finish the current member's sets - takes the full rest. Pure and
+// dependent only on the view, so it unit-tests without the runner.
+export function isSupersetTransitionRest<T extends SupersetItem>(
+  view: SupersetView<T>,
+  currentIdx: number,
+  nextIdx: number | null,
+): boolean {
+  if (nextIdx == null) return false;
+  const current = view.ordered[currentIdx];
+  const next = view.ordered[nextIdx];
+  if (!current || !next) return false;
+  const group = view.groupById.get(current.id);
+  if (group == null) return false; // standalone -> full rest
+  // Same group AND a different member -> moving A1 -> A2 (transition rest).
+  return next.id !== current.id && view.groupById.get(next.id) === group;
+}
+
 // The smallest free group number of a workout (for "pair with previous" when
 // the previous row has no group yet), or null when all are in use.
 export function smallestFreeGroup(items: SupersetItem[]): number | null {
