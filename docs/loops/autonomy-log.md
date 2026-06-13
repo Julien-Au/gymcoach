@@ -1220,3 +1220,19 @@ continuously, no per-change approval, self-challenge with subagents, keep a roll
 **Challenged.** Two parallel Opus reviews (one security-lensed). Accepted-change rate: 4 merged / 0 abandoned (+ docs).
 
 **Deferred to human.** #169 (Next.js 14->15 major bump) still stop-for-human, untouched. Future: #183 (warmup totals), supersets slice 2, coach-context annotation.
+
+---
+
+## 2026-06-13 - Next.js 15 + React 19 upgrade (#169), operator-authorized
+
+**Context.** #169 (the Next 14->15 major bump) is normally stop-for-human; the operator explicitly authorized it ("go #169, I trust you, be careful"). Done by the orchestrator directly (not a fire-and-forget tick) given the risk. Rollback baseline autonomy-baseline-2026-06-13-next15 tagged first.
+
+**Decided / shipped (PR #185, merged on full green incl. docker-smoke).**
+- next 15.5.19, react/react-dom 19, @types/react(-dom) 19, eslint-config-next 15.
+- next-pwa (unmaintained, no Next 15) -> @ducanh2912/next-pwa (workboxOptions, buildExcludes->exclude). The PWA blocker was the crux; everything else (Radix, recharts 3, next-themes, testing-library 16) was already React-19 ready.
+- Async request APIs via the official codemod (cookies in lib/auth; params/searchParams across 23 routes/pages); integration tests updated to Promise.resolve({params}).
+- The 14 runtime Next CVEs from #169 are cleared; residual advisories are build-time only (workbox/esbuild-via-vitest/next-bundled-postcss) - accepted.
+
+**Verified (reinforced controls for a major bump).** verify.sh --full green (incl. 10 E2E); production Docker image built + probed locally (login 200, sw.js 200, no client error); CI docker-smoke re-validated the image; demo redeployed and the LIVE Next 15 instance confirmed healthy (login, full progress data, service worker, zero page errors). Lesson L13 records the approach.
+
+**Deferred to human.** None outstanding from #169. A Serwist migration (to clear the build-time workbox advisories) is a possible larger follow-up, not filed.

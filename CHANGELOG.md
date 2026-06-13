@@ -189,6 +189,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Upgraded to Next.js 15 and React 19, resolving the runtime security
+  advisories that npm audit reported against Next.js 14. The PWA service
+  worker moved to the maintained @ducanh2912/next-pwa; behavior is unchanged.
+
 - Migrated the entire codebase (UI, comments, prompts, docs) from French to
   English.
 - Grew the autonomous-loop maintenance infrastructure into a full self-maintenance
