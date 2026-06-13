@@ -141,3 +141,74 @@ describe('SessionSummary PR section', () => {
     expect(screen.queryByText('Personal records this session')).toBeNull();
   });
 });
+
+// Issue #177: cardio recap shows derived pace and speed in the user's unit,
+// and omits them for a duration-only cardio set (no NaN/Infinity).
+const cardioExo: Exercise = { ...exo, id: 'c1', name: 'Running', category: 'CARDIO' };
+const cardioPe: ProgramExercise & { exercise: Exercise } = {
+  ...pe,
+  id: 'cpe',
+  exerciseId: 'c1',
+  targetSets: 1,
+  exercise: cardioExo,
+};
+
+function cardioSet(over: Partial<PendingSet>): PendingSet {
+  return pendingSet({
+    exerciseId: 'c1',
+    weight: 0,
+    reps: 1,
+    durationSec: 1800,
+    distanceM: 5000,
+    ...over,
+  });
+}
+
+describe('SessionSummary cardio pace/speed', () => {
+  it('shows pace and speed in metric for a distance cardio set', () => {
+    render(
+      <SessionSummary
+        session={session}
+        sets={[cardioSet({ localId: 'c' })]}
+        programExercises={[cardioPe]}
+        unit="KG"
+        onBack={() => {}}
+        onFinish={() => {}}
+        finishing={false}
+      />,
+    );
+    // 30:00 over 5 km -> 6:00 /km and 10 km/h.
+    expect(screen.getByText(/30:00 · 5 km · 6:00 \/km · 10 km\/h/)).toBeTruthy();
+  });
+
+  it('shows pace and speed in imperial when the unit is LB', () => {
+    render(
+      <SessionSummary
+        session={session}
+        sets={[cardioSet({ localId: 'c' })]}
+        programExercises={[cardioPe]}
+        unit="LB"
+        onBack={() => {}}
+        onFinish={() => {}}
+        finishing={false}
+      />,
+    );
+    expect(screen.getByText(/9:39 \/mi · 6\.2 mph/)).toBeTruthy();
+  });
+
+  it('omits pace and speed for a duration-only cardio set', () => {
+    render(
+      <SessionSummary
+        session={session}
+        sets={[cardioSet({ localId: 'c', distanceM: null })]}
+        programExercises={[cardioPe]}
+        unit="KG"
+        onBack={() => {}}
+        onFinish={() => {}}
+        finishing={false}
+      />,
+    );
+    expect(screen.queryByText(/\/km/)).toBeNull();
+    expect(screen.queryByText(/km\/h/)).toBeNull();
+  });
+});

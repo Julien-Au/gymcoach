@@ -1,3 +1,5 @@
+import type { WeightUnit } from '@prisma/client';
+
 // ============================================================
 // Cardio sets (issue #133) - duration/distance helpers
 // ============================================================
@@ -78,4 +80,65 @@ export function formatCardioSet(
     return `${duration} · ${formatDistance(distanceM)}`;
   }
   return duration;
+}
+
+// ============================================================
+// Pace and speed (issue #177) - pure, unit-aware derivations
+// ============================================================
+// The single number runners/cyclists train on. Both are derived from the
+// stored duration and distance; both return null when there is no distance
+// (e.g. a duration-only erg set) so callers never divide by zero or render
+// NaN/Infinity. Storage stays metric (meters/seconds); the unit only affects
+// the display helpers below.
+
+// Pace as seconds per kilometer, or null when distance is absent/zero.
+export function paceSecPerKm(
+  durationSec: number,
+  distanceM: number | null | undefined,
+): number | null {
+  if (distanceM == null || distanceM <= 0) return null;
+  return durationSec / (distanceM / 1000);
+}
+
+// Speed in kilometers per hour, or null when distance is absent/zero.
+export function speedKmh(
+  durationSec: number,
+  distanceM: number | null | undefined,
+): number | null {
+  if (distanceM == null || distanceM <= 0 || durationSec <= 0) return null;
+  return distanceM / 1000 / (durationSec / 3600);
+}
+
+// Formats pace for display, respecting the user's unit: "6:00 /km" in metric,
+// "9:39 /mi" in imperial. Returns null when distance is absent (no pace to
+// show). The mm:ss part reuses formatDuration so it stays consistent.
+export function formatPace(
+  durationSec: number,
+  distanceM: number | null | undefined,
+  unit: WeightUnit,
+): string | null {
+  const secPerKm = paceSecPerKm(durationSec, distanceM);
+  if (secPerKm == null) return null;
+  if (unit === 'LB') {
+    const secPerMile = secPerKm * (MILES_TO_METERS / 1000);
+    return `${formatDuration(secPerMile)} /mi`;
+  }
+  return `${formatDuration(secPerKm)} /km`;
+}
+
+// Formats speed for display, respecting the user's unit: "10 km/h" in metric,
+// "6.2 mph" in imperial. Returns null when distance is absent. One decimal,
+// trailing zeros trimmed.
+export function formatSpeed(
+  durationSec: number,
+  distanceM: number | null | undefined,
+  unit: WeightUnit,
+): string | null {
+  const kmh = speedKmh(durationSec, distanceM);
+  if (kmh == null) return null;
+  if (unit === 'LB') {
+    const mph = kmh * (1000 / MILES_TO_METERS);
+    return `${+mph.toFixed(1)} mph`;
+  }
+  return `${+kmh.toFixed(1)} km/h`;
 }
