@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { MUSCLE_GROUP_LABELS } from '@/lib/schemas/exercise';
 import { applyBodyweight, best1RM, totalVolume } from '@/lib/stats';
-import { formatCardioSet, formatDistance, formatDuration, formatPace, formatSpeed } from '@/lib/cardio';
+import { formatCardioSet, formatDistance, formatDuration, formatPace, formatSpeed, sumCardioWorkingSets } from '@/lib/cardio';
 import { formatWeight } from '@/lib/units';
 import { DeleteSessionButton } from '@/components/history/delete-session-button';
 
@@ -193,17 +193,12 @@ export default async function HistorySessionPage(props: Params) {
               );
               const exoVolume = totalVolume(enrichedExoSets);
               const e1rm = best1RM(enrichedExoSets);
-              // Cardio recap (issue #133): totals across the logged sets, with
+              // Cardio recap (issue #133): totals across the WORKING sets, with
               // derived pace and speed (issue #177) appended when a distance was
-              // covered (omitted for duration-only cardio).
-              const cardioDurationTotal = entry.sets.reduce(
-                (acc, s) => acc + (s.durationSec ?? 0),
-                0,
-              );
-              const cardioDistanceTotal = entry.sets.reduce(
-                (acc, s) => acc + (s.distanceM ?? 0),
-                0,
-              );
+              // covered (omitted for duration-only cardio). Warmups are excluded
+              // (issue #183), matching the working-set convention used elsewhere.
+              const { durationSec: cardioDurationTotal, distanceM: cardioDistanceTotal } =
+                sumCardioWorkingSets(entry.sets);
               const cardioTotal = isCardio
                 ? [
                     formatCardioSet(cardioDurationTotal, cardioDistanceTotal),
