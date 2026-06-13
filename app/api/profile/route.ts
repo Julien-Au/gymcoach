@@ -1,22 +1,7 @@
 import { NextResponse } from 'next/server';
-import { z } from 'zod';
-import { Sex, TrainingGoal, WeightUnit } from '@prisma/client';
 import { db } from '@/lib/db';
 import { handleApiError, parseJsonBody, requireApiUserId } from '@/lib/api';
-
-// User profile (self-service). Every field is optional; null clears a value.
-const profileUpdateSchema = z.object({
-  displayName: z.string().trim().min(1).max(80).nullable().optional(),
-  // Bodyweight in kg, used to compute the effective tonnage on bodyweight
-  // exercises. null reverts to the set.weight-only behavior.
-  bodyweight: z.number().min(20, 'Too low').max(300, 'Too high').nullable().optional(),
-  sex: z.nativeEnum(Sex).nullable().optional(),
-  heightCm: z.number().int().min(100).max(250).nullable().optional(),
-  goal: z.nativeEnum(TrainingGoal).nullable().optional(),
-  weeklyFrequency: z.number().int().min(1).max(14).nullable().optional(),
-  // Preferred weight unit (display + input only; data stays in kg).
-  unit: z.nativeEnum(WeightUnit).optional(),
-});
+import { profileUpdateSchema } from '@/lib/schemas/profile';
 
 const PROFILE_SELECT = {
   email: true,
@@ -26,6 +11,7 @@ const PROFILE_SELECT = {
   heightCm: true,
   goal: true,
   weeklyFrequency: true,
+  coachNote: true,
   unit: true,
 } as const;
 
@@ -56,6 +42,10 @@ export async function PATCH(req: Request) {
         ...(data.goal !== undefined ? { goal: data.goal } : {}),
         ...(data.weeklyFrequency !== undefined
           ? { weeklyFrequency: data.weeklyFrequency }
+          : {}),
+        // Empty after trim -> store null (a clear), not an empty-string note.
+        ...(data.coachNote !== undefined
+          ? { coachNote: data.coachNote ? data.coachNote : null }
           : {}),
         ...(data.unit !== undefined ? { unit: data.unit } : {}),
       },

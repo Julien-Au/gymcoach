@@ -41,6 +41,7 @@ Solid week: 3 sessions logged, total working volume up about 4% versus last week
 
 **Points of attention**
 - Nothing flagged in your session notes.
+- Your note to me ("shoulder is bothering me, go easy on pressing") is noted - I have kept overhead and bench pressing conservative this week and biased volume to movements that spare the shoulder. Update or clear the note whenever that changes.
 
 <adjustments>
 [

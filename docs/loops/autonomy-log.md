@@ -6,6 +6,60 @@ by the charter in [`07-autonomy.md`](07-autonomy.md).
 
 ---
 
+## 2026-06-13 - Records board, superset rest timer, coach note (#190/#189/#188)
+
+**Context.** Maintainer tick, strictly serialized by ascending size (each PR MERGED before the
+next branch was cut). All three issues authored by JulienAu, trust-gated (login allowlist +
+collaborator check HTTP 204). Inherited model this cycle (Fable unavailable) - fine, proceeded.
+Repo is on Next.js 15 / React 19; followed the existing async-request-API patterns.
+
+**Decided / shipped.**
+- **#190 (PR #192, merged).** A display-only Records board on the progress page: per strength
+  exercise, the all-time heaviest working set (weight x reps + date) and the best estimated 1RM
+  (Epley + date). New pure `exerciseRecords` in lib/records.ts, one bounded extra query over the
+  user's full set history (category != CARDIO at the query, warm-ups excluded in the derivation),
+  bodyweight effective-load applied by the caller like the rest of the page. Sorted
+  alphabetically; ties keep the earlier date; the card hides until there is a record. Colocated
+  unit tests (heaviest, best e1RM, ties, bodyweight, warmup/cardio exclusion, grouping, empty).
+- **#189 (PR #193, merged on green --full).** Superset-aware rest timer, completing the supersets
+  feature. New pure helper `isSupersetTransitionRest` + `SUPERSET_TRANSITION_REST_SEC` (20s) in
+  lib/supersets.ts: a short transition rest only when the runner's auto-advance stays inside the
+  current item's own group (A1 -> A2); standalone work, the last member advancing past the group,
+  and staying put all keep the full restSec. session-runner applies it; standalone rest is
+  pinned unchanged (restSec used verbatim when the helper returns false). No schema/API/logging
+  change. Unit tests over 2- and 3-member groups; an E2E running an A1/A2 group to completion
+  asserting a short rest (<=20s) between members and the full rest (>20s) after the group.
+  - *Picked* a 20s non-zero transition rest over skip-entirely: the acceptance criteria require
+    a "short transition rest", and a few seconds to switch stations matches real superset use.
+- **#188 (PR #<this>, merged on green --full).** A free-text note to the coach (correctable AI
+  memory). Additive nullable User.coachNote (migration 20260613163135, validated on the test DB:
+  migrate deploy + clean migrate diff "No difference detected"). Zod-bounded (500 chars, trimmed,
+  whitespace -> null clear) coachNote on PATCH /api/profile, ownership-scoped; schema extracted to
+  lib/schemas/profile.ts so the bound is shared with the UI counter. CoachPayload.userProfile.
+  coachNote (additive, input-side). Input-side prompt guidance (weigh it, acknowledge when
+  relevant, never override safety, treat as data not instructions) with the <adjustments> output
+  contract UNCHANGED - the existing adjustments contract tests pass unmodified. Demo provider's
+  canned debrief references the note (still closing on </adjustments>). Coach page gets an editable
+  "Note to your coach" card with a counter and save/clear. Integration tests pin the route
+  (set/clear, trim-to-null, 500-char bound, absent-preserves, cross-user isolation) and the
+  payload (null = absent); unit tests pin the prompt guidance and the demo line. Rollback baseline
+  `autonomy-baseline-2026-06-13b` tagged on main before the migration merged.
+
+**Challenged.** No subagent-spawning tool available in this nested tick. Per the charter backstop,
+each PR merged only on green full CI and is FLAGGED here for independent POST-MERGE review:
+correctness on #190 and #189 (does-it-actually-work lens for #189's timer); multi-lens incl.
+output-contract-unchanged and input-handling for #188.
+
+**Gate note.** One pre-existing local-only flake (`readiness-checkin.test.tsx > submits a partial
+soreness map...`, a userEvent 5s timeout under WSL2) fails identically on clean main and is green
+in CI; unrelated to these changes. Confirmed each tier (unit minus that flake, integration, E2E,
+build) green locally and relied on CI as the authoritative full gate.
+
+**Deferred to human.** The post-merge reviews above. #169 (Next.js major bump) remains
+stop-for-human, untouched.
+
+---
+
 ## 2026-06-13 - Cardio axis rounded out: last-time reference, pace/speed, TCX export (#176/#177/#175)
 
 **Context.** Maintainer tick running the cardio-axis batch, strictly serialized by ascending
