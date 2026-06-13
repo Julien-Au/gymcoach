@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { detectPRs, isPR } from './records';
+import { detectPRs, isPR, exerciseRecords } from './records';
 
 // Minimal set factory: only the fields the PR detector reads.
 function set(weight: number, reps: number, isWarmup = false) {
@@ -71,6 +71,92 @@ describe('detectPRs - cardio exclusion', () => {
   it('ignores a normalized cardio candidate (weight 0, reps 1)', () => {
     expect(
       detectPRs({ weight: 0, reps: 1, isWarmup: false, durationSec: 750 }, []),
+    ).toEqual([]);
+  });
+});
+
+// Records board (issue #190): all-time bests per exercise.
+describe('exerciseRecords', () => {
+  // Builds a record set; date defaults are spaced so order is unambiguous.
+  function rset(
+    exerciseName: string,
+    weight: number,
+    reps: number,
+    date: string,
+    opts: { isWarmup?: boolean; durationSec?: number | null } = {},
+  ) {
+    return {
+      exerciseName,
+      weight,
+      reps,
+      isWarmup: opts.isWarmup ?? false,
+      durationSec: opts.durationSec ?? null,
+      sessionStartedAt: new Date(`${date}T10:00:00.000Z`),
+    };
+  }
+
+  it('returns the heaviest set and the best e1RM with their dates', () => {
+    const records = exerciseRecords([
+      rset('Squat', 100, 5, '2026-01-01'),
+      rset('Squat', 110, 3, '2026-02-01'), // heaviest load
+      rset('Squat', 95, 10, '2026-03-01'), // best e1RM (~126.7)
+    ]);
+    expect(records).toHaveLength(1);
+    expect(records[0]).toEqual({
+      exerciseName: 'Squat',
+      maxWeight: 110,
+      maxWeightReps: 3,
+      maxWeightDate: '2026-02-01',
+      bestE1RM: +(95 * (1 + 10 / 30)).toFixed(1),
+      bestE1RMDate: '2026-03-01',
+    });
+  });
+
+  it('keeps the earlier date on a tie (strict comparison)', () => {
+    const records = exerciseRecords([
+      rset('Bench', 80, 5, '2026-01-01'),
+      rset('Bench', 80, 5, '2026-02-01'), // identical -> not a new record
+    ]);
+    expect(records[0]!.maxWeightDate).toBe('2026-01-01');
+    expect(records[0]!.bestE1RMDate).toBe('2026-01-01');
+  });
+
+  it('excludes warm-up and cardio sets', () => {
+    const records = exerciseRecords([
+      rset('Deadlift', 200, 1, '2026-01-01', { isWarmup: true }),
+      rset('Deadlift', 60, 5, '2026-01-02'), // only working set
+      rset('Row', 0, 1, '2026-01-03', { durationSec: 600 }), // cardio
+    ]);
+    expect(records).toHaveLength(1);
+    expect(records[0]!.exerciseName).toBe('Deadlift');
+    expect(records[0]!.maxWeight).toBe(60);
+  });
+
+  it('uses the bodyweight-effective load passed by the caller', () => {
+    // The caller has already added bodyweight (e.g. pull-up at +0 -> 80 kg
+    // effective). The record reads that effective load directly.
+    const records = exerciseRecords([rset('Pull-up', 80, 8, '2026-01-01')]);
+    expect(records[0]!.maxWeight).toBe(80);
+    expect(records[0]!.maxWeightReps).toBe(8);
+  });
+
+  it('groups multiple exercises and sorts alphabetically', () => {
+    const records = exerciseRecords([
+      rset('Squat', 140, 3, '2026-01-01'),
+      rset('Bench', 100, 5, '2026-01-01'),
+      rset('Deadlift', 180, 2, '2026-01-01'),
+    ]);
+    expect(records.map((r) => r.exerciseName)).toEqual([
+      'Bench',
+      'Deadlift',
+      'Squat',
+    ]);
+  });
+
+  it('returns an empty board when there is no qualifying set', () => {
+    expect(exerciseRecords([])).toEqual([]);
+    expect(
+      exerciseRecords([rset('Squat', 100, 5, '2026-01-01', { isWarmup: true })]),
     ).toEqual([]);
   });
 });

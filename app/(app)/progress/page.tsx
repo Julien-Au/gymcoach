@@ -7,6 +7,7 @@ import {
   applyBodyweight,
   best1RM,
   classifyWeeklySets,
+  effectiveWeight,
   exerciseProgress,
   isStalled,
   isoWeekKey,
@@ -23,11 +24,13 @@ import {
   isDeloadActive,
   recommendDeload,
 } from '@/lib/deload';
+import { exerciseRecords } from '@/lib/records';
 import { ProgressDashboard } from '@/components/progress/progress-dashboard';
 import { ConsistencyCard } from '@/components/progress/consistency-card';
 import { DeloadBanner } from '@/components/progress/deload-banner';
 import { BodyweightCard } from '@/components/progress/bodyweight-card';
 import { ConditioningCard } from '@/components/progress/conditioning-card';
+import { RecordsCard } from '@/components/progress/records-card';
 
 interface SearchParams {
   exerciseId?: string;
@@ -324,6 +327,38 @@ export default async function ProgressPage(
       )
     : null;
 
+  // Records board (issue #190, display-only): all-time bests per strength
+  // exercise over the user's full set history (not just the 12-week window).
+  // Cardio is excluded at the query (category != CARDIO); warm-ups are excluded
+  // both here and in the derivation. Bodyweight-effective load is applied so a
+  // bodyweight movement's records read on the load actually moved, consistent
+  // with every other load aggregation on this page.
+  const recordSetsRaw = await db.set.findMany({
+    where: {
+      isWarmup: false,
+      session: { userId: auth.userId },
+      exercise: { category: { not: 'CARDIO' } },
+    },
+    select: {
+      weight: true,
+      reps: true,
+      isWarmup: true,
+      durationSec: true,
+      exercise: { select: { name: true, usesBodyweight: true } },
+      session: { select: { startedAt: true } },
+    },
+  });
+  const records = exerciseRecords(
+    recordSetsRaw.map((s) => ({
+      weight: effectiveWeight(s.weight, s.exercise.usesBodyweight, bodyweight),
+      reps: s.reps,
+      isWarmup: s.isWarmup,
+      durationSec: s.durationSec,
+      exerciseName: s.exercise.name,
+      sessionStartedAt: s.session.startedAt,
+    })),
+  );
+
   const deload = recommendDeload({
     stalledExerciseNames: recap
       .filter((r) => r.stalled)
@@ -412,6 +447,9 @@ export default async function ProgressPage(
               selectedBestE1RM={selectedBestE1RM}
               selectedUsesBodyweight={selectedUsesBodyweight}
             />
+            {records.length > 0 && (
+              <RecordsCard records={records} unit={unit} />
+            )}
           </>
         )}
       </div>
