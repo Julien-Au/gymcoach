@@ -58,11 +58,18 @@ function lapXml(lap: TcxExportLap, startTime: string): string {
   // valid for strict consumers without inventing data.
   const lines: string[] = [];
   lines.push(`      <Lap StartTime="${xmlEscape(startTime)}">`);
-  lines.push(`        <TotalTimeSeconds>${lap.durationSec}</TotalTimeSeconds>`);
-  if (lap.distanceM != null && lap.distanceM > 0) {
+  // Defensive: only finite numbers reach the document, so a NaN/Infinity that
+  // ever slipped past the upstream write schema can never emit invalid TCX
+  // (the schemas already bound these; this keeps the serializer correct on
+  // its own).
+  const duration = Number.isFinite(lap.durationSec) ? lap.durationSec : 0;
+  lines.push(`        <TotalTimeSeconds>${duration}</TotalTimeSeconds>`);
+  if (lap.distanceM != null && Number.isFinite(lap.distanceM) && lap.distanceM > 0) {
     lines.push(`        <DistanceMeters>${lap.distanceM}</DistanceMeters>`);
   }
-  if (lap.avgHr != null) {
+  // A HeartRateBpm Value of 0 is invalid TCX; emit the block only for a real
+  // positive reading (symmetric with the distance gate above).
+  if (lap.avgHr != null && Number.isFinite(lap.avgHr) && lap.avgHr > 0) {
     lines.push('        <AverageHeartRateBpm>');
     lines.push(`          <Value>${lap.avgHr}</Value>`);
     lines.push('        </AverageHeartRateBpm>');

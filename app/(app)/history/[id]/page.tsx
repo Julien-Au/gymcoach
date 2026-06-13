@@ -83,9 +83,11 @@ export default async function HistorySessionPage({ params }: Params) {
   );
   const volume = totalVolume(enrichedAllSets);
   const workingSetCount = session.sets.filter((s) => !s.isWarmup).length;
-  // TCX export (issue #175) is offered only when the session has cardio sets;
-  // the route 400s otherwise, so the button must mirror that condition.
-  const hasCardio = session.sets.some((s) => s.durationSec != null);
+  // TCX export (issue #175) is offered only for a FINISHED session that has
+  // cardio sets; the route 400s on a cardio-less session, and an in-progress
+  // session (reachable only by direct URL here) is not a complete export.
+  const hasCardio =
+    session.finishedAt != null && session.sets.some((s) => s.durationSec != null);
   const durationMin =
     session.finishedAt && session.startedAt
       ? Math.round((session.finishedAt.getTime() - session.startedAt.getTime()) / 60000)
