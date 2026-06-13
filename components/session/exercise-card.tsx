@@ -15,7 +15,17 @@ import {
   type SuggestionResult,
 } from '@/lib/progression';
 import { formatWeight } from '@/lib/units';
+import { formatCardioSet } from '@/lib/cardio';
 import type { SerializedLastPerformance } from './session-runner';
+
+// Last-session reference line for a cardio exercise (issue #176): duration and
+// distance via the shared cardio formatter, with average heart rate appended
+// when the previous session recorded one. Distance and bpm are simply omitted
+// when absent, so a duration-only cardio set shows just the duration.
+function cardioLastLine(cardio: NonNullable<SerializedLastPerformance['cardio']>): string {
+  const base = formatCardioSet(cardio.durationSec, cardio.distanceM);
+  return cardio.avgHr != null ? `${base} · ${cardio.avgHr} bpm` : base;
+}
 
 interface Props {
   programExercise: ProgramExercise & { exercise: Exercise };
@@ -124,15 +134,17 @@ export function ExerciseCard({
           )}
         </p>
 
-        {!isCardio && lastPerformance && (
+        {lastPerformance && (!isCardio || lastPerformance.cardio) && (
           <div className="rounded-md bg-secondary/50 p-3 text-sm">
             <div className="flex items-center gap-2 text-muted-foreground">
               <span className="text-xs">Last session ({lastDate})</span>
             </div>
             <p className="font-medium">
-              {lastPerformance.maxWeight === 0
-                ? `${lastPerformance.repsAtMaxWeight} reps bodyweight`
-                : `${formatWeight(lastPerformance.maxWeight, unit, { decimals: 2, group: false })} × ${lastPerformance.repsAtMaxWeight} reps`}
+              {isCardio && lastPerformance.cardio
+                ? cardioLastLine(lastPerformance.cardio)
+                : lastPerformance.maxWeight === 0
+                  ? `${lastPerformance.repsAtMaxWeight} reps bodyweight`
+                  : `${formatWeight(lastPerformance.maxWeight, unit, { decimals: 2, group: false })} × ${lastPerformance.repsAtMaxWeight} reps`}
             </p>
           </div>
         )}

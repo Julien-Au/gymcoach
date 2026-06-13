@@ -54,6 +54,48 @@ describe('getLastPerformances', () => {
     // Warmup excluded: 3 working sets only.
     expect(perf!.sets).toHaveLength(3);
     expect(perf!.sets.some((s) => s.weight === 60)).toBe(false);
+    // Strength exercise: no cardio totals (issue #176).
+    expect(perf!.cardio).toBeNull();
+  });
+
+  it('sums cardio duration/distance and averages heart rate (issue #176)', async () => {
+    const user = await makeUser('lp-cardio@test.dev');
+    const exo = await db.exercise.create({
+      data: { userId: user.id, name: 'Running', muscleGroup: 'OTHER', category: 'CARDIO' },
+    });
+
+    const session = await db.session.create({ data: { userId: user.id, startedAt: at(1) } });
+    // Two cardio sets: 20:00 / 3 km / 150 bpm and 10:00 / 2 km (no HR).
+    await db.set.createMany({
+      data: [
+        {
+          sessionId: session.id,
+          exerciseId: exo.id,
+          setNumber: 1,
+          weight: 0,
+          reps: 1,
+          durationSec: 1200,
+          distanceM: 3000,
+          avgHr: 150,
+          completedAt: at(1),
+        },
+        {
+          sessionId: session.id,
+          exerciseId: exo.id,
+          setNumber: 2,
+          weight: 0,
+          reps: 1,
+          durationSec: 600,
+          distanceM: 2000,
+          avgHr: null,
+          completedAt: at(1),
+        },
+      ],
+    });
+
+    const map = await getLastPerformances(user.id, [exo.id], null);
+    const perf = map.get(exo.id);
+    expect(perf?.cardio).toEqual({ durationSec: 1800, distanceM: 5000, avgHr: 150 });
   });
 
   it('excludes the current session via excludeSessionId', async () => {

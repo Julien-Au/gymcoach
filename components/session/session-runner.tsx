@@ -41,6 +41,10 @@ export interface SerializedLastPerformance {
   sets: { weight: number; reps: number; rir: number | null }[];
   maxWeight: number;
   repsAtMaxWeight: number;
+  // Cardio totals for the last session (issue #176): null for strength
+  // exercises. Carried so the exercise card can show a cardio "Last session"
+  // reference (duration / distance / avgHr).
+  cardio: { durationSec: number; distanceM: number; avgHr: number | null } | null;
 }
 
 type ProgramExerciseWithExercise = ProgramExercise & { exercise: Exercise };

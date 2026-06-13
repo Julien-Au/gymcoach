@@ -9,6 +9,10 @@ export interface LastPerformance {
   maxWeight: number;
   // Reps at that max load (the highest rep count reached at maxWeight).
   repsAtMaxWeight: number;
+  // Cardio totals for the session (issue #176): summed duration/distance and
+  // an averaged heart rate across the session's cardio sets. Null for strength
+  // exercises (no cardio sets), so the session UI can branch on `cardio`.
+  cardio: { durationSec: number; distanceM: number; avgHr: number | null } | null;
 }
 
 // Fetches the previous performances for a list of exerciseIds, excluding the
@@ -40,20 +44,46 @@ export async function getLastPerformances(
       });
       if (!lastSet) return;
 
-      const sets = await db.set.findMany({
+      const rows = await db.set.findMany({
         where: {
           sessionId: lastSet.sessionId,
           exerciseId,
           isWarmup: false,
         },
         orderBy: { setNumber: 'asc' },
-        select: { weight: true, reps: true, rir: true },
+        select: {
+          weight: true,
+          reps: true,
+          rir: true,
+          durationSec: true,
+          distanceM: true,
+          avgHr: true,
+        },
       });
+
+      const sets = rows.map(({ weight, reps, rir }) => ({ weight, reps, rir }));
 
       const maxWeight = Math.max(...sets.map((s) => s.weight));
       const repsAtMaxWeight = Math.max(
         ...sets.filter((s) => s.weight === maxWeight).map((s) => s.reps),
       );
+
+      // Cardio totals (issue #176): a cardio set carries durationSec != null.
+      // Sum duration/distance over the session's cardio sets and average the
+      // heart rate across the sets that recorded one. Null when there are no
+      // cardio sets (a strength exercise), so the UI branches cleanly.
+      const cardioRows = rows.filter((r) => r.durationSec != null);
+      let cardio: LastPerformance['cardio'] = null;
+      if (cardioRows.length > 0) {
+        const durationSec = cardioRows.reduce((acc, r) => acc + (r.durationSec ?? 0), 0);
+        const distanceM = cardioRows.reduce((acc, r) => acc + (r.distanceM ?? 0), 0);
+        const hrRows = cardioRows.filter((r) => r.avgHr != null);
+        const avgHr =
+          hrRows.length > 0
+            ? Math.round(hrRows.reduce((acc, r) => acc + (r.avgHr ?? 0), 0) / hrRows.length)
+            : null;
+        cardio = { durationSec, distanceM, avgHr };
+      }
 
       result.set(exerciseId, {
         exerciseId,
@@ -61,6 +91,7 @@ export async function getLastPerformances(
         sets,
         maxWeight,
         repsAtMaxWeight,
+        cardio,
       });
     }),
   );
