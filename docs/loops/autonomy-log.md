@@ -1206,3 +1206,17 @@ continuously, no per-change approval, self-challenge with subagents, keep a roll
 
 **Next.** Merge #9 once green; then work the backlog (#4 seed catalog, #5 empty states,
 #1 imperial units), each subagent-challenged before merge per the protocol.
+
+---
+
+## 2026-06-13 - Cardio axis closed out (#175/#176/#177); model note + three CLEAN reviews
+
+**Context.** Eighth ideate batch (#175 TCX export, #176 cardio last-time, #177 pace/speed) implemented and shipped. Operator switched the default model to Opus 4.8; the Fable model then became unavailable to subagents, so this cycle's dev tick ran on the inherited Opus (the Fable-for-dev routing is moot while Fable is inaccessible) - noted so a future run does not treat the routing as broken.
+
+**Decided / shipped.**
+- #179/#180/#181 merged on green full CI; all three independent Opus reviews CLEAN (the #181 TCX-export review attacked escaping/ownership/2000-lap perf and the round trip - all held; the #180 pace/speed math was re-derived independently). Three NITs on #181 (unreachable non-finite/zero-HR emission, finished-session button gate) hardened in #182; one pre-existing cross-cutting NIT (history cardio totals include warmups) filed as #183.
+- The cardio axis is now closed in and out: TCX/CSV import -> first-class cardio logging with a last-time reference -> pace/speed + conditioning analytics -> TCX/CSV export. This is the file-based neutral ground the 2026-06-12 research identified as the hybrid-athlete white space.
+
+**Challenged.** Two parallel Opus reviews (one security-lensed). Accepted-change rate: 4 merged / 0 abandoned (+ docs).
+
+**Deferred to human.** #169 (Next.js 14->15 major bump) still stop-for-human, untouched. Future: #183 (warmup totals), supersets slice 2, coach-context annotation.
