@@ -1290,3 +1290,17 @@ continuously, no per-change approval, self-challenge with subagents, keep a roll
 **Verified (reinforced controls for a major bump).** verify.sh --full green (incl. 10 E2E); production Docker image built + probed locally (login 200, sw.js 200, no client error); CI docker-smoke re-validated the image; demo redeployed and the LIVE Next 15 instance confirmed healthy (login, full progress data, service worker, zero page errors). Lesson L13 records the approach.
 
 **Deferred to human.** None outstanding from #169. A Serwist migration (to clear the build-time workbox advisories) is a possible larger follow-up, not filed.
+
+---
+
+## 2026-06-13 (late) - Batch 9 shipped (#188/#189/#190); 3 CLEAN reviews + one tie-break fix
+
+**Context.** Ninth ideate batch implemented on Opus (Fable still unavailable to subagents): coach note (#188), superset-aware rest (#189), records board (#190).
+
+**Decided / shipped.**
+- #192/#193/#194 merged on green full CI; rollback baseline autonomy-baseline-2026-06-13b tagged before the #194 migration. Three independent Opus reviews: all CLEAN. The #188 review verified the coach note reaches the LLM as JSON DATA (not concatenated into instructions), the <adjustments> contract is byte-identical, and adversarial notes (</adjustments>, "ignore instructions", 501 chars, whitespace) are handled. The #193 timer was proven live via the superset E2E. The #190 review found one NIT (non-deterministic tie-break date, no orderBy) - promoted to fix #195/#196 (query ordered oldest-first; tests pin the contract).
+- The coach note is the correctable-memory differentiator the 2026-06-12 research identified; it pairs with the read-only transparency card (#154).
+
+**Challenged.** Two parallel Opus reviews (one injection-lensed). Accepted-change rate: 4 merged / 0 abandoned this batch.
+
+**Deferred to human.** Nothing outstanding. Future: mobility session type (low confidence), Serwist migration (build-time advisories).
