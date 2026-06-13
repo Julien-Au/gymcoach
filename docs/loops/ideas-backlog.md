@@ -40,6 +40,6 @@ research and the product wedge). See `docs/loops/08-ideation-loop.md` for how th
 - shipped - per-day conditioning + interference guidance (issue #153, 2026-06-12, PR #157) - review CLEAN; daily window aligned to the strength week at the UTC instant
 - shipped - 'What your coach sees' transparency card (issue #154, 2026-06-12, PR #156 + fix #162) - review found the footer overclaimed privacy; reworded to the truth same-day
 - rejected - OAuth cloud integrations (Garmin/Strava/Apple Health), watch companion / rep auto-counting, black-box auto-push program generator, nutrition/macro tracking, real-time GPS recorder (2026-06-12 research anti-recommendations) - recorded so future runs never propose them
-- proposed - export a cardio session as a TCX file (issue #175, 2026-06-13) - the outbound half of the data-ownership wedge (research opp #4); pure serializer, round-trips through the tcx.ts parser
-- proposed - show last-time cardio performance in the session (issue #176, 2026-06-13) - cardio counterpart of the loved strength last-performance, currently gated off by !isCardio; display-only
-- proposed - cardio pace and speed (derived) on the session summary and history (issue #177, 2026-06-13) - pure lib/cardio.ts derivation, the number runners actually train on; display-only, unit-aware
+- shipped - export a cardio session as a TCX file (issue #175, 2026-06-13, PR #181 + hardening #182) - the outbound data-ownership half; hostile review CLEAN (escaping + ownership), round-trips through the parser
+- shipped - show last-time cardio performance in the session (issue #176, 2026-06-13, PR #179) - review CLEAN; ungated the cardio branch, HR averaged
+- shipped - cardio pace and speed (derived) on the session summary and history (issue #177, 2026-06-13, PR #180) - review CLEAN, math re-derived; warmup-totals inconsistency filed as #183

@@ -83,6 +83,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   single field of the set logger to fill the weight, reps, and effort fields
   (RPE maps to the stored RIR). Deterministic parser in the user's display
   unit; the classic fields keep working unchanged.
+- Export a cardio session as a TCX file: download a finished cardio session
+  (duration, distance, average heart rate) as a standard .tcx you can import
+  into Strava or any analysis tool - the outbound half of file-based data
+  ownership, no cloud account or OAuth. It round-trips back through the
+  importer to the same numbers.
+- Cardio "last time" in the session: starting a cardio exercise now shows
+  your last session's duration, distance, and average heart rate - the
+  cardio counterpart of the strength last-performance reference (it was
+  previously hidden for cardio).
+- Pace and speed on cardio: the session summary and history now show derived
+  pace (min/km or /mi) and speed (km/h or mph) for cardio sets with a
+  distance, in your unit.
 - Complete backup export/restore: the JSON backup now round-trips every
   piece of your data - cardio duration/distance/heart rate, supersets,
   per-exercise goals, bodyweight history, readiness check-ins, and coach
