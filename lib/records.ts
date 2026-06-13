@@ -69,3 +69,88 @@ export function detectPRs(candidate: SetLike, history: SetLike[]): PRType[] {
 export function isPR(candidate: SetLike, history: SetLike[]): boolean {
   return detectPRs(candidate, history).length > 0;
 }
+
+// ============================================================
+// Records board (issue #190) - all-time bests per exercise
+// ============================================================
+// A pure derivation over a user's working-set history: for each strength
+// exercise, the heaviest working set ever (weight x reps and its date) and the
+// best estimated 1RM ever (Epley, with its date). Display-only - there is no
+// records table. Cardio sets and warm-ups carry no lifting record and are
+// excluded, consistent with `best1RM` / `setVolume` in lib/stats and the PR
+// detector above.
+//
+// Bodyweight exercises: the caller passes the effective load (entered weight +
+// bodyweight) in `weight`, the same `applyBodyweight` adjustment the progress
+// page uses everywhere else, so a bodyweight movement's records read on the
+// load actually moved rather than the added plates alone.
+
+// A working set decorated with its exercise name and session date. The caller
+// builds these from the rows it already loads for the progress page.
+type RecordSet = Pick<Set, 'weight' | 'reps' | 'isWarmup'> & {
+  durationSec?: number | null;
+  exerciseName: string;
+  sessionStartedAt: Date;
+};
+
+// The all-time bests for one exercise.
+export interface ExerciseRecord {
+  exerciseName: string;
+  maxWeight: number;
+  maxWeightReps: number; // reps of the heaviest set
+  maxWeightDate: string; // ISO date (YYYY-MM-DD) the heaviest set was logged
+  bestE1RM: number; // rounded to 1 decimal, like exerciseProgress
+  bestE1RMDate: string; // ISO date of the set with the best estimated 1RM
+}
+
+function isoDay(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+// Given a flat list of (bodyweight-adjusted) working sets across exercises,
+// returns one record per strength exercise, sorted alphabetically by exercise
+// name (stable and predictable for a board the user scans by lift). Warm-ups,
+// cardio sets, and sets with a non-positive load or reps are ignored; an
+// exercise with no qualifying set yields no row. Ties keep the earliest set
+// (the date the record was first reached).
+export function exerciseRecords(sets: RecordSet[]): ExerciseRecord[] {
+  const byExercise = new Map<string, ExerciseRecord>();
+
+  for (const s of sets) {
+    if (s.isWarmup || s.durationSec != null || s.weight <= 0 || s.reps <= 0) {
+      continue;
+    }
+
+    const e1rm = +estimate1RM(s.weight, s.reps).toFixed(1);
+    const day = isoDay(s.sessionStartedAt);
+    const current = byExercise.get(s.exerciseName);
+
+    if (!current) {
+      byExercise.set(s.exerciseName, {
+        exerciseName: s.exerciseName,
+        maxWeight: s.weight,
+        maxWeightReps: s.reps,
+        maxWeightDate: day,
+        bestE1RM: e1rm,
+        bestE1RMDate: day,
+      });
+      continue;
+    }
+
+    // Strictly heavier load wins the weight record; a tie keeps the earlier
+    // date already stored (we only overwrite on a strict improvement).
+    if (s.weight > current.maxWeight) {
+      current.maxWeight = s.weight;
+      current.maxWeightReps = s.reps;
+      current.maxWeightDate = day;
+    }
+    if (e1rm > current.bestE1RM) {
+      current.bestE1RM = e1rm;
+      current.bestE1RMDate = day;
+    }
+  }
+
+  return [...byExercise.values()].sort((a, b) =>
+    a.exerciseName.localeCompare(b.exerciseName),
+  );
+}
