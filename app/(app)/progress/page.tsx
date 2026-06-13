@@ -339,6 +339,11 @@ export default async function ProgressPage(
       session: { userId: auth.userId },
       exercise: { category: { not: 'CARDIO' } },
     },
+    // Oldest first so that on a tie (same load / e1RM) exerciseRecords keeps
+    // the EARLIEST date, matching its documented "first to reach it" behavior:
+    // the reducer keeps the first-seen row, which is only the earliest when the
+    // rows arrive chronologically.
+    orderBy: { session: { startedAt: 'asc' } },
     select: {
       weight: true,
       reps: true,

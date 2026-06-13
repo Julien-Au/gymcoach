@@ -112,13 +112,26 @@ describe('exerciseRecords', () => {
     });
   });
 
-  it('keeps the earlier date on a tie (strict comparison)', () => {
+  it('keeps the first-seen row on a tie - earliest date when fed oldest-first', () => {
+    // The function keeps the first matching row on a tie (strict comparison),
+    // so the caller must pass sets oldest-first to get the earliest date - the
+    // progress page orders the query by session.startedAt asc for exactly this.
     const records = exerciseRecords([
       rset('Bench', 80, 5, '2026-01-01'),
       rset('Bench', 80, 5, '2026-02-01'), // identical -> not a new record
     ]);
     expect(records[0]!.maxWeightDate).toBe('2026-01-01');
     expect(records[0]!.bestE1RMDate).toBe('2026-01-01');
+  });
+
+  it('is order-dependent on a tie (keeps the first element seen)', () => {
+    // Same two tied sets in REVERSE order: the function keeps the first one it
+    // sees, proving it relies on the caller ordering rows chronologically.
+    const records = exerciseRecords([
+      rset('Bench', 80, 5, '2026-02-01'),
+      rset('Bench', 80, 5, '2026-01-01'),
+    ]);
+    expect(records[0]!.maxWeightDate).toBe('2026-02-01');
   });
 
   it('excludes warm-up and cardio sets', () => {
