@@ -44,6 +44,7 @@ const lastPerf: SerializedLastPerformance = {
   ],
   maxWeight: 100,
   repsAtMaxWeight: 10,
+  cardio: null,
 };
 
 function renderCard(readiness: ReadinessSignal | null, deloadActive = false) {
@@ -96,5 +97,64 @@ describe('ExerciseCard readiness explainer', () => {
     renderCard(null, true);
     expect(screen.getByText('Lighter - planned deload week')).toBeInTheDocument();
     expect(screen.getByText('90 kg')).toBeInTheDocument();
+  });
+});
+
+// Issue #176: a cardio exercise with prior history shows a "Last session"
+// reference (duration / distance / avgHr) instead of a load. The strength
+// branch above pins that strength cards are unchanged.
+const cardioExo: Exercise = { ...exo, id: 'c1', name: 'Running', category: 'CARDIO' };
+const cardioPe: ProgramExercise & { exercise: Exercise } = {
+  ...pe,
+  exerciseId: 'c1',
+  exercise: cardioExo,
+};
+
+function renderCardioCard(cardio: SerializedLastPerformance['cardio'] | undefined) {
+  const lastPerformance: SerializedLastPerformance | undefined =
+    cardio === undefined
+      ? undefined
+      : {
+          sessionStartedAt: new Date().toISOString(),
+          sets: [{ weight: 0, reps: 1, rir: null }],
+          maxWeight: 0,
+          repsAtMaxWeight: 1,
+          cardio,
+        };
+  return render(
+    <ExerciseCard
+      programExercise={cardioPe}
+      lastPerformance={lastPerformance}
+      readiness={null}
+      deloadActive={false}
+      unit="KG"
+    />,
+  );
+}
+
+describe('ExerciseCard cardio last-performance', () => {
+  it('shows duration, distance and avgHr for a cardio exercise with history', () => {
+    renderCardioCard({ durationSec: 1800, distanceM: 5000, avgHr: 152 });
+    expect(screen.getByText(/Last session/)).toBeInTheDocument();
+    expect(screen.getByText('30:00 · 5 km · 152 bpm')).toBeInTheDocument();
+  });
+
+  it('omits distance and bpm for a duration-only cardio set', () => {
+    renderCardioCard({ durationSec: 1500, distanceM: 0, avgHr: null });
+    expect(screen.getByText('25:00')).toBeInTheDocument();
+    expect(screen.queryByText(/bpm/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/km/)).not.toBeInTheDocument();
+  });
+
+  it('shows nothing (no crash) for a cardio exercise with no prior history', () => {
+    renderCardioCard(undefined);
+    expect(screen.queryByText(/Last session/)).not.toBeInTheDocument();
+  });
+
+  it('shows nothing when the last session for the exercise had no cardio set', () => {
+    // Defensive: a strength record on a cardio-categorized card must not render
+    // a misleading load line; the cardio branch gates on the cardio totals.
+    renderCardioCard(null);
+    expect(screen.queryByText(/Last session/)).not.toBeInTheDocument();
   });
 });

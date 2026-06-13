@@ -106,5 +106,6 @@ function serializePerf(p: LastPerformance): SerializedLastPerformance {
     sets: p.sets,
     maxWeight: p.maxWeight,
     repsAtMaxWeight: p.repsAtMaxWeight,
+    cardio: p.cardio,
   };
 }
