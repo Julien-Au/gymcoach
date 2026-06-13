@@ -3,9 +3,13 @@ import {
   formatCardioSet,
   formatDistance,
   formatDuration,
+  formatPace,
+  formatSpeed,
   isCardioSet,
   MAX_DURATION_SEC,
+  paceSecPerKm,
   parseDurationToSec,
+  speedKmh,
 } from './cardio';
 
 describe('isCardioSet', () => {
@@ -75,5 +79,63 @@ describe('formatCardioSet', () => {
   it('shows duration only when distance is absent or zero', () => {
     expect(formatCardioSet(750, null)).toBe('12:30');
     expect(formatCardioSet(750, 0)).toBe('12:30');
+  });
+});
+
+describe('paceSecPerKm', () => {
+  it('derives seconds per kilometer', () => {
+    // 30:00 over 5 km -> 6:00 /km.
+    expect(paceSecPerKm(1800, 5000)).toBe(360);
+  });
+
+  it('returns null for zero/absent distance (no divide-by-zero)', () => {
+    expect(paceSecPerKm(1800, 0)).toBeNull();
+    expect(paceSecPerKm(1800, null)).toBeNull();
+    expect(paceSecPerKm(1800, undefined)).toBeNull();
+  });
+});
+
+describe('speedKmh', () => {
+  it('derives kilometers per hour', () => {
+    // 5 km in 30:00 -> 10 km/h.
+    expect(speedKmh(1800, 5000)).toBe(10);
+  });
+
+  it('returns null for zero/absent distance or zero duration', () => {
+    expect(speedKmh(1800, 0)).toBeNull();
+    expect(speedKmh(1800, null)).toBeNull();
+    expect(speedKmh(0, 5000)).toBeNull();
+  });
+});
+
+describe('formatPace', () => {
+  it('formats metric pace as mm:ss /km', () => {
+    expect(formatPace(1800, 5000, 'KG')).toBe('6:00 /km');
+  });
+
+  it('formats imperial pace as mm:ss /mi', () => {
+    // 6:00 /km -> 6:00 * 1.60934 = 579.4 s/mi -> 9:39.
+    expect(formatPace(1800, 5000, 'LB')).toBe('9:39 /mi');
+  });
+
+  it('returns null when there is no distance', () => {
+    expect(formatPace(1800, 0, 'KG')).toBeNull();
+    expect(formatPace(1800, null, 'LB')).toBeNull();
+  });
+});
+
+describe('formatSpeed', () => {
+  it('formats metric speed as km/h', () => {
+    expect(formatSpeed(1800, 5000, 'KG')).toBe('10 km/h');
+  });
+
+  it('formats imperial speed as mph', () => {
+    // 10 km/h -> 10 / 1.60934 = 6.21 mph -> 6.2.
+    expect(formatSpeed(1800, 5000, 'LB')).toBe('6.2 mph');
+  });
+
+  it('returns null when there is no distance', () => {
+    expect(formatSpeed(1800, 0, 'KG')).toBeNull();
+    expect(formatSpeed(1800, null, 'LB')).toBeNull();
   });
 });

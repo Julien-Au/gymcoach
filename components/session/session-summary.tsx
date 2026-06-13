@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import type { PendingSet } from '@/lib/indexeddb';
 import { formatWeight } from '@/lib/units';
 import { detectPRs, type PRType } from '@/lib/records';
-import { formatCardioSet } from '@/lib/cardio';
+import { formatCardioSet, formatPace, formatSpeed } from '@/lib/cardio';
 
 // Prior (previous-session) non-warmup sets per exerciseId, used as the PR
 // baseline. Same source as the in-session badge (getLastPerformances): a PR
@@ -129,12 +129,15 @@ export function SessionSummary({
       doneSets: exoSets.length,
       targetSets,
       maxWeight: isCardio || exoSets.length === 0 ? 0 : Math.max(...exoSets.map((s) => s.weight)),
-      // Cardio recap: total duration and distance across the logged sets.
+      // Cardio recap: total duration and distance across the logged sets,
+      // plus derived pace and speed (issue #177) when the session covered a
+      // distance. Pace/speed are omitted for duration-only cardio.
       cardioLabel:
         isCardio && exoSets.length
-          ? formatCardioSet(
+          ? cardioRecap(
               exoSets.reduce((acc, s) => acc + (s.durationSec ?? 0), 0),
               exoSets.reduce((acc, s) => acc + (s.distanceM ?? 0), 0),
+              unit,
             )
           : null,
       complete: exoSets.length >= targetSets,
@@ -266,6 +269,16 @@ export function SessionSummary({
       </div>
     </main>
   );
+}
+
+// Cardio recap line for a session's totals: "30:00 · 5 km · 6:00 /km · 10 km/h".
+// Pace and speed (issue #177) are appended only when the session covered a
+// distance; a duration-only cardio session shows just the duration.
+function cardioRecap(durationSec: number, distanceM: number, unit: WeightUnit): string {
+  const base = formatCardioSet(durationSec, distanceM);
+  const pace = formatPace(durationSec, distanceM, unit);
+  const speed = formatSpeed(durationSec, distanceM, unit);
+  return [base, pace, speed].filter(Boolean).join(' · ');
 }
 
 function Stat({ label, value }: { label: string; value: string | number }) {
