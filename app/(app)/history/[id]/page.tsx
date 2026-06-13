@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, Calendar, Clock, Dumbbell } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, Download, Dumbbell } from 'lucide-react';
 import { db } from '@/lib/db';
 import { requireSession } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
@@ -83,6 +83,9 @@ export default async function HistorySessionPage({ params }: Params) {
   );
   const volume = totalVolume(enrichedAllSets);
   const workingSetCount = session.sets.filter((s) => !s.isWarmup).length;
+  // TCX export (issue #175) is offered only when the session has cardio sets;
+  // the route 400s otherwise, so the button must mirror that condition.
+  const hasCardio = session.sets.some((s) => s.durationSec != null);
   const durationMin =
     session.finishedAt && session.startedAt
       ? Math.round((session.finishedAt.getTime() - session.startedAt.getTime()) / 60000)
@@ -98,11 +101,21 @@ export default async function HistorySessionPage({ params }: Params) {
               <span className="ml-1">History</span>
             </Link>
           </Button>
-          <DeleteSessionButton
-            sessionId={session.id}
-            workoutName={session.workout?.name ?? null}
-            startedAt={session.startedAt}
-          />
+          <div className="flex items-center gap-2">
+            {hasCardio && (
+              <Button asChild variant="outline" size="sm">
+                <a href={`/api/cardio/tcx?sessionId=${session.id}`} download>
+                  <Download className="size-4" />
+                  <span className="ml-1">Download .tcx</span>
+                </a>
+              </Button>
+            )}
+            <DeleteSessionButton
+              sessionId={session.id}
+              workoutName={session.workout?.name ?? null}
+              startedAt={session.startedAt}
+            />
+          </div>
         </div>
 
         <Card>
