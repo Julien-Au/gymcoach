@@ -4,12 +4,13 @@ import { programExerciseInputSchema } from '@/lib/schemas/program-exercise';
 import { ApiError, handleApiError, parseJsonBody, requireApiUserId } from '@/lib/api';
 
 interface Params {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 // POST /api/workouts/[id]/program-exercises: adds an exercise (with its targets)
 // to a workout. The order is computed automatically.
-export async function POST(req: Request, { params }: Params) {
+export async function POST(req: Request, props: Params) {
+  const params = await props.params;
   try {
     const userId = await requireApiUserId();
     const workout = await db.workout.findUnique({

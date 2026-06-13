@@ -5,12 +5,13 @@ import { findAchievingSet } from '@/lib/goals';
 import { effectiveWeight } from '@/lib/stats';
 
 interface Params {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 // DELETE /api/sets/[id]: deletes a set (e.g. an input mistake).
 // The user can then re-enter it. No PUT for LOT 5, editing will come later.
-export async function DELETE(_req: Request, { params }: Params) {
+export async function DELETE(_req: Request, props: Params) {
+  const params = await props.params;
   try {
     const userId = await requireApiUserId();
     const set = await db.set.findUnique({

@@ -4,7 +4,7 @@ import { ApiError, handleApiError, requireApiUserId } from '@/lib/api';
 import { currentBodyweightFromEntries } from '@/lib/bodyweight';
 
 interface Params {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 // DELETE /api/bodyweight/[id]: remove one measurement. User.bodyweight is the
@@ -12,7 +12,8 @@ interface Params {
 // to the newest remaining entry. When no entries remain the profile value is
 // left as is (it may predate the history, and clearing it would silently
 // change effective-load math).
-export async function DELETE(_req: Request, { params }: Params) {
+export async function DELETE(_req: Request, props: Params) {
+  const params = await props.params;
   try {
     const userId = await requireApiUserId();
     const entry = await db.bodyweightEntry.findUnique({ where: { id: params.id } });

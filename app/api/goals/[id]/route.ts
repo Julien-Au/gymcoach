@@ -3,11 +3,12 @@ import { db } from '@/lib/db';
 import { ApiError, handleApiError, requireApiUserId } from '@/lib/api';
 
 interface Params {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 // DELETE /api/goals/[id]: removes one of the user's exercise goals.
-export async function DELETE(_req: Request, { params }: Params) {
+export async function DELETE(_req: Request, props: Params) {
+  const params = await props.params;
   try {
     const userId = await requireApiUserId();
     const goal = await db.exerciseGoal.findUnique({ where: { id: params.id } });

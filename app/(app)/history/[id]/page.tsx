@@ -13,10 +13,11 @@ import { formatWeight } from '@/lib/units';
 import { DeleteSessionButton } from '@/components/history/delete-session-button';
 
 interface Params {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
-export default async function HistorySessionPage({ params }: Params) {
+export default async function HistorySessionPage(props: Params) {
+  const params = await props.params;
   const auth = await requireSession();
 
   const [session, user] = await Promise.all([

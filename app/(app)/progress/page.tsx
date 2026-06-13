@@ -35,11 +35,12 @@ interface SearchParams {
 
 const RECENT_WEEKS = 12;
 
-export default async function ProgressPage({
-  searchParams,
-}: {
-  searchParams: SearchParams;
-}) {
+export default async function ProgressPage(
+  props: {
+    searchParams: Promise<SearchParams>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const auth = await requireSession();
 
   // Lower bound: 12 weeks before today (Monday 00:00).

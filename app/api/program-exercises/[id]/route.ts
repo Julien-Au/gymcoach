@@ -4,7 +4,7 @@ import { programExerciseInputSchema } from '@/lib/schemas/program-exercise';
 import { ApiError, handleApiError, parseJsonBody, requireApiUserId } from '@/lib/api';
 
 interface Params {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 async function ensureOwnership(id: string, userId: string) {
@@ -18,7 +18,8 @@ async function ensureOwnership(id: string, userId: string) {
   return pe;
 }
 
-export async function PUT(req: Request, { params }: Params) {
+export async function PUT(req: Request, props: Params) {
+  const params = await props.params;
   try {
     const userId = await requireApiUserId();
     await ensureOwnership(params.id, userId);
@@ -52,7 +53,8 @@ export async function PUT(req: Request, { params }: Params) {
   }
 }
 
-export async function DELETE(_req: Request, { params }: Params) {
+export async function DELETE(_req: Request, props: Params) {
+  const params = await props.params;
   try {
     const userId = await requireApiUserId();
     await ensureOwnership(params.id, userId);

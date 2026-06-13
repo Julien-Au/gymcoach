@@ -130,7 +130,7 @@ describe('DELETE /api/bodyweight/[id]', () => {
     await db.user.update({ where: { id: a.id }, data: { bodyweight: 82 } });
 
     const res = await deleteEntry(new Request('http://t/api', { method: 'DELETE' }), {
-      params: { id: newer.id },
+      params: Promise.resolve({ id: newer.id }),
     });
     expect(res.status).toBe(200);
     const user = await db.user.findUnique({ where: { id: a.id } });
@@ -153,7 +153,7 @@ describe('DELETE /api/bodyweight/[id]', () => {
     await db.user.update({ where: { id: a.id }, data: { bodyweight: 82 } });
 
     await deleteEntry(new Request('http://t/api', { method: 'DELETE' }), {
-      params: { id: older.id },
+      params: Promise.resolve({ id: older.id }),
     });
     const user = await db.user.findUnique({ where: { id: a.id } });
     expect(user?.bodyweight).toBe(82);
@@ -165,7 +165,7 @@ describe('DELETE /api/bodyweight/[id]', () => {
     const only = await (await postEntry(jsonReq('POST', { weightKg: 81 }))).json();
 
     await deleteEntry(new Request('http://t/api', { method: 'DELETE' }), {
-      params: { id: only.id },
+      params: Promise.resolve({ id: only.id }),
     });
     expect(await db.bodyweightEntry.count()).toBe(0);
     const user = await db.user.findUnique({ where: { id: a.id } });
@@ -180,7 +180,7 @@ describe('DELETE /api/bodyweight/[id]', () => {
 
     actAs(b.id);
     const res = await deleteEntry(new Request('http://t/api', { method: 'DELETE' }), {
-      params: { id: entry.id },
+      params: Promise.resolve({ id: entry.id }),
     });
     expect(res.status).toBe(404);
     expect(await db.bodyweightEntry.count()).toBe(1);

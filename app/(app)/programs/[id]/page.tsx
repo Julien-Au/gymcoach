@@ -4,10 +4,11 @@ import { requireSession } from '@/lib/auth';
 import { ProgramDetailView } from '@/components/programs/program-detail-view';
 
 interface Props {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
-export default async function ProgramDetailPage({ params }: Props) {
+export default async function ProgramDetailPage(props: Props) {
+  const params = await props.params;
   const session = await requireSession();
 
   const program = await db.program.findFirst({

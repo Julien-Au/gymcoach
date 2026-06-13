@@ -4,7 +4,7 @@ import { ApiError, handleApiError, parseJsonBody, requireApiUserId } from '@/lib
 import { applyAdjustmentsSchema } from '@/lib/coach-adjustments';
 
 interface Params {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 // POST /api/coach/[id]/apply
@@ -13,7 +13,8 @@ interface Params {
 // - appends any notes to `ProgramExercise.notes` (prefixed with the date for
 //   traceability)
 // - marks the `CoachSession` as applied (`appliedAt`).
-export async function POST(req: Request, { params }: Params) {
+export async function POST(req: Request, props: Params) {
+  const params = await props.params;
   try {
     const userId = await requireApiUserId();
     const { adjustments } = await parseJsonBody(req, applyAdjustmentsSchema);

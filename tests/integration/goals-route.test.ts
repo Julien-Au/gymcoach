@@ -130,7 +130,7 @@ describe('DELETE /api/goals/[id]', () => {
       await postGoal(jsonReq('POST', { exerciseId: exercise.id, targetWeight: 120, targetReps: 5 }))
     ).json();
     const res = await deleteGoal(new Request('http://t/api', { method: 'DELETE' }), {
-      params: { id: goal.id },
+      params: Promise.resolve({ id: goal.id }),
     });
     expect(res.status).toBe(200);
     expect(await db.exerciseGoal.count()).toBe(0);
@@ -144,7 +144,7 @@ describe('DELETE /api/goals/[id]', () => {
     ).json();
     actAs(b.id);
     const res = await deleteGoal(new Request('http://t/api', { method: 'DELETE' }), {
-      params: { id: goal.id },
+      params: Promise.resolve({ id: goal.id }),
     });
     expect(res.status).toBe(404);
     expect(await db.exerciseGoal.count()).toBe(1);
@@ -159,7 +159,7 @@ describe('goal achievement at set-save time', () => {
 
     const res = await postSet(
       jsonReq('POST', { exerciseId: exercise.id, setNumber: 2, weight: 110, reps: 4 }),
-      { params: { id: session.id } },
+      { params: Promise.resolve({ id: session.id }) },
     );
     expect(res.status).toBe(201);
     const created = await res.json();
@@ -175,11 +175,11 @@ describe('goal achievement at set-save time', () => {
 
     await postSet(
       jsonReq('POST', { exerciseId: exercise.id, setNumber: 2, weight: 110, reps: 4, isWarmup: true }),
-      { params: { id: session.id } },
+      { params: Promise.resolve({ id: session.id }) },
     );
     await postSet(
       jsonReq('POST', { exerciseId: exercise.id, setNumber: 3, weight: 105, reps: 4 }),
-      { params: { id: session.id } },
+      { params: Promise.resolve({ id: session.id }) },
     );
 
     const goal = await db.exerciseGoal.findFirst({ where: { userId: a.id } });
@@ -205,7 +205,7 @@ describe('goal achievement at set-save time', () => {
     // +15 added (95 effective): not achieved.
     await postSet(
       jsonReq('POST', { exerciseId: pullups.id, setNumber: 1, weight: 15, reps: 5 }),
-      { params: { id: session.id } },
+      { params: Promise.resolve({ id: session.id }) },
     );
     let goal = await db.exerciseGoal.findFirst({ where: { exerciseId: pullups.id } });
     expect(goal?.achievedAt).toBeNull();
@@ -213,7 +213,7 @@ describe('goal achievement at set-save time', () => {
     // +20 added (100 effective): achieved.
     await postSet(
       jsonReq('POST', { exerciseId: pullups.id, setNumber: 2, weight: 20, reps: 5 }),
-      { params: { id: session.id } },
+      { params: Promise.resolve({ id: session.id }) },
     );
     goal = await db.exerciseGoal.findFirst({ where: { exerciseId: pullups.id } });
     expect(goal?.achievedAt).not.toBeNull();
@@ -230,7 +230,7 @@ describe('goal re-derivation when the achieving set is deleted (issue #96)', () 
     expect(goal?.achievedAt).not.toBeNull();
 
     const res = await deleteSet(new Request('http://t/api', { method: 'DELETE' }), {
-      params: { id: set.id },
+      params: Promise.resolve({ id: set.id }),
     });
     expect(res.status).toBe(200);
     goal = await db.exerciseGoal.findFirst({ where: { userId: a.id } });
@@ -246,14 +246,14 @@ describe('goal re-derivation when the achieving set is deleted (issue #96)', () 
     const later = await (
       await postSet(
         jsonReq('POST', { exerciseId: exercise.id, setNumber: 2, weight: 97.5, reps: 5 }),
-        { params: { id: session.id } },
+        { params: Promise.resolve({ id: session.id }) },
       )
     ).json();
 
     // Deleting the original achieving set must move achievedAt to the
     // remaining one, not clear it and not keep the dead timestamp.
     await deleteSet(new Request('http://t/api', { method: 'DELETE' }), {
-      params: { id: set.id },
+      params: Promise.resolve({ id: set.id }),
     });
     const goal = await db.exerciseGoal.findFirst({ where: { userId: a.id } });
     expect(goal?.achievedAt?.getTime()).toBe(new Date(later.completedAt).getTime());
@@ -265,7 +265,7 @@ describe('goal re-derivation when the achieving set is deleted (issue #96)', () 
     await postGoal(jsonReq('POST', { exerciseId: exercise.id, targetWeight: 120, targetReps: 5 }));
 
     const res = await deleteSet(new Request('http://t/api', { method: 'DELETE' }), {
-      params: { id: set.id },
+      params: Promise.resolve({ id: set.id }),
     });
     expect(res.status).toBe(200);
     const goal = await db.exerciseGoal.findFirst({ where: { userId: a.id } });

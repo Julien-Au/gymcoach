@@ -7,11 +7,12 @@ import { setAchievesGoal } from '@/lib/goals';
 import { effectiveWeight } from '@/lib/stats';
 
 interface Params {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 // POST /api/sessions/[id]/sets: records a set in a session.
-export async function POST(req: Request, { params }: Params) {
+export async function POST(req: Request, props: Params) {
+  const params = await props.params;
   try {
     const userId = await requireApiUserId();
 

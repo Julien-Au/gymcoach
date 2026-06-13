@@ -7,10 +7,11 @@ import { isDeloadActive } from '@/lib/deload';
 import { SessionRunner, type SerializedLastPerformance } from '@/components/session/session-runner';
 
 interface Props {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
-export default async function SessionRunPage({ params }: Props) {
+export default async function SessionRunPage(props: Props) {
+  const params = await props.params;
   const auth = await requireSession();
 
   const session = await db.session.findFirst({

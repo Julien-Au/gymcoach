@@ -48,7 +48,7 @@ describe('route ownership: DELETE /api/sets/[id]', () => {
     const { a, set } = await seed();
     actAs(a.id);
     const res = await deleteSet(new Request('http://t/api', { method: 'DELETE' }), {
-      params: { id: set.id },
+      params: Promise.resolve({ id: set.id }),
     });
     expect(res.status).toBe(200);
     expect(await db.set.findUnique({ where: { id: set.id } })).toBeNull();
@@ -58,7 +58,7 @@ describe('route ownership: DELETE /api/sets/[id]', () => {
     const { b, set } = await seed();
     actAs(b.id);
     const res = await deleteSet(new Request('http://t/api', { method: 'DELETE' }), {
-      params: { id: set.id },
+      params: Promise.resolve({ id: set.id }),
     });
     expect(res.status).toBe(404);
     // The set must still exist - no cross-user deletion.
@@ -71,7 +71,7 @@ describe('route ownership: PUT /api/sessions/[id]', () => {
     const { a, session } = await seed();
     actAs(a.id);
     const res = await putSession(jsonReq('PUT', { notes: 'mine' }), {
-      params: { id: session.id },
+      params: Promise.resolve({ id: session.id }),
     });
     expect(res.status).toBe(200);
     expect((await db.session.findUnique({ where: { id: session.id } }))?.notes).toBe('mine');
@@ -81,7 +81,7 @@ describe('route ownership: PUT /api/sessions/[id]', () => {
     const { b, session } = await seed();
     actAs(b.id);
     const res = await putSession(jsonReq('PUT', { notes: 'hacked' }), {
-      params: { id: session.id },
+      params: Promise.resolve({ id: session.id }),
     });
     expect(res.status).toBe(404);
     expect((await db.session.findUnique({ where: { id: session.id } }))?.notes).toBe('original');
@@ -92,7 +92,7 @@ describe('route ownership: GET /api/exercises/[id]', () => {
   it('lets the owner read their exercise', async () => {
     const { a, exercise } = await seed();
     actAs(a.id);
-    const res = await getExercise(new Request('http://t/api'), { params: { id: exercise.id } });
+    const res = await getExercise(new Request('http://t/api'), { params: Promise.resolve({ id: exercise.id }) });
     expect(res.status).toBe(200);
     expect((await res.json()).id).toBe(exercise.id);
   });
@@ -100,7 +100,7 @@ describe('route ownership: GET /api/exercises/[id]', () => {
   it("returns 404 for a stranger reading someone else's exercise", async () => {
     const { b, exercise } = await seed();
     actAs(b.id);
-    const res = await getExercise(new Request('http://t/api'), { params: { id: exercise.id } });
+    const res = await getExercise(new Request('http://t/api'), { params: Promise.resolve({ id: exercise.id }) });
     expect(res.status).toBe(404);
   });
 });
