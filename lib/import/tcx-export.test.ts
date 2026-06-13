@@ -93,4 +93,20 @@ describe('serializeTcx round-trip', () => {
     expect(xml.toUpperCase()).not.toContain('<!DOCTYPE');
     expect(xml.toUpperCase()).not.toContain('<!ENTITY');
   });
+
+  it('never emits non-finite numbers or a zero HR (defensive)', () => {
+    const xml = serializeTcx({
+      startedAt: new Date('2026-06-10T07:30:00.000Z'),
+      sport: 'Running',
+      laps: [
+        { durationSec: Number.NaN, distanceM: Number.POSITIVE_INFINITY, avgHr: 0 },
+      ],
+    });
+    expect(xml).not.toContain('NaN');
+    expect(xml).not.toContain('Infinity');
+    // Distance is dropped (non-finite) and the HR block is omitted (avgHr 0).
+    expect(xml).not.toContain('DistanceMeters');
+    expect(xml).not.toContain('AverageHeartRateBpm');
+    expect(xml).toContain('<TotalTimeSeconds>0</TotalTimeSeconds>');
+  });
 });
