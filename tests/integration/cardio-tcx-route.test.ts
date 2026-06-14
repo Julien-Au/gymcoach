@@ -53,6 +53,7 @@ describe('GET /api/cardio/tcx (issue #175)', () => {
         durationSec: 1800,
         distanceM: 5000,
         avgHr: 152,
+        maxHr: 181,
       },
     });
 
@@ -66,6 +67,7 @@ describe('GET /api/cardio/tcx (issue #175)', () => {
     expect(parsed.activity!.durationSec).toBe(1800);
     expect(parsed.activity!.distanceM).toBe(5000);
     expect(parsed.activity!.avgHr).toBe(152);
+    expect(parsed.activity!.maxHr).toBe(181);
     expect(parsed.activity!.sport).toBe('Running');
   });
 

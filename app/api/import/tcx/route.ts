@@ -66,6 +66,7 @@ export async function POST(req: Request) {
       durationSec: activity.durationSec,
       distanceM: activity.distanceM,
       avgHr: activity.avgHr,
+      maxHr: activity.maxHr,
       duplicateSessions: nearDuplicates.map((s) => s.startedAt.toISOString()),
     };
 
@@ -123,6 +124,7 @@ export async function POST(req: Request) {
           durationSec: activity.durationSec,
           distanceM: activity.distanceM,
           avgHr: activity.avgHr,
+          maxHr: activity.maxHr,
           completedAt: finishedAt,
         },
       });

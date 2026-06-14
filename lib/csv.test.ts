@@ -28,6 +28,8 @@ describe('HISTORY_CSV_HEADERS', () => {
       'set_notes',
       'duration_sec',
       'distance_m',
+      'avg_hr',
+      'max_hr',
     ]);
   });
 });

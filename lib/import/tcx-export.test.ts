@@ -36,7 +36,7 @@ describe('serializeTcx round-trip', () => {
     const activity: TcxExportActivity = {
       startedAt,
       sport: 'Running',
-      laps: [{ durationSec: 1800, distanceM: 5000, avgHr: 152 }],
+      laps: [{ durationSec: 1800, distanceM: 5000, avgHr: 152, maxHr: 181 }],
     };
 
     const xml = serializeTcx(activity);
@@ -47,8 +47,24 @@ describe('serializeTcx round-trip', () => {
     expect(parsed.activity!.durationSec).toBe(1800);
     expect(parsed.activity!.distanceM).toBe(5000);
     expect(parsed.activity!.avgHr).toBe(152);
+    // Max HR survives the round-trip unchanged (issue #203).
+    expect(parsed.activity!.maxHr).toBe(181);
     expect(parsed.activity!.sport).toBe('Running');
     expect(parsed.activity!.startedAt.toISOString()).toBe(startedAt.toISOString());
+  });
+
+  it('round-trips max HR as the max over laps', () => {
+    const activity: TcxExportActivity = {
+      startedAt: new Date('2026-06-10T07:30:00.000Z'),
+      sport: 'Running',
+      laps: [
+        { durationSec: 600, distanceM: 2000, avgHr: 150, maxHr: 170 },
+        { durationSec: 600, distanceM: 2000, avgHr: 150, maxHr: 188 },
+      ],
+    };
+    const parsed = parseTcx(serializeTcx(activity));
+    expect(parsed.ok).toBe(true);
+    expect(parsed.activity!.maxHr).toBe(188);
   });
 
   it('round-trips multiple laps, summing duration/distance (HR duration-weighted)', () => {
@@ -56,8 +72,8 @@ describe('serializeTcx round-trip', () => {
       startedAt: new Date('2026-06-10T07:30:00.000Z'),
       sport: 'Biking',
       laps: [
-        { durationSec: 1200, distanceM: 3000, avgHr: 150 },
-        { durationSec: 600, distanceM: 2000, avgHr: 150 },
+        { durationSec: 1200, distanceM: 3000, avgHr: 150, maxHr: null },
+        { durationSec: 600, distanceM: 2000, avgHr: 150, maxHr: null },
       ],
     };
     const parsed = parseTcx(serializeTcx(activity));
@@ -72,23 +88,25 @@ describe('serializeTcx round-trip', () => {
     const activity: TcxExportActivity = {
       startedAt: new Date('2026-06-10T07:30:00.000Z'),
       sport: 'Other',
-      laps: [{ durationSec: 900, distanceM: null, avgHr: null }],
+      laps: [{ durationSec: 900, distanceM: null, avgHr: null, maxHr: null }],
     };
     const xml = serializeTcx(activity);
     expect(xml).not.toContain('DistanceMeters');
     expect(xml).not.toContain('AverageHeartRateBpm');
+    expect(xml).not.toContain('MaximumHeartRateBpm');
     const parsed = parseTcx(xml);
     expect(parsed.ok).toBe(true);
     expect(parsed.activity!.durationSec).toBe(900);
     expect(parsed.activity!.distanceM).toBeNull();
     expect(parsed.activity!.avgHr).toBeNull();
+    expect(parsed.activity!.maxHr).toBeNull();
   });
 
   it('emits no DTD or entity declaration', () => {
     const xml = serializeTcx({
       startedAt: new Date('2026-06-10T07:30:00.000Z'),
       sport: 'Running',
-      laps: [{ durationSec: 60, distanceM: 100, avgHr: null }],
+      laps: [{ durationSec: 60, distanceM: 100, avgHr: null, maxHr: null }],
     });
     expect(xml.toUpperCase()).not.toContain('<!DOCTYPE');
     expect(xml.toUpperCase()).not.toContain('<!ENTITY');
@@ -99,14 +117,21 @@ describe('serializeTcx round-trip', () => {
       startedAt: new Date('2026-06-10T07:30:00.000Z'),
       sport: 'Running',
       laps: [
-        { durationSec: Number.NaN, distanceM: Number.POSITIVE_INFINITY, avgHr: 0 },
+        {
+          durationSec: Number.NaN,
+          distanceM: Number.POSITIVE_INFINITY,
+          avgHr: 0,
+          maxHr: Number.NaN,
+        },
       ],
     });
     expect(xml).not.toContain('NaN');
     expect(xml).not.toContain('Infinity');
-    // Distance is dropped (non-finite) and the HR block is omitted (avgHr 0).
+    // Distance is dropped (non-finite) and both HR blocks are omitted (avgHr 0,
+    // maxHr NaN).
     expect(xml).not.toContain('DistanceMeters');
     expect(xml).not.toContain('AverageHeartRateBpm');
+    expect(xml).not.toContain('MaximumHeartRateBpm');
     expect(xml).toContain('<TotalTimeSeconds>0</TotalTimeSeconds>');
   });
 });

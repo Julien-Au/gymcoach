@@ -1,5 +1,12 @@
 import { z } from 'zod';
-import { AVG_HR_MAX, AVG_HR_MIN, MAX_DISTANCE_M, MAX_DURATION_SEC } from '@/lib/cardio';
+import {
+  AVG_HR_MAX,
+  AVG_HR_MIN,
+  MAX_DISTANCE_M,
+  MAX_DURATION_SEC,
+  MAX_HR_MAX,
+  MAX_HR_MIN,
+} from '@/lib/cardio';
 import { IMPORT_CSV_MAX_BYTES } from '@/lib/import/csv';
 
 // ============================================================
@@ -48,6 +55,7 @@ export interface TcxActivity {
   durationSec: number; // whole seconds, summed over laps
   distanceM: number | null; // summed over laps; null when no lap carries one
   avgHr: number | null; // duration-weighted average of lap averages
+  maxHr: number | null; // max of the per-lap MaximumHeartRateBpm values
   sport: TcxSport;
 }
 
@@ -69,6 +77,7 @@ const activitySchema = z.object({
   durationSec: z.number().int().min(1).max(MAX_DURATION_SEC),
   distanceM: z.number().min(0).max(MAX_DISTANCE_M).nullable(),
   avgHr: z.number().int().min(AVG_HR_MIN).max(AVG_HR_MAX).nullable(),
+  maxHr: z.number().int().min(MAX_HR_MIN).max(MAX_HR_MAX).nullable(),
   sport: z.enum(['Running', 'Biking', 'Other']),
 });
 
@@ -278,6 +287,9 @@ export function parseTcx(input: string): TcxParseResult {
   let sawDistance = false;
   let hrWeightedSum = 0;
   let hrSeconds = 0;
+  // Max HR is a peak, so it is the max over the per-lap MaximumHeartRateBpm
+  // values (not a sum or an average), matching issue #203's documented choice.
+  let maxHrSeen: number | null = null;
   let earliestStart: Date | null = null;
   let sport: TcxSport = 'Other';
   let sportSet = false;
@@ -317,6 +329,13 @@ export function parseTcx(input: string): TcxParseResult {
         hrWeightedSum += hr * seconds;
         hrSeconds += seconds;
       }
+
+      const maxHrBlock = extractBlocks(lapTotals, 'MaximumHeartRateBpm', 1)[0];
+      const lapMaxHr =
+        maxHrBlock === undefined ? null : asFiniteNumber(firstTagText(maxHrBlock, 'Value'));
+      if (lapMaxHr !== null && lapMaxHr > 0) {
+        maxHrSeen = maxHrSeen === null ? lapMaxHr : Math.max(maxHrSeen, lapMaxHr);
+      }
     }
 
     // Fall back to the first lap's StartTime when <Id> is missing/invalid.
@@ -345,6 +364,7 @@ export function parseTcx(input: string): TcxParseResult {
 
   const durationSec = Math.round(totalSeconds);
   const rawAvgHr = hrSeconds > 0 ? Math.round(hrWeightedSum / hrSeconds) : null;
+  const rawMaxHr = maxHrSeen !== null ? Math.round(maxHrSeen) : null;
   const candidate: TcxActivity = {
     startedAt: earliestStart,
     durationSec,
@@ -352,6 +372,8 @@ export function parseTcx(input: string): TcxParseResult {
     // Out-of-bounds heart rate (sensor glitch or hostile value) degrades to
     // "no heart rate" instead of failing the import: it is optional data.
     avgHr: rawAvgHr !== null && rawAvgHr >= AVG_HR_MIN && rawAvgHr <= AVG_HR_MAX ? rawAvgHr : null,
+    // Same degrade-to-null on an out-of-bounds peak (issue #203).
+    maxHr: rawMaxHr !== null && rawMaxHr >= MAX_HR_MIN && rawMaxHr <= MAX_HR_MAX ? rawMaxHr : null,
     sport,
   };
 

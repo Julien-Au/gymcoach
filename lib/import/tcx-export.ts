@@ -20,6 +20,7 @@ export interface TcxExportLap {
   durationSec: number;
   distanceM: number | null;
   avgHr: number | null;
+  maxHr: number | null;
 }
 
 export interface TcxExportActivity {
@@ -73,6 +74,14 @@ function lapXml(lap: TcxExportLap, startTime: string): string {
     lines.push('        <AverageHeartRateBpm>');
     lines.push(`          <Value>${lap.avgHr}</Value>`);
     lines.push('        </AverageHeartRateBpm>');
+  }
+  // Max HR (issue #203): same positive-finite gate as the average so a 0 or a
+  // NaN never emits an invalid HeartRateBpm block. The parser reads it back as
+  // MaximumHeartRateBpm, so a round-trip preserves the value.
+  if (lap.maxHr != null && Number.isFinite(lap.maxHr) && lap.maxHr > 0) {
+    lines.push('        <MaximumHeartRateBpm>');
+    lines.push(`          <Value>${lap.maxHr}</Value>`);
+    lines.push('        </MaximumHeartRateBpm>');
   }
   lines.push('        <Intensity>Active</Intensity>');
   lines.push('        <TriggerMethod>Manual</TriggerMethod>');

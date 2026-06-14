@@ -33,6 +33,7 @@ export async function GET(req: Request) {
             durationSec: true,
             distanceM: true,
             avgHr: true,
+            maxHr: true,
             exercise: { select: { name: true } },
           },
         },
@@ -57,6 +58,7 @@ export async function GET(req: Request) {
         durationSec: s.durationSec!,
         distanceM: s.distanceM,
         avgHr: s.avgHr,
+        maxHr: s.maxHr,
       })),
     };
 

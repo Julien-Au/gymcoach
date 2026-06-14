@@ -252,6 +252,7 @@ export default async function HistorySessionPage(props: Params) {
                               <th className="py-1.5 font-medium">Distance</th>
                               <th className="py-1.5 font-medium">Pace</th>
                               <th className="py-1.5 font-medium">Avg HR</th>
+                              <th className="py-1.5 font-medium">Max HR</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -274,6 +275,9 @@ export default async function HistorySessionPage(props: Params) {
                                 <td className="py-1.5">{pace ?? '-'}</td>
                                 <td className="py-1.5">
                                   {s.avgHr != null ? `${s.avgHr} bpm` : '-'}
+                                </td>
+                                <td className="py-1.5">
+                                  {s.maxHr != null ? `${s.maxHr} bpm` : '-'}
                                 </td>
                               </tr>
                               );

@@ -57,6 +57,7 @@ interface TcxPreview {
   durationSec: number;
   distanceM: number | null;
   avgHr: number | null;
+  maxHr: number | null;
   duplicateSessions: string[];
 }
 
@@ -312,7 +313,8 @@ export function ImportSection() {
               </li>
               <li>
                 {formatCardioSet(tcxPreview.durationSec, tcxPreview.distanceM)}
-                {tcxPreview.avgHr != null ? ` · avg HR ${tcxPreview.avgHr} bpm` : ''}{' '}
+                {tcxPreview.avgHr != null ? ` · avg HR ${tcxPreview.avgHr} bpm` : ''}
+                {tcxPreview.maxHr != null ? ` · max HR ${tcxPreview.maxHr} bpm` : ''}{' '}
                 logged as {tcxPreview.exerciseName}
               </li>
               {tcxPreview.duplicateSessions.length > 0 && (

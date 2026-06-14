@@ -28,6 +28,7 @@ const RUN_TCX = `<?xml version="1.0" encoding="UTF-8"?>
         <TotalTimeSeconds>1800</TotalTimeSeconds>
         <DistanceMeters>5000</DistanceMeters>
         <AverageHeartRateBpm><Value>152</Value></AverageHeartRateBpm>
+        <MaximumHeartRateBpm><Value>181</Value></MaximumHeartRateBpm>
       </Lap>
     </Activity>
   </Activities>
@@ -56,6 +57,7 @@ describe('POST /api/import/tcx (preview)', () => {
       durationSec: 1800,
       distanceM: 5000,
       avgHr: 152,
+      maxHr: 181,
       duplicateSessions: [],
     });
 
@@ -138,6 +140,7 @@ describe('POST /api/import/tcx (confirm)', () => {
       durationSec: 1800,
       distanceM: 5000,
       avgHr: 152,
+      maxHr: 181,
     });
     expect(set?.exercise).toMatchObject({
       name: 'Running',
