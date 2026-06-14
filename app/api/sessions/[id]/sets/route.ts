@@ -53,6 +53,7 @@ export async function POST(req: Request, props: Params) {
         durationSec: isCardio ? data.durationSec : null,
         distanceM: isCardio ? (data.distanceM ?? null) : null,
         avgHr: isCardio ? (data.avgHr ?? null) : null,
+        maxHr: isCardio ? (data.maxHr ?? null) : null,
         notes: data.notes ?? null,
         isWarmup: data.isWarmup ?? false,
         isDropSet: data.isDropSet ?? false,

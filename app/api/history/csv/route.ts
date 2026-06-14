@@ -92,6 +92,10 @@ export async function GET(req: Request) {
           // Cardio columns (issue #144): raw storage units, empty on strength sets.
           set.durationSec != null ? String(set.durationSec) : '',
           set.distanceM != null ? String(set.distanceM) : '',
+          // Heart-rate columns (issue #203): bpm, empty on strength sets and on
+          // cardio logged without a heart-rate reading.
+          set.avgHr != null ? String(set.avgHr) : '',
+          set.maxHr != null ? String(set.maxHr) : '',
         ];
         lines.push(row.map(csvEscape).join(','));
       }

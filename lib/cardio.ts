@@ -19,6 +19,13 @@ export const MAX_DISTANCE_M = 1000000;
 export const AVG_HR_MIN = 40;
 export const AVG_HR_MAX = 250;
 
+// Maximum heart rate bounds in bpm (issue #203): the peak heart-rate metric a
+// watch records, carried by the same TCX exports alongside the average. Same
+// 40..250 window as the average, enforced by every writer of Set.maxHr (the
+// set API schema and the TCX importer).
+export const MAX_HR_MIN = 40;
+export const MAX_HR_MAX = 250;
+
 // Statute mile in meters, for imports from imperial-unit exports.
 export const MILES_TO_METERS = 1609.34;
 

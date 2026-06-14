@@ -51,6 +51,8 @@ async function seedMixedSession() {
       reps: 1,
       durationSec: 1800,
       distanceM: 5000,
+      avgHr: 152,
+      maxHr: 181,
     },
   });
   return { user, session };
@@ -71,7 +73,7 @@ beforeEach(() => {
 });
 
 describe('GET /api/history/csv - cardio columns (issue #144)', () => {
-  it('appends duration_sec and distance_m, populated only on cardio rows', async () => {
+  it('appends cardio columns (duration/distance/HR), populated only on cardio rows', async () => {
     const { user } = await seedMixedSession();
     actAs(user.id);
 
@@ -80,8 +82,13 @@ describe('GET /api/history/csv - cardio columns (issue #144)', () => {
 
     const durationIdx = header.indexOf('duration_sec');
     const distanceIdx = header.indexOf('distance_m');
-    expect(durationIdx).toBe(header.length - 2);
-    expect(distanceIdx).toBe(header.length - 1);
+    const avgHrIdx = header.indexOf('avg_hr');
+    const maxHrIdx = header.indexOf('max_hr');
+    // The four cardio columns are pinned at the end in this order.
+    expect(durationIdx).toBe(header.length - 4);
+    expect(distanceIdx).toBe(header.length - 3);
+    expect(avgHrIdx).toBe(header.length - 2);
+    expect(maxHrIdx).toBe(header.length - 1);
 
     const exerciseIdx = header.indexOf('exercise');
     const strengthRow = rows.find((r) => r[exerciseIdx] === 'Bench');
@@ -92,12 +99,16 @@ describe('GET /api/history/csv - cardio columns (issue #144)', () => {
     // Cardio row: raw storage units, stored row shape (weight 0 / reps 1).
     expect(cardioRow![durationIdx]).toBe('1800');
     expect(cardioRow![distanceIdx]).toBe('5000');
+    expect(cardioRow![avgHrIdx]).toBe('152');
+    expect(cardioRow![maxHrIdx]).toBe('181');
     expect(cardioRow![header.indexOf('external_load_kg')]).toBe('0');
     expect(cardioRow![header.indexOf('reps')]).toBe('1');
 
     // Strength row: cardio columns empty, lifting cells unchanged.
     expect(strengthRow![durationIdx]).toBe('');
     expect(strengthRow![distanceIdx]).toBe('');
+    expect(strengthRow![avgHrIdx]).toBe('');
+    expect(strengthRow![maxHrIdx]).toBe('');
     expect(strengthRow![header.indexOf('external_load_kg')]).toBe('100');
     expect(strengthRow![header.indexOf('reps')]).toBe('5');
     expect(strengthRow![header.indexOf('volume_kg')]).toBe('500');

@@ -66,6 +66,18 @@ describe('setInputSchema', () => {
     expect(setInputSchema.safeParse({ ...valid, distanceM: -1 }).success).toBe(false);
     expect(setInputSchema.safeParse({ ...valid, distanceM: 1000001 }).success).toBe(false);
   });
+
+  it('accepts in-range avg/max HR and coerces numeric strings', () => {
+    const parsed = setInputSchema.parse({ ...valid, avgHr: '150', maxHr: '178' });
+    expect(parsed.avgHr).toBe(150);
+    expect(parsed.maxHr).toBe(178);
+  });
+
+  it('rejects out-of-range or non-integer max HR (issue #203)', () => {
+    expect(setInputSchema.safeParse({ ...valid, maxHr: 39 }).success).toBe(false);
+    expect(setInputSchema.safeParse({ ...valid, maxHr: 251 }).success).toBe(false);
+    expect(setInputSchema.safeParse({ ...valid, maxHr: 150.5 }).success).toBe(false);
+  });
 });
 
 describe('validateSetForCategory', () => {
@@ -77,6 +89,10 @@ describe('validateSetForCategory', () => {
   it('rejects duration or distance on non-cardio exercises', () => {
     expect(validateSetForCategory('COMPOUND', { durationSec: 600 })).toMatch(/cardio/i);
     expect(validateSetForCategory('ISOLATION', { distanceM: 1000 })).toMatch(/cardio/i);
+  });
+
+  it('rejects a max HR on non-cardio exercises (issue #203)', () => {
+    expect(validateSetForCategory('COMPOUND', { maxHr: 170 })).toMatch(/cardio/i);
   });
 
   it('requires a duration on cardio exercises', () => {

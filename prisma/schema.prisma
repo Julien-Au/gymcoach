@@ -231,6 +231,11 @@ model Set {
   // file import carries over manual logging. 40..250 when present (enforced
   // by every writer), NULL on strength sets and on cardio logged without it.
   avgHr       Int?
+  // Maximum (peak) heart rate in bpm (issue #203, additive): the companion HR
+  // metric watches record, carried in the same TCX exports. 40..250 when
+  // present (enforced by every writer), NULL on strength sets and on cardio
+  // logged without it.
+  maxHr       Int?
   notes       String?
   isWarmup    Boolean  @default(false)
   isDropSet   Boolean  @default(false)

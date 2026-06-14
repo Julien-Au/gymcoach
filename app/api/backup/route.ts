@@ -10,7 +10,14 @@ import {
 } from '@prisma/client';
 import { db } from '@/lib/db';
 import { ApiError, handleApiError, parseJsonBody, requireApiUserId } from '@/lib/api';
-import { AVG_HR_MAX, AVG_HR_MIN, MAX_DISTANCE_M, MAX_DURATION_SEC } from '@/lib/cardio';
+import {
+  AVG_HR_MAX,
+  AVG_HR_MIN,
+  MAX_DISTANCE_M,
+  MAX_DURATION_SEC,
+  MAX_HR_MAX,
+  MAX_HR_MIN,
+} from '@/lib/cardio';
 import { MAX_SUPERSET_GROUP, MIN_SUPERSET_GROUP } from '@/lib/supersets';
 import { sorenessSchema } from '@/lib/schemas/readiness';
 
@@ -193,6 +200,7 @@ export async function GET() {
           durationSec: set.durationSec,
           distanceM: set.distanceM,
           avgHr: set.avgHr,
+          maxHr: set.maxHr,
           notes: set.notes,
           isWarmup: set.isWarmup,
           isDropSet: set.isDropSet,
@@ -366,6 +374,7 @@ const importSchema = z.object({
                 .optional(),
               distanceM: z.number().min(0).max(MAX_DISTANCE_M).nullable().optional(),
               avgHr: z.number().int().min(AVG_HR_MIN).max(AVG_HR_MAX).nullable().optional(),
+              maxHr: z.number().int().min(MAX_HR_MIN).max(MAX_HR_MAX).nullable().optional(),
               notes: z.string().max(2000).nullable().optional(),
               isWarmup: z.boolean(),
               isDropSet: z.boolean(),
@@ -613,6 +622,7 @@ export async function POST(req: Request) {
                 durationSec: set.durationSec ?? null,
                 distanceM: set.distanceM ?? null,
                 avgHr: set.avgHr ?? null,
+                maxHr: set.maxHr ?? null,
                 notes: set.notes ?? null,
                 isWarmup: set.isWarmup,
                 isDropSet: set.isDropSet,

@@ -61,6 +61,8 @@ describe('parseTcx (happy paths)', () => {
       distanceM: 3300,
       // Duration-weighted: (150*900 + 170*300) / 1200 = 155.
       avgHr: 155,
+      // Max-of-laps: lap 1 carries MaximumHeartRateBpm 165, lap 2 carries none.
+      maxHr: 165,
       sport: 'Running',
     });
   });
@@ -361,6 +363,47 @@ describe('parseTcx (bounds)', () => {
     );
     expect(res.ok).toBe(true);
     expect(res.activity?.avgHr).toBeNull();
+  });
+
+  it('reads MaximumHeartRateBpm as the max over laps (issue #203)', () => {
+    const res = parseTcx(
+      minimalTcx(
+        `<Activity Sport="Running"><Id>2026-06-08T07:00:00Z</Id>` +
+          `<Lap><TotalTimeSeconds>600</TotalTimeSeconds>` +
+          `<MaximumHeartRateBpm><Value>160</Value></MaximumHeartRateBpm></Lap>` +
+          `<Lap><TotalTimeSeconds>600</TotalTimeSeconds>` +
+          `<MaximumHeartRateBpm><Value>178</Value></MaximumHeartRateBpm></Lap></Activity>`,
+      ),
+    );
+    expect(res.ok).toBe(true);
+    expect(res.activity?.maxHr).toBe(178);
+  });
+
+  it('does not let a Trackpoint MaximumHeartRateBpm leak into the lap max', () => {
+    // Lap total carries no MaximumHeartRateBpm; only a per-second Track sample
+    // does. The Track is stripped before extraction, so maxHr stays null.
+    const res = parseTcx(
+      minimalTcx(
+        `<Activity Sport="Running"><Id>2026-06-08T07:00:00Z</Id>` +
+          `<Lap><TotalTimeSeconds>600</TotalTimeSeconds><Track><Trackpoint>` +
+          `<MaximumHeartRateBpm><Value>200</Value></MaximumHeartRateBpm>` +
+          `</Trackpoint></Track></Lap></Activity>`,
+      ),
+    );
+    expect(res.ok).toBe(true);
+    expect(res.activity?.maxHr).toBeNull();
+  });
+
+  it('drops an out-of-bounds max heart rate instead of failing the import', () => {
+    const res = parseTcx(
+      minimalTcx(
+        `<Activity Sport="Running"><Id>2026-06-08T07:00:00Z</Id>` +
+          `<Lap><TotalTimeSeconds>600</TotalTimeSeconds>` +
+          `<MaximumHeartRateBpm><Value>999</Value></MaximumHeartRateBpm></Lap></Activity>`,
+      ),
+    );
+    expect(res.ok).toBe(true);
+    expect(res.activity?.maxHr).toBeNull();
   });
 
   // Number() accepts exponent and hex notation; lock in that both stay

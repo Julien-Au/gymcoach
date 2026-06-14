@@ -153,6 +153,7 @@ async function seedFullUser(email: string) {
             durationSec: 1800,
             distanceM: 5000,
             avgHr: 152,
+            maxHr: 181,
             completedAt: new Date('2026-06-01T10:50:00.000Z'),
           },
         ],
@@ -272,7 +273,7 @@ describe('GET /api/backup - export completeness (issue #168)', () => {
 
     const sets = dump.sessions[0].sets as Array<Record<string, unknown>>;
     const cardio = sets.find((s) => s.exerciseName === 'Running');
-    expect(cardio).toMatchObject({ durationSec: 1800, distanceM: 5000, avgHr: 152 });
+    expect(cardio).toMatchObject({ durationSec: 1800, distanceM: 5000, avgHr: 152, maxHr: 181 });
 
     const peGroups = dump.programs[0].workouts[0].exercises.map(
       (pe: { supersetGroup: number | null }) => pe.supersetGroup,
@@ -440,6 +441,7 @@ describe('POST /api/backup - restore round trip (issue #168)', () => {
     const set = await db.set.findFirst({ where: { session: { userId: user.id } } });
     expect(set?.durationSec).toBeNull();
     expect(set?.avgHr).toBeNull();
+    expect(set?.maxHr).toBeNull();
 
     // No profile in a v1 file: the account's profile is left alone.
     const profile = await db.user.findUnique({ where: { id: user.id } });
@@ -459,6 +461,18 @@ describe('POST /api/backup - malformed and oversized input (issue #168)', () => 
     expect(res.status).toBe(400);
 
     // Validation failed before the transaction: nothing was deleted.
+    expect(await countsFor(user.id)).toEqual(before);
+  });
+
+  it('rejects an out-of-bounds max HR without touching existing data (issue #203)', async () => {
+    const user = await seedFullUser('victim-maxhr@test.dev');
+    actAs(user.id);
+    const before = await countsFor(user.id);
+    const dump = await (await getBackup()).json();
+
+    dump.sessions[0].sets[0].maxHr = 999; // out of the 40..250 range
+    const res = await postBackup(jsonReq({ payload: dump, confirmReplace: true }));
+    expect(res.status).toBe(400);
     expect(await countsFor(user.id)).toEqual(before);
   });
 
