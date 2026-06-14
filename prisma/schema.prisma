@@ -46,6 +46,7 @@ model User {
   readinessCheckins ReadinessCheckin[]
   exerciseGoals ExerciseGoal[]
   bodyweightEntries BodyweightEntry[]
+  bodyMeasurements BodyMeasurement[]
 }
 
 enum Sex {
@@ -282,6 +283,39 @@ model BodyweightEntry {
   note       String?
 
   @@index([userId, measuredAt])
+}
+
+// Tape-measure body measurements (issue #202, additive): the recomp/hypertrophy
+// companion to bodyweight tracking. Stored always in cm; the client converts
+// from the display unit. One row per (site, time) measurement; nothing else in
+// the app reads it, so the table is fully additive.
+model BodyMeasurement {
+  id         String              @id @default(cuid())
+  userId     String
+  user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  site       BodyMeasurementSite
+  // Stored in centimeters; the client converts from cm/inches at the edge.
+  valueCm    Float
+  measuredAt DateTime            @default(now())
+  note       String?
+
+  @@index([userId, site, measuredAt])
+}
+
+enum BodyMeasurementSite {
+  WAIST
+  HIPS
+  CHEST
+  SHOULDERS
+  NECK
+  ARM_LEFT
+  ARM_RIGHT
+  FOREARM_LEFT
+  FOREARM_RIGHT
+  THIGH_LEFT
+  THIGH_RIGHT
+  CALF_LEFT
+  CALF_RIGHT
 }
 
 model CoachSession {
