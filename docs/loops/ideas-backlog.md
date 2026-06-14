@@ -46,3 +46,6 @@ research and the product wedge). See `docs/loops/08-ideation-loop.md` for how th
 - shipped - a free-text note to your coach (correctable AI memory) (issue #188, 2026-06-13, PR #194) - multi-lens review CLEAN incl. injection posture (note is JSON data, not instructions; contract byte-identical)
 - shipped - supersets slice 2: superset-aware rest timer (issue #189, 2026-06-13, PR #193) - review CLEAN, E2E proven live (short between members, full after group)
 - shipped - a Records board (all-time bests per exercise) (issue #190, 2026-06-13, PR #192 + fix #196) - review CLEAN; tie-break date made deterministic
+- proposed - body-measurement tracking (waist/arms/etc.) with a trend (issue #202, 2026-06-14) - additive BodyMeasurement table mirroring bodyweight #99; recomp/hypertrophy want
+- proposed - maximum heart rate on cardio sets (issue #203, 2026-06-14) - small additive completion of the HR story (avgHr exists); TCX carries MaximumHeartRateBpm
+- proposed - import a GPX file as a cardio session (issue #204, 2026-06-14) - third file-import format on the hardened no-entity-decode XML pipeline; haversine distance from the track; security-lens review mandatory
