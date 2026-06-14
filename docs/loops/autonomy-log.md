@@ -6,6 +6,49 @@ by the charter in [`07-autonomy.md`](07-autonomy.md).
 
 ---
 
+## 2026-06-14 - Direct test coverage: CSV reader + profile schema (#198/#199)
+
+**Context.** Maintainer tick, two test-only coverage issues, strictly serialized (each PR MERGED
+before the next branch was cut). Both authored by JulienAu, trust-gated (login allowlist +
+collaborator check HTTP 204). Inherited model this cycle (Fable unavailable) - fine. Pure test
+additions, no production code touched, so a post-merge independent review was not required; the
+discipline instead was "read the source first, assert the REAL contract, never weaken a test, and
+STOP + file if a test surfaces a genuine bug". No bug surfaced - both modules behaved exactly as
+documented.
+
+**Decided / shipped.**
+- **#198 (PR #200, merged on green).** New `lib/import/csv.test.ts`: direct, adversarial coverage
+  for the shared quote-aware CSV reader (the untrusted-upload parsing core, previously exercised
+  only through the Strong/Hevy parser tests). 29 tests over `readCsvRecords` (quoted commas, quoted
+  newlines spanning lines, doubled-quote `""` escapes, trailing/empty fields, CRLF vs LF vs lone-CR,
+  blank trailing + mid-file lines, final record with no newline, 1-based `line` numbers), `asNumber`
+  (ints/decimals/whitespace/empty->0/garbage->NaN, exponent passes, and the `Number.isFinite` guard
+  so Infinity/NaN never leak a non-finite value), and `headerKey` normalization.
+  - *Contract clarified:* the caps `IMPORT_CSV_MAX_BYTES`/`IMPORT_CSV_MAX_ROWS` are exported
+    constants that `readCsvRecords` itself does NOT enforce - the format parsers do, against the
+    reader's output. The test asserts the constant values and documents that the reader reads a
+    row-cap-exceeding file in full (rejection is upstream), rather than asserting a cap the reader
+    does not own. Verified empirically against the source before writing.
+- **#199 (PR #<this>, merged on green).** New `lib/schemas/profile.test.ts` mirroring the existing
+  `lib/schemas/*.test.ts` style: 34 tests for `profileUpdateSchema` - bodyweight 20-300 (19.9/20/
+  300/300.1, decimals allowed), heightCm 100-250 (int-only), weeklyFrequency 1-14 (int-only), each
+  edge accepted / just-outside rejected; all native-enum values accepted + junk rejected (Sex/
+  TrainingGoal/WeightUnit), nullable-vs-optional split (unit is optional-not-nullable); coachNote at
+  vs over `COACH_NOTE_MAX_LEN` with length measured after trim; displayName trim + min-1 + max-80;
+  unknown keys stripped (default Zod object).
+  - *Contract clarified:* an all-whitespace `coachNote` trims to `""` at the schema level; the
+    null-coercion is the route's job (per the schema comment), so the test asserts `""` here, not
+    null. Verified empirically before asserting.
+
+**Challenged.** Test-only PRs with no production behavior change -> no subagent review per the run
+directive. The substitute discipline (read source, assert real contract empirically, never weaken)
+was applied; both green-gates passed (`bash scripts/verify.sh`: prisma generate + lint + typecheck
++ unit + build) and full CI was green (lint/type/unit, integration, build, E2E, docker-smoke).
+
+**Deferred.** Nothing. No production bug surfaced.
+
+---
+
 ## 2026-06-13 - Records board, superset rest timer, coach note (#190/#189/#188)
 
 **Context.** Maintainer tick, strictly serialized by ascending size (each PR MERGED before the
