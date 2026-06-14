@@ -29,6 +29,7 @@ import { ProgressDashboard } from '@/components/progress/progress-dashboard';
 import { ConsistencyCard } from '@/components/progress/consistency-card';
 import { DeloadBanner } from '@/components/progress/deload-banner';
 import { BodyweightCard } from '@/components/progress/bodyweight-card';
+import { MeasurementsCard } from '@/components/progress/measurements-card';
 import { ConditioningCard } from '@/components/progress/conditioning-card';
 import { RecordsCard } from '@/components/progress/records-card';
 
@@ -303,6 +304,15 @@ export default async function ProgressPage(
     select: { id: true, weightKg: true, measuredAt: true },
   });
 
+  // Body measurements (issue #202): entries of the same 12-week window, newest
+  // first, across every site. The card slices per site client-side. Like the
+  // bodyweight card, it renders on the empty state too.
+  const bodyMeasurements = await db.bodyMeasurement.findMany({
+    where: { userId: auth.userId, measuredAt: { gte: since } },
+    orderBy: { measuredAt: 'desc' },
+    select: { id: true, site: true, valueCm: true, measuredAt: true },
+  });
+
   // Conditioning card (issue #135, display-only): weekly cardio minutes /
   // distance / sessions over the last 8 weeks, derived from the cardio sets
   // already fetched for the window. The card stays hidden until the user has
@@ -388,6 +398,16 @@ export default async function ProgressPage(
           entries={bodyweightEntries.map((e) => ({
             id: e.id,
             weightKg: e.weightKg,
+            measuredAt: e.measuredAt.toISOString(),
+          }))}
+          unit={unit}
+        />
+
+        <MeasurementsCard
+          entries={bodyMeasurements.map((e) => ({
+            id: e.id,
+            site: e.site,
+            valueCm: e.valueCm,
             measuredAt: e.measuredAt.toISOString(),
           }))}
           unit={unit}

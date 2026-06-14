@@ -16,19 +16,24 @@ test('a lifter can log and delete a bodyweight entry on the progress page', asyn
   await expect(page).toHaveURL('/');
 
   await page.goto('/progress');
-  await expect(page.getByText('Bodyweight', { exact: true })).toBeVisible();
-  await expect(page.getByText(/no bodyweight logged yet/i)).toBeVisible();
+  // Scope to the Bodyweight card (the page also has a Measurements card whose
+  // own "Log" button would otherwise be ambiguous).
+  const card = page
+    .locator('div.rounded-xl', { has: page.getByRole('heading', { name: 'Bodyweight' }) })
+    .first();
+  await expect(card.getByRole('heading', { name: 'Bodyweight' })).toBeVisible();
+  await expect(card.getByText(/no bodyweight logged yet/i)).toBeVisible();
 
   // Quick-add 82.5 kg.
-  await page.getByLabel(/bodyweight \(kg\)/i).fill('82.5');
-  await page.getByRole('button', { name: 'Log', exact: true }).click();
+  await card.getByLabel(/bodyweight \(kg\)/i).fill('82.5');
+  await card.getByRole('button', { name: 'Log', exact: true }).click();
 
-  await expect(page.getByText(/current: 82.5 kg/i)).toBeVisible();
+  await expect(card.getByText(/current: 82.5 kg/i)).toBeVisible();
   // The entry shows in the recent list with a delete button.
-  const deleteButton = page.getByRole('button', { name: /delete entry/i }).first();
+  const deleteButton = card.getByRole('button', { name: /delete entry/i }).first();
   await expect(deleteButton).toBeVisible();
 
   // Delete it again: back to the empty state.
   await deleteButton.click();
-  await expect(page.getByText(/no bodyweight logged yet/i)).toBeVisible();
+  await expect(card.getByText(/no bodyweight logged yet/i)).toBeVisible();
 });
