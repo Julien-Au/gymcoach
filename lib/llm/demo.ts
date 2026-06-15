@@ -133,10 +133,34 @@ const DEMO_PROGRAM = {
   ],
 };
 
+// AI-parsed set logging (issue #210): a canned structured parse so the no-key
+// flow exercises the free-text logging path. The marker word "BENCHMARK" in the
+// set description selects this branch; the kind (strength vs cardio) is read
+// from the user message so the demo returns the right shape.
+const DEMO_SET_PARSE_STRENGTH = JSON.stringify({
+  kind: 'strength',
+  weight: 100,
+  reps: 8,
+  rir: 2,
+});
+const DEMO_SET_PARSE_CARDIO = JSON.stringify({
+  kind: 'cardio',
+  durationSec: 1500,
+  distanceM: 5000,
+});
+
 // Detect the use case from a phrase unique to each *system prompt* (not the
 // payload: the chat context also contains "workouts", which fooled an earlier
-// heuristic).
-function cannedResponse(system: string): string {
+// heuristic). The set-parse prompt also reads the user message to pick the
+// strength vs cardio shape and to honor the unparseable marker.
+function cannedResponse(system: string, userText = ''): string {
+  if (system.includes('parse ONE natural-language description')) {
+    // Mirror the contract: non-set text returns the refusal sentinel.
+    if (/\bUNPARSEABLE\b/i.test(userText)) return '{"error":"unparseable"}';
+    return /Type:\s*CARDIO/i.test(userText)
+      ? DEMO_SET_PARSE_CARDIO
+      : DEMO_SET_PARSE_STRENGTH;
+  }
   if (system.includes('<adjustments>')) return DEBRIEF; // weekly debrief prompt
   if (system.includes('SINGLE JSON object')) return JSON.stringify(DEMO_PROGRAM, null, 2); // program generation prompt
   // In-session chat: the appended payload JSON carries a "currentSession" key
@@ -144,6 +168,16 @@ function cannedResponse(system: string): string {
   // stable prompt text, which mentions currentSession without quotes).
   if (system.includes('"currentSession"')) return CHAT_IN_SESSION;
   return CHAT; // conversational coach
+}
+
+// The last user message text, used by the set-parse branch to read the kind and
+// the unparseable marker. Empty string when there is no user message.
+function lastUserText(req: LlmCompletionRequest): string {
+  for (let i = req.messages.length - 1; i >= 0; i--) {
+    const m = req.messages[i];
+    if (m && m.role === 'user') return m.content;
+  }
+  return '';
 }
 
 export class DemoProvider implements LlmProvider {
@@ -158,11 +192,11 @@ export class DemoProvider implements LlmProvider {
 
   async complete(req: LlmCompletionRequest): Promise<LlmCompletionResult> {
     await delay(500);
-    return { text: cannedResponse(req.system), modelUsed: 'demo' };
+    return { text: cannedResponse(req.system, lastUserText(req)), modelUsed: 'demo' };
   }
 
   async *stream(req: LlmCompletionRequest): AsyncIterable<string> {
-    const text = cannedResponse(req.system);
+    const text = cannedResponse(req.system, lastUserText(req));
     for (const token of text.split(/(\s+)/)) {
       await delay(22);
       yield token;

@@ -19,6 +19,7 @@ import { Label } from '@/components/ui/label';
 import { suggestNextWeight, weightIncrement, type ReadinessSignal } from '@/lib/progression';
 import { formatDuration, MAX_DISTANCE_M, parseDurationToSec } from '@/lib/cardio';
 import { parseSetShorthand, rpeToRir } from '@/lib/set-shorthand';
+import type { SetParseResult } from '@/lib/schemas/set-parse';
 import { PlateCalculator } from '@/components/session/plate-calculator';
 import { WarmupCalculator } from '@/components/session/warmup-calculator';
 import type { PendingSet } from '@/lib/indexeddb';
@@ -59,6 +60,10 @@ interface FormState {
 
 const RIR_OPTIONS = [0, 1, 2, 3];
 
+// The validated parse the API returns (issue #210). Re-using the schema's type
+// keeps the client's narrowing in lockstep with the server contract.
+type ParsedSetFill = SetParseResult;
+
 export function SetInput({
   programExercise,
   existingSets,
@@ -80,6 +85,12 @@ export function SetInput({
   const [form, setForm] = useState<FormState>(initial);
   const [submitting, setSubmitting] = useState(false);
   const [quickEntry, setQuickEntry] = useState('');
+  // Opt-in AI free-text parse (issue #210): a DELIBERATE action that fills the
+  // form for the user to confirm. The deterministic shorthand above stays the
+  // primary fast path; this never auto-logs and never blocks normal logging.
+  const [aiText, setAiText] = useState('');
+  const [aiParsing, setAiParsing] = useState(false);
+  const [aiHint, setAiHint] = useState<string | null>(null);
 
   // Re-init when the exercise changes or a set changes.
   useEffect(() => {
@@ -87,6 +98,8 @@ export function SetInput({
       computeInitial(programExercise, existingSets, lastPerformance, readiness, deloadActive),
     );
     setQuickEntry('');
+    setAiText('');
+    setAiHint(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [programExercise.id, existingSets.length]);
 
@@ -125,6 +138,65 @@ export function SetInput({
   }
 
   const quickEntryInvalid = quickEntry.trim() !== '' && parseSetShorthand(quickEntry) === null;
+
+  // Opt-in AI parse: POST the free text, then FILL the form from the validated
+  // result for the user to confirm. Never logs. On any failure (null parse,
+  // wrong shape, network error) it fills nothing and shows a small hint - the
+  // model output is untrusted, so the UI degrades gracefully and never crashes.
+  async function handleAiParse() {
+    const text = aiText.trim();
+    if (!text || aiParsing) return;
+    setAiParsing(true);
+    setAiHint(null);
+    try {
+      const res = await fetch('/api/sets/parse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ exerciseId: programExercise.exercise.id, text }),
+      });
+      if (!res.ok) {
+        setAiHint('Could not parse that. Try the shorthand (e.g. 100x8@9).');
+        return;
+      }
+      const data = (await res.json()) as { parsed: ParsedSetFill | null };
+      const parsed = data.parsed;
+      if (!parsed) {
+        setAiHint('Could not parse that. Try the shorthand (e.g. 100x8@9).');
+        return;
+      }
+      if (parsed.kind === 'cardio') {
+        if (!isCardio) {
+          setAiHint('Could not parse that. Try the shorthand (e.g. 100x8@9).');
+          return;
+        }
+        setForm((f) => ({
+          ...f,
+          durationInput: formatDuration(parsed.durationSec),
+          distanceInput:
+            parsed.distanceM != null && parsed.distanceM > 0
+              ? String(+(parsed.distanceM / 1000).toFixed(2))
+              : '',
+        }));
+      } else {
+        if (isCardio) {
+          setAiHint('Could not parse that. Try the shorthand (e.g. 100x8@9).');
+          return;
+        }
+        setForm((f) => ({
+          ...f,
+          // The model returns the weight in the user's display unit, like the
+          // shorthand parser; convert to the kg the form stores.
+          weight: fromDisplayWeight(parsed.weight, unit),
+          reps: parsed.reps,
+          rir: parsed.rir != null ? parsed.rir : f.rir,
+        }));
+      }
+    } catch {
+      setAiHint('Could not parse that. Try the shorthand (e.g. 100x8@9).');
+    } finally {
+      setAiParsing(false);
+    }
+  }
 
   // Cardio mode (issue #133): the logger swaps weight/reps for duration and
   // optional distance. The set is stored with weight = 0 / reps = 1 (the API
@@ -176,6 +248,51 @@ export function SetInput({
   return (
     <Card>
       <CardContent className="flex flex-col gap-4 pt-6">
+        {/* Opt-in AI free-text parse (issue #210): fills the form below from a
+            plain-language description. Deliberate action, never auto-logs. */}
+        <div className="space-y-1">
+          <Label
+            htmlFor="ai-parse"
+            className="text-xs uppercase tracking-wide text-muted-foreground"
+          >
+            Describe the set (AI)
+          </Label>
+          <div className="flex items-center gap-2">
+            <Input
+              id="ai-parse"
+              type="text"
+              inputMode="text"
+              autoComplete="off"
+              value={aiText}
+              onChange={(e) => {
+                setAiText(e.target.value);
+                if (aiHint) setAiHint(null);
+              }}
+              placeholder={
+                isCardio
+                  ? 'e.g. ran 5k in 25 minutes'
+                  : 'e.g. 100 kg for 5, 2 in the tank'
+              }
+            />
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleAiParse}
+              disabled={aiParsing || aiText.trim() === ''}
+              className="shrink-0"
+            >
+              {aiParsing ? 'Parsing...' : 'Parse with AI'}
+            </Button>
+          </div>
+          {aiHint ? (
+            <p className="text-xs text-muted-foreground">{aiHint}</p>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Fills the fields below for you to review - it never logs on its own.
+            </p>
+          )}
+        </div>
+
         {isCardio ? (
           <>
             {/* Duration (required) */}
