@@ -1440,3 +1440,13 @@ continuously, no per-change approval, self-challenge with subagents, keep a roll
 **Challenged.** Three parallel Opus reviews (one untrusted-output-weighted). Accepted-change rate: 4 merged / 0 abandoned + the cleanup.
 
 **Deferred to human.** Nothing. The README roadmap is complete; future product work is now pure ideation (FIT import, mobility, etc.). The recurring readiness-checkin.test.tsx WSL2-only flake (green in CI) is worth a robustness pass next triage.
+
+---
+
+## 2026-06-15 (triage) - L9 gate spot-check + permissions re-audit (both pass); two test issues filed
+
+**Gate spot-check (L9).** Disabled the GPX parser's DTD/entity reject (lib/import/gpx.ts:303) locally (never pushed) and re-ran lib/import/gpx.test.ts: 3 hostile-input tests FAILED as they should (internal DTD, external-entity XXE, billion-laughs). The security gate is genuinely protective, not rotten. Restored; tree clean.
+
+**Permissions re-audit (L9).** Re-read .claude/settings.json: the deny list is intact (rm -rf, git push --force/-f/--force-with-lease, git reset --hard, curl, wget). The 37 allow entries are all coherent with what the loop runs (npm/npx/git/gh/file ops); no dangerous scope creep, no sudo/broad-rm/network grants.
+
+**Filed.** #219 (fix the flaky readiness-checkin userEvent test - times out under parallel WSL2 load, green in CI) and #220 (colocated unit coverage for lib/last-performance.ts - the cardio-totals/HR-averaging logic from #179 is only integration-tested). Code markers: none. Roadmap: complete. Coverage otherwise healthy (the untrusted set-parse validation is unit-tested; thin wrappers are integration-covered).
