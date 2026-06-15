@@ -270,6 +270,31 @@ export function weeklyVolumeByMuscleGroup(
 export const WEEKLY_SETS_MEV = 10;
 export const WEEKLY_SETS_MRV = 20;
 
+// A resolved MEV/MRV band for one muscle group, plus whether it came from the
+// user's own VolumeTarget (issue #211) or the global defaults above.
+export interface VolumeBand {
+  mev: number;
+  mrv: number;
+  custom: boolean;
+}
+
+// Resolves the band to apply for a muscle group: the user's per-muscle target
+// when one is set, else the global defaults. Pure: the caller passes the
+// already-loaded targets map (muscleGroup -> { mev, mrv }), so classification
+// stays free of any DB access. A target is honored only when it is internally
+// consistent (mev >= 1 and mrv > mev), matching the Zod input bounds, so a
+// hand-tampered row can never produce an inverted band.
+export function resolveVolumeBand(
+  muscleGroup: string,
+  targets?: Record<string, { mev: number; mrv: number }>,
+): VolumeBand {
+  const t = targets?.[muscleGroup];
+  if (t && t.mev >= 1 && t.mrv > t.mev) {
+    return { mev: t.mev, mrv: t.mrv, custom: true };
+  }
+  return { mev: WEEKLY_SETS_MEV, mrv: WEEKLY_SETS_MRV, custom: false };
+}
+
 // Where a weekly working-set count falls relative to the MEV/MRV band.
 export type VolumeLandmarkZone = 'BELOW_MEV' | 'WITHIN' | 'ABOVE_MRV';
 

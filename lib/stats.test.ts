@@ -10,6 +10,7 @@ import {
   isoWeekKey,
   isoWeekStart,
   isStalled,
+  resolveVolumeBand,
   setVolume,
   STALL_LOOKBACK_SESSIONS,
   STALL_TOLERANCE,
@@ -263,6 +264,42 @@ describe('classifyWeeklySets (MEV/MRV band)', () => {
     expect(classifyWeeklySets(8, 6, 12)).toBe('WITHIN');
     expect(classifyWeeklySets(5, 6, 12)).toBe('BELOW_MEV');
     expect(classifyWeeklySets(13, 6, 12)).toBe('ABOVE_MRV');
+  });
+});
+
+describe('resolveVolumeBand (issue #211)', () => {
+  it('returns the defaults when no targets are passed', () => {
+    expect(resolveVolumeBand('CHEST')).toEqual({
+      mev: WEEKLY_SETS_MEV,
+      mrv: WEEKLY_SETS_MRV,
+      custom: false,
+    });
+  });
+
+  it('returns the defaults for a muscle group without a custom target', () => {
+    expect(resolveVolumeBand('BICEPS', { CHEST: { mev: 8, mrv: 16 } })).toEqual({
+      mev: WEEKLY_SETS_MEV,
+      mrv: WEEKLY_SETS_MRV,
+      custom: false,
+    });
+  });
+
+  it('returns the user band, flagged custom, when one is set', () => {
+    expect(resolveVolumeBand('CHEST', { CHEST: { mev: 12, mrv: 22 } })).toEqual({
+      mev: 12,
+      mrv: 22,
+      custom: true,
+    });
+  });
+
+  it('falls back to defaults for an internally inconsistent stored band', () => {
+    // A hand-tampered row (mrv <= mev or mev < 1) is ignored, not trusted.
+    expect(resolveVolumeBand('CHEST', { CHEST: { mev: 18, mrv: 10 } }).custom).toBe(
+      false,
+    );
+    expect(resolveVolumeBand('CHEST', { CHEST: { mev: 0, mrv: 10 } }).custom).toBe(
+      false,
+    );
   });
 });
 

@@ -32,6 +32,7 @@ import {
 } from '@/lib/stats';
 import { roundWeight, toDisplayWeight, unitLabel } from '@/lib/units';
 import { ExerciseGoalCard, type GoalView } from '@/components/progress/exercise-goal-card';
+import { VolumeTargetEditor } from '@/components/progress/volume-target-editor';
 
 interface RecapRow {
   exerciseId: string;
@@ -62,7 +63,18 @@ interface VolumeLandmarks {
   weekKey: string;
   mev: number;
   mrv: number;
-  byMuscleGroup: Record<string, { sets: number; zone: VolumeLandmarkZone }>;
+  byMuscleGroup: Record<
+    string,
+    {
+      sets: number;
+      zone: VolumeLandmarkZone;
+      // Issue #211: the band actually applied to this group (the user's custom
+      // target when set, else the defaults).
+      mev: number;
+      mrv: number;
+      custom: boolean;
+    }
+  >;
 }
 
 interface Props {
@@ -71,6 +83,10 @@ interface Props {
   exercisePoints: ExerciseChartPoint[];
   weeklyPoints: SerializedWeeklyPoint[];
   volumeLandmarks: VolumeLandmarks | null;
+  // Issue #211: the user's saved per-muscle targets (muscleGroup -> band) and
+  // the global defaults, for the inline editor.
+  volumeTargets: Record<string, { mev: number; mrv: number }>;
+  defaultBand: { mev: number; mrv: number };
   recap: RecapRow[];
   unit: WeightUnit;
   // Target goal for the selected exercise (issue #90), with the
@@ -128,6 +144,8 @@ export function ProgressDashboard({
   exercisePoints,
   weeklyPoints,
   volumeLandmarks,
+  volumeTargets,
+  defaultBand,
   recap,
   unit,
   selectedGoal,
@@ -366,9 +384,9 @@ export function ProgressDashboard({
             <h2 className="text-base font-semibold">Volume landmarks</h2>
             <p className="text-xs text-muted-foreground">
               Working sets in {shortLabelFromWeekKey(volumeLandmarks.weekKey)}{' '}
-              vs a reference band of {volumeLandmarks.mev}-{volumeLandmarks.mrv}{' '}
-              sets/week per muscle group (MEV-MRV). General hypertrophy
-              defaults, not a prescription.
+              vs your reference band (MEV-MRV) per muscle group. Defaults to{' '}
+              {defaultBand.mev}-{defaultBand.mrv} sets/week; edit a group to set
+              your own. General hypertrophy heuristic, not a prescription.
             </p>
           </CardHeader>
           <CardContent>
@@ -380,14 +398,29 @@ export function ProgressDashboard({
                     key={row.group}
                     className="flex items-center justify-between gap-3 text-sm"
                   >
-                    <span className="font-medium">
-                      {muscleGroupLabel(row.group)}
+                    <span className="flex items-center gap-2">
+                      <span className="font-medium">
+                        {muscleGroupLabel(row.group)}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {row.mev}-{row.mrv}
+                        {row.custom ? ' (custom)' : ' (default)'}
+                      </span>
                     </span>
                     <span className="flex items-center gap-2">
                       <span className="text-muted-foreground">
                         {row.sets} {row.sets === 1 ? 'set' : 'sets'}
                       </span>
                       <Badge variant={meta.variant}>{meta.label}</Badge>
+                      <VolumeTargetEditor
+                        muscleGroup={row.group}
+                        label={muscleGroupLabel(row.group)}
+                        mev={row.mev}
+                        mrv={row.mrv}
+                        custom={row.custom}
+                        defaultMev={defaultBand.mev}
+                        defaultMrv={defaultBand.mrv}
+                      />
                     </span>
                   </li>
                 );

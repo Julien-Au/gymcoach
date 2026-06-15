@@ -47,6 +47,7 @@ model User {
   exerciseGoals ExerciseGoal[]
   bodyweightEntries BodyweightEntry[]
   bodyMeasurements BodyMeasurement[]
+  volumeTargets VolumeTarget[]
 }
 
 enum Sex {
@@ -266,6 +267,28 @@ model ExerciseGoal {
   achievedAt   DateTime?
 
   @@unique([userId, exerciseId])
+}
+
+// Per-muscle weekly volume targets (issue #211). Personalizes the MEV/MRV
+// reference band the progress-page volume card classifies against: serious
+// lifters individualize these landmarks. Additive and fully optional - one row
+// per (userId, muscleGroup); the ABSENCE of a row falls back to the global
+// defaults (WEEKLY_SETS_MEV / WEEKLY_SETS_MRV in lib/stats.ts), so existing
+// users are unaffected. mev >= 1 and mrv > mev are enforced by the Zod input
+// schema; the band stays a display-only heuristic and never feeds progression
+// or coach logic.
+model VolumeTarget {
+  id          String      @id @default(cuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  muscleGroup MuscleGroup
+  // Minimum effective volume (sets/week) and maximum recoverable volume.
+  mev         Int
+  mrv         Int
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@unique([userId, muscleGroup])
 }
 
 // Bodyweight history (issue #99). Additive: User.bodyweight stays the single
