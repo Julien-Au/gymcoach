@@ -49,3 +49,6 @@ research and the product wedge). See `docs/loops/08-ideation-loop.md` for how th
 - shipped - body-measurement tracking (waist/arms/etc.) with a trend (issue #202, 2026-06-14, PR #207) - additive BodyMeasurement table; multi-lens review CLEAN (ownership, bounds, migration drift)
 - shipped - maximum heart rate on cardio sets (issue #203, 2026-06-14, PR #206) - additive Set.maxHr; review CLEAN (bounds on all writers, Track subtree stripped before lap-max extraction)
 - shipped - import a GPX file as a cardio session (issue #204, 2026-06-15, PR #208) - third file format; hostile security review CLEAN (21 adversarial cases, no entity table, linear at 5MB, name never read)
+- proposed - free-text (AI-parsed) set logging (issue #210, 2026-06-15) - the LAST roadmap item; opt-in LLM parse fills the set form, never auto-logs, untrusted-output Zod-validated; new parse contract separate from adjustments
+- proposed - user-settable weekly volume targets (personal MEV/MRV) (issue #211, 2026-06-15) - additive VolumeTarget table; personalizes the #81 landmark card, classifyWeeklySets stays pure
+- proposed - give the AI coach your all-time records (issue #212, 2026-06-15) - coach-side consumer of the records board #190; input-side payload, output contract unchanged
