@@ -1347,3 +1347,18 @@ continuously, no per-change approval, self-challenge with subagents, keep a roll
 **Challenged.** Two parallel Opus reviews (one injection-lensed). Accepted-change rate: 4 merged / 0 abandoned this batch.
 
 **Deferred to human.** Nothing outstanding. Future: mobility session type (low confidence), Serwist migration (build-time advisories).
+
+---
+
+## 2026-06-15 - Batch 10 (#202/#203/#204): a maintainer tick died mid-run; resumed without loss
+
+**Context.** Tenth ideate batch (body measurements #202, cardio max HR #203, GPX import #204). The implementing tick (inherited Opus; Fable still unavailable) shipped #206 (#203) and #207 (#202), then DIED on a transient socket error mid-PR for #204, leaving a complete-but-uncommitted GPX implementation (parser + route + UI + 30 unit tests incl. the full hostile-input suite) on its branch. It had tagged the rollback baselines (autonomy-baseline-2026-06-14 / -14b) before its migrations.
+
+**Decided / shipped.**
+- Resumed the dead tick's GPX branch (socket-close is terminal, no zombie): verified the full gate was green on the uncommitted work, sanity-checked the parser's security posture, added the one missing piece (the E2E the issue required), re-gated, and shipped it as PR #208 on green full CI.
+- All three PRs then got the independent post-merge reviews the dead tick never reported: #206 CLEAN (max HR; Track subtree stripped before lap-max, bounds on all writers), #207 CLEAN (measurements; ownership, additive migration no drift), #208 CLEAN under a HOSTILE security review (21 adversarial cases - no entity table, billion-laughs <1ms, 5MB linear ~110ms, 200k-point cap, GPX name never read so no attacker text reaches DB/CSV/React). Zero REAL findings across the batch.
+- The product now imports four formats (Strong/Hevy CSV, TCX, GPX) plus full export - the file-based neutral ground the 2026-06-12 research identified.
+
+**Challenged.** Three parallel Opus reviews (one hostile-security). Accepted-change rate: 3 merged / 0 abandoned. The resilience pattern held: durable git/PR state meant the socket death cost no work; the mandatory review validated dead-tick code under attack.
+
+**Deferred to human.** Nothing. Future: FIT import (binary, needs a decoder), free-text AI set logging (LLM-shaped), mobility session type (low confidence), Serwist (build-time chore). #169 (Next 15) already done.
