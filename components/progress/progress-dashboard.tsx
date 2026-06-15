@@ -85,7 +85,6 @@ interface Props {
   volumeLandmarks: VolumeLandmarks | null;
   // Issue #211: the user's saved per-muscle targets (muscleGroup -> band) and
   // the global defaults, for the inline editor.
-  volumeTargets: Record<string, { mev: number; mrv: number }>;
   defaultBand: { mev: number; mrv: number };
   recap: RecapRow[];
   unit: WeightUnit;
@@ -144,7 +143,6 @@ export function ProgressDashboard({
   exercisePoints,
   weeklyPoints,
   volumeLandmarks,
-  volumeTargets,
   defaultBand,
   recap,
   unit,

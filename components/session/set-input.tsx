@@ -188,7 +188,13 @@ export function SetInput({
           // shorthand parser; convert to the kg the form stores.
           weight: fromDisplayWeight(parsed.weight, unit),
           reps: parsed.reps,
-          rir: parsed.rir != null ? parsed.rir : f.rir,
+          // Clamp the parsed RIR to the selectable button range so a model
+          // value of 4-5 maps to the closest option instead of leaving no
+          // button highlighted (the set API still accepts 0-5).
+          rir:
+            parsed.rir != null
+              ? Math.min(parsed.rir, RIR_OPTIONS[RIR_OPTIONS.length - 1]!)
+              : f.rir,
         }));
       }
     } catch {

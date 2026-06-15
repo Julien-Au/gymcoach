@@ -112,4 +112,32 @@ describe('POST /api/sets/parse (issue #210)', () => {
     const res = await parseSet(jsonReq({ exerciseId: bench.id, text: '100 for 8' }));
     expect(res.status).toBe(401);
   });
+
+  it('rejects an over-length text with 400 (never reaches the model)', async () => {
+    const { a, bench } = await seed();
+    actAs(a.id);
+    // text is bounded to 500 chars so a huge blob cannot be forwarded to the LLM.
+    const res = await parseSet(
+      jsonReq({ exerciseId: bench.id, text: 'x'.repeat(501) }),
+    );
+    expect(res.status).toBe(400);
+    expect(await db.set.count()).toBe(0);
+  });
+
+  it('rate-limits a burst with 429', async () => {
+    const { a, bench } = await seed();
+    actAs(a.id);
+    // The route allows 20 parses/min per user; the 21st is rejected.
+    let limited = false;
+    for (let i = 0; i < 25; i++) {
+      const res = await parseSet(jsonReq({ exerciseId: bench.id, text: '100 for 8' }));
+      if (res.status === 429) {
+        expect(res.headers.get('retry-after') ?? res.headers.get('Retry-After')).toBeTruthy();
+        limited = true;
+        break;
+      }
+    }
+    expect(limited).toBe(true);
+    expect(await db.set.count()).toBe(0);
+  });
 });
