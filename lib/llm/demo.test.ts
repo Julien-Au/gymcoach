@@ -121,4 +121,51 @@ describe('demo provider', () => {
     // The note line must not displace the output contract.
     expect(debrief.text.trimEnd().endsWith('</adjustments>')).toBe(true);
   });
+
+  // Issue #210: the demo provider returns a canned, schema-valid parse for the
+  // set-parse prompt so the no-key free-text logging flow works end to end.
+  it('returns a valid strength parse for the set-parse prompt', async () => {
+    process.env.LLM_PROVIDER = 'demo';
+    const p = getLlmProvider();
+
+    const out = await p.complete({
+      system:
+        'You parse ONE natural-language description of a single training set into structured fields.',
+      messages: [
+        { role: 'user', content: 'Exercise: Bench\nType: STRENGTH\nWeight unit: kg\nSet description: 100 for 8, 2 in the tank' },
+      ],
+    });
+    const parsed = JSON.parse(out.text);
+    expect(parsed).toEqual({ kind: 'strength', weight: 100, reps: 8, rir: 2 });
+  });
+
+  it('returns a valid cardio parse when the message marks a cardio exercise', async () => {
+    process.env.LLM_PROVIDER = 'demo';
+    const p = getLlmProvider();
+
+    const out = await p.complete({
+      system:
+        'You parse ONE natural-language description of a single training set into structured fields.',
+      messages: [
+        { role: 'user', content: 'Exercise: Running\nType: CARDIO\nWeight unit: kg\nSet description: ran 5k in 25 minutes' },
+      ],
+    });
+    const parsed = JSON.parse(out.text);
+    expect(parsed.kind).toBe('cardio');
+    expect(parsed.durationSec).toBe(1500);
+  });
+
+  it('returns the refusal sentinel for an unparseable marker', async () => {
+    process.env.LLM_PROVIDER = 'demo';
+    const p = getLlmProvider();
+
+    const out = await p.complete({
+      system:
+        'You parse ONE natural-language description of a single training set into structured fields.',
+      messages: [
+        { role: 'user', content: 'Exercise: Bench\nType: STRENGTH\nWeight unit: kg\nSet description: UNPARSEABLE nonsense' },
+      ],
+    });
+    expect(out.text).toContain('unparseable');
+  });
 });

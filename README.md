@@ -271,7 +271,8 @@ docker compose -f docker-compose.prod.yml --profile demo run --rm seed-demo
       natural-language logging
 - [x] In-session AI suggestions (ask the coach mid-workout with the live
       session attached)
-- [ ] Free-text (AI-parsed) set logging
+- [x] Free-text (AI-parsed) set logging (opt-in "Parse with AI" fills the set
+      form from plain language; you confirm before it logs)
 
 ## Contributing
 

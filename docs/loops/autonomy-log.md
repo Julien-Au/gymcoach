@@ -6,6 +6,69 @@ by the charter in [`07-autonomy.md`](07-autonomy.md).
 
 ---
 
+## 2026-06-15 - Coach records, custom volume targets, AI-parsed set logging (#212/#211/#210)
+
+**Context.** Maintainer tick, three feature issues, strictly serialized by ascending size (each PR
+MERGED before the next branch was cut). All three authored by JulienAu, trust-gated (login allowlist
++ collaborator check HTTP 204). Inherited model this cycle (Fable unavailable) - fine. Two of the
+three are complex (an LLM-payload change, a schema+migration+API+UI change, and an untrusted-LLM-
+output feature), so the reinforced complex-feature controls applied: full local gate + tests at every
+touched layer + fresh rollback baseline before the migration. **Could not spawn review subagents this
+run**, so per the charter's "no independent reviewer" backstop these PRs merged on a green FULL gate
+and are FLAGGED here for post-merge independent review.
+
+**Decided / shipped.**
+- **#212 (PR #214, merged on green).** Feed the AI coach the all-time records. New
+  `CoachPayload.records` via the SAME shared `lib/records.ts` `exerciseRecords` derivation the
+  progress board uses (full history, effective load, cardio excluded at the query, warm-ups excluded);
+  capped to the most-recently-trained exercises (`COACH_RECORDS_CAP = 20`), per-record dates dropped
+  to stay compact. Input-side only: a short prompt addition tells the coach to reference and celebrate
+  a PR and NEVER invent a record, and records never go in `<adjustments>`. The `<adjustments>` contract
+  tests pass UNMODIFIED. Demo provider's canned debrief now references a record. Integration tests pin
+  the bests (heaviest-set vs best-e1RM on different sets), cardio exclusion, cross-user isolation, and
+  empty-for-a-fresh-user.
+- **#211 (PR #215, merged on green).** User-settable weekly volume targets (personal MEV/MRV per
+  muscle). Additive `VolumeTarget` table (unique per user+muscle, cascade delete) - absent rows fall
+  back to the 10/20 defaults, so existing users are unaffected. Zod-bounded (`mev >= 1`, `mrv > mev`,
+  max 40), ownership-scoped GET/POST/DELETE `/api/volume-targets` (every handler scoped to the auth'd
+  user by construction). `classifyWeeklySets` stayed PURE - new `resolveVolumeBand` merges the user's
+  targets with the defaults (and ignores an internally inconsistent stored band) and the page passes
+  the resolved band in. Card shows each group's active band and custom-vs-default; inline
+  `VolumeTargetEditor` dialog edits mev/mrv with reset-to-default.
+  - *Migration discipline:* additive migration validated on the test DB the way CI does -
+    `prisma migrate reset` (all migrations from scratch) + `prisma migrate diff` -> "No difference
+    detected". Fresh rollback baseline `autonomy-baseline-2026-06-15` tagged + pushed on main BEFORE
+    the first migration merge. docker-smoke (which runs `migrate deploy` on a fresh DB) stayed green.
+- **#210 (PR #<this>, merged on green) - THE LAST ROADMAP ITEM.** Free-text (AI-parsed) set logging.
+  Opt-in "Parse with AI" button next to a free-text field in the set logger fills the form for the
+  user to confirm - it NEVER auto-logs, and the deterministic shorthand path is untouched (normal
+  logging never waits on the network). New `lib/prompts/set-parse-prompt.ts` (stable, cacheable) +
+  `lib/schemas/set-parse.ts`: a NEW, SEPARATE parse contract (discriminated union strength|cardio)
+  pinned by contract tests; the `<adjustments>` contract was NOT touched or reused. The model output
+  is UNTRUSTED: `parseSetDescription` extracts JSON and Zod-validates against the set bounds, failing
+  CLOSED (`{ ok: false }`) on no-JSON / invalid-JSON / out-of-range / refusal / wrong-kind, so the UI
+  fills nothing and shows a "could not parse, try the shorthand" hint - never throws, never logs
+  garbage. `aiParseSet` also swallows provider errors to null. Route `/api/sets/parse` is ownership-
+  checked + rate-limited and returns `{ parsed: null }` (a 200, not an error) on a junk parse. Demo
+  provider returns a canned strength/cardio parse (and the refusal sentinel for an UNPARSEABLE marker)
+  so the no-key flow works. README roadmap box checked. Coverage: schema contract tests (valid shapes
+  accepted, every junk/out-of-range path rejected, wrong-kind rejected), demo-provider tests, route
+  integration (owner parse, cardio parse, `parsed: null` on refusal, NO set logged as a side effect,
+  404 on another user's exercise, 400 empty, 401 unauth), component tests (fill-then-confirm, unit
+  conversion, null-parse fills nothing, cardio-on-strength ignored), and an E2E (type free text ->
+  Parse with AI -> field fills -> Log).
+
+**Challenged.** Subagent review tool was unavailable this run, so per the charter the author's own
+pass does NOT satisfy the challenge protocol. These merged on a green FULL gate (`scripts/verify.sh`
+tiers run locally: lint/type/unit/build + integration on :5434 + E2E; full CI green incl. integration,
+docker-smoke, and E2E). **FLAGGED for post-merge independent review:** multi-lens for #214 and #215;
+multi-lens INCLUDING untrusted-model-output handling for #210 (the parse fail-closed paths, the
+ownership/rate-limit on the route, and that no set is ever logged from a parse).
+
+**Deferred.** Nothing blocked. Roadmap's last unchecked item (free-text AI set logging) is now done.
+
+---
+
 ## 2026-06-14 - Direct test coverage: CSV reader + profile schema (#198/#199)
 
 **Context.** Maintainer tick, two test-only coverage issues, strictly serialized (each PR MERGED
