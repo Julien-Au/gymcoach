@@ -259,6 +259,11 @@ docker compose -f docker-compose.prod.yml --profile demo up -d --build
 docker compose -f docker-compose.prod.yml --profile demo run --rm seed-demo
 ```
 
+The public demo is a single shared account, so visitors who start a session
+pollute it. Re-run the seeder on a schedule (e.g. a cron every 30 minutes) so
+the demo always opens on the clean, populated state - it wipes and recreates
+the demo account's data without touching the rest.
+
 ## Roadmap
 
 - [x] Single user MVP (logging, progress, weekly AI debrief, program adjustments)
