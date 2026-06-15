@@ -22,6 +22,9 @@ Solid week: 3 sessions logged, total working volume up about 4% versus last week
 - Barbell bench press: 70 kg x 8 at RIR 2 on the top set, estimated 1RM up again.
 - Pronated pull-ups: clean reps across all sets, ready for added load.
 
+**Personal records**
+- New PR on Barbell bench press: 70 kg x 8 edged your all-time best estimated 1RM. Nice work - that is the strongest this lift has read.
+
 **Goal check**
 - Barbell bench press: 92% of the way to your 80 kg x 8 target on the estimated-1RM scale. One more clean progression and it should fall.
 

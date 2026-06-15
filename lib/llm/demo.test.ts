@@ -30,6 +30,9 @@ describe('demo provider', () => {
     expect(debrief.text).toMatch(/of the way to your .* target/i);
     expect(debrief.text).toMatch(/stalled/i);
     expect(debrief.text).toMatch(/deload/i);
+    // Issue #212: the canned debrief references an all-time record so the no-key
+    // flow exercises the records payload field.
+    expect(debrief.text).toMatch(/personal record|PR|all-time best/i);
 
     const program = await p.complete({
       system: 'Respond with a SINGLE JSON object and nothing else.',

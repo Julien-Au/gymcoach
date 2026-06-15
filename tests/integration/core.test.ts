@@ -609,3 +609,81 @@ describe('buildCoachPayload fatigue (issue #101)', () => {
     expect(payload.fatigue.stalledExercises).toEqual([]);
   });
 });
+
+describe('buildCoachPayload records (issue #212)', () => {
+  // Logs three working sets on distinct days; the heaviest set and the best
+  // estimated 1RM may sit on different sets, exactly like the records board.
+  async function seedLift(
+    userId: string,
+    name: string,
+    sets: Array<{ weight: number; reps: number; daysAgo: number; isWarmup?: boolean }>,
+    opts: { usesBodyweight?: boolean; category?: 'COMPOUND' | 'CARDIO' } = {},
+  ) {
+    const exercise = await db.exercise.create({
+      data: {
+        userId,
+        name,
+        muscleGroup: 'CHEST',
+        category: opts.category ?? 'COMPOUND',
+        usesBodyweight: opts.usesBodyweight ?? false,
+      },
+    });
+    for (const s of sets) {
+      const startedAt = new Date(Date.now() - s.daysAgo * 24 * 60 * 60 * 1000);
+      const session = await db.session.create({
+        data: { userId, startedAt, finishedAt: startedAt },
+      });
+      await db.set.create({
+        data: {
+          sessionId: session.id,
+          exerciseId: exercise.id,
+          setNumber: 1,
+          weight: s.weight,
+          reps: s.reps,
+          isWarmup: s.isWarmup ?? false,
+          completedAt: startedAt,
+        },
+      });
+    }
+    return exercise;
+  }
+
+  it('pins all-time bests per lift from the full set history', async () => {
+    const user = await makeUser('records-bests@test.dev');
+    // Heaviest set: 110x3; best e1RM: 100x8 (Epley 100*(1+8/30)=126.7 > 110*1.1=121).
+    await seedLift(user.id, 'Bench', [
+      { weight: 100, reps: 8, daysAgo: 30 },
+      { weight: 110, reps: 3, daysAgo: 10 },
+      { weight: 60, reps: 10, daysAgo: 40, isWarmup: true },
+    ]);
+
+    const payload = await buildCoachPayload(user.id);
+    const bench = payload.records.find((r) => r.exerciseName === 'Bench');
+    expect(bench).toEqual({
+      exerciseName: 'Bench',
+      maxWeight: 110,
+      maxWeightReps: 3,
+      bestE1RM: 126.7,
+    });
+  });
+
+  it('excludes cardio and reports nothing for a fresh user', async () => {
+    const user = await makeUser('records-fresh@test.dev');
+    await seedLift(user.id, 'Running', [{ weight: 0, reps: 1, daysAgo: 2 }], {
+      category: 'CARDIO',
+    });
+
+    const payload = await buildCoachPayload(user.id);
+    expect(payload.records).toEqual([]);
+  });
+
+  it("does not leak another user's records", async () => {
+    const userA = await makeUser('records-a@test.dev');
+    const userB = await makeUser('records-b@test.dev');
+    await seedLift(userB.id, 'B Bench', [{ weight: 200, reps: 5, daysAgo: 3 }]);
+
+    const payload = await buildCoachPayload(userA.id);
+    expect(payload.records.map((r) => r.exerciseName)).not.toContain('B Bench');
+    expect(payload.records).toEqual([]);
+  });
+});
