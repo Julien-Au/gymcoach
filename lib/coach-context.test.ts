@@ -35,6 +35,7 @@ function emptyPayload(): CoachPayload {
       days: [],
       weeklyTargetMin: 150,
     },
+    records: [],
     recentProgress: [],
   };
 }

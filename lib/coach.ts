@@ -22,6 +22,7 @@ import {
   recommendDeload,
 } from '@/lib/deload';
 import { COACH_SYSTEM_PROMPT } from '@/lib/prompts/coach-system-prompt';
+import { exerciseRecords, type ExerciseRecord } from '@/lib/records';
 import { getLlmProvider } from '@/lib/llm';
 
 // ============================================================
@@ -76,6 +77,15 @@ export interface CoachPayload {
   // chat is opened from the session runner with a session the user owns.
   // Additive and input-side only; the output contract is unchanged.
   currentSession?: CurrentSessionContext;
+  // All-time personal records per strength exercise (issue #212), via the SAME
+  // lib/records.ts exerciseRecords derivation the progress page's records board
+  // uses: heaviest working set ever (weight x reps) and best estimated 1RM ever,
+  // on effective load (bodyweight included), cardio and warm-ups excluded. This
+  // lets the debrief acknowledge a fresh PR and anchor advice on the user's
+  // bests without inventing records. Compact: capped to the most recently
+  // trained exercises (see COACH_RECORDS_CAP). Input signal only; the output
+  // contract (the <adjustments> block) is unchanged.
+  records: RecordSummary[];
   // For each program exercise: the progression over the last 8 weeks
   // (max loads + 1RM per session, effective values with bodyweight included).
   recentProgress: Array<{
@@ -93,6 +103,17 @@ export interface CoachPayload {
       estimated1RM: number;
     }>;
   }>;
+}
+
+// A compact all-time record for one exercise (issue #212). Mirrors the fields
+// the spec asks the coach to see: heaviest working set (weight x reps) and best
+// estimated 1RM ever. The dates exerciseRecords also computes are dropped to
+// keep the payload compact - the coach references the bests, not their history.
+interface RecordSummary {
+  exerciseName: string;
+  maxWeight: number;
+  maxWeightReps: number;
+  bestE1RM: number;
 }
 
 interface ConditioningWeek {
@@ -246,6 +267,11 @@ interface ProgramSummary {
 // Building the payload
 // ============================================================
 
+// Cap on the all-time records list (issue #212): keep the payload compact by
+// sending at most this many records, ordered by how recently the exercise was
+// trained, so the coach sees the bests for the lifts the user actually works.
+const COACH_RECORDS_CAP = 20;
+
 export async function buildCoachPayload(userId: string): Promise<CoachPayload> {
   const now = new Date();
   const currentWeekStart = isoWeekStart(now);
@@ -278,6 +304,7 @@ export async function buildCoachPayload(userId: string): Promise<CoachPayload> {
     latestReadiness,
     goals,
     fatigue,
+    records,
     recentSets,
   ] = await Promise.all([
     weekSummary(userId, currentWeekStart, addDays(currentWeekStart, 7), bodyweight),
@@ -286,6 +313,7 @@ export async function buildCoachPayload(userId: string): Promise<CoachPayload> {
     fetchLatestReadiness(userId, now),
     fetchGoalsSummary(userId, bodyweight),
     fetchFatigueSummary(userId, bodyweight, now),
+    fetchRecordsSummary(userId, bodyweight),
     db.set.findMany({
       where: {
         isWarmup: false,
@@ -440,6 +468,7 @@ export async function buildCoachPayload(userId: string): Promise<CoachPayload> {
       deloadActive: isDeloadActive(user?.deloadUntil ?? null, now),
     },
     conditioning,
+    records,
     recentProgress: recentProgress.sort((a, b) =>
       a.exerciseName.localeCompare(b.exerciseName),
     ),
@@ -633,6 +662,71 @@ async function fetchGoalsSummary(
       achieved: goal.achievedAt != null,
     };
   });
+}
+
+// All-time records summary for the coach (issue #212). Reuses the EXACT
+// exerciseRecords derivation the progress page's records board uses: full set
+// history, cardio excluded at the query (category != CARDIO), warm-ups excluded
+// both here and in the derivation, effective load applied so a bodyweight
+// movement reads on the load actually moved. The list is then trimmed to the
+// most recently trained exercises and the per-record dates are dropped to keep
+// the payload compact. Input signal only; the output contract is unchanged.
+async function fetchRecordsSummary(
+  userId: string,
+  bodyweight: number | null,
+): Promise<RecordSummary[]> {
+  const recordSetsRaw = await db.set.findMany({
+    where: {
+      isWarmup: false,
+      session: { userId },
+      exercise: { category: { not: 'CARDIO' } },
+    },
+    // Oldest first so a tie (same load / e1RM) keeps the EARLIEST date in
+    // exerciseRecords, matching the records board's "first to reach it".
+    orderBy: { session: { startedAt: 'asc' } },
+    select: {
+      weight: true,
+      reps: true,
+      isWarmup: true,
+      durationSec: true,
+      exercise: { select: { name: true, usesBodyweight: true } },
+      session: { select: { startedAt: true } },
+    },
+  });
+
+  const records = exerciseRecords(
+    recordSetsRaw.map((s) => ({
+      weight: effectiveWeight(s.weight, s.exercise.usesBodyweight, bodyweight),
+      reps: s.reps,
+      isWarmup: s.isWarmup,
+      durationSec: s.durationSec,
+      exerciseName: s.exercise.name,
+      sessionStartedAt: s.session.startedAt,
+    })),
+  );
+
+  // Most-recently-trained exercises first, so a capped list keeps the lifts the
+  // user actually works. The latest qualifying set per exercise dates recency;
+  // rows arrive oldest-first, so the last seen per name is the most recent.
+  const lastTrained = new Map<string, number>();
+  for (const s of recordSetsRaw) {
+    if (s.isWarmup || s.durationSec != null || s.weight <= 0 || s.reps <= 0) continue;
+    lastTrained.set(s.exercise.name, s.session.startedAt.getTime());
+  }
+
+  return records
+    .slice()
+    .sort(
+      (a, b) =>
+        (lastTrained.get(b.exerciseName) ?? 0) - (lastTrained.get(a.exerciseName) ?? 0),
+    )
+    .slice(0, COACH_RECORDS_CAP)
+    .map((r: ExerciseRecord) => ({
+      exerciseName: r.exerciseName,
+      maxWeight: r.maxWeight,
+      maxWeightReps: r.maxWeightReps,
+      bestE1RM: r.bestE1RM,
+    }));
 }
 
 // The same window the progress page judges stalls over (last 12 weeks).

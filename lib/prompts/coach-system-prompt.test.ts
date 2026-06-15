@@ -65,6 +65,17 @@ describe('coach system prompt positioning', () => {
     expect(COACH_SYSTEM_PROMPT).toMatch(/do not\s+recommend starting a deload then/i);
   });
 
+  // Issue #212: all-time records are INPUT-side context only - reference and
+  // celebrate them, never invent one; records do not change the output format.
+  it('tells the coach to reference records and forbids inventing a PR', () => {
+    expect(COACH_SYSTEM_PROMPT).toMatch(/"records": the user's all-time bests/i);
+    expect(COACH_SYSTEM_PROMPT).toMatch(/acknowledge the personal record/i);
+    expect(COACH_SYSTEM_PROMPT).toMatch(/NEVER invent\s+a record/i);
+    expect(COACH_SYSTEM_PROMPT).toMatch(
+      /records never go in the <adjustments> block/i,
+    );
+  });
+
   // Issue #145: conditioning is an INPUT-side signal; the output contract
   // (the <adjustments> block) stays about the lifting program.
   it('tells the coach to factor conditioning into recovery, without medical advice', () => {
