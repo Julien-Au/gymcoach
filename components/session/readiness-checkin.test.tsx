@@ -27,7 +27,11 @@ describe('ReadinessCheckin', () => {
   });
 
   async function openForm() {
-    const user = userEvent.setup();
+    // delay: null removes user-event's per-keystroke/per-click setTimeout, which
+    // is what stalls this suite under parallel CPU contention (issue #219). The
+    // interactions are still driven through user-event, so the asserted behavior
+    // is unchanged; only the artificial inter-event delay is dropped.
+    const user = userEvent.setup({ delay: null });
     render(<ReadinessCheckin />);
     await user.click(
       screen.getByRole('button', { name: /readiness check-in \(optional\)/i }),
@@ -64,7 +68,11 @@ describe('ReadinessCheckin', () => {
     ).toBeInTheDocument();
   });
 
-  it('submits a partial soreness map and a note when filled in', async () => {
+  // Raised timeout as a belt-and-suspenders for the heaviest interaction case
+  // (two soreness toggles + typing a note): even with delay:null the default 5s
+  // budget can be eaten by scheduler contention when the whole suite runs in
+  // parallel under load (issue #219). The assertion below is unchanged.
+  it('submits a partial soreness map and a note when filled in', { timeout: 15000 }, async () => {
     const user = await openForm();
 
     await user.click(screen.getByRole('button', { name: 'Overall readiness: 5' }));
