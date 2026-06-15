@@ -61,11 +61,12 @@ interface TcxPreview {
   duplicateSessions: string[];
 }
 
-type ImportFormat = 'STRONG' | 'HEVY' | 'TCX';
+type ImportFormat = 'STRONG' | 'HEVY' | 'TCX' | 'GPX';
 
 // Copy and endpoint per supported source app. Strong keeps its unit toggle
 // (its export follows the app's unit setting); Hevy always exports kg, so the
-// toggle is hidden for it. TCX is a single-activity cardio file (issue #152).
+// toggle is hidden for it. TCX (issue #152) and GPX (issue #204) are both
+// single-activity cardio files - they share the preview/confirm UI.
 const FORMAT_META: Record<
   ImportFormat,
   {
@@ -102,6 +103,15 @@ const FORMAT_META: Record<
     accept: '.tcx,application/vnd.garmin.tcx+xml,application/xml,text/xml',
     fileKind: 'TCX',
   },
+  GPX: {
+    label: 'GPX file',
+    endpoint: '/api/import/gpx',
+    exportHint:
+      'export the route as GPX from Strava, Komoot or Apple Fitness and it becomes one cardio session with duration, distance and heart rate',
+    hasUnitToggle: false,
+    accept: '.gpx,application/gpx+xml,application/xml,text/xml',
+    fileKind: 'GPX',
+  },
 };
 
 // CSV import from another tracker (issues #100/#113): pick the source app and
@@ -119,6 +129,10 @@ export function ImportSection() {
 
   const meta = FORMAT_META[format];
   const isTcx = format === 'TCX';
+  const isGpx = format === 'GPX';
+  // TCX and GPX are both single-activity cardio imports: same summary shape,
+  // same preview/confirm UI.
+  const isCardioActivity = isTcx || isGpx;
 
   function pickFile() {
     fileRef.current?.click();
@@ -154,14 +168,17 @@ export function ImportSection() {
     const res = await fetch(meta.endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      // Each route's Zod schema defines its exact body: TCX carries the file
-      // as xml; the CSV routes as csv (unit only where the app exports both).
+      // Each route's Zod schema defines its exact body: TCX carries the file as
+      // xml, GPX as gpx; the CSV routes as csv (unit only where the app exports
+      // both).
       body: JSON.stringify(
         isTcx
           ? { xml: fileText, mode }
-          : meta.hasUnitToggle
-            ? { csv: fileText, unit, mode }
-            : { csv: fileText, mode },
+          : isGpx
+            ? { gpx: fileText, mode }
+            : meta.hasUnitToggle
+              ? { csv: fileText, unit, mode }
+              : { csv: fileText, mode },
       ),
     });
     const json = (await res.json().catch(() => null)) as
@@ -183,7 +200,7 @@ export function ImportSection() {
     setBusy(true);
     try {
       const json = await callApi(fileText, 'preview');
-      if (json && isTcx) setTcxPreview(json);
+      if (json && isCardioActivity) setTcxPreview(json);
       else if (json) setPreview(json);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Preview failed.');
@@ -231,11 +248,11 @@ export function ImportSection() {
     <Card>
       <CardHeader className="pb-3">
         <h2 className="text-base font-semibold">
-          {isTcx ? 'Import a TCX activity' : `Import from ${meta.label}`}
+          {isCardioActivity ? `Import a ${meta.fileKind} activity` : `Import from ${meta.label}`}
         </h2>
         <p className="text-xs text-muted-foreground">
-          {isTcx
-            ? `Bring a cardio workout from your watch: ${meta.exportHint}. Preview it here, then confirm.`
+          {isCardioActivity
+            ? `Bring a cardio workout: ${meta.exportHint}. Preview it here, then confirm.`
             : `Bring your training history from the ${meta.label} app: ${meta.exportHint}, preview it here, then confirm.`}
         </p>
       </CardHeader>
@@ -254,6 +271,7 @@ export function ImportSection() {
                 <SelectItem value="STRONG">Strong</SelectItem>
                 <SelectItem value="HEVY">Hevy</SelectItem>
                 <SelectItem value="TCX">TCX file</SelectItem>
+                <SelectItem value="GPX">GPX file</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -283,7 +301,9 @@ export function ImportSection() {
               <FileUp className="size-4" />
             )}
             <span className="ml-2">
-              {isTcx ? 'Choose a TCX file' : `Choose a ${meta.label} ${meta.fileKind} file`}
+              {isCardioActivity
+                ? `Choose a ${meta.fileKind} file`
+                : `Choose a ${meta.label} ${meta.fileKind} file`}
             </span>
           </Button>
         </div>

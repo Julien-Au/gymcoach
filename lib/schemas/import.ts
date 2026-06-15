@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { STRONG_CSV_MAX_BYTES } from '@/lib/import/strong-csv';
 import { TCX_MAX_BYTES } from '@/lib/import/tcx';
+import { GPX_MAX_BYTES } from '@/lib/import/gpx';
 
 // Strong CSV import request (issue #100). The csv field carries the raw file
 // text (untrusted): the size cap is enforced here AND on the content-length
@@ -35,3 +36,14 @@ export const tcxImportInputSchema = z.object({
 });
 
 export type TcxImportInput = z.infer<typeof tcxImportInputSchema>;
+
+// GPX track import request (issue #204). The gpx field carries the raw file
+// text (untrusted XML - lib/import/gpx.ts refuses DTDs/entities by
+// construction, caps the trackpoint count, and the size cap is enforced here
+// AND on the streamed body read); same preview/confirm modes as the others.
+export const gpxImportInputSchema = z.object({
+  gpx: z.string().min(1).max(GPX_MAX_BYTES, 'File too large: the limit is 5 MB.'),
+  mode: z.enum(['preview', 'confirm']),
+});
+
+export type GpxImportInput = z.infer<typeof gpxImportInputSchema>;
