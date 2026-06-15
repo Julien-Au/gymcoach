@@ -6,6 +6,44 @@ by the charter in [`07-autonomy.md`](07-autonomy.md).
 
 ---
 
+## 2026-06-15 - Test-only hardening: de-flake readiness check-in + pin last-performance derivation (#219/#220)
+
+**Context.** Maintainer tick, two test-only issues, serialized (PR #222 MERGED before the #220 branch
+was cut). Both authored by JulienAu, trust-gated (login allowlist + collaborator check HTTP 204).
+Inherited model this cycle (Fable unavailable). Pure test changes with no production diff, so the
+post-merge independent-review backstop does NOT apply; the discipline that did apply was "never weaken
+a test to make it pass" - both PRs assert the REAL contract, read from source first.
+
+**Decided / shipped.**
+- **#219 (PR #222, merged on green).** The readiness check-in unit test "submits a partial soreness map
+  and a note" intermittently timed out (default 5s) when the full unit suite runs in parallel under CPU
+  contention (WSL2); green in isolation and in CI where tiers run separately. Fix is test-only:
+  `userEvent.setup({ delay: null })` in the shared `openForm` helper (drops user-event's artificial
+  per-keystroke/per-click timer, the actual stall) plus a 15s timeout on the single heaviest case as
+  belt-and-suspenders. The component is untouched and every assertion is byte-for-byte unchanged.
+  Verified by running the file x3 in isolation and a full `verify.sh` - no timeout.
+- **#220 (PR #N, this entry rides here, merged on green).** Added colocated `lib/last-performance.test.ts`
+  pinning the pure derivation that `tests/integration/last-performance.test.ts` only covered through a
+  real DB. `getLastPerformances` reads `@/lib/db` directly (no pure-function seam), so the unit test
+  mocks `@/lib/db` with a small in-memory fake that HONORS the `where`/`orderBy` the function builds -
+  warmup exclusion, exclude-session, and most-recent selection are exercised through the real query
+  construction, not re-implemented in the assertions. Covers: strength max-load + reps-at-max-load +
+  raw set list; warmup exclusion; exclude-session vs latest; cardio totals (duration/distance SUMMED,
+  HR AVERAGED+rounded over ONLY the rows that recorded one - the (150+170)/2=160 case rules out a sum
+  or an over-all-rows average), null-HR and missing-distance edge cases, multi-exercise resolution, and
+  no-history (absent from map, no crash). Bodyweight: documented + asserted that the derivation returns
+  the raw stored `Set.weight` (effective-load is a consumer concern in `lib/stats`, not applied here).
+
+**Challenged.** No review subagent was spawned, but these are pure test additions with no production
+surface, so the charter's post-merge backstop is not triggered. Self-checked that the assertions are
+non-vacuous (the HR-average pin would fail against a sum or a /N-over-all-rows implementation).
+
+**Production bugs surfaced.** None. The derivation behaves exactly as the new tests assert.
+
+**Deferred.** Nothing.
+
+---
+
 ## 2026-06-15 - Coach records, custom volume targets, AI-parsed set logging (#212/#211/#210)
 
 **Context.** Maintainer tick, three feature issues, strictly serialized by ascending size (each PR
