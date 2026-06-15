@@ -83,6 +83,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   single field of the set logger to fill the weight, reps, and effort fields
   (RPE maps to the stored RIR). Deterministic parser in the user's display
   unit; the classic fields keep working unchanged.
+- Import a GPX file as a cardio session: bring a route export from Strava,
+  Komoot or Apple Fitness in as one cardio session (distance computed from
+  the GPS track, duration from the timestamps, heart rate from the track
+  extension) - the third file-import format, file-based and no-OAuth like the
+  rest. The parser does no XML entity decoding, so XXE and entity bombs are
+  impossible by construction.
+- Body-measurement tracking: log tape measurements (waist, arms, thighs, ...)
+  from a card on the progress page, with the latest value per site and a
+  trend, in your display unit. Stored alongside, and mirroring, bodyweight.
+- Maximum heart rate on cardio sets: the peak HR is stored, imported from and
+  exported to TCX, and shown next to the average; the CSV export gains
+  avg/max HR columns.
 - A free-text note to your coach: write a short note the AI coach reads -
   injuries, illness, life constraints - so its advice accounts for your own
   current context. It is the correctable half of "what your coach sees"; the
