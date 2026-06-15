@@ -15,6 +15,7 @@ import {
   weeklyConditioning,
   weeklySetsByMuscleGroup,
   weeklyVolumeByMuscleGroup,
+  resolveVolumeBand,
   WEEKLY_SETS_MEV,
   WEEKLY_SETS_MRV,
 } from '@/lib/stats';
@@ -79,6 +80,18 @@ export default async function ProgressPage(
   ]);
   const bodyweight = user?.bodyweight ?? null;
   const unit = user?.unit ?? 'KG';
+
+  // The user's per-muscle volume targets (issue #211): personal MEV/MRV bands
+  // that override the global defaults for the volume-landmark card. Absent
+  // groups fall back to the defaults via resolveVolumeBand.
+  const volumeTargetRows = await db.volumeTarget.findMany({
+    where: { userId: auth.userId },
+    select: { muscleGroup: true, mev: true, mrv: true },
+  });
+  const volumeTargets: Record<string, { mev: number; mrv: number }> =
+    Object.fromEntries(
+      volumeTargetRows.map((t) => [t.muscleGroup, { mev: t.mev, mrv: t.mrv }]),
+    );
   const usesBodyweightById = new Map(
     exercisesWithSets.map((e) => [e.id, e.usesBodyweight]),
   );
@@ -210,14 +223,25 @@ export default async function ProgressPage(
   const volumeLandmarks = latestCompletedWeek
     ? {
         weekKey: latestCompletedWeek.weekKey,
+        // Default band, shown as the card-level reference; each row also
+        // carries its own resolved band (custom or default).
         mev: WEEKLY_SETS_MEV,
         mrv: WEEKLY_SETS_MRV,
         byMuscleGroup: Object.fromEntries(
           Object.entries(latestCompletedWeek.byMuscleGroup).map(
-            ([group, sets]) => [
-              group,
-              { sets, zone: classifyWeeklySets(sets) },
-            ],
+            ([group, sets]) => {
+              const band = resolveVolumeBand(group, volumeTargets);
+              return [
+                group,
+                {
+                  sets,
+                  zone: classifyWeeklySets(sets, band.mev, band.mrv),
+                  mev: band.mev,
+                  mrv: band.mrv,
+                  custom: band.custom,
+                },
+              ];
+            },
           ),
         ),
       }
@@ -457,6 +481,8 @@ export default async function ProgressPage(
                 total: w.total,
               }))}
               volumeLandmarks={volumeLandmarks}
+              volumeTargets={volumeTargets}
+              defaultBand={{ mev: WEEKLY_SETS_MEV, mrv: WEEKLY_SETS_MRV }}
               recap={recap}
               unit={unit}
               selectedGoal={
