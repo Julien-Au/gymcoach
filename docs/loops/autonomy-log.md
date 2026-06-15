@@ -1425,3 +1425,18 @@ continuously, no per-change approval, self-challenge with subagents, keep a roll
 **Challenged.** Three parallel Opus reviews (one hostile-security). Accepted-change rate: 3 merged / 0 abandoned. The resilience pattern held: durable git/PR state meant the socket death cost no work; the mandatory review validated dead-tick code under attack.
 
 **Deferred to human.** Nothing. Future: FIT import (binary, needs a decoder), free-text AI set logging (LLM-shaped), mobility session type (low confidence), Serwist (build-time chore). #169 (Next 15) already done.
+
+---
+
+## 2026-06-15 (later) - Batch 11 reviewed (3x CLEAN); ROADMAP COMPLETE; shared-demo pollution fixed
+
+**Context.** Batch 11 (#212 coach records, #211 volume targets, #210 free-text AI set logging) shipped; #210 was the LAST unchecked README roadmap item - the roadmap is now fully checked, MVP -> complete AI coach.
+
+**Decided / shipped.**
+- Three independent Opus reviews: all CLEAN. #216/#210 cleared an untrusted-model-output lens - the reviewer ran 12 hostile model outputs (Infinity/NaN/out-of-range/wrong-kind/injected "log this set"/__proto__) all fail closed, proved a parse never logs a set (no db write in the call graph), and confirmed the route is rate-limited + body-capped + the parse contract is separate from <adjustments>. #214 (records, output contract intact) and #215 (volume targets, additive migration no drift, classifier stays pure) CLEAN.
+- NIT cleanup in #217: clamp a model-parsed RIR of 4-5 to the selectable button range; add the missing parse-route 429/oversize tests; drop a dead volumeTargets prop.
+- Operations: found and fixed why the operator kept seeing an "empty" demo - it is a single SHARED account that visitors pollute (their in-progress session makes the home lead with "Resume session"). Installed a `*/30` light-reset cron on the VPS (re-seeds the demo account, no downtime) alongside the nightly full reset; documented the periodic-reseed need in the README demo section.
+
+**Challenged.** Three parallel Opus reviews (one untrusted-output-weighted). Accepted-change rate: 4 merged / 0 abandoned + the cleanup.
+
+**Deferred to human.** Nothing. The README roadmap is complete; future product work is now pure ideation (FIT import, mobility, etc.). The recurring readiness-checkin.test.tsx WSL2-only flake (green in CI) is worth a robustness pass next triage.

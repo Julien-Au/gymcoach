@@ -95,6 +95,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Maximum heart rate on cardio sets: the peak HR is stored, imported from and
   exported to TCX, and shown next to the average; the CSV export gains
   avg/max HR columns.
+- Free-text, AI-parsed set logging (the last roadmap item): an opt-in
+  "Parse with AI" button turns a plain description ("bench, 100 kilos, 5 reps,
+  2 in the tank" or "ran 5k in 25 minutes") into the set fields for you to
+  confirm. The deterministic shorthand stays the fast path; the model output
+  is validated and fails closed, and a parse never logs a set on its own.
+- The AI coach now sees your all-time records, so a weekly debrief can
+  acknowledge a new PR and anchor advice on your bests.
+- Personal weekly volume targets: set your own MEV/MRV per muscle group; the
+  volume-landmark card uses them where set and the defaults otherwise.
 - A free-text note to your coach: write a short note the AI coach reads -
   injuries, illness, life constraints - so its advice accounts for your own
   current context. It is the correctable half of "what your coach sees"; the
