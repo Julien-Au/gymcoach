@@ -481,7 +481,6 @@ export default async function ProgressPage(
                 total: w.total,
               }))}
               volumeLandmarks={volumeLandmarks}
-              volumeTargets={volumeTargets}
               defaultBand={{ mev: WEEKLY_SETS_MEV, mrv: WEEKLY_SETS_MRV }}
               recap={recap}
               unit={unit}
