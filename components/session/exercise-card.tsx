@@ -204,7 +204,7 @@ export function ExerciseCard({
           </div>
         )}
 
-        {(programExercise.notes || exo.notes) && (
+        {programExercise.notes && (
           <div>
             <Button
               variant="ghost"
@@ -217,13 +217,10 @@ export function ExerciseCard({
             </Button>
             {notesOpen && (
               <div className="mt-2 space-y-2 rounded-md bg-muted/50 p-3 text-xs leading-relaxed text-muted-foreground">
+                {/* The exercise's own notes are the always-visible cue under the
+                    header; this block holds only the program-specific note so
+                    the same text is never shown twice. */}
                 {programExercise.notes && <p className="whitespace-pre-line">{programExercise.notes}</p>}
-                {exo.notes && (
-                  <p className="whitespace-pre-line">
-                    <span className="font-medium text-foreground">Technique: </span>
-                    {exo.notes}
-                  </p>
-                )}
               </div>
             )}
           </div>
