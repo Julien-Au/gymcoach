@@ -100,6 +100,48 @@ describe('ExerciseCard readiness explainer', () => {
   });
 });
 
+// Issue #224: the exercise's own notes/cue is surfaced as an always-visible
+// muted line under the header (the form reminder while logging), distinct from
+// the per-set quick-note field and the collapsible program-notes block.
+describe('ExerciseCard exercise cue', () => {
+  const CUE = 'keep elbows tucked, pause 1s at the bottom';
+
+  function renderWithExoNotes(notes: string | null, category: Exercise['category'] = 'COMPOUND') {
+    const exoWithNotes: Exercise = { ...exo, notes, category };
+    const peWithNotes: ProgramExercise & { exercise: Exercise } = {
+      ...pe,
+      exercise: exoWithNotes,
+    };
+    return render(
+      <ExerciseCard
+        programExercise={peWithNotes}
+        lastPerformance={lastPerf}
+        readiness={null}
+        deloadActive={false}
+        unit="KG"
+      />,
+    );
+  }
+
+  it('shows the cue line when the exercise has notes', () => {
+    renderWithExoNotes(CUE);
+    expect(screen.getByText(CUE)).toBeInTheDocument();
+  });
+
+  it('shows nothing (no empty element) when the exercise has no notes', () => {
+    renderWithExoNotes(null);
+    expect(screen.queryByText(CUE)).not.toBeInTheDocument();
+    // No collapsible notes block either when neither program nor exercise notes
+    // exist (this card's pe.notes is null).
+    expect(screen.queryByText(/Notes \/ mind-muscle cue/)).not.toBeInTheDocument();
+  });
+
+  it('shows the cue for a cardio exercise too', () => {
+    renderWithExoNotes(CUE, 'CARDIO');
+    expect(screen.getByText(CUE)).toBeInTheDocument();
+  });
+});
+
 // Issue #176: a cardio exercise with prior history shows a "Last session"
 // reference (duration / distance / avgHr) instead of a load. The strength
 // branch above pins that strength cards are unchanged.
