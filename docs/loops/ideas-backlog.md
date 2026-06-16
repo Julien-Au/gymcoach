@@ -52,3 +52,6 @@ research and the product wedge). See `docs/loops/08-ideation-loop.md` for how th
 - shipped - free-text (AI-parsed) set logging (issue #210, 2026-06-15, PR #216) - the LAST roadmap item; multi-lens review CLEAN incl. untrusted-output (12 hostile model outputs fail closed, a parse never logs a set)
 - shipped - user-settable weekly volume targets (issue #211, 2026-06-15, PR #215) - additive VolumeTarget; review CLEAN (classifyWeeklySets stays pure)
 - shipped - give the AI coach your all-time records (issue #212, 2026-06-15, PR #214) - review CLEAN, output contract intact
+- proposed - show the exercise's notes/cues in the session set logger (issue #224, 2026-06-16) - Exercise.notes never surfaced while logging; display-only form-cue line
+- proposed - per-muscle weekly training frequency on the progress page (issue #225, 2026-06-16) - frequency is a distinct hypertrophy variable from volume; pure derivation, display-only
+- proposed - e1RM-based percentage loading table on the per-exercise progress view (issue #226, 2026-06-16) - turns the e1RM trend into a planning tool (5/3/1-style %s); pure, display-only
