@@ -67,6 +67,9 @@ interface VolumeLandmarks {
     string,
     {
       sets: number;
+      // Issue #225: distinct training days for this muscle in the same week
+      // (the weekly training frequency, shown as "Nx/week").
+      frequency: number;
       zone: VolumeLandmarkZone;
       // Issue #211: the band actually applied to this group (the user's custom
       // target when set, else the defaults).
@@ -408,6 +411,11 @@ export function ProgressDashboard({
                     <span className="flex items-center gap-2">
                       <span className="text-muted-foreground">
                         {row.sets} {row.sets === 1 ? 'set' : 'sets'}
+                      </span>
+                      {/* Weekly training frequency (issue #225): distinct
+                          training days for this muscle in the same week. */}
+                      <span className="text-xs text-muted-foreground">
+                        {row.frequency}x/week
                       </span>
                       <Badge variant={meta.variant}>{meta.label}</Badge>
                       <VolumeTargetEditor

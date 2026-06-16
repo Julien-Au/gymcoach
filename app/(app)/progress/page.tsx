@@ -13,6 +13,7 @@ import {
   isoWeekKey,
   trainingConsistency,
   weeklyConditioning,
+  weeklyFrequencyByMuscleGroup,
   weeklySetsByMuscleGroup,
   weeklyVolumeByMuscleGroup,
   resolveVolumeBand,
@@ -210,6 +211,19 @@ export default async function ProgressPage(
     })),
   );
 
+  // Weekly training FREQUENCY per muscle group (issue #225): distinct training
+  // days (calendar days with >= 1 working set) per muscle, same warmup/cardio
+  // exclusion and ISO-week bucketing as the set-count card. Shown alongside the
+  // volume on the landmarks view as "Nx/week".
+  const weeklyFrequencyPoints = weeklyFrequencyByMuscleGroup(
+    weeklySetsRaw.map((s) => ({
+      isWarmup: s.isWarmup,
+      durationSec: s.durationSec,
+      muscleGroup: s.exercise.muscleGroup,
+      sessionStartedAt: s.session.startedAt,
+    })),
+  );
+
   // Classify the most recent completed (non-current) week against the band so
   // the dashboard can flag below MEV / within / above MRV per muscle group.
   // Falling back to the latest available week keeps a signal when only the
@@ -220,6 +234,13 @@ export default async function ProgressPage(
       .reverse()
       .find((w) => w.weekKey !== currentWeekKey) ??
     weeklySetsPoints[weeklySetsPoints.length - 1];
+  // Frequency for the exact week the landmarks card displays, so volume and
+  // frequency describe the same week per muscle group.
+  const frequencyForWeek =
+    latestCompletedWeek
+      ? weeklyFrequencyPoints.find((w) => w.weekKey === latestCompletedWeek.weekKey)
+          ?.byMuscleGroup ?? {}
+      : {};
   const volumeLandmarks = latestCompletedWeek
     ? {
         weekKey: latestCompletedWeek.weekKey,
@@ -235,6 +256,9 @@ export default async function ProgressPage(
                 group,
                 {
                   sets,
+                  // Distinct training days for this muscle in the same week
+                  // (issue #225). 0 when the muscle was not trained.
+                  frequency: frequencyForWeek[group] ?? 0,
                   zone: classifyWeeklySets(sets, band.mev, band.mrv),
                   mev: band.mev,
                   mrv: band.mrv,
