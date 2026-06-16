@@ -1535,3 +1535,17 @@ continuously, no per-change approval, self-challenge with subagents, keep a roll
 **Permissions re-audit (L9).** Re-read .claude/settings.json: the deny list is intact (rm -rf, git push --force/-f/--force-with-lease, git reset --hard, curl, wget). The 37 allow entries are all coherent with what the loop runs (npm/npx/git/gh/file ops); no dangerous scope creep, no sudo/broad-rm/network grants.
 
 **Filed.** #219 (fix the flaky readiness-checkin userEvent test - times out under parallel WSL2 load, green in CI) and #220 (colocated unit coverage for lib/last-performance.ts - the cardio-totals/HR-averaging logic from #179 is only integration-tested). Code markers: none. Roadmap: complete. Coverage otherwise healthy (the untrusted set-parse validation is unit-tested; thin wrappers are integration-covered).
+
+---
+
+## 2026-06-16 - Batch 12 (beyond-roadmap polish): 3 CLEAN + 1 dedup fix
+
+**Context.** First ideation past the completed roadmap - mature-product polish, kept anti-busywork (each a verified real gap, not filler): exercise cues in session (#224), per-muscle frequency (#225), e1RM % loading table (#226). All additive, display-only.
+
+**Decided / shipped.**
+- #228/#229/#230 merged on green; one consolidated light correctness review (proportionate to display-only/no-contract risk) returned 3/3 CLEAN - it confirmed the non-vacuous bits: frequency counts distinct calendar days (not raw sets) and the loading table converts kg->display unit BEFORE rounding so loads land on real plate jumps. One NIT (the exercise note rendered twice - cue + collapsible) fixed in #232 (#231): the collapsible now holds only the program-specific note.
+- The product is feature-complete on its vision; ideation is now polish/completeness. Deferred unchanged: FIT import, mobility session type, Serwist.
+
+**Challenged.** One consolidated Opus correctness review (right-sized for low risk). Accepted-change rate: 4 merged / 0 abandoned.
+
+**Deferred to human.** Nothing. Process note: the in-loop CI poll briefly merged two docs/1-file PRs on "no checks reported" before the workflow registered; both were locally full-gate-green and confirmed green on main post-merge - harden the poll to treat "no checks reported" as wait, not proceed.
