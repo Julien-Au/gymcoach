@@ -95,6 +95,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Maximum heart rate on cardio sets: the peak HR is stored, imported from and
   exported to TCX, and shown next to the average; the CSV export gains
   avg/max HR columns.
+- Exercise cues in the session: an exercise's technique note (e.g. "keep
+  elbows tucked, pause at the bottom") now shows as an always-visible line
+  while you log it, so the form reminder is there exactly when you need it.
+- Per-muscle weekly training frequency on the progress page: each muscle
+  group's number of distinct training days per week ("Nx/week"), next to its
+  volume - frequency is a distinct training variable from total volume.
+- An e1RM percentage loading table on the per-exercise progress view: the
+  loads at 95-60% of your best estimated 1RM, rounded to a loadable plate
+  jump in your unit, for planning percentage-based work (5/3/1, etc.).
 - Free-text, AI-parsed set logging (the last roadmap item): an opt-in
   "Parse with AI" button turns a plain description ("bench, 100 kilos, 5 reps,
   2 in the tank" or "ran 5k in 25 minutes") into the set fields for you to
