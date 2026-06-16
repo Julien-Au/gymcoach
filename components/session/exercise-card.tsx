@@ -116,6 +116,17 @@ export function ExerciseCard({
           <Badge variant="secondary">{MUSCLE_GROUP_LABELS[exo.muscleGroup]}</Badge>
           <Badge variant="outline">{CATEGORY_LABELS[exo.category]}</Badge>
         </div>
+        {/* Exercise cue (issue #224): when the exercise carries a technique
+            note, surface it as an always-visible muted line right under the
+            header so the form reminder is there exactly while logging the set.
+            This is the exercise's own notes; the per-set quick-note field and
+            the collapsible program-notes block below are unchanged. */}
+        {exo.notes && (
+          <p className="mt-1.5 flex items-start gap-1.5 text-sm text-muted-foreground">
+            <Lightbulb className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+            <span className="whitespace-pre-line">{exo.notes}</span>
+          </p>
+        )}
       </CardHeader>
 
       <CardContent className="flex flex-col gap-3 pt-0">
