@@ -31,6 +31,7 @@ import {
   type VolumeLandmarkZone,
 } from '@/lib/stats';
 import { roundWeight, toDisplayWeight, unitLabel } from '@/lib/units';
+import { computeLoadingTable } from '@/lib/loading-table';
 import { ExerciseGoalCard, type GoalView } from '@/components/progress/exercise-goal-card';
 import { VolumeTargetEditor } from '@/components/progress/volume-target-editor';
 
@@ -174,6 +175,18 @@ export function ProgressDashboard({
 
   const selectedExo = exercises.find((e) => e.id === selectedExerciseId);
 
+  // Percentage-of-e1RM loading table (issue #226): rows of default percentages
+  // of the selected exercise's best e1RM, rounded to a loadable increment in
+  // the display unit. The best e1RM is stored in kg, so convert before deriving
+  // so the rounding lands on plate jumps in the user's unit. Empty (table
+  // hidden) when the exercise has no e1RM yet.
+  const loadingRows = useMemo(
+    () => computeLoadingTable(toDisplay(selectedBestE1RM), unit),
+    // toDisplay is a pure function of `unit`; depend on its inputs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [selectedBestE1RM, unit],
+  );
+
   // Read-only summary: exercises whose e1RM has plateaued recently.
   const stalledLifts = recap.filter((r) => r.stalled);
 
@@ -292,6 +305,51 @@ export function ProgressDashboard({
           )}
         </CardContent>
       </Card>
+
+      {/* Training loads table (issue #226): percentages of the selected
+          exercise's best e1RM, rounded to a loadable increment in the display
+          unit. Collapsible/secondary so it does not crowd the chart, and hidden
+          entirely when the exercise has no e1RM yet. */}
+      {selectedExerciseId && loadingRows.length > 0 && (
+        <Card>
+          <CardContent className="pt-6">
+            <details className="group">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-2">
+                <span className="text-base font-semibold">Training loads</span>
+                <span className="text-xs text-muted-foreground group-open:hidden">
+                  Show
+                </span>
+                <span className="hidden text-xs text-muted-foreground group-open:inline">
+                  Hide
+                </span>
+              </summary>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Percentages of your best estimated 1RM ({toDisplay(selectedBestE1RM)}{' '}
+                {unitSuffix}), rounded to a loadable increment. Planning aid, not a
+                prescription.
+              </p>
+              <table className="mt-3 w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
+                    <th className="py-2 font-medium">% of e1RM</th>
+                    <th className="py-2 text-right font-medium">Load</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loadingRows.map((row) => (
+                    <tr key={row.percent} className="border-b last:border-0">
+                      <td className="py-1.5">{row.percent}%</td>
+                      <td className="py-1.5 text-right tabular-nums">
+                        {row.weight} {unitSuffix}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </details>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Target goal for the selected exercise */}
       {selectedExerciseId && selectedExo && (
