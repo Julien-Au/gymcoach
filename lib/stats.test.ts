@@ -17,6 +17,7 @@ import {
   totalVolume,
   trainingConsistency,
   weeklyConditioning,
+  weeklyFrequencyByMuscleGroup,
   weeklySetsByMuscleGroup,
   weeklyVolumeByMuscleGroup,
   WEEKLY_SETS_MEV,
@@ -235,6 +236,90 @@ describe('weeklySetsByMuscleGroup', () => {
   it('returns an empty list when there are no working sets', () => {
     expect(
       weeklySetsByMuscleGroup([
+        {
+          isWarmup: true,
+          muscleGroup: 'CHEST',
+          sessionStartedAt: new Date('2026-05-04T10:00:00Z'),
+        },
+      ]),
+    ).toEqual([]);
+  });
+});
+
+describe('weeklyFrequencyByMuscleGroup (issue #225)', () => {
+  it('counts distinct training days per muscle group and ISO week', () => {
+    const sets = [
+      // week 18: chest trained on two distinct days (Mon + Wed) -> 2;
+      // two chest sets the same day (Mon) still count as one day.
+      {
+        isWarmup: false,
+        muscleGroup: 'CHEST',
+        sessionStartedAt: new Date('2026-04-27T10:00:00Z'),
+      },
+      {
+        isWarmup: false,
+        muscleGroup: 'CHEST',
+        sessionStartedAt: new Date('2026-04-27T18:00:00Z'),
+      },
+      {
+        isWarmup: false,
+        muscleGroup: 'CHEST',
+        sessionStartedAt: new Date('2026-04-29T10:00:00Z'),
+      },
+      // back trained once that week -> 1
+      {
+        isWarmup: false,
+        muscleGroup: 'BACK_WIDTH',
+        sessionStartedAt: new Date('2026-04-29T10:00:00Z'),
+      },
+      // week 19: chest once more -> 1
+      {
+        isWarmup: false,
+        muscleGroup: 'CHEST',
+        sessionStartedAt: new Date('2026-05-04T10:00:00Z'),
+      },
+    ];
+    const points = weeklyFrequencyByMuscleGroup(sets);
+    expect(points).toHaveLength(2);
+    const w18 = points[0]!;
+    const w19 = points[1]!;
+    expect(w18.weekKey).toBe('2026-W18');
+    expect(w18.byMuscleGroup.CHEST).toBe(2);
+    expect(w18.byMuscleGroup.BACK_WIDTH).toBe(1);
+    expect(w19.weekKey).toBe('2026-W19');
+    expect(w19.byMuscleGroup.CHEST).toBe(1);
+  });
+
+  it('excludes warmups and cardio sets (consistent with the volume card)', () => {
+    const sets = [
+      // one real working day for chest
+      {
+        isWarmup: false,
+        muscleGroup: 'CHEST',
+        sessionStartedAt: new Date('2026-04-27T10:00:00Z'),
+      },
+      // a warmup on a different day must NOT add a chest day
+      {
+        isWarmup: true,
+        muscleGroup: 'CHEST',
+        sessionStartedAt: new Date('2026-04-29T10:00:00Z'),
+      },
+      // a cardio set (durationSec != null) on a different day must NOT count
+      {
+        isWarmup: false,
+        durationSec: 1800,
+        muscleGroup: 'CHEST',
+        sessionStartedAt: new Date('2026-04-30T10:00:00Z'),
+      },
+    ];
+    const points = weeklyFrequencyByMuscleGroup(sets);
+    expect(points).toHaveLength(1);
+    expect(points[0]!.byMuscleGroup.CHEST).toBe(1);
+  });
+
+  it('returns an empty list for a week with no working sets', () => {
+    expect(
+      weeklyFrequencyByMuscleGroup([
         {
           isWarmup: true,
           muscleGroup: 'CHEST',

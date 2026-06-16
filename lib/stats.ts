@@ -353,6 +353,62 @@ export function weeklySetsByMuscleGroup(
   );
 }
 
+export interface WeeklyFrequencyPoint {
+  weekKey: string; // YYYY-Www
+  weekStart: Date; // Monday 00:00 UTC
+  // Distinct training days per muscle group in the week (calendar days, UTC,
+  // with >= 1 working set hitting that group). Absent groups count as 0.
+  byMuscleGroup: Record<string, number>;
+}
+
+// Aggregates the weekly training FREQUENCY by muscle group (issue #225):
+// the number of DISTINCT calendar days (UTC) in each ISO week on which the
+// muscle group received at least one working set. Mirrors
+// `weeklySetsByMuscleGroup` (same ISO-week bucketing, same warmup + cardio
+// exclusion) so the frequency reads consistently with the volume card, but
+// counts distinct days rather than sets - two sets the same day count once,
+// two different days count twice. Display-only: never feeds progression or
+// coach logic.
+export function weeklyFrequencyByMuscleGroup(
+  sets: (Pick<Set, 'isWarmup'> &
+    MaybeCardio & {
+      muscleGroup: string;
+      sessionStartedAt: Date;
+    })[],
+): WeeklyFrequencyPoint[] {
+  interface Bucket {
+    weekStart: Date;
+    // muscleGroup -> set of UTC calendar-day strings (YYYY-MM-DD).
+    days: Map<string, globalThis.Set<string>>;
+  }
+  const byWeek = new Map<string, Bucket>();
+  for (const s of sets) {
+    if (s.isWarmup || isCardioSet(s)) continue;
+    const key = isoWeekKey(s.sessionStartedAt);
+    let entry = byWeek.get(key);
+    if (!entry) {
+      entry = { weekStart: isoWeekStart(s.sessionStartedAt), days: new Map() };
+      byWeek.set(key, entry);
+    }
+    const day = s.sessionStartedAt.toISOString().slice(0, 10);
+    let groupDays = entry.days.get(s.muscleGroup);
+    if (!groupDays) {
+      groupDays = new globalThis.Set<string>();
+      entry.days.set(s.muscleGroup, groupDays);
+    }
+    groupDays.add(day);
+  }
+  return [...byWeek.entries()]
+    .map(([weekKey, entry]) => ({
+      weekKey,
+      weekStart: entry.weekStart,
+      byMuscleGroup: Object.fromEntries(
+        [...entry.days.entries()].map(([group, days]) => [group, days.size]),
+      ),
+    }))
+    .sort((a, b) => a.weekStart.getTime() - b.weekStart.getTime());
+}
+
 // ============================================================
 // Conditioning (weekly cardio minutes / distance / sessions)
 // ============================================================
