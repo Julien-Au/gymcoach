@@ -6,6 +6,53 @@ by the charter in [`07-autonomy.md`](07-autonomy.md).
 
 ---
 
+## 2026-06-16 - Three display-only slices: exercise cue in the logger, weekly frequency, e1RM loading table (#224/#225/#226)
+
+**Context.** Maintainer tick, three additive DISPLAY-ONLY product slices, serialized by ascending
+size (each PR merged before the next branch was cut). All three authored by JulienAu, trust-gated
+(login allowlist + collaborator check HTTP 204). Inherited model this cycle (Fable unavailable). None
+touched schema, API, or the LLM contract; each shipped colocated tests and passed `bash scripts/verify.sh`.
+
+**Decided / shipped.**
+- **#224 (PR #228, merged on green).** Surface `Exercise.notes` as an always-visible muted "cue" line
+  under the exercise header in the session set logger (`components/session/exercise-card.tsx`), so the
+  form reminder is there exactly while logging. Read the source first: the full exercise row (with
+  `notes`) was ALREADY threaded through the session-runner serialized shape via
+  `ProgramExercise & { exercise: Exercise }`, so NO serialization change was needed (the issue allowed
+  for it but it was unnecessary). The card already rendered `exo.notes` behind a collapsed "Notes /
+  mind-muscle cue" toggle; this adds the always-visible line on top, leaving the per-set quick-note
+  field and the collapsible block unchanged. Component tests cover with-notes / without-notes / cardio.
+- **#225 (PR #229, merged on green).** New pure `weeklyFrequencyByMuscleGroup` in `lib/stats.ts`:
+  distinct training days (UTC calendar days with >= 1 working set hitting the group) per muscle group
+  per ISO week. Deliberately mirrors `weeklySetsByMuscleGroup`'s ISO-week bucketing and warmup + cardio
+  exclusion so frequency reads consistently with the volume card. Surfaced as "Nx/week" on each Volume
+  landmarks row, for the EXACT week the card already displays (page picks the frequency point matching
+  `latestCompletedWeek.weekKey`), so volume and frequency describe the same week. Reuses the
+  `weeklySetsRaw` query already on the page. Unit tests: two sets same day = 1, two days = 2, warmup +
+  cardio excluded, empty week = 0.
+- **#226 (PR #N, this entry rides here, merged on green).** New pure `computeLoadingTable` in
+  `lib/loading-table.ts`: default percentages (95..60%) of an exercise's best e1RM, each rounded to the
+  NEAREST loadable increment (2.5 kg / 5 lb) in the display unit (round-to-nearest, distinct from the
+  warm-up ramp's round-DOWN, since a planned working load reads best on the closest plate jump). The
+  e1RM is stored in kg and is bodyweight-adjusted for bodyweight movements (consistent with the rest of
+  the page); the dashboard converts to the display unit before deriving so rounding lands on real plate
+  jumps. Rendered as a collapsible native `<details>` "Training loads" table on the selected exercise's
+  progress view, hidden entirely when the exercise has no e1RM (empty list). Unit tests pin the
+  percentage->load math in kg and lb, the round-to-nearest behavior, the no-e1RM empty case, and a
+  custom percentage set.
+
+**Challenged.** No review subagent was spawned this run (nested run). Per the charter's backstop these
+are flagged for an OPTIONAL light post-merge correctness review by the orchestrator; all three are
+pure additive display-only derivations with no production-contract surface, so the risk is low. Self-checked
+that each new test is non-vacuous (e.g. the frequency test distinguishes distinct-day counting from a
+raw set count; the loading-table test distinguishes round-to-nearest from round-down).
+
+**Production bugs surfaced.** None. No unexpected schema/contract need arose; scope held to display-only.
+
+**Deferred.** Nothing.
+
+---
+
 ## 2026-06-15 - Test-only hardening: de-flake readiness check-in + pin last-performance derivation (#219/#220)
 
 **Context.** Maintainer tick, two test-only issues, serialized (PR #222 MERGED before the #220 branch
