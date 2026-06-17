@@ -1549,3 +1549,18 @@ continuously, no per-change approval, self-challenge with subagents, keep a roll
 **Challenged.** One consolidated Opus correctness review (right-sized for low risk). Accepted-change rate: 4 merged / 0 abandoned.
 
 **Deferred to human.** Nothing. Process note: the in-loop CI poll briefly merged two docs/1-file PRs on "no checks reported" before the workflow registered; both were locally full-gate-green and confirmed green on main post-merge - harden the poll to treat "no checks reported" as wait, not proceed.
+
+---
+
+## 2026-06-17 - Maintenance: demo deploy flipped to a reliable PULL model
+
+**Context.** The GitHub-runner-SSH-in demo deploy (deploy-demo.yml) had been timing out at the connection level from shared runner IPs more often than it succeeded - I had to redeploy directly from the VPS most cycles, and the weekly scheduled run showed as recurring red noise. Diagnosed: connection-level timeout (runner SYN to :22 not getting through), not auth/fail2ban (0 banned, VPS reachable from a fixed IP) - GitHub egress flakiness to a small VPS, unfixable from the workflow side.
+
+**Decided / shipped.**
+- Flipped PUSH -> PULL. New VPS cron /home/gymdeploy/bin/auto-deploy.sh (every 2h, `17 */2 * * *`): git-fetches main and runs deploy-demo.sh ONLY when main moved - a host reaching out to GitHub is reliable where CI reaching in is not. Tested end-to-end: it detected main d3ea405 -> b48841f and redeployed; the live demo verified clean+healthy on the new code.
+- deploy-demo.yml is now workflow_dispatch-only (#234) - dropped the flaky weekly schedule + its red runs; manual dispatch stays for on-demand. README documents the pull-model preference; memory readme-and-demo-media.md updated with the new commands.
+- Also corrected stale "Next.js 14" references to 15 across README + CLAUDE.md (#235) - the repo upgraded in #185.
+
+**Challenged.** Self-verified (infra + docs only): pull-model proven end-to-end, both PRs green on full CI. No subagent review needed.
+
+**Deferred to human.** Nothing. The recurring "I redeploy by hand each cycle" toil is now eliminated; future demos self-update within 2h of a merge.
