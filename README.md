@@ -5,7 +5,7 @@ Open source, self hosted training tracker with a built in AI coach. Log your ses
 [![CI](https://github.com/Julien-Au/gymcoach/actions/workflows/ci.yml/badge.svg)](https://github.com/Julien-Au/gymcoach/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
-[![Built with Next.js](https://img.shields.io/badge/Next.js-14-black.svg)](https://nextjs.org)
+[![Built with Next.js](https://img.shields.io/badge/Next.js-15-black.svg)](https://nextjs.org)
 
 <p align="center">
   <a href="https://demo-gymcoach.mesureprivee.com"><b>▶ Try the live demo</b></a>
@@ -92,7 +92,7 @@ more about *how a repo can maintain itself* than about the gym app, start there.
 
 ## Stack
 
-- Frontend: Next.js 14 (App Router), TypeScript strict, Tailwind CSS, Shadcn UI
+- Frontend: Next.js 15 (App Router), TypeScript strict, Tailwind CSS, Shadcn UI
 - Backend: Next.js API routes, Prisma ORM, PostgreSQL 16
 - AI: pluggable LLM provider (Anthropic SDK or OpenRouter)
 - Infra: Docker and Docker Compose
@@ -113,7 +113,7 @@ I built it for my own training and open-sourced it under MIT. There is nothing t
 
 The app:
 
-- Next.js 14 (App Router) serves both the UI and the API routes; data lives in PostgreSQL through Prisma. Auth is a signed JWT in an httpOnly cookie; every record is scoped to a user id and every route checks ownership.
+- Next.js 15 (App Router) serves both the UI and the API routes; data lives in PostgreSQL through Prisma. Auth is a signed JWT in an httpOnly cookie; every record is scoped to a user id and every route checks ownership.
 - The session logger is offline-first: each set is written to IndexedDB (Dexie) first for instant feedback, then synced to the server in the background, so a flaky gym connection never blocks you. A Wake Lock keeps the screen awake during a session.
 - Progress is computed server-side: estimated 1RM (Epley), max load over time, and weekly volume per muscle group, with bodyweight-aware tonnage for movements like pull-ups and dips.
 
