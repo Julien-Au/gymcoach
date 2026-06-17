@@ -264,6 +264,11 @@ pollute it. Re-run the seeder on a schedule (e.g. a cron every 30 minutes) so
 the demo always opens on the clean, populated state - it wipes and recreates
 the demo account's data without touching the rest.
 
+To keep the deployed demo on the latest code, prefer a pull-model cron on the
+host (periodically `git fetch` and rebuild only when the branch moved) over an
+inbound SSH deploy from CI - a host reaching out to GitHub is far more reliable
+than CI reaching in to a small VPS.
+
 ## Roadmap
 
 - [x] Single user MVP (logging, progress, weekly AI debrief, program adjustments)
