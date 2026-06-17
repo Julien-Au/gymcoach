@@ -1,6 +1,11 @@
-# Redeploys the public demo instance. Security model (see issue #123):
-# - triggers: weekly schedule + manual dispatch ONLY - never PR events, so
-#   fork PRs can not reach the secrets.
+# Redeploys the public demo instance ON DEMAND. The RELIABLE automatic path is
+# a PULL-model cron ON the VPS (auto-deploy.sh every 2h: it git-fetches main and
+# self-redeploys when it moved) - GitHub-runner-SSH-IN times out at the
+# connection level from shared runner IPs, so this workflow is manual-dispatch
+# only now (the weekly schedule was removed - its failures were pure red noise).
+# Security model (see issue #123):
+# - triggers: manual dispatch ONLY - never PR events, so fork PRs can not reach
+#   the secrets.
 # - permissions: none on the GitHub token.
 # - no third-party actions: plain ssh with a pinned host key.
 # - the SSH key is locked server-side to a forced command that runs the
@@ -11,9 +16,6 @@
 name: Deploy demo
 
 on:
-  schedule:
-    # Weekly, Monday 05:00 UTC (after the nightly data reset at 04:00).
-    - cron: '0 5 * * 1'
   workflow_dispatch: {}
 
 permissions: {}
