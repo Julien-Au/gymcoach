@@ -6,7 +6,7 @@ a loop) how to work in this repo so it does not have to re-derive conventions.
 
 ## What this project is
 
-- **Frontend**: Next.js 14 (App Router), TypeScript strict, Tailwind, Shadcn UI.
+- **Frontend**: Next.js 15 (App Router), TypeScript strict, Tailwind, Shadcn UI.
 - **Backend**: Next.js API routes, Prisma ORM, PostgreSQL 16.
 - **AI**: one provider interface in `lib/llm` in front of Anthropic SDK or
   OpenRouter (and a `demo` provider with canned responses, no key).
