@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { ChevronLeft, Check, Trophy } from 'lucide-react';
-import type { Exercise, ProgramExercise, Session, WeightUnit } from '@prisma/client';
+import type { Exercise, ProgramExercise, Session, WeightUnit } from '@/lib/prisma-client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';

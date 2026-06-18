@@ -1,4 +1,4 @@
-import type { WeightUnit } from '@prisma/client';
+import type { WeightUnit } from '@/lib/prisma-client';
 
 // ============================================================
 // Cardio sets (issue #133) - duration/distance helpers

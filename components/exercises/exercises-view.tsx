@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { Plus, Pencil, Search } from 'lucide-react';
-import type { Exercise, MuscleGroup } from '@prisma/client';
+import type { Exercise, MuscleGroup } from '@/lib/prisma-client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';

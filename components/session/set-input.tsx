@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Check, Minus, Plus } from 'lucide-react';
-import type { Exercise, ProgramExercise, WeightUnit } from '@prisma/client';
+import type { Exercise, ProgramExercise, WeightUnit } from '@/lib/prisma-client';
 import {
   displayIncrement,
   fromDisplayWeight,

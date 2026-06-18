@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import type { Exercise, ProgramExercise } from '@prisma/client';
+import type { Exercise, ProgramExercise } from '@/lib/prisma-client';
 import type { PendingSet } from '@/lib/indexeddb';
 import { SetsList } from './sets-list';
 

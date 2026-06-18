@@ -1,4 +1,4 @@
-import { WeightUnit } from '@prisma/client';
+import { WeightUnit } from '@/lib/prisma-client';
 
 // Weight is always stored in kilograms. These helpers convert at the edges only
 // (display and form input) so a user can work in pounds without any data

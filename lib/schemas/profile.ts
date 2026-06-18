@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Sex, TrainingGoal, WeightUnit } from '@prisma/client';
+import { Sex, TrainingGoal, WeightUnit } from '@/lib/prisma-client';
 
 // Max length of the free-text note to the coach (issue #188). Shared between
 // the profile API's Zod bound and the coach-page UI's character counter so the

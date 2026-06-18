@@ -10,7 +10,7 @@
 // weights round to a loadable increment in that unit. The session UI converts
 // the kg-stored working weight to the display unit before calling in here.
 
-import { WeightUnit } from '@prisma/client';
+import { WeightUnit } from '@/lib/prisma-client';
 import { roundWeight } from '@/lib/units';
 
 // One step of the ramp: a fraction of the working weight and the reps to do at

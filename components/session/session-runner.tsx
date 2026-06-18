@@ -12,7 +12,7 @@ import type {
   Set as PrismaSet,
   WeightUnit,
   Workout,
-} from '@prisma/client';
+} from '@/lib/prisma-client';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';

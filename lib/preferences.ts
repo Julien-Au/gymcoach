@@ -1,7 +1,7 @@
 // User preferences stored locally (not in the DB).
 // Everything is single-user, so localStorage is enough. SSR-safe reads.
 
-import { WeightUnit } from '@prisma/client';
+import { WeightUnit } from '@/lib/prisma-client';
 
 const STORAGE_KEY = 'gymcoach.prefs.v1';
 

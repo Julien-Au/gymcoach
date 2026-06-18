@@ -1,5 +1,5 @@
 import { Trophy } from 'lucide-react';
-import type { WeightUnit } from '@prisma/client';
+import type { WeightUnit } from '@/lib/prisma-client';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { formatWeight } from '@/lib/units';
 

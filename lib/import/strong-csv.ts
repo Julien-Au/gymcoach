@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { WeightUnit } from '@prisma/client';
+import type { WeightUnit } from '@/lib/prisma-client';
 import { MAX_DISTANCE_M, MAX_DURATION_SEC, MILES_TO_METERS } from '@/lib/cardio';
 import { lbToKg, roundWeight } from '@/lib/units';
 import {

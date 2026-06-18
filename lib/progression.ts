@@ -1,4 +1,4 @@
-import type { Exercise, MuscleGroup, ProgramExercise, Set } from '@prisma/client';
+import type { Exercise, MuscleGroup, ProgramExercise, Set } from '@/lib/prisma-client';
 
 // ============================================================
 // Load suggestion - double progression

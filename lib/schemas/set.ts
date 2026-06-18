@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { ExerciseCategory } from '@prisma/client';
+import type { ExerciseCategory } from '@/lib/prisma-client';
 import {
   AVG_HR_MAX,
   AVG_HR_MIN,

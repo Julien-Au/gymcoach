@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { MuscleGroup, ExerciseCategory } from '@prisma/client';
+import { MuscleGroup, ExerciseCategory } from '@/lib/prisma-client';
 import { EXERCISE_CATALOG } from './exercise-catalog';
 
 describe('EXERCISE_CATALOG', () => {

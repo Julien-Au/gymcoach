@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import type { Exercise, Set } from '@prisma/client';
+import type { Exercise, Set } from '@/lib/prisma-client';
 import { db } from '@/lib/db';
 import { setInputSchema, validateSetForCategory } from '@/lib/schemas/set';
 import { ApiError, handleApiError, parseJsonBody, requireApiUserId } from '@/lib/api';

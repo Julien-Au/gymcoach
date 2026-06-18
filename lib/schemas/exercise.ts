@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { MuscleGroup, ExerciseCategory } from '@prisma/client';
+import { MuscleGroup, ExerciseCategory } from '@/lib/prisma-client';
 
 export const muscleGroupValues = Object.values(MuscleGroup) as [MuscleGroup, ...MuscleGroup[]];
 export const exerciseCategoryValues = Object.values(ExerciseCategory) as [

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { BodyMeasurementSite } from '@prisma/client';
+import { BodyMeasurementSite } from '@/lib/prisma-client';
 
 // Body-measurement input (issue #202), mirroring the bodyweight schema (#99).
 // The value arrives in cm (the client converts from the display unit before

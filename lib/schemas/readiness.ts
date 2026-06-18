@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { MuscleGroup } from '@prisma/client';
+import { MuscleGroup } from '@/lib/prisma-client';
 
 // Pre-session readiness / soreness check-in input (issue #38). Optional and
 // skippable in the UI; this schema only validates a check-in the user chose to

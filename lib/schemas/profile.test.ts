@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { Sex, TrainingGoal, WeightUnit } from '@prisma/client';
+import { Sex, TrainingGoal, WeightUnit } from '@/lib/prisma-client';
 import { profileUpdateSchema, COACH_NOTE_MAX_LEN } from './profile';
 
 // Validation coverage for the self-service profile update schema (issue #199).

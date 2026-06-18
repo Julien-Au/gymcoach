@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { Calculator } from 'lucide-react';
-import type { WeightUnit } from '@prisma/client';
+import type { WeightUnit } from '@/lib/prisma-client';
 import {
   Dialog,
   DialogContent,

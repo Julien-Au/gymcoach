@@ -7,7 +7,7 @@ import {
   Sex,
   TrainingGoal,
   WeightUnit,
-} from '@prisma/client';
+} from '@/lib/prisma-client';
 import { db } from '@/lib/db';
 import { ApiError, handleApiError, parseJsonBody, requireApiUserId } from '@/lib/api';
 import {

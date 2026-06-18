@@ -58,3 +58,6 @@ docs/media/raw/
 # Claude Code runtime state (locks, scheduled tasks) - never commit
 .claude/scheduled_tasks.lock
 .claude/*.lock
+
+# Prisma 7 generated client (run `prisma generate`)
+/prisma/generated/

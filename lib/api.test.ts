@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { z } from 'zod';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '@/prisma/generated/client';
 import { ApiError, handleApiError, parseJsonBody } from './api';
 
 function jsonRequest(body: string): Request {

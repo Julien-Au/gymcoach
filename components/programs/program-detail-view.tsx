@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, Plus } from 'lucide-react';
-import type { Exercise, Program, ProgramExercise, Workout } from '@prisma/client';
+import type { Exercise, Program, ProgramExercise, Workout } from '@/lib/prisma-client';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';

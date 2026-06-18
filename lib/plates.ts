@@ -5,7 +5,7 @@
 // plates, a lb gym stocks 45/35/25/... lb plates. The session UI converts the
 // kg-stored target weight to the display unit before calling in here.
 
-import { WeightUnit } from '@prisma/client';
+import { WeightUnit } from '@/lib/prisma-client';
 
 // Standard bar weights per unit (the empty Olympic barbell).
 export const DEFAULT_BAR_WEIGHT: Record<WeightUnit, number> = {
