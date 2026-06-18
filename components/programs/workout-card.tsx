@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { MoreHorizontal, Plus, Pencil, Trash2 } from 'lucide-react';
-import type { Exercise, ProgramExercise, Workout } from '@prisma/client';
+import type { Exercise, ProgramExercise, Workout } from '@/lib/prisma-client';
 import { toast } from 'sonner';
 import {
   Card,

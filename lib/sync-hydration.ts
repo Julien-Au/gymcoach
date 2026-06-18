@@ -6,7 +6,7 @@
 // server-side sets. IndexedDB thus becomes the single source of truth
 // for display (the components use useLiveQuery on Dexie).
 
-import type { Set as PrismaSet } from '@prisma/client';
+import type { Set as PrismaSet } from '@/lib/prisma-client';
 import { getDB, type PendingSet } from '@/lib/indexeddb';
 
 export async function hydrateFromServerSets(

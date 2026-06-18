@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Loader2, Save, User } from 'lucide-react';
 import { toast } from 'sonner';
-import type { Sex, TrainingGoal, WeightUnit } from '@prisma/client';
+import type { Sex, TrainingGoal, WeightUnit } from '@/lib/prisma-client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';

@@ -12,7 +12,7 @@
 // land on plate jumps the lifter actually uses; the caller converts the
 // kg-stored e1RM before calling in here.
 
-import { WeightUnit } from '@prisma/client';
+import { WeightUnit } from '@/lib/prisma-client';
 import { roundWeight } from '@/lib/units';
 
 // Default percentages, heaviest first. A sensible spread for planning heavy and

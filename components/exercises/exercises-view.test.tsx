@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { Exercise } from '@prisma/client';
+import type { Exercise } from '@/lib/prisma-client';
 import { ExercisesView } from './exercises-view';
 
 // The catalog renders the create/edit dialogs and the delete button, which call

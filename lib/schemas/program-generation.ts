@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { MuscleGroup, ExerciseCategory } from '@prisma/client';
+import { MuscleGroup, ExerciseCategory } from '@/lib/prisma-client';
 
 // ============================================================
 // Structured output for AI-generated programs (LOT: program generation)

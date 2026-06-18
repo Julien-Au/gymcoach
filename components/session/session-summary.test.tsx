@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import type { Exercise, ProgramExercise, Session } from '@prisma/client';
+import type { Exercise, ProgramExercise, Session } from '@/lib/prisma-client';
 import type { PendingSet } from '@/lib/indexeddb';
 import { SessionSummary, computeSessionPRs } from './session-summary';
 

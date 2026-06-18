@@ -1,4 +1,4 @@
-import type { Set } from '@prisma/client';
+import type { Set } from '@/lib/prisma-client';
 import { estimate1RM, best1RM } from '@/lib/stats';
 
 // ============================================================

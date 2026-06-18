@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { Exercise, ProgramExercise } from '@prisma/client';
+import type { Exercise, ProgramExercise } from '@/lib/prisma-client';
 import { SetInput } from './set-input';
 
 const exo: Exercise = {

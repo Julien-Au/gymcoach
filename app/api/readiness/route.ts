@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from '@/prisma/generated/client';
 import { db } from '@/lib/db';
 import { handleApiError, parseJsonBody, requireApiUserId } from '@/lib/api';
 import { readinessCheckinInputSchema } from '@/lib/schemas/readiness';

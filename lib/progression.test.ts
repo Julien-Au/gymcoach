@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Exercise, ProgramExercise } from '@prisma/client';
+import type { Exercise, ProgramExercise } from '@/lib/prisma-client';
 import {
   READINESS_DELOAD_FRACTION,
   READINESS_RECENCY_HOURS,

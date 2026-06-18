@@ -1,4 +1,4 @@
-import { BodyMeasurementSite } from '@prisma/client';
+import { BodyMeasurementSite } from '@/lib/prisma-client';
 
 // ============================================================
 // Body measurements (issue #202) - pure display helpers

@@ -1,11 +1,12 @@
 # ============================================================
 # GymCoach - Dockerfile production multi-stage
 # ============================================================
-# Stages : deps -> builder -> runner
-# Utilise `output: 'standalone'` de next.config.js pour minimiser
-# la taille de l'image finale.
+# Stages : deps -> builder -> prod-deps -> runner
+# Utilise `output: 'standalone'` de next.config.js, complete par un node_modules
+# de production complet (le client Prisma 7 + sa CLI de migration tirent une
+# fermeture de dependances que le tracing standalone ne capture pas).
 
-# ---- Stage 1: deps ----
+# ---- Stage 1: deps (full install for the build) ----
 FROM node:22-alpine AS deps
 RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
@@ -31,11 +32,25 @@ ENV NEXT_PUBLIC_DEMO_MODE=$NEXT_PUBLIC_DEMO_MODE \
     NEXT_PUBLIC_DEMO_EMAIL=$NEXT_PUBLIC_DEMO_EMAIL \
     NEXT_PUBLIC_DEMO_PASSWORD=$NEXT_PUBLIC_DEMO_PASSWORD
 
-# Génération du client Prisma puis build Next.js
+# Generation du client Prisma puis build Next.js
 RUN npx prisma generate
 RUN npm run build
 
-# ---- Stage 3: runner ----
+# ---- Stage 3: prod-deps (production-only node_modules for the runner) ----
+# Prisma 7 dropped the bundled Rust engine: the app talks to Postgres through the
+# pg driver adapter at runtime, and `prisma migrate deploy` loads prisma.config.ts
+# through @prisma/config, which pulls a deep dependency closure (effect, c12, ...).
+# Cherry-picking those out of node_modules is unmaintainable (it is what made the
+# bcrypt #127 image bug recur), so the runner gets a real `npm ci --omit=dev`
+# tree: app runtime deps + the Prisma CLI + tsx (the demo reseed). bcrypt's
+# native binding is built here for the alpine target too.
+FROM node:22-alpine AS prod-deps
+RUN apk add --no-cache libc6-compat openssl python3 make g++
+WORKDIR /app
+COPY package.json package-lock.json* ./
+RUN npm ci --omit=dev
+
+# ---- Stage 4: runner ----
 FROM node:22-alpine AS runner
 RUN apk add --no-cache openssl
 WORKDIR /app
@@ -43,30 +58,26 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# User non-root pour la sécurité
+# User non-root pour la securite
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
-# Copie de l'output standalone Next.js
+# Production node_modules first, then the standalone server overlays its own
+# bundled output on top. The standalone tree is a subset of prod-deps, so this
+# order keeps the full, correctly-resolved dependency closure.
+COPY --from=prod-deps --chown=nextjs:nodejs /app/node_modules ./node_modules
+
+# Next.js standalone output.
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Prisma : on a besoin du schema, des binaires runtime, ET de la CLI (utilisée
-# par `prisma migrate deploy` au démarrage du conteneur). On évite le shim
-# .bin/prisma car le COPY ne préserve pas le symlink et perd les .wasm voisins ;
-# on appelle directement node_modules/prisma/build/index.js.
+# Prisma needs the schema, the generated client (under prisma/generated, copied
+# via /app/prisma), and the config file that carries the datasource URL for
+# `prisma migrate deploy` at container start. The runtime @prisma/client, the pg
+# adapter and the CLI all live in the prod-deps node_modules above.
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
-
-# bcrypt 6 resolves its native binding from prebuilds/ via node-gyp-build at
-# runtime; the Next standalone tracer misses those .node files, which 500s
-# every auth route in the image (issue #127). Copy the full module from the
-# builder, where the binding is known-good.
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/bcrypt ./node_modules/bcrypt
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/node-gyp-build ./node_modules/node-gyp-build
+COPY --from=builder --chown=nextjs:nodejs /app/prisma.config.ts ./prisma.config.ts
 
 USER nextjs
 EXPOSE 3000

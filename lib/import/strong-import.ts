@@ -1,4 +1,4 @@
-import type { Prisma, PrismaClient } from '@prisma/client';
+import type { Prisma, PrismaClient } from '@/prisma/generated/client';
 
 // ============================================================
 // CSV import planning + execution (issues #100/#113)

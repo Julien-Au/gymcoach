@@ -24,7 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import type { MuscleGroup, WeightUnit } from '@prisma/client';
+import type { MuscleGroup, WeightUnit } from '@/lib/prisma-client';
 import {
   STALL_LOOKBACK_SESSIONS,
   type ExerciseChartPoint,

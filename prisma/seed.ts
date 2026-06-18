@@ -12,11 +12,15 @@
  * Usage: npm run db:seed
  */
 
-import { PrismaClient, Sex, TrainingGoal } from '@prisma/client';
+import { PrismaClient, Sex, TrainingGoal } from '@/prisma/generated/client';
+import { PrismaPg } from '@prisma/adapter-pg';
 import bcrypt from 'bcrypt';
 import { seedExerciseCatalog } from '../lib/exercise-catalog';
 
-const prisma = new PrismaClient();
+// Prisma 7 requires a driver adapter to connect (the Rust engine was removed).
+const prisma = new PrismaClient({
+  adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
+});
 
 async function main() {
   console.log('Seed: starting...');

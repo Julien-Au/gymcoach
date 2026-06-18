@@ -1,7 +1,7 @@
 'use client';
 
 import { Check, Circle, CircleDot, CloudOff, Loader2, Trash2, Trophy } from 'lucide-react';
-import type { Exercise, ProgramExercise } from '@prisma/client';
+import type { Exercise, ProgramExercise } from '@/lib/prisma-client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import type { PendingSet } from '@/lib/indexeddb';

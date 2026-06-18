@@ -1,4 +1,4 @@
-import { MuscleGroup, ExerciseCategory, type PrismaClient } from '@prisma/client';
+import { MuscleGroup, ExerciseCategory, type PrismaClient } from '@/prisma/generated/client';
 
 // ============================================================
 // Default exercise catalog
