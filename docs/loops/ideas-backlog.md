@@ -55,3 +55,5 @@ research and the product wedge). See `docs/loops/08-ideation-loop.md` for how th
 - shipped - show the exercise's notes/cues in the session set logger (issue #224, 2026-06-16, PR #228 + dedup fix #232) - review CLEAN; the one NIT (cue shown twice) fixed
 - shipped - per-muscle weekly training frequency on the progress page (issue #225, 2026-06-16, PR #229) - review CLEAN; distinct-day counting, not set count
 - shipped - e1RM-based percentage loading table on the per-exercise progress view (issue #226, 2026-06-16, PR #230) - review CLEAN; converts to display unit before rounding
+- proposed - proactive coach insight card on the home dashboard (issue #237, 2026-06-18) - compose existing deterministic signals (deload/stall/PR/frequency), display-only, no LLM call
+- shipped - search/filter box on the exercise catalog (issue #238, 2026-06-18, PR pending) - client-side name filter over the loaded list, no API change
