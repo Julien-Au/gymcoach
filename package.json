@@ -23,7 +23,8 @@
     "db:seed": "prisma db seed",
     "seed:demo": "tsx scripts/seed-demo-history.ts",
     "db:studio": "prisma studio",
-    "db:generate": "prisma generate"
+    "db:generate": "prisma generate",
+    "postinstall": "node -e \"const fs=require('fs');if(fs.existsSync('prisma/schema.prisma'))require('child_process').execSync('prisma generate',{stdio:'inherit'})\""
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.98.0",
