@@ -1580,3 +1580,51 @@ continuously, no per-change approval, self-challenge with subagents, keep a roll
 **Challenged.** #237 (the more complex change, on the home render path) got an independent general-purpose review: verdict SHIP, all checks OK (PR detection mirrors the progress page's records query exactly; bodyweight inline matches effectiveWeight; stall grouped by name is safe given @@unique([userId, name]); ~6 bounded queries, no N+1; empty path renders nothing). Two harmless NITs, no action. #238/#241 self-verified (low risk). Accepted-change rate: 3 merged / 0 abandoned.
 
 **Deferred to human.** Nothing actioned. The deploy output reflagged the Prisma 5.22 -> 7.8 major bump - left as stop-for-human (major dep bump), not auto-taken.
+
+---
+
+## 2026-06-18 - Major dep bump: Prisma ORM 5.22 -> 7.8 (operator-approved)
+
+**Context.** Operator greenlit the major bump ("gp Prisma 7"), same trust posture as the
+Next 15 upgrade. Prisma 7 is a real two-major-version migration: the Rust query engine and
+the `prisma-client-js` generator are both gone. Researched the authoritative breaking
+changes first (capped web check) rather than guessing.
+
+**Decided / shipped (#243).**
+- Generator -> `prisma-client`, output the gitignored `prisma/generated`, `moduleFormat=cjs`
+  to keep the app CommonJS (no `"type":"module"` blast radius across the Next config files).
+- Driver adapter is now mandatory: `lib/db.ts` connects via `@prisma/adapter-pg` + `pg`.
+- The new generator splits output into a server `client.ts` (runtime, pulls node:fs) and a
+  browser-safe `browser.ts` (enums + types + Prisma type-namespace). A barrel
+  `lib/prisma-client.ts` re-exports the BROWSER surface so a 'use client' component pulling
+  an enum never drags the server runtime into its bundle (the production build caught this
+  exact leak via lib/schemas/profile -> a client component). The 7 server-only runtime users
+  (Prisma error class in lib/api.ts, PrismaClient in the seeds, server-only Prisma types)
+  import from the generated server client directly; verified none are client-reachable.
+- CLI config moved from package.json#prisma.seed to prisma.config.ts (datasource url read
+  from process.env, not the throwing `env()` helper - that broke `generate` at image build).
+- Dockerfile: new `prod-deps` stage (`npm ci --omit=dev`, with `prisma`+`tsx` promoted to
+  dependencies) gives the runner a real production node_modules. Prisma 7's `migrate deploy`
+  loads @prisma/config -> a deep closure (effect, c12, ...) that cannot be cherry-picked -
+  the same fragility that made the bcrypt #127 image bug recur. This retires the whole
+  cherry-pick hack (the wasm query compiler ships inlined as base64 in @prisma/client).
+
+**Reinforced controls (complex-change directive).** `verify.sh --full` (integration + 14
+E2E through the new pg adapter). Built the production image LOCALLY and ran the full
+docker-smoke (migrate deploy + register + login all 200) before pushing. CI: all 5 jobs
+green on a clean runner incl. docker-smoke. Independent review verdict SHIP across 6 risk
+lenses (bundling leak, barrel completeness, adapter singleton, config, Dockerfile overlay,
+leftovers). Rollback baseline recorded (main @ 520c0b6).
+
+**Deploy snag, found and fixed.** First demo redeploy built + migrated fine but the SEED
+died: Prisma 7's client is in the gitignored prisma/generated, and the VPS reset scripts
+seed via `npx prisma db seed` (imports @/prisma/generated/client) WITHOUT a prior generate.
+Fixed the VPS reset-demo.sh + light-reset.sh to `npx prisma generate &&` before seeding,
+re-ran the reset (55 exercises + 12-week history seeded), and verified the live demo on
+Prisma 7 (/login 200, demo login 200). Repo-side follow-up #244: a guarded postinstall that
+generates the client when the schema is present (no-op in the schema-less Docker stages), so
+fresh clones / npm test / the demo host npm ci all get a working client without a manual
+generate.
+
+**Challenged.** One independent general-purpose review (SHIP). Accepted-change rate:
+2 merged / 0 abandoned. **Deferred to human.** Nothing - the bump was the approved item.
