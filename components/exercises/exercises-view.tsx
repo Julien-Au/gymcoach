@@ -1,10 +1,11 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Plus, Pencil } from 'lucide-react';
+import { Plus, Pencil, Search } from 'lucide-react';
 import type { Exercise, MuscleGroup } from '@prisma/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import {
   Card,
   CardContent,
@@ -23,8 +24,18 @@ interface ExercisesViewProps {
 export function ExercisesView({ exercises }: ExercisesViewProps) {
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<Exercise | null>(null);
+  const [query, setQuery] = useState('');
 
-  const grouped = useMemo(() => groupByMuscle(exercises), [exercises]);
+  // Case-insensitive substring match on the exercise name. The query only
+  // narrows the already-loaded list (no API call); an empty query shows
+  // everything, preserving the original behaviour.
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return exercises;
+    return exercises.filter((ex) => ex.name.toLowerCase().includes(q));
+  }, [exercises, query]);
+
+  const grouped = useMemo(() => groupByMuscle(filtered), [filtered]);
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
@@ -41,6 +52,20 @@ export function ExercisesView({ exercises }: ExercisesViewProps) {
         </Button>
       </div>
 
+      {exercises.length > 0 && (
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search exercises by name"
+            aria-label="Search exercises by name"
+            className="pl-9"
+          />
+        </div>
+      )}
+
       {exercises.length === 0 ? (
         <Card>
           <CardHeader>
@@ -48,6 +73,16 @@ export function ExercisesView({ exercises }: ExercisesViewProps) {
             <CardDescription>
               The catalog is empty. Add your first exercise so you can use it in
               a program.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      ) : filtered.length === 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>No exercises match</CardTitle>
+            <CardDescription>
+              No exercise name matches &ldquo;{query.trim()}&rdquo;. Try a different
+              search.
             </CardDescription>
           </CardHeader>
         </Card>
