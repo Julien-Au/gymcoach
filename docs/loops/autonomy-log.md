@@ -1564,3 +1564,19 @@ continuously, no per-change approval, self-challenge with subagents, keep a roll
 **Challenged.** Self-verified (infra + docs only): pull-model proven end-to-end, both PRs green on full CI. No subagent review needed.
 
 **Deferred to human.** Nothing. The recurring "I redeploy by hand each cycle" toil is now eliminated; future demos self-update within 2h of a merge.
+
+---
+
+## 2026-06-18 - Batch 13 (beyond-roadmap): proactive home insight + catalog search
+
+**Context.** Idle loop, roadmap complete, backlog empty. Ideated two genuinely-new, single-PR, display-only gaps (not filler): the home dashboard was purely navigational despite the app already deriving rich signals (#237), and the exercise catalog had no search as custom exercises accumulate (#238). Filed both; deliberately did NOT manufacture a weak third.
+
+**Decided / shipped.**
+- #238 catalog search (PR #239): pure client-side name filter over the loaded list in components/exercises/exercises-view.tsx, grouping preserved, distinct no-match vs catalog-empty states. 5 component tests.
+- #237 home coach insight (PR #240): new lib/home-insight.ts with a PURE `selectHomeInsight` (priority recommended-deload > stalled-lift > fresh-PR > on-track) and a server `getHomeInsight` that composes existing derivations (isStalled/exerciseProgress, recommendDeload, exerciseRecords, isoWeekStart). Display-only, no LLM, no writes; null on a fresh account. 8 unit tests on the selector.
+- #241 docs/media: README feature bullets + re-shot home.png (insight card) and catalog.png (search box) against a production build with the deterministic 12-week seed, self-verified healthy.
+- Demo force-redeployed to 209b29a (pull-model) and verified live (/login 200).
+
+**Challenged.** #237 (the more complex change, on the home render path) got an independent general-purpose review: verdict SHIP, all checks OK (PR detection mirrors the progress page's records query exactly; bodyweight inline matches effectiveWeight; stall grouped by name is safe given @@unique([userId, name]); ~6 bounded queries, no N+1; empty path renders nothing). Two harmless NITs, no action. #238/#241 self-verified (low risk). Accepted-change rate: 3 merged / 0 abandoned.
+
+**Deferred to human.** Nothing actioned. The deploy output reflagged the Prisma 5.22 -> 7.8 major bump - left as stop-for-human (major dep bump), not auto-taken.
