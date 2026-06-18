@@ -1,11 +1,12 @@
 import Link from 'next/link';
-import { Dumbbell, Play, AlertCircle } from 'lucide-react';
+import { Dumbbell, Play, AlertCircle, Lightbulb } from 'lucide-react';
 import { db } from '@/lib/db';
 import { requireSession } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { DAY_LABELS } from '@/lib/schemas/workout';
+import { getHomeInsight } from '@/lib/home-insight';
 
 export default async function DashboardPage() {
   const session = await requireSession();
@@ -27,6 +28,12 @@ export default async function DashboardPage() {
     },
   });
 
+  // Proactive coach insight (issue #237): the single highest-priority
+  // deterministic signal (recommended deload / stalled lift / fresh PR /
+  // on-track), composed from the existing derivations. Display-only, no LLM
+  // call; null on a brand-new account with no history.
+  const insight = await getHomeInsight(session.userId);
+
   return (
     <main className="flex-1 px-4 py-6">
       <div className="mx-auto flex max-w-2xl flex-col gap-6">
@@ -37,6 +44,20 @@ export default async function DashboardPage() {
             <p className="text-xs text-muted-foreground">{session.email}</p>
           </div>
         </div>
+
+        {insight && (
+          <Link href={insight.href} className="block">
+            <Card className="border-primary/30 bg-primary/5 transition-colors hover:bg-primary/10">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Lightbulb className="size-4 text-primary" />
+                  {insight.title}
+                </CardTitle>
+                <CardDescription>{insight.detail}</CardDescription>
+              </CardHeader>
+            </Card>
+          </Link>
+        )}
 
         {inProgressSession ? (
           <Card className="border-primary/40 bg-primary/5">
