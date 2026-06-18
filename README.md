@@ -59,6 +59,9 @@ more about *how a repo can maintain itself* than about the gym app, start there.
 - Stalled-lift detection plus a deload-week recommendation derived from your
   stalls and readiness trend - and a one-tap planned deload week that lightens
   every suggested load by 10% until it expires
+- Proactive home dashboard: a coach-insight card greets you with the single most
+  important deterministic signal right now (a due deload, a stalled lift, a fresh
+  personal record, or your training streak this week), no AI call required
 - Cardio too: CARDIO exercises log duration and distance (not weight x reps),
   show up in session history and summaries, and feed a weekly conditioning
   card (minutes, km, sessions vs the 150 min/week guideline) - without ever
@@ -87,6 +90,8 @@ more about *how a repo can maintain itself* than about the gym app, start there.
   preview, duplicate-safe, cardio rows included), and bring watch workouts in
   as TCX files (duration, distance, heart rate - no cloud account, no OAuth);
   export everything back out as CSV anytime, duration and distance included
+- Searchable exercise catalog: filter the full catalog by name as you type, on
+  top of custom exercises and the muscle-group grouping
 - Train in kilograms or pounds, a per-user preference (data is always stored in kg)
 - Installable PWA with offline session logging
 
