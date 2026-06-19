@@ -29,6 +29,24 @@ async function readFileText(file: File): Promise<string> {
   });
 }
 
+// Read a binary file (FIT, issue #249) as base64 so it can ride the JSON import
+// payload. Uses arrayBuffer() with a FileReader fallback for jsdom.
+async function readFileBase64(file: File): Promise<string> {
+  const buf =
+    typeof file.arrayBuffer === 'function'
+      ? await file.arrayBuffer()
+      : await new Promise<ArrayBuffer>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as ArrayBuffer);
+          reader.onerror = () => reject(reader.error);
+          reader.readAsArrayBuffer(file);
+        });
+  const b = new Uint8Array(buf);
+  let binary = '';
+  for (let i = 0; i < b.length; i++) binary += String.fromCharCode(b[i]!);
+  return btoa(binary);
+}
+
 interface LineError {
   line: number;
   reason: string;
@@ -61,7 +79,7 @@ interface TcxPreview {
   duplicateSessions: string[];
 }
 
-type ImportFormat = 'STRONG' | 'HEVY' | 'TCX' | 'GPX';
+type ImportFormat = 'STRONG' | 'HEVY' | 'TCX' | 'GPX' | 'FIT';
 
 // Copy and endpoint per supported source app. Strong keeps its unit toggle
 // (its export follows the app's unit setting); Hevy always exports kg, so the
@@ -112,6 +130,15 @@ const FORMAT_META: Record<
     accept: '.gpx,application/gpx+xml,application/xml,text/xml',
     fileKind: 'GPX',
   },
+  FIT: {
+    label: 'FIT file',
+    endpoint: '/api/import/fit',
+    exportHint:
+      'export the activity as a FIT file from your Garmin (or other) watch and it becomes one cardio session with duration, distance and heart rate',
+    hasUnitToggle: false,
+    accept: '.fit,application/vnd.ant.fit,application/octet-stream',
+    fileKind: 'FIT',
+  },
 };
 
 // CSV import from another tracker (issues #100/#113): pick the source app and
@@ -130,9 +157,10 @@ export function ImportSection() {
   const meta = FORMAT_META[format];
   const isTcx = format === 'TCX';
   const isGpx = format === 'GPX';
-  // TCX and GPX are both single-activity cardio imports: same summary shape,
-  // same preview/confirm UI.
-  const isCardioActivity = isTcx || isGpx;
+  const isFit = format === 'FIT';
+  // TCX, GPX and FIT are all single-activity cardio imports: same summary
+  // shape, same preview/confirm UI. FIT is the only binary one (read as base64).
+  const isCardioActivity = isTcx || isGpx || isFit;
 
   function pickFile() {
     fileRef.current?.click();
@@ -156,7 +184,8 @@ export function ImportSection() {
       toast.error('File too large: the limit is 5 MB.');
       return;
     }
-    const text = await readFileText(file);
+    // FIT is binary: carry it as base64. Every other format is text.
+    const text = isFit ? await readFileBase64(file) : await readFileText(file);
     setFileName(file.name);
     setCsvText(text);
     setPreview(null);
@@ -176,9 +205,11 @@ export function ImportSection() {
           ? { xml: fileText, mode }
           : isGpx
             ? { gpx: fileText, mode }
-            : meta.hasUnitToggle
-              ? { csv: fileText, unit, mode }
-              : { csv: fileText, mode },
+            : isFit
+              ? { fit: fileText, mode }
+              : meta.hasUnitToggle
+                ? { csv: fileText, unit, mode }
+                : { csv: fileText, mode },
       ),
     });
     const json = (await res.json().catch(() => null)) as
@@ -272,6 +303,7 @@ export function ImportSection() {
                 <SelectItem value="HEVY">Hevy</SelectItem>
                 <SelectItem value="TCX">TCX file</SelectItem>
                 <SelectItem value="GPX">GPX file</SelectItem>
+                <SelectItem value="FIT">FIT file</SelectItem>
               </SelectContent>
             </Select>
           </div>

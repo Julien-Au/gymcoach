@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { STRONG_CSV_MAX_BYTES } from '@/lib/import/strong-csv';
 import { TCX_MAX_BYTES } from '@/lib/import/tcx';
 import { GPX_MAX_BYTES } from '@/lib/import/gpx';
+import { FIT_MAX_BYTES } from '@/lib/import/fit';
 
 // Strong CSV import request (issue #100). The csv field carries the raw file
 // text (untrusted): the size cap is enforced here AND on the content-length
@@ -47,3 +48,18 @@ export const gpxImportInputSchema = z.object({
 });
 
 export type GpxImportInput = z.infer<typeof gpxImportInputSchema>;
+
+// FIT activity import request (issue #249). FIT is a BINARY format, so the file
+// is carried base64-encoded in `fit`; the route decodes it to bytes for the
+// parser. Base64 inflates by ~4/3, so the string cap is the byte cap scaled up
+// (the parser re-checks the decoded length against FIT_MAX_BYTES). Same
+// preview/confirm modes as the other imports.
+export const fitImportInputSchema = z.object({
+  fit: z
+    .string()
+    .min(1)
+    .max(Math.ceil(FIT_MAX_BYTES * 1.4), 'File too large: the limit is 5 MB.'),
+  mode: z.enum(['preview', 'confirm']),
+});
+
+export type FitImportInput = z.infer<typeof fitImportInputSchema>;
