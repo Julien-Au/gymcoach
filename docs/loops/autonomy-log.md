@@ -1628,3 +1628,26 @@ generate.
 
 **Challenged.** One independent general-purpose review (SHIP). Accepted-change rate:
 2 merged / 0 abandoned. **Deferred to human.** Nothing - the bump was the approved item.
+
+---
+
+## 2026-06-19 - Triage (post-Prisma-7 code-health): coverage + a safe advisory
+
+**Context.** Clean idle (0 PRs/issues). Triage swept: no code markers, roadmap complete. Two real items.
+
+**Shipped.**
+- #246: integration coverage for the server `getHomeInsight` (#237 had only the pure
+  selector unit-tested). Seeds deterministic rows and asserts every priority branch
+  (deload > stall > PR > on-track > none) + user-scoping.
+- #247: pinned `form-data` >=4.0.6 via an npm override to clear a high advisory
+  (GHSA-hmw2-7cc7-3qxx). It is transitive dev-only (jsdom); `npm audit fix` was
+  booby-trapped (it wanted to downgrade prisma 7->6 and next 15->9), so the surgical
+  override was the only safe path. Remaining serialize-javascript high needs a next-pwa
+  major downgrade -> left for a human.
+
+**Process note (local E2E flake).** `verify.sh --full` E2E failed locally with a VARYING
+failure set / moving failure points; root cause was machine load (avg ~26 on 12 cores from
+this session's docker builds), not a regression - registration worked 200 against a fresh
+server, the change was test-only, and CI's isolated E2E was green. Confirmed by merging on
+green CI without weakening any test. The local test Postgres (:5434) also has no E2E reset
+hook, so it accumulates state across manual runs - CI provisions a fresh PG per job.
