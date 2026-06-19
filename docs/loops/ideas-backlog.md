@@ -57,3 +57,4 @@ research and the product wedge). See `docs/loops/08-ideation-loop.md` for how th
 - shipped - e1RM-based percentage loading table on the per-exercise progress view (issue #226, 2026-06-16, PR #230) - review CLEAN; converts to display unit before rounding
 - shipped - proactive coach insight card on the home dashboard (issue #237, 2026-06-18, PR #240) - pure selector over existing signals (deload > stall > PR > on-track), display-only, no LLM call
 - shipped - search/filter box on the exercise catalog (issue #238, 2026-06-18, PR #239) - client-side name filter over the loaded list, no API change
+- proposed - import a Garmin FIT file as a cardio session (issue #249, 2026-06-19) - the research "killer wedge" (Garmin exports FIT natively); hand-rolled binary decoder of the session-summary message (duration/distance/avg+max HR), reuses the TCX/GPX cardio import pipeline + hostile-input controls; distinct from the anti-recommended OAuth/cloud Garmin integration
