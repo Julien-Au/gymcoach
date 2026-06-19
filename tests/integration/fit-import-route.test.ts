@@ -23,6 +23,14 @@ function importReq(body: unknown): Request {
 // HR 150/175, start 2026-03-15T09:00:00Z (same fixture as lib/import/fit.test.ts).
 const RUN_FIT =
   'DgLYUlkAAAAuRklUmYtAAAAAAAUAAQIBAoQCAoQEBIYDBIwABP8AAAAQKRlE0gQAAEEAABIACP0EhgIEhgUBAgcEhggEhgkEhhABAhEBAgHsLhlEECkZRAFg4xYAYOMWACChBwCWr/Jq';
+// Cycling, 60 min, 20 km, no HR, start 2025-12-01T07:30:00Z.
+const BIKE_FIT =
+  'DgLYUkoAAAAuRklU2JJAAAAAAAUAAQIBAoQCAoQEBIYDBIwABP8AAAD4949DCQAAAEEAABIABf0EhgIEhgUBAggEhgkEhgEIBpBD+PePQwKA7jYAgIQeAIKV';
+const CORRUPT_FIT = (() => {
+  const raw = Buffer.from(RUN_FIT, 'base64');
+  raw[20] = (raw[20]! ^ 0xff) & 0xff; // breaks the CRC
+  return raw.toString('base64');
+})();
 
 async function seedUser(email: string) {
   return db.user.create({ data: { email, passwordHash: 'x' } });
@@ -162,5 +170,83 @@ describe('POST /api/import/fit (confirm)', () => {
     expect(res.status).toBe(409);
     expect(await db.session.count({ where: { userId: user.id } })).toBe(0);
     expect(await db.set.count({ where: { session: { userId: user.id } } })).toBe(0);
+  });
+});
+
+describe('POST /api/import/fit (batch, issue #253)', () => {
+  it('previews every file in the batch, flagging the unparseable ones', async () => {
+    const user = await seedUser('fit-batch-preview@test.dev');
+    actAs(user.id);
+
+    const res = await postImport(
+      importReq({ fits: [RUN_FIT, CORRUPT_FIT, BIKE_FIT], mode: 'preview' }),
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.importable).toBe(2);
+    expect(body.skipped).toBe(1);
+    expect(body.activities).toHaveLength(3);
+    expect(body.activities[0]).toMatchObject({ index: 0, ok: true, sport: 'Running' });
+    expect(body.activities[1]).toMatchObject({ index: 1, ok: false });
+    expect(body.activities[2]).toMatchObject({ index: 2, ok: true, sport: 'Biking' });
+    // Preview never writes.
+    expect(await db.session.count({ where: { userId: user.id } })).toBe(0);
+  });
+
+  it('confirms a batch as multiple sessions, skipping the bad file', async () => {
+    const user = await seedUser('fit-batch-confirm@test.dev');
+    actAs(user.id);
+
+    const res = await postImport(
+      importReq({ fits: [RUN_FIT, CORRUPT_FIT, BIKE_FIT], mode: 'confirm' }),
+    );
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({
+      mode: 'confirm',
+      createdSessions: 2,
+      createdSets: 2,
+      skipped: 1,
+    });
+
+    const sessions = await db.session.findMany({ where: { userId: user.id } });
+    expect(sessions).toHaveLength(2);
+    // Two distinct cardio exercises were created (Running + Cycling).
+    const exercises = await db.exercise.findMany({
+      where: { userId: user.id },
+      select: { name: true },
+    });
+    expect(exercises.map((e) => e.name).sort()).toEqual(['Cycling', 'Running']);
+  });
+
+  it('requires auth for a batch too', async () => {
+    mockUserId.mockResolvedValue(null);
+    const res = await postImport(importReq({ fits: [RUN_FIT], mode: 'preview' }));
+    expect(res.status).toBe(401);
+  });
+
+  it('skips a file that conflicts with a non-cardio exercise without failing the batch', async () => {
+    const user = await seedUser('fit-batch-collision@test.dev');
+    actAs(user.id);
+    // The user owns a non-cardio "Running"; the run file would collide (409) but
+    // must not abort the batch - the cycling file still imports.
+    await db.exercise.create({
+      data: { userId: user.id, name: 'Running', muscleGroup: 'QUADS', category: 'COMPOUND' },
+    });
+
+    const res = await postImport(importReq({ fits: [RUN_FIT, BIKE_FIT], mode: 'confirm' }));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({
+      mode: 'confirm',
+      createdSessions: 1, // only the cycling file
+      createdSets: 1,
+      skipped: 1, // the colliding run file
+    });
+    // Exactly one session (cycling) was written; the run collision wrote nothing.
+    const sessions = await db.session.findMany({
+      where: { userId: user.id },
+      include: { sets: { include: { exercise: true } } },
+    });
+    expect(sessions).toHaveLength(1);
+    expect(sessions[0]?.sets[0]?.exercise.name).toBe('Cycling');
   });
 });

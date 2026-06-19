@@ -103,7 +103,7 @@ describe('ImportSection', () => {
     await user.upload(fileInput(), big);
 
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(toast.error).toHaveBeenCalledWith('File too large: the limit is 5 MB.');
+    expect(toast.error).toHaveBeenCalledWith('A file is too large: the limit is 5 MB each.');
   });
 
   it('surfaces a server rejection and resets the picker', async () => {
