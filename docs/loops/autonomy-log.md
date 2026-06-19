@@ -1651,3 +1651,36 @@ this session's docker builds), not a regression - registration worked 200 agains
 server, the change was test-only, and CI's isolated E2E was green. Confirmed by merging on
 green CI without weakening any test. The local test Postgres (:5434) also has no E2E reset
 hook, so it accumulates state across manual runs - CI provisions a fresh PG per job.
+
+---
+
+## 2026-06-19 - Feature: Garmin FIT file import (#249, the cardio-import wedge)
+
+**Context.** Last ideate filed #249 (FIT import) as the one high-value remaining item; operator said continue, so this loop implemented it. FIT is the BINARY format Garmin/most watches export natively - the research-flagged file-based cardio import wedge, and the one major format TCX/GPX did not cover. Additive, complex (binary parser), so reinforced controls.
+
+**Decided / shipped (#251).**
+- lib/import/fit.ts: a hand-rolled, dependency-free decoder of the FIT session-summary
+  message (duration/distance/avg+max HR/sport). No third-party FIT library (its parsing is
+  extra attack surface), mirroring the no-entity-decode discipline of the XML importers.
+  Bounds-checks every offset/length by construction, caps records, verifies the FIT CRC-16,
+  range-checks every persisted value via the shared cardio zod schema.
+- app/api/import/fit/route.ts: mirrors the GPX/TCX routes (shared import rate bucket, body
+  cap, base64-decoded binary, ownership-scoped transactional confirm; a parse never writes).
+- Settings exposes "FIT file" (the only binary import, read as base64).
+
+**How correctness was earned (not assumed).** The decoder was validated against fixtures
+produced by the OFFICIAL Garmin FIT SDK (@garmin/fitsdk) - added as a dev dep ONLY to
+generate spec-compliant bytes, then REMOVED (0 lockfile refs; fixtures embedded as base64).
+So the hand-rolled decoder is checked against real bytes a Garmin device would write, not
+against my own encoding assumptions. 14 unit (hostile battery: short/bad-sig/bad-header/
+oversize-datasize/CRC-mismatch/oversize-blob/random/no-session/out-of-range + a full
+truncation sweep that must never throw), 8 route integration, 1 E2E.
+
+**Challenged.** Independent HOSTILE security review (untrusted binary parser): verdict SHIP.
+~30 crafted attacks (OOB, DoS, integer/precision, CRC, value-smuggling) all rejected or
+bounded; confirmed linear on 5 MB adversarial files (~120 ms), every read in-bounds, zod
+backstop rejects NaN/Infinity, ownership scoping intact. No blockers. Full --full gate green
+(15 E2E incl. the new spec). Accepted-change rate: 1 merged / 0 abandoned.
+
+**Deferred to human.** Nothing. Per-record GPS/HR streams were intentionally out of scope
+(summary-only slice); a future tick could add them if asked.
