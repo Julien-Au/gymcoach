@@ -11,6 +11,7 @@ import { applyBodyweight, best1RM, totalVolume } from '@/lib/stats';
 import { formatCardioSet, formatDistance, formatDuration, formatPace, formatSpeed, sumCardioWorkingSets } from '@/lib/cardio';
 import { formatWeight } from '@/lib/units';
 import { DeleteSessionButton } from '@/components/history/delete-session-button';
+import { ActivityTrackChart } from '@/components/history/activity-track-chart';
 
 interface Params {
   params: Promise<{ id: string }>;
@@ -284,7 +285,17 @@ export default async function HistorySessionPage(props: Params) {
                             })}
                           </tbody>
                         </table>
-                      ) : (
+                      ) : null}
+                      {isCardio &&
+                        entry.sets.map((s) =>
+                          Array.isArray(s.track) && s.track.length > 0 ? (
+                            <ActivityTrackChart
+                              key={`track-${s.id}`}
+                              track={s.track as { t: number; d?: number; hr?: number }[]}
+                            />
+                          ) : null,
+                        )}
+                      {!isCardio && (
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">

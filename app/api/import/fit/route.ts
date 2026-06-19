@@ -4,6 +4,7 @@ import { ApiError, handleApiError, parseJsonBody, requireApiUserId } from '@/lib
 import { rateLimit } from '@/lib/rate-limit';
 import { fitImportInputSchema } from '@/lib/schemas/import';
 import { parseFit, fitExerciseName, type FitActivity } from '@/lib/import/fit';
+import { Prisma } from '@/prisma/generated/client';
 
 // How close an existing session's start has to be to count as a likely
 // duplicate of the imported activity (the preview warns; confirm still works).
@@ -93,6 +94,10 @@ async function confirmOne(userId: string, activity: FitActivity) {
         distanceM: activity.distanceM,
         avgHr: activity.avgHr,
         maxHr: activity.maxHr,
+        // The downsampled pace/HR track (issue #254), when the file carried one.
+        ...(activity.track
+          ? { track: activity.track as unknown as Prisma.InputJsonValue }
+          : {}),
         completedAt: finishedAt,
       },
     });

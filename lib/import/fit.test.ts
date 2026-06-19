@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, it, expect } from 'vitest';
 import { parseFit, fitExerciseName, FIT_MAX_BYTES } from './fit';
 
@@ -20,7 +21,14 @@ const FIXTURES = {
   // Swimming sport -> maps to Other.
   swimming:
     'DgLYUlIAAAAuRklU2DhAAAAAAAUAAQIBAoQCAoQEBIYDBIwABP8AAAAg18RDBQAAAEEAABIAB/0EhgIEhgUBAggEhgkEhhABAhEBAgEo3sRDINfEQwVAdxsA8EkCAIygYfw=',
+  // Running with SIX record samples (one/min): distance 0..1000 m, HR 140..165.
+  withRecords:
+    'DgLYUqwAAAAuRklUVvBAAAAAAAUAAQIBAoQCAoQEBIYDBIwABP8AAADgRTtEBwAAAEEAABQABP0EhgUEhgMBAgYChAHgRTtEAAAAAIzkDAEcRjtEIE4AAJHkDAFYRjtEQJwAAJbkDAGURjtEYOoAAJvkDAHQRjtEgDgBAKDkDAEMRztEoIYBAKXkDEIAABIAB/0EhgIEhgUBAggEhgkEhhABAhEBAgJIRztE4EU7RAFAfgUAoIYBAJalo+o=',
 };
+
+// A larger run (1100 one-second records) used to assert the downsample cap.
+// Committed as a file so the test stays readable.
+const FIT_1100_RECORDS = readFileSync('tests/fixtures/fit-1100-records.b64', 'utf8').trim();
 
 function bytes(b64: string): Uint8Array {
   return new Uint8Array(Buffer.from(b64, 'base64'));
@@ -37,7 +45,36 @@ describe('parseFit (issue #249)', () => {
       avgHr: 150,
       maxHr: 175,
       sport: 'Running',
+      track: null, // this fixture carries no record stream
     });
+  });
+
+  it('extracts a downsampled pace/HR track from record messages (issue #254)', () => {
+    const r = parseFit(bytes(FIXTURES.withRecords));
+    expect(r.ok).toBe(true);
+    expect(r.activity?.track).toEqual([
+      { t: 0, d: 0, hr: 140 },
+      { t: 60, d: 200, hr: 145 },
+      { t: 120, d: 400, hr: 150 },
+      { t: 180, d: 600, hr: 155 },
+      { t: 240, d: 800, hr: 160 },
+      { t: 300, d: 1000, hr: 165 },
+    ]);
+  });
+
+  it('downsamples a long track to the point cap and keeps it ordered from t=0', () => {
+    const r = parseFit(bytes(FIT_1100_RECORDS));
+    expect(r.ok).toBe(true);
+    const track = r.activity!.track!;
+    expect(track.length).toBeGreaterThan(1); // it has a track
+    expect(track.length).toBeLessThanOrEqual(500); // ...but is capped/downsampled
+    expect(track.length).toBeLessThan(1100); // ...below the raw record count
+    expect(track[0]!.t).toBe(0);
+    // Monotonic non-decreasing time and cumulative distance.
+    for (let i = 1; i < track.length; i++) {
+      expect(track[i]!.t).toBeGreaterThan(track[i - 1]!.t);
+      expect(track[i]!.d!).toBeGreaterThanOrEqual(track[i - 1]!.d!);
+    }
   });
 
   it('decodes a real cycling session with no heart rate', () => {

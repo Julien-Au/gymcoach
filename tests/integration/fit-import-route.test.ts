@@ -31,6 +31,9 @@ const CORRUPT_FIT = (() => {
   raw[20] = (raw[20]! ^ 0xff) & 0xff; // breaks the CRC
   return raw.toString('base64');
 })();
+// Running with six record samples (distance 0..1000 m, HR 140..165).
+const RECORDS_FIT =
+  'DgLYUqwAAAAuRklUVvBAAAAAAAUAAQIBAoQCAoQEBIYDBIwABP8AAADgRTtEBwAAAEEAABQABP0EhgUEhgMBAgYChAHgRTtEAAAAAIzkDAEcRjtEIE4AAJHkDAFYRjtEQJwAAJbkDAGURjtEYOoAAJvkDAHQRjtEgDgBAKDkDAEMRztEoIYBAKXkDEIAABIAB/0EhgIEhgUBAggEhgkEhhABAhEBAgJIRztE4EU7RAFAfgUAoIYBAJalo+o=';
 
 async function seedUser(email: string) {
   return db.user.create({ data: { email, passwordHash: 'x' } });
@@ -143,6 +146,29 @@ describe('POST /api/import/fit (confirm)', () => {
       muscleGroup: 'OTHER',
       userId: user.id,
     });
+  });
+
+  it('stores the downsampled pace/HR track on the set when the file has records (#254)', async () => {
+    const user = await seedUser('fit-track@test.dev');
+    actAs(user.id);
+
+    const res = await postImport(importReq({ fit: RECORDS_FIT, mode: 'confirm' }));
+    expect(res.status).toBe(200);
+
+    const set = await db.set.findFirst({ where: { session: { userId: user.id } } });
+    expect(Array.isArray(set?.track)).toBe(true);
+    const track = set?.track as Array<{ t: number; d?: number; hr?: number }>;
+    expect(track).toHaveLength(6);
+    expect(track[0]).toEqual({ t: 0, d: 0, hr: 140 });
+    expect(track[5]).toEqual({ t: 300, d: 1000, hr: 165 });
+  });
+
+  it('leaves the track null when the file carries no records', async () => {
+    const user = await seedUser('fit-notrack@test.dev');
+    actAs(user.id);
+    await postImport(importReq({ fit: RUN_FIT, mode: 'confirm' }));
+    const set = await db.set.findFirst({ where: { session: { userId: user.id } } });
+    expect(set?.track ?? null).toBeNull();
   });
 
   it('reuses the user-owned cardio exercise instead of creating a duplicate', async () => {
