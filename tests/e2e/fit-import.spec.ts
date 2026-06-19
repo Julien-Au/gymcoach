@@ -10,6 +10,9 @@ const RUN_FIT_B64 =
   'DgLYUlkAAAAuRklUmYtAAAAAAAUAAQIBAoQCAoQEBIYDBIwABP8AAAAQKRlE0gQAAEEAABIACP0EhgIEhgUBAgcEhggEhgkEhhABAhEBAgHsLhlEECkZRAFg4xYAYOMWACChBwCWr/Jq';
 const BIKE_FIT_B64 =
   'DgLYUkoAAAAuRklU2JJAAAAAAAUAAQIBAoQCAoQEBIYDBIwABP8AAAD4949DCQAAAEEAABIABf0EhgIEhgUBAggEhgkEhgEIBpBD+PePQwKA7jYAgIQeAIKV';
+// A run carrying record samples -> a session with an HR-over-time track (#254).
+const RECORDS_FIT_B64 =
+  'DgLYUqwAAAAuRklUVvBAAAAAAAUAAQIBAoQCAoQEBIYDBIwABP8AAADgRTtEBwAAAEEAABQABP0EhgUEhgMBAgYChAHgRTtEAAAAAIzkDAEcRjtEIE4AAJHkDAFYRjtEQJwAAJbkDAGURjtEYOoAAJvkDAHQRjtEgDgBAKDkDAEMRztEoIYBAKXkDEIAABIAB/0EhgIEhgUBAggEhgkEhhABAhEBAgJIRztE4EU7RAFAfgUAoIYBAJalo+o=';
 
 test('a lifter can import multiple FIT activities at once', async ({ page }) => {
   const registerRes = await page.request.post('/api/auth/register', {
@@ -30,28 +33,28 @@ test('a lifter can import multiple FIT activities at once', async ({ page }) => 
   await page.getByRole('option', { name: 'FIT file' }).click();
   await expect(page.getByText('Import a FIT activity')).toBeVisible();
 
-  // Upload two binary files at once: the aggregated dry-run preview appears.
+  // Upload three binary files at once: the aggregated dry-run preview appears.
   await page.locator('input[type="file"][accept^=".fit"]').setInputFiles([
     { name: 'run.fit', mimeType: 'application/octet-stream', buffer: Buffer.from(RUN_FIT_B64, 'base64') },
     { name: 'ride.fit', mimeType: 'application/octet-stream', buffer: Buffer.from(BIKE_FIT_B64, 'base64') },
+    { name: 'run-hr.fit', mimeType: 'application/octet-stream', buffer: Buffer.from(RECORDS_FIT_B64, 'base64') },
   ]);
 
   const preview = page.getByTestId('import-preview');
   await expect(preview).toBeVisible();
-  await expect(preview).toContainText('2 activities to import');
-  await expect(preview).toContainText('Running on');
-  await expect(preview).toContainText('avg HR 150 bpm');
+  await expect(preview).toContainText('3 activities to import');
   await expect(preview).toContainText('Biking on');
 
-  // Confirm the batch, then find both sessions in the history.
-  await page.getByRole('button', { name: /import 2 sessions/i }).click();
+  // Confirm the batch, then find the sessions in the history.
+  await page.getByRole('button', { name: /import 3 sessions/i }).click();
   await expect(page.getByTestId('import-preview')).not.toBeVisible();
 
   await page.goto('/history');
   await expect(page.getByText('March 15, 2026')).toBeVisible();
   await expect(page.getByText('December 01, 2025')).toBeVisible();
 
-  await page.getByRole('link', { name: /March 15, 2026/ }).click();
+  // The records run (April 10) shows a heart-rate-over-time chart (#254).
+  await page.getByRole('link', { name: /April 10, 2026/ }).click();
   await expect(page.getByRole('heading', { name: 'Running' })).toBeVisible();
-  await expect(page.getByText('150 bpm')).toBeVisible();
+  await expect(page.getByTestId('activity-track-chart')).toBeVisible();
 });

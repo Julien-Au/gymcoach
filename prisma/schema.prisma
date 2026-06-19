@@ -239,6 +239,11 @@ model Set {
   // present (enforced by every writer), NULL on strength sets and on cardio
   // logged without it.
   maxHr       Int?
+  // Downsampled pace/HR track of an imported cardio activity (issue #254,
+  // additive): a JSON array of up to a few hundred points
+  // [{ t, d?, hr? }] where t = seconds from the start, d = cumulative meters,
+  // hr = bpm. NULL on strength sets and on cardio logged without a track.
+  track       Json?
   notes       String?
   isWarmup    Boolean  @default(false)
   isDropSet   Boolean  @default(false)

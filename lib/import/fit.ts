@@ -31,8 +31,9 @@ export const FIT_MAX_BYTES = IMPORT_CSV_MAX_BYTES;
 // timestamps are uint32 seconds past that.
 const FIT_EPOCH_OFFSET_SEC = 631065600;
 
-// Global message number of the session summary, and the field definition
-// numbers we read from it (per the FIT profile).
+// Global message numbers and the field definition numbers we read (per the FIT
+// profile). The session summary rolls up the activity; record messages are the
+// per-sample stream we downsample into a track (issue #254).
 const MESG_SESSION = 18;
 const FIELD_START_TIME = 2;
 const FIELD_SPORT = 5;
@@ -41,6 +42,17 @@ const FIELD_TOTAL_TIMER_TIME = 8; // scale 1000 -> seconds (preferred)
 const FIELD_TOTAL_DISTANCE = 9; // scale 100 -> meters
 const FIELD_AVG_HEART_RATE = 16; // bpm
 const FIELD_MAX_HEART_RATE = 17; // bpm
+
+const MESG_RECORD = 20;
+const FIELD_TIMESTAMP = 253; // uint32 FIT seconds
+const FIELD_RECORD_DISTANCE = 5; // scale 100 -> meters
+const FIELD_RECORD_HEART_RATE = 3; // bpm
+
+// Track sizing: collect at most this many raw records (a ~28h activity at 1 Hz)
+// so a hostile record count cannot blow up memory, then downsample to at most
+// this many points for storage/charting.
+const MAX_RAW_RECORDS = 100_000;
+const MAX_TRACK_POINTS = 500;
 
 // Defence-in-depth bound on how many records we will walk even within the
 // declared data size (a 5 MB file of 1-byte headers is ~5e6 records).
@@ -52,6 +64,14 @@ const SPORT_CYCLING = 2;
 
 export type FitSport = 'Running' | 'Biking' | 'Other';
 
+// One downsampled track point: t = seconds from the activity start, d =
+// cumulative meters (optional), hr = bpm (optional).
+export interface TrackPoint {
+  t: number;
+  d?: number;
+  hr?: number;
+}
+
 export interface FitActivity {
   startedAt: Date;
   durationSec: number;
@@ -59,6 +79,9 @@ export interface FitActivity {
   avgHr: number | null;
   maxHr: number | null;
   sport: FitSport;
+  // Downsampled pace/HR samples (issue #254), or null when the file carried no
+  // usable record stream.
+  track: TrackPoint[] | null;
 }
 
 export interface FitParseResult {
@@ -146,10 +169,39 @@ interface RawSession {
   sport?: number;
 }
 
+interface RawRecord {
+  timestamp?: number; // FIT seconds
+  distance?: number; // scaled (raw / 100 = meters)
+  hr?: number; // bpm
+}
+
 function mapSport(sport: number | undefined): FitSport {
   if (sport === SPORT_RUNNING) return 'Running';
   if (sport === SPORT_CYCLING) return 'Biking';
   return 'Other';
+}
+
+// Downsample the collected per-sample records into at most MAX_TRACK_POINTS,
+// each relative to the activity start. Drops records with no timestamp, points
+// before the start, and out-of-range HR; returns null when nothing usable.
+function buildTrack(rawRecords: RawRecord[], startTimeFitSec: number): TrackPoint[] | null {
+  if (rawRecords.length === 0) return null;
+  const stride = Math.max(1, Math.ceil(rawRecords.length / MAX_TRACK_POINTS));
+  const points: TrackPoint[] = [];
+  for (let i = 0; i < rawRecords.length; i += stride) {
+    const r = rawRecords[i]!;
+    if (r.timestamp === undefined) continue;
+    const t = r.timestamp - startTimeFitSec;
+    if (t < 0 || t > MAX_DURATION_SEC) continue;
+    const point: TrackPoint = { t };
+    if (r.distance !== undefined) {
+      const d = +(r.distance / 100).toFixed(2);
+      if (d >= 0 && d <= MAX_DISTANCE_M) point.d = d;
+    }
+    if (r.hr !== undefined && r.hr >= AVG_HR_MIN && r.hr <= AVG_HR_MAX) point.hr = r.hr;
+    points.push(point);
+  }
+  return points.length > 0 ? points : null;
 }
 
 // Decode a FIT binary into ONE normalized cardio activity, or a fatal error.
@@ -188,6 +240,7 @@ export function parseFit(input: Uint8Array): FitParseResult {
 
   const defs = new Map<number, MesgDef>();
   let session: RawSession | null = null;
+  const rawRecords: RawRecord[] = [];
   let pos = headerSize;
   let records = 0;
 
@@ -205,6 +258,8 @@ export function parseFit(input: Uint8Array): FitParseResult {
       if (pos + def.dataSize > dataEnd) return fatal('Corrupt FIT file (truncated record).');
       if (def.globalNum === MESG_SESSION && !session) {
         session = readSession(input, pos, def);
+      } else if (def.globalNum === MESG_RECORD && rawRecords.length < MAX_RAW_RECORDS) {
+        rawRecords.push(readRecord(input, pos, def));
       }
       pos += def.dataSize;
       continue;
@@ -258,6 +313,8 @@ export function parseFit(input: Uint8Array): FitParseResult {
     if (pos + def.dataSize > dataEnd) return fatal('Corrupt FIT file (truncated record).');
     if (def.globalNum === MESG_SESSION && !session) {
       session = readSession(input, pos, def);
+    } else if (def.globalNum === MESG_RECORD && rawRecords.length < MAX_RAW_RECORDS) {
+      rawRecords.push(readRecord(input, pos, def));
     }
     pos += def.dataSize;
   }
@@ -296,7 +353,34 @@ export function parseFit(input: Uint8Array): FitParseResult {
   if (!checked.success) {
     return fatal('FIT session values are out of the supported range.');
   }
-  return { ok: true, fatalError: null, activity: checked.data };
+  // The track is sanitized/bounded by buildTrack (not the summary schema), then
+  // attached to the validated summary.
+  const track = buildTrack(rawRecords, session.startTime);
+  return { ok: true, fatalError: null, activity: { ...checked.data, track } };
+}
+
+// Extract the record fields we care about from one data message at `pos`.
+function readRecord(input: Uint8Array, pos: number, def: MesgDef): RawRecord {
+  const out: RawRecord = {};
+  let offset = pos;
+  for (const field of def.fields) {
+    const value = readUint(input, offset, field.size, def.bigEndian);
+    if (!isInvalid(value, field.size)) {
+      switch (field.num) {
+        case FIELD_TIMESTAMP:
+          out.timestamp = value;
+          break;
+        case FIELD_RECORD_DISTANCE:
+          out.distance = value;
+          break;
+        case FIELD_RECORD_HEART_RATE:
+          out.hr = value;
+          break;
+      }
+    }
+    offset += field.size;
+  }
+  return out;
 }
 
 // Extract the session fields we care about from one data message at `pos`.
