@@ -1684,3 +1684,32 @@ backstop rejects NaN/Infinity, ownership scoping intact. No blockers. Full --ful
 
 **Deferred to human.** Nothing. Per-record GPS/HR streams were intentionally out of scope
 (summary-only slice); a future tick could add them if asked.
+
+---
+
+## 2026-06-19 - Watch-data features: multi-file import + detailed track/chart (#253, #254)
+
+**Context.** After FIT import (#251) the operator asked "tu peux tout lancer ! On veut la
+meilleure app du monde" - i.e. ship the two natural extensions I had flagged: bulk import
+and the detailed pace/HR track. Filed both (#253, #254), then implemented in sliced PRs.
+
+**Decided / shipped.**
+- #255 multi-file FIT import: the FIT route takes a `fits[]` batch (1..50) alongside the
+  single `fit` (kept byte-for-byte backward-compatible), aggregated preview, partial-success
+  confirm (each file its own transaction). "Rapatrie tout mon historique."
+- #256 detailed track (#254 slices 1+2): additive nullable Set.track JSONB; the FIT decoder
+  reads RECORD messages into a track downsampled to <=500 points (raw bounded at 100k);
+  confirm stores it; an HR-over-time Recharts line on the history detail. Decoder validated
+  against official Garmin SDK fixtures (dev-only, removed).
+
+**Challenged.** Two independent reviews.
+- #255 review caught a real BLOCKER: a per-file confirmOne throw (e.g. a 409 name collision)
+  aborted the whole batch AFTER earlier files had committed. Fixed: per-file ApiError is
+  skipped (systemic errors still abort); added a collision-in-batch integration test.
+- #256 hostile review: SHIP, no blockers - verified the record-stream DoS bounds empirically
+  (300k records -> 57 ms, heap capped at 100k, track <=500), value sanitization (negative/
+  NaN/out-of-range dropped), additive-only migration, no other Set reader selects the heavy
+  column, preview excludes it, numbers-only so no XSS.
+Accepted-change rate: 2 merged / 0 abandoned (1 mid-PR fix).
+
+**Deferred to human.** Nothing. Slice 3 (TCX/GPX per-record point capture) left un-filed.
