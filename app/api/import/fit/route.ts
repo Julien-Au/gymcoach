@@ -169,7 +169,12 @@ export async function POST(req: Request) {
       });
     }
 
-    // Confirm: import every file that parsed; a skipped one never blocks the rest.
+    // Confirm: import every file that parsed; a single file that fails never
+    // blocks the rest (each is its own transaction, so earlier files stay
+    // committed). An unparseable file, or a per-file domain conflict (e.g. the
+    // default name collides with a non-cardio exercise -> ApiError 409), is
+    // counted as skipped rather than failing the whole batch. A SYSTEMIC error
+    // (DB down, etc.) is re-thrown so the request fails honestly.
     let createdSessions = 0;
     let createdExercises = 0;
     let skipped = 0;
@@ -178,9 +183,17 @@ export async function POST(req: Request) {
         skipped += 1;
         continue;
       }
-      const result = await confirmOne(userId, p.activity);
-      createdSessions += 1;
-      if (result.createdExercise) createdExercises += 1;
+      try {
+        const result = await confirmOne(userId, p.activity);
+        createdSessions += 1;
+        if (result.createdExercise) createdExercises += 1;
+      } catch (err) {
+        if (err instanceof ApiError) {
+          skipped += 1;
+          continue;
+        }
+        throw err;
+      }
     }
     return NextResponse.json({
       mode: 'confirm',

@@ -223,4 +223,30 @@ describe('POST /api/import/fit (batch, issue #253)', () => {
     const res = await postImport(importReq({ fits: [RUN_FIT], mode: 'preview' }));
     expect(res.status).toBe(401);
   });
+
+  it('skips a file that conflicts with a non-cardio exercise without failing the batch', async () => {
+    const user = await seedUser('fit-batch-collision@test.dev');
+    actAs(user.id);
+    // The user owns a non-cardio "Running"; the run file would collide (409) but
+    // must not abort the batch - the cycling file still imports.
+    await db.exercise.create({
+      data: { userId: user.id, name: 'Running', muscleGroup: 'QUADS', category: 'COMPOUND' },
+    });
+
+    const res = await postImport(importReq({ fits: [RUN_FIT, BIKE_FIT], mode: 'confirm' }));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({
+      mode: 'confirm',
+      createdSessions: 1, // only the cycling file
+      createdSets: 1,
+      skipped: 1, // the colliding run file
+    });
+    // Exactly one session (cycling) was written; the run collision wrote nothing.
+    const sessions = await db.session.findMany({
+      where: { userId: user.id },
+      include: { sets: { include: { exercise: true } } },
+    });
+    expect(sessions).toHaveLength(1);
+    expect(sessions[0]?.sets[0]?.exercise.name).toBe('Cycling');
+  });
 });

@@ -56,8 +56,9 @@ export type GpxImportInput = z.infer<typeof gpxImportInputSchema>;
 //
 // A single file rides in `fit` (the original contract, kept for compatibility);
 // a batch (issue #253, "import my whole watch history") rides in `fits`, capped
-// at FIT_MAX_BATCH files. Exactly one of the two must be present. Same
-// preview/confirm modes as the other imports.
+// at FIT_MAX_BATCH files. At least one of the two must be present; if both are
+// sent the route takes the batch path (`fits` wins). Same preview/confirm modes
+// as the other imports.
 export const FIT_MAX_BATCH = 50;
 const fitFileString = z
   .string()
