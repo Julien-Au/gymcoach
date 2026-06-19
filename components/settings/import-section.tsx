@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { formatCardioSet } from '@/lib/cardio';
+import { FIT_MAX_BATCH } from '@/lib/schemas/import';
 import {
   Select,
   SelectContent,
@@ -77,6 +78,19 @@ interface TcxPreview {
   avgHr: number | null;
   maxHr: number | null;
   duplicateSessions: string[];
+}
+
+// FIT batch preview (issue #253): one entry per uploaded file. A file that
+// failed to parse comes back ok:false with an error instead of a summary.
+interface FitBatchActivity extends Partial<TcxPreview> {
+  index: number;
+  ok: boolean;
+  error?: string;
+}
+interface FitBatchPreview {
+  activities: FitBatchActivity[];
+  importable: number;
+  skipped: number;
 }
 
 type ImportFormat = 'STRONG' | 'HEVY' | 'TCX' | 'GPX' | 'FIT';
@@ -152,6 +166,10 @@ export function ImportSection() {
   const [csvText, setCsvText] = useState<string | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
   const [tcxPreview, setTcxPreview] = useState<TcxPreview | null>(null);
+  // FIT supports a multi-file batch (issue #253): the base64 payloads and the
+  // aggregated per-file preview live here, separate from the single-file states.
+  const [fitPayloads, setFitPayloads] = useState<string[] | null>(null);
+  const [fitBatch, setFitBatch] = useState<FitBatchPreview | null>(null);
   const [busy, setBusy] = useState(false);
 
   const meta = FORMAT_META[format];
@@ -166,31 +184,108 @@ export function ImportSection() {
     fileRef.current?.click();
   }
 
-  function switchFormat(next: ImportFormat) {
-    if (busy) return;
-    setFormat(next);
-    // A pending preview was produced by the other parser; drop it.
+  function resetPreviews() {
     setCsvText(null);
     setFileName(null);
     setPreview(null);
     setTcxPreview(null);
+    setFitPayloads(null);
+    setFitBatch(null);
+  }
+
+  function switchFormat(next: ImportFormat) {
+    if (busy) return;
+    setFormat(next);
+    // A pending preview was produced by the other parser; drop it.
+    resetPreviews();
   }
 
   async function onFilePicked(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0] ?? null;
+    const files = Array.from(e.target.files ?? []);
     e.target.value = '';
-    if (!file) return;
-    if (file.size > MAX_FILE_BYTES) {
-      toast.error('File too large: the limit is 5 MB.');
+    if (files.length === 0) return;
+    if (files.some((f) => f.size > MAX_FILE_BYTES)) {
+      toast.error('A file is too large: the limit is 5 MB each.');
       return;
     }
-    // FIT is binary: carry it as base64. Every other format is text.
-    const text = isFit ? await readFileBase64(file) : await readFileText(file);
+
+    // FIT (issue #253) is binary AND supports a multi-file batch.
+    if (isFit) {
+      if (files.length > FIT_MAX_BATCH) {
+        toast.error(`Up to ${FIT_MAX_BATCH} FIT files at once.`);
+        return;
+      }
+      const payloads = await Promise.all(files.map(readFileBase64));
+      setFileName(files.map((f) => f.name).join(', '));
+      setFitPayloads(payloads);
+      setPreview(null);
+      setTcxPreview(null);
+      await requestFitPreview(payloads);
+      return;
+    }
+
+    // Every other format is single-file text.
+    const file = files[0]!;
+    const text = await readFileText(file);
     setFileName(file.name);
     setCsvText(text);
     setPreview(null);
     setTcxPreview(null);
     await requestPreview(text);
+  }
+
+  async function callFitBatch(payloads: string[], mode: 'preview' | 'confirm') {
+    const res = await fetch('/api/import/fit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fits: payloads, mode }),
+    });
+    const json = (await res.json().catch(() => null)) as
+      | (FitBatchPreview & {
+          createdSessions?: number;
+          createdSets?: number;
+          createdExercises?: number;
+          skipped?: number;
+          error?: string;
+        })
+      | null;
+    if (!res.ok) throw new Error(json?.error ?? `Error ${res.status}`);
+    return json;
+  }
+
+  async function requestFitPreview(payloads: string[]) {
+    setBusy(true);
+    try {
+      const json = await callFitBatch(payloads, 'preview');
+      if (json) setFitBatch(json);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Preview failed.');
+      setFitPayloads(null);
+      setFileName(null);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function confirmFitBatch() {
+    if (!fitPayloads) return;
+    setBusy(true);
+    try {
+      const json = await callFitBatch(fitPayloads, 'confirm');
+      const sessions = json?.createdSessions ?? 0;
+      const newEx = json?.createdExercises ?? 0;
+      const skipped = json?.skipped ?? 0;
+      toast.success(
+        `Imported ${sessions} session${sessions === 1 ? '' : 's'}` +
+          (newEx > 0 ? `, ${newEx} new exercise${newEx === 1 ? '' : 's'}` : '') +
+          (skipped > 0 ? ` (${skipped} file${skipped === 1 ? '' : 's'} skipped).` : '.'),
+      );
+      resetPreviews();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Import failed.');
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function callApi(fileText: string, mode: 'preview' | 'confirm') {
@@ -205,11 +300,9 @@ export function ImportSection() {
           ? { xml: fileText, mode }
           : isGpx
             ? { gpx: fileText, mode }
-            : isFit
-              ? { fit: fileText, mode }
-              : meta.hasUnitToggle
-                ? { csv: fileText, unit, mode }
-                : { csv: fileText, mode },
+            : meta.hasUnitToggle
+              ? { csv: fileText, unit, mode }
+              : { csv: fileText, mode },
       ),
     });
     const json = (await res.json().catch(() => null)) as
@@ -231,7 +324,8 @@ export function ImportSection() {
     setBusy(true);
     try {
       const json = await callApi(fileText, 'preview');
-      if (json && isCardioActivity) setTcxPreview(json);
+      // TCX/GPX are single-activity cardio (FIT has its own batch path).
+      if (json && (isTcx || isGpx)) setTcxPreview(json);
       else if (json) setPreview(json);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Preview failed.');
@@ -269,10 +363,7 @@ export function ImportSection() {
   }
 
   function cancel() {
-    setCsvText(null);
-    setFileName(null);
-    setPreview(null);
-    setTcxPreview(null);
+    resetPreviews();
   }
 
   return (
@@ -333,9 +424,11 @@ export function ImportSection() {
               <FileUp className="size-4" />
             )}
             <span className="ml-2">
-              {isCardioActivity
-                ? `Choose a ${meta.fileKind} file`
-                : `Choose a ${meta.label} ${meta.fileKind} file`}
+              {isFit
+                ? 'Choose FIT files'
+                : isCardioActivity
+                  ? `Choose a ${meta.fileKind} file`
+                  : `Choose a ${meta.label} ${meta.fileKind} file`}
             </span>
           </Button>
         </div>
@@ -343,9 +436,65 @@ export function ImportSection() {
           ref={fileRef}
           type="file"
           accept={meta.accept}
+          // FIT supports importing a batch of activities at once (issue #253).
+          multiple={isFit}
           className="hidden"
           onChange={onFilePicked}
         />
+
+        {fitBatch && (
+          <div className="rounded-md border p-3 text-sm" data-testid="import-preview">
+            <p className="font-medium">
+              {fitBatch.importable} activit{fitBatch.importable === 1 ? 'y' : 'ies'} to import
+              {fitBatch.skipped > 0 ? ` · ${fitBatch.skipped} skipped` : ''}
+            </p>
+            <ul className="mt-2 max-h-64 list-disc space-y-1 overflow-y-auto pl-5">
+              {fitBatch.activities.map((a) =>
+                a.ok ? (
+                  <li key={a.index}>
+                    {a.sport} on{' '}
+                    {new Intl.DateTimeFormat('en-US', {
+                      day: '2-digit',
+                      month: 'long',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    }).format(new Date(a.startedAt!))}{' '}
+                    · {formatCardioSet(a.durationSec!, a.distanceM ?? null)}
+                    {a.avgHr != null ? ` · avg HR ${a.avgHr} bpm` : ''}
+                    {a.maxHr != null ? ` · max HR ${a.maxHr} bpm` : ''} logged as {a.exerciseName}
+                    {a.duplicateSessions && a.duplicateSessions.length > 0 ? (
+                      <span className="text-amber-700 dark:text-amber-400">
+                        {' '}
+                        (possible duplicate)
+                      </span>
+                    ) : null}
+                  </li>
+                ) : (
+                  <li key={a.index} className="text-amber-700 dark:text-amber-400">
+                    File {a.index + 1} skipped: {a.error}
+                  </li>
+                ),
+              )}
+            </ul>
+            <div className="mt-3 flex gap-2">
+              <Button
+                size="sm"
+                onClick={confirmFitBatch}
+                disabled={busy || fitBatch.importable === 0}
+                className="min-h-tap"
+              >
+                {busy ? <Loader2 className="size-4 animate-spin" /> : null}
+                <span className={busy ? 'ml-2' : ''}>
+                  Import {fitBatch.importable} session{fitBatch.importable === 1 ? '' : 's'}
+                </span>
+              </Button>
+              <Button size="sm" variant="ghost" onClick={cancel} disabled={busy}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
 
         {tcxPreview && (
           <div className="rounded-md border p-3 text-sm" data-testid="import-preview">

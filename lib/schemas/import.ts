@@ -49,17 +49,29 @@ export const gpxImportInputSchema = z.object({
 
 export type GpxImportInput = z.infer<typeof gpxImportInputSchema>;
 
-// FIT activity import request (issue #249). FIT is a BINARY format, so the file
-// is carried base64-encoded in `fit`; the route decodes it to bytes for the
-// parser. Base64 inflates by ~4/3, so the string cap is the byte cap scaled up
-// (the parser re-checks the decoded length against FIT_MAX_BYTES). Same
+// FIT activity import request (issue #249). FIT is a BINARY format, so each file
+// is carried base64-encoded; the route decodes it to bytes for the parser.
+// Base64 inflates by ~4/3, so the per-file string cap is the byte cap scaled up
+// (the parser re-checks the decoded length against FIT_MAX_BYTES).
+//
+// A single file rides in `fit` (the original contract, kept for compatibility);
+// a batch (issue #253, "import my whole watch history") rides in `fits`, capped
+// at FIT_MAX_BATCH files. Exactly one of the two must be present. Same
 // preview/confirm modes as the other imports.
-export const fitImportInputSchema = z.object({
-  fit: z
-    .string()
-    .min(1)
-    .max(Math.ceil(FIT_MAX_BYTES * 1.4), 'File too large: the limit is 5 MB.'),
-  mode: z.enum(['preview', 'confirm']),
-});
+export const FIT_MAX_BATCH = 50;
+const fitFileString = z
+  .string()
+  .min(1)
+  .max(Math.ceil(FIT_MAX_BYTES * 1.4), 'File too large: the limit is 5 MB.');
+
+export const fitImportInputSchema = z
+  .object({
+    fit: fitFileString.optional(),
+    fits: z.array(fitFileString).min(1).max(FIT_MAX_BATCH).optional(),
+    mode: z.enum(['preview', 'confirm']),
+  })
+  .refine((d) => d.fit !== undefined || d.fits !== undefined, {
+    message: 'Provide a FIT file.',
+  });
 
 export type FitImportInput = z.infer<typeof fitImportInputSchema>;
