@@ -63,8 +63,10 @@ test('a lifter can import a GPX activity as a cardio session', async ({ page }) 
   await page.goto('/history');
   await expect(page.getByText('May 21, 2026')).toBeVisible();
 
-  // The session detail shows the cardio set with its average heart rate.
+  // The session detail shows the cardio set with its average heart rate, plus
+  // the heart-rate-over-time chart built from the trackpoints (issue #259).
   await page.getByRole('link', { name: /May 21, 2026/ }).click();
   await expect(page.getByRole('heading', { name: 'Running' })).toBeVisible();
   await expect(page.getByText('155 bpm')).toBeVisible();
+  await expect(page.getByTestId('activity-track-chart')).toBeVisible();
 });

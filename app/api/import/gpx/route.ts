@@ -4,6 +4,7 @@ import { ApiError, handleApiError, parseJsonBody, requireApiUserId } from '@/lib
 import { rateLimit } from '@/lib/rate-limit';
 import { gpxImportInputSchema } from '@/lib/schemas/import';
 import { parseGpx, gpxExerciseName, GPX_MAX_BYTES } from '@/lib/import/gpx';
+import { Prisma } from '@/prisma/generated/client';
 
 // How close an existing session's start has to be to count as a likely
 // duplicate of the imported activity (the preview warns; confirm still works,
@@ -124,6 +125,10 @@ export async function POST(req: Request) {
           durationSec: activity.durationSec,
           distanceM: activity.distanceM,
           avgHr: activity.avgHr,
+          // The downsampled pace/HR track (issue #259), when the file had one.
+          ...(activity.track
+            ? { track: activity.track as unknown as Prisma.InputJsonValue }
+            : {}),
           completedAt: finishedAt,
         },
       });

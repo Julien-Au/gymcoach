@@ -6,6 +6,7 @@ import {
   MAX_DURATION_SEC,
 } from '@/lib/cardio';
 import { IMPORT_CSV_MAX_BYTES } from '@/lib/import/csv';
+import { cleanTrackPoint, downsampleTrack, type TrackPoint } from '@/lib/import/track';
 
 // ============================================================
 // GPX track file parser (issue #204) - pure, no DB
@@ -57,6 +58,9 @@ export interface GpxActivity {
   distanceM: number | null; // haversine sum over consecutive trkpts; null if <2 points
   avgHr: number | null; // average of trkpt HR extension values, when present
   sport: GpxSport;
+  // Downsampled pace/HR track (issue #259), or null when the points carry no
+  // usable time / heart rate to chart.
+  track: TrackPoint[] | null;
 }
 
 export interface GpxParseResult {
@@ -360,6 +364,10 @@ export function parseGpx(input: string): GpxParseResult {
   let hrSum = 0;
   let hrCount = 0;
   let capped = false;
+  // Per-point samples for the track (issue #259): only points that carry a time
+  // can be placed on the timeline; cumulative distance is the haversine sum so
+  // far. Bounded by MAX_TRACKPOINTS, like the totals above.
+  const rawPoints: Array<{ time: Date; cumMeters: number; hr: number | null }> = [];
 
   for (const track of trackBlocks) {
     if (!sportSet) {
@@ -397,6 +405,7 @@ export function parseGpx(input: string): GpxParseResult {
         if (pt.time) {
           if (!firstTime || pt.time < firstTime) firstTime = pt.time;
           if (!lastTime || pt.time > lastTime) lastTime = pt.time;
+          rawPoints.push({ time: pt.time, cumMeters: totalMeters, hr: pt.hr });
         }
         if (pt.hr !== null && pt.hr > 0) {
           hrSum += pt.hr;
@@ -436,7 +445,8 @@ export function parseGpx(input: string): GpxParseResult {
 
   const durationSec = Math.round(durationMs / 1000);
   const rawAvgHr = hrCount > 0 ? Math.round(hrSum / hrCount) : null;
-  const candidate: GpxActivity = {
+  // The summary fields only; the track is built and attached after validation.
+  const candidate = {
     startedAt: firstTime,
     durationSec,
     // A single valid point yields no distance; round to cm like TCX.
@@ -453,7 +463,16 @@ export function parseGpx(input: string): GpxParseResult {
       'Activity totals out of bounds: duration must be 1 second to 24 hours and distance at most 1000 km.',
     );
   }
-  return { ok: true, fatalError: null, activity: checked.data };
+  // Build the downsampled track from the per-point samples, relative to the
+  // start. Sanitized/bounded by cleanTrackPoint (not the summary schema) and
+  // attached to the validated summary, matching the FIT importer.
+  const start = firstTime.getTime();
+  const track = downsampleTrack(
+    rawPoints
+      .map((p) => cleanTrackPoint((p.time.getTime() - start) / 1000, p.cumMeters, p.hr))
+      .filter((p): p is TrackPoint => p !== null),
+  );
+  return { ok: true, fatalError: null, activity: { ...checked.data, track } };
 }
 
 // Default exercise name per GPX sport, matching the TCX importer's mapping so a

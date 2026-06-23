@@ -89,7 +89,8 @@ more about *how a repo can maintain itself* than about the gym app, start there.
 - Import your training history from a Strong or Hevy CSV export (dry-run
   preview, duplicate-safe, cardio rows included), and bring watch workouts in
   as TCX, GPX or Garmin FIT files (duration, distance, heart rate - no cloud
-  account, no OAuth; FIT imports a whole batch of activities at once); export
+  account, no OAuth; FIT imports a whole batch of activities at once, and FIT/GPX
+  runs and rides show a heart-rate-over-time chart on the session detail); export
   everything back out as CSV anytime, duration and distance included
 - Searchable exercise catalog: filter the full catalog by name as you type, on
   top of custom exercises and the muscle-group grouping

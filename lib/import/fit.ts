@@ -8,6 +8,12 @@ import {
   MAX_HR_MIN,
 } from '@/lib/cardio';
 import { IMPORT_CSV_MAX_BYTES } from '@/lib/import/csv';
+import {
+  cleanTrackPoint,
+  downsampleTrack,
+  MAX_TRACK_POINTS,
+  type TrackPoint,
+} from '@/lib/import/track';
 
 // ============================================================
 // FIT activity file parser (issue #249) - pure, no DB
@@ -48,11 +54,10 @@ const FIELD_TIMESTAMP = 253; // uint32 FIT seconds
 const FIELD_RECORD_DISTANCE = 5; // scale 100 -> meters
 const FIELD_RECORD_HEART_RATE = 3; // bpm
 
-// Track sizing: collect at most this many raw records (a ~28h activity at 1 Hz)
-// so a hostile record count cannot blow up memory, then downsample to at most
-// this many points for storage/charting.
+// Collect at most this many raw records (a ~28h activity at 1 Hz) so a hostile
+// record count cannot blow up memory; the shared downsampleTrack then caps the
+// stored points (MAX_TRACK_POINTS).
 const MAX_RAW_RECORDS = 100_000;
-const MAX_TRACK_POINTS = 500;
 
 // Defence-in-depth bound on how many records we will walk even within the
 // declared data size (a 5 MB file of 1-byte headers is ~5e6 records).
@@ -64,13 +69,7 @@ const SPORT_CYCLING = 2;
 
 export type FitSport = 'Running' | 'Biking' | 'Other';
 
-// One downsampled track point: t = seconds from the activity start, d =
-// cumulative meters (optional), hr = bpm (optional).
-export interface TrackPoint {
-  t: number;
-  d?: number;
-  hr?: number;
-}
+export type { TrackPoint };
 
 export interface FitActivity {
   startedAt: Date;
@@ -181,27 +180,21 @@ function mapSport(sport: number | undefined): FitSport {
   return 'Other';
 }
 
-// Downsample the collected per-sample records into at most MAX_TRACK_POINTS,
-// each relative to the activity start. Drops records with no timestamp, points
-// before the start, and out-of-range HR; returns null when nothing usable.
+// Turn the collected per-sample records into a sanitized, downsampled track
+// (each point relative to the activity start). Records with no timestamp or an
+// out-of-window time are dropped; distance is unscaled (raw / 100 = meters).
 function buildTrack(rawRecords: RawRecord[], startTimeFitSec: number): TrackPoint[] | null {
-  if (rawRecords.length === 0) return null;
-  const stride = Math.max(1, Math.ceil(rawRecords.length / MAX_TRACK_POINTS));
   const points: TrackPoint[] = [];
-  for (let i = 0; i < rawRecords.length; i += stride) {
-    const r = rawRecords[i]!;
+  for (const r of rawRecords) {
     if (r.timestamp === undefined) continue;
-    const t = r.timestamp - startTimeFitSec;
-    if (t < 0 || t > MAX_DURATION_SEC) continue;
-    const point: TrackPoint = { t };
-    if (r.distance !== undefined) {
-      const d = +(r.distance / 100).toFixed(2);
-      if (d >= 0 && d <= MAX_DISTANCE_M) point.d = d;
-    }
-    if (r.hr !== undefined && r.hr >= AVG_HR_MIN && r.hr <= AVG_HR_MAX) point.hr = r.hr;
-    points.push(point);
+    const point = cleanTrackPoint(
+      r.timestamp - startTimeFitSec,
+      r.distance !== undefined ? r.distance / 100 : null,
+      r.hr ?? null,
+    );
+    if (point) points.push(point);
   }
-  return points.length > 0 ? points : null;
+  return downsampleTrack(points);
 }
 
 // Decode a FIT binary into ONE normalized cardio activity, or a fatal error.

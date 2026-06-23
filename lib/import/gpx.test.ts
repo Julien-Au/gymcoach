@@ -374,3 +374,49 @@ describe('parseGpx (hostile input)', () => {
     expect(res.fatalError).toMatch(/out of bounds/);
   });
 });
+
+describe('parseGpx track (issue #259)', () => {
+  it('builds a downsampled pace/HR track from the trackpoints', () => {
+    const r = parseGpx(RUN_GPX);
+    expect(r.ok).toBe(true);
+    const track = r.activity!.track!;
+    expect(track).toHaveLength(4);
+    expect(track.map((p) => p.t)).toEqual([0, 60, 120, 180]);
+    expect(track.map((p) => p.hr)).toEqual([150, 152, 158, 160]);
+    // Distance is the cumulative haversine sum and is non-decreasing from 0.
+    expect(track[0]!.d).toBe(0);
+    for (let i = 1; i < track.length; i++) {
+      expect(track[i]!.d!).toBeGreaterThan(track[i - 1]!.d!);
+    }
+  });
+
+  it('keeps a distance track but no HR when the points carry no heart rate', () => {
+    const r = parseGpx(
+      gpx(
+        `<trk><type>running</type><trkseg>` +
+          pt(48.85, 2.35, '2026-06-10T07:30:00Z') +
+          pt(48.851, 2.351, '2026-06-10T07:31:00Z') +
+          `</trkseg></trk>`,
+      ),
+    );
+    expect(r.ok).toBe(true);
+    expect(r.activity!.track!.every((p) => p.hr === undefined)).toBe(true);
+    expect(r.activity!.track!.every((p) => typeof p.d === 'number')).toBe(true);
+  });
+
+  it('downsamples a long track to at most 500 points, ordered from t=0', () => {
+    let inner = `<trk><type>running</type><trkseg>`;
+    const base = new Date('2026-06-10T07:00:00.000Z').getTime();
+    for (let i = 0; i < 600; i++) {
+      inner += pt(48.85 + i * 0.0001, 2.35, new Date(base + i * 1000).toISOString(), 150);
+    }
+    inner += `</trkseg></trk>`;
+    const r = parseGpx(gpx(inner));
+    expect(r.ok).toBe(true);
+    const track = r.activity!.track!;
+    expect(track.length).toBeGreaterThan(1);
+    expect(track.length).toBeLessThanOrEqual(500);
+    expect(track.length).toBeLessThan(600);
+    expect(track[0]!.t).toBe(0);
+  });
+});
