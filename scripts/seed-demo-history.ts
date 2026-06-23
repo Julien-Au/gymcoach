@@ -11,7 +11,13 @@
  *
  * It replaces the demo user's existing sessions to stay reproducible.
  */
-import { PrismaClient, MuscleGroup, ExerciseCategory } from '@/prisma/generated/client';
+import {
+  PrismaClient,
+  MuscleGroup,
+  ExerciseCategory,
+  BodyMeasurementSite,
+  Prisma,
+} from '@/prisma/generated/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 
 // Prisma 7 requires a driver adapter to connect (the Rust engine was removed).
@@ -107,6 +113,25 @@ function sessionDate(weeksAgo: number, dayOfWeek: number): Date {
   d.setDate(d.getDate() - (dow - 1)); // Monday of the current week
   d.setDate(d.getDate() - weeksAgo * 7 + (dayOfWeek - 1));
   return d;
+}
+
+// A downsampled pace/HR track for an imported activity (issues #254/#259), so
+// the demo shows the heart-rate-over-time chart on a cardio session detail.
+// Deterministic (seeded RNG); kept well under the 500-point storage cap.
+function buildCardioTrack(durationSec: number, distanceM: number, avgHr: number, maxHr: number) {
+  const step = Math.max(15, Math.ceil(durationSec / 360));
+  const points: { t: number; d: number; hr: number }[] = [];
+  for (let t = 0; t <= durationSec; t += step) {
+    const frac = durationSec > 0 ? t / durationSec : 0;
+    const d = +(distanceM * frac).toFixed(2);
+    const ramp = avgHr - 12 + 24 * Math.min(1, frac * 2.5); // warm-up toward avg
+    const drift = Math.sin(frac * 6) * 4;
+    const surge = rng() < 0.07 ? (maxHr - avgHr) * (0.5 + rng() * 0.5) : 0;
+    let hr = Math.round(ramp + drift + (rng() - 0.5) * 8 + surge);
+    hr = Math.max(40, Math.min(maxHr, hr));
+    points.push({ t, d, hr });
+  }
+  return points;
 }
 
 async function main() {
@@ -258,58 +283,91 @@ async function main() {
     }
   }
 
-  // Conditioning history (issue #133 batch): two cardio sessions per week so
-  // the conditioning card and cardio rendering show up in the demo and the
-  // screenshots. Deterministic like everything else.
-  let cardio = await prisma.exercise.findFirst({
-    where: { userId: user.id, category: ExerciseCategory.CARDIO },
-    orderBy: { name: 'asc' },
-  });
-  if (!cardio) {
-    cardio = await prisma.exercise.create({
-      data: {
-        userId: user.id,
-        name: 'Running',
-        muscleGroup: MuscleGroup.OTHER,
-        category: ExerciseCategory.CARDIO,
-      },
+  // Conditioning history (issues #133/#254/#259): two imported-style activities
+  // per week (a run and a ride) that carry heart rate AND a downsampled pace/HR
+  // track, exactly like a Garmin/Strava FIT import. This makes the demo show the
+  // conditioning card, the cardio detail (avg/max HR, pace), and the
+  // heart-rate-over-time chart - the flagship import features. Deterministic.
+  const ownerId = user.id;
+  async function cardioExercise(name: string) {
+    const existing = await prisma.exercise.findFirst({
+      where: { userId: ownerId, name, category: ExerciseCategory.CARDIO },
     });
+    return (
+      existing ??
+      (await prisma.exercise.create({
+        data: {
+          userId: ownerId,
+          name,
+          muscleGroup: MuscleGroup.OTHER,
+          category: ExerciseCategory.CARDIO,
+          notes: 'Created by the FIT import.',
+        },
+      }))
+    );
   }
+  const runEx = await cardioExercise('Running');
+  const bikeEx = await cardioExercise('Cycling');
   let cardioSessions = 0;
   for (let w = WEEKS - 1; w >= 0; w--) {
-    for (const day of [2, 6]) {
-      const startedAt = sessionDate(w, day);
+    const plans = [
+      { day: 2, ex: runEx, sport: 'Running', dur: Math.round((28 + rng() * 14) * 60), mps: 2.7 + rng() * 0.5, avg: 150 + Math.round(rng() * 10), peak: 174 + Math.round(rng() * 10) },
+      { day: 6, ex: bikeEx, sport: 'Cycling', dur: Math.round((40 + rng() * 25) * 60), mps: 6.5 + rng() * 1.5, avg: 132 + Math.round(rng() * 10), peak: 156 + Math.round(rng() * 10) },
+    ];
+    for (const p of plans) {
+      const startedAt = sessionDate(w, p.day);
       if (startedAt > now) continue;
-      // 25-40 min easy runs, pace drifting with the seeded RNG.
-      const durationSec = Math.round((25 + rng() * 15) * 60);
-      const distanceM = Math.round(durationSec * (2.6 + rng() * 0.5));
+      const durationSec = p.dur;
+      const distanceM = Math.round(durationSec * p.mps);
+      const avgHr = p.avg;
+      const maxHr = Math.max(avgHr + 8, p.peak);
+      const track = buildCardioTrack(durationSec, distanceM, avgHr, maxHr);
+      const finishedAt = new Date(startedAt.getTime() + durationSec * 1000);
       const session = await prisma.session.create({
-        data: {
-          userId: user.id,
-          startedAt,
-          finishedAt: new Date(startedAt.getTime() + durationSec * 1000),
-        },
+        data: { userId: user.id, startedAt, finishedAt, notes: `Imported from a FIT file (${p.sport}).` },
       });
       await prisma.set.create({
         data: {
           sessionId: session.id,
-          exerciseId: cardio.id,
+          exerciseId: p.ex.id,
           setNumber: 1,
           weight: 0,
           reps: 1,
           durationSec,
           distanceM,
-          completedAt: new Date(startedAt.getTime() + durationSec * 1000),
+          avgHr,
+          maxHr,
+          track: track as unknown as Prisma.InputJsonValue,
+          completedAt: finishedAt,
         },
       });
       cardioSessions += 1;
     }
   }
 
+  // Body measurements (issue #202) so the measurements card shows a trend.
+  await prisma.bodyMeasurement.deleteMany({ where: { userId: user.id } });
+  const measurements: {
+    userId: string;
+    site: BodyMeasurementSite;
+    valueCm: number;
+    measuredAt: Date;
+  }[] = [];
+  for (let w = WEEKS - 1; w >= 0; w--) {
+    const measuredAt = sessionDate(w, 1);
+    if (measuredAt > now) continue;
+    const elapsed = WEEKS - 1 - w; // 0 = oldest
+    measurements.push({ userId: user.id, site: BodyMeasurementSite.WAIST, valueCm: +(86 - elapsed * 0.18 + (rng() - 0.5) * 0.6).toFixed(1), measuredAt });
+    measurements.push({ userId: user.id, site: BodyMeasurementSite.ARM_RIGHT, valueCm: +(37.5 + elapsed * 0.06 + (rng() - 0.5) * 0.3).toFixed(1), measuredAt });
+    measurements.push({ userId: user.id, site: BodyMeasurementSite.THIGH_RIGHT, valueCm: +(58 + elapsed * 0.08 + (rng() - 0.5) * 0.4).toFixed(1), measuredAt });
+  }
+  await prisma.bodyMeasurement.createMany({ data: measurements });
+
   console.log(
     `Demo extras: ${bodyweightEntries.length} bodyweight entries, ` +
       `${firstCompound ? 1 : 0} goal, ${readinessData.length} readiness check-ins, ` +
-      `${cardioSessions} cardio sessions.`,
+      `${cardioSessions} imported cardio sessions (HR + pace/HR track), ` +
+      `${measurements.length} body measurements.`,
   );
 }
 
