@@ -8,12 +8,7 @@ import {
   MAX_HR_MIN,
 } from '@/lib/cardio';
 import { IMPORT_CSV_MAX_BYTES } from '@/lib/import/csv';
-import {
-  cleanTrackPoint,
-  downsampleTrack,
-  MAX_TRACK_POINTS,
-  type TrackPoint,
-} from '@/lib/import/track';
+import { cleanTrackPoint, downsampleTrack, type TrackPoint } from '@/lib/import/track';
 
 // ============================================================
 // FIT activity file parser (issue #249) - pure, no DB
