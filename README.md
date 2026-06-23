@@ -13,6 +13,14 @@ Open source, self hosted training tracker with a built in AI coach. Log your ses
 </p>
 
 <p align="center">
+  <video src="https://github.com/Julien-Au/gymcoach/raw/main/docs/brag-launch.mp4" poster="docs/brag-poster.jpg" controls muted loop playsinline width="720"></video>
+</p>
+<p align="center">
+  <a href="https://github.com/Julien-Au/gymcoach/raw/main/docs/brag-launch.mp4"><b>▶ Watch the 20-second launch video</b></a>
+  &nbsp;&middot;&nbsp; an AI coach, built by an AI
+</p>
+
+<p align="center">
   <img src="docs/screenshots/session.gif" width="280" alt="Logging a session in GymCoach" />
 </p>
 
