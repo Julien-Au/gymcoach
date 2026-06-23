@@ -62,6 +62,11 @@ test('a lifter can import a GPX activity as a cardio session', async ({ page }) 
 
   await page.goto('/history');
   await expect(page.getByText('May 21, 2026')).toBeVisible();
+  // The history list renders the imported activity as a cardio session (name +
+  // HR), not an empty "Free session - 0 kg vol" row.
+  await expect(page.getByText('Running')).toBeVisible();
+  await expect(page.getByText('155 bpm')).toBeVisible();
+  await expect(page.getByText('Free session')).toHaveCount(0);
 
   // The session detail shows the cardio set with its average heart rate, plus
   // the heart-rate-over-time chart built from the trackpoints (issue #259).

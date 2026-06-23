@@ -7,6 +7,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { Badge } from '@/components/ui/badge';
 import { applyBodyweight, totalVolume } from '@/lib/stats';
 import { formatWeight } from '@/lib/units';
+import { formatDistance, formatDuration } from '@/lib/cardio';
 import { HistoryFilters } from '@/components/history/history-filters';
 
 interface SearchParams {
@@ -60,7 +61,9 @@ export default async function HistoryPage(
             reps: true,
             isWarmup: true,
             durationSec: true,
-            exercise: { select: { usesBodyweight: true } },
+            distanceM: true,
+            avgHr: true,
+            exercise: { select: { usesBodyweight: true, name: true, category: true } },
           },
         },
       },
@@ -121,11 +124,26 @@ export default async function HistoryPage(
                 user?.bodyweight,
               );
               const volume = totalVolume(enrichedSets);
-              const workingSets = s.sets.filter((set) => !set.isWarmup).length;
+              const working = s.sets.filter((set) => !set.isWarmup);
+              const workingSets = working.length;
               const durationMin =
                 s.finishedAt && s.startedAt
                   ? Math.round((s.finishedAt.getTime() - s.startedAt.getTime()) / 60000)
                   : null;
+              // A cardio/imported activity (issue #133+): every working set is a
+              // CARDIO set. Render it as the activity (name, distance, duration,
+              // HR) instead of "Free session - 0 kg vol", which reads as empty.
+              const cardioSets = working.filter(
+                (set) => set.exercise.category === 'CARDIO' && set.durationSec != null,
+              );
+              const isCardio = workingSets > 0 && cardioSets.length === workingSets;
+              const cardioName = cardioSets[0]?.exercise.name ?? 'Cardio';
+              const cardioDistance = cardioSets.reduce((sum, set) => sum + (set.distanceM ?? 0), 0);
+              const cardioDurationSec = cardioSets.reduce(
+                (sum, set) => sum + (set.durationSec ?? 0),
+                0,
+              );
+              const cardioAvgHr = cardioSets.find((set) => set.avgHr != null)?.avgHr ?? null;
               return (
                 <li key={s.id}>
                   <Link href={`/history/${s.id}`} className="block">
@@ -143,20 +161,36 @@ export default async function HistoryPage(
                             </span>
                           </div>
                           <p className="mt-0.5 truncate text-base font-medium">
-                            {s.workout?.name ?? 'Free session'}
+                            {s.workout?.name ?? (isCardio ? cardioName : 'Free session')}
                           </p>
                           <div className="mt-1 flex flex-wrap gap-1.5 text-xs">
                             {s.program && (
                               <Badge variant="secondary">{s.program.name}</Badge>
                             )}
-                            <Badge variant="outline">
-                              {workingSets} set{workingSets > 1 ? 's' : ''}
-                            </Badge>
-                            <Badge variant="outline">
-                              {formatWeight(volume, unit, { decimals: 0 })} vol.
-                            </Badge>
-                            {durationMin != null && (
-                              <Badge variant="outline">{durationMin} min</Badge>
+                            {isCardio ? (
+                              <>
+                                {cardioDistance > 0 && (
+                                  <Badge variant="outline">{formatDistance(cardioDistance)}</Badge>
+                                )}
+                                <Badge variant="outline">
+                                  {formatDuration(cardioDurationSec || (durationMin ?? 0) * 60)}
+                                </Badge>
+                                {cardioAvgHr != null && (
+                                  <Badge variant="outline">{cardioAvgHr} bpm</Badge>
+                                )}
+                              </>
+                            ) : (
+                              <>
+                                <Badge variant="outline">
+                                  {workingSets} set{workingSets > 1 ? 's' : ''}
+                                </Badge>
+                                <Badge variant="outline">
+                                  {formatWeight(volume, unit, { decimals: 0 })} vol.
+                                </Badge>
+                                {durationMin != null && (
+                                  <Badge variant="outline">{durationMin} min</Badge>
+                                )}
+                              </>
                             )}
                           </div>
                         </div>
