@@ -57,53 +57,81 @@ more about *how a repo can maintain itself* than about the gym app, start there.
 
 ## Features
 
-- Multi-user accounts: sign up, profiles, per-user data isolation
-- Workout logging with sets, reps, RIR, warmups and drop sets - plus shorthand
-  quick entry (`100x8@9`), a rest timer, a plate-loading calculator, and a
-  warm-up ramp calculator right in the set logger
-- Progress charts: estimated 1RM trends, weekly volume per muscle group with
-  MEV/MRV landmark bands, a training-consistency calendar, and personal-record
-  badges in session and on the post-session summary
-- Stalled-lift detection plus a deload-week recommendation derived from your
-  stalls and readiness trend - and a one-tap planned deload week that lightens
-  every suggested load by 10% until it expires
-- Proactive home dashboard: a coach-insight card greets you with the single most
-  important deterministic signal right now (a due deload, a stalled lift, a fresh
-  personal record, or your training streak this week), no AI call required
-- Cardio too: CARDIO exercises log duration and distance (not weight x reps),
-  show up in session history and summaries, and feed a weekly conditioning
-  card (minutes, km, sessions vs the 150 min/week guideline) - without ever
-  polluting the lifting metrics
-- Per-exercise target goals (weight x reps) with a progress bar and an
-  achieved badge
-- Bodyweight tracking with a trend chart - and bodyweight-aware tonnage for
-  pull-ups, dips, etc.
-- Optional pre-session readiness/soreness check-in that auto-regulates
-  suggested loads and explains why a load was held or reduced
-- Supersets: pair exercises in the program builder and run them as A1/A2 in
-  the session, with grouped navigation
-- Built-in program templates (5/3/1 BBB, GZCLP, nSuns, PPL, Upper/Lower,
-  Starting Strength, StrongLifts 5x5, Madcow, PHUL, PHAT, Full Body),
-  runnable as written and editable like any program
-- AI coach: weekly debrief and assisted program adjustments, aware of your
-  goals, fatigue signals, and weekly conditioning volume
-- Conversational AI coach: streaming chat grounded in your training data -
-  including mid-session, with the live workout (sets so far, targets, today's
-  readiness) attached in one tap
-- "What your coach sees": a transparency card showing the exact structured
-  context the AI receives, so its advice is explainable and checkable
-- AI program generation from a natural-language goal, editable before saving
-- Pluggable LLM provider: Anthropic SDK or any OpenRouter model
-- Import your training history from a Strong or Hevy CSV export (dry-run
-  preview, duplicate-safe, cardio rows included), and bring watch workouts in
-  as TCX, GPX or Garmin FIT files (duration, distance, heart rate - no cloud
-  account, no OAuth; FIT imports a whole batch of activities at once, and FIT/GPX
-  runs and rides show a heart-rate-over-time chart on the session detail); export
-  everything back out as CSV anytime, duration and distance included
-- Searchable exercise catalog: filter the full catalog by name as you type, on
-  top of custom exercises and the muscle-group grouping
-- Train in kilograms or pounds, a per-user preference (data is always stored in kg)
-- Installable PWA with offline session logging
+Everything below ships in the box. At a glance: a fast logger, real progress
+analytics, first-class cardio with watch-file import, and an AI coach that runs
+on your own key - all self-hosted.
+
+### Log and train
+
+- **Fast set logging** - sets, reps, RIR, warm-ups and drop sets, with shorthand
+  quick entry (`100x8@9`) and natural-language entry parsed by the AI.
+- **In-logger tools** - a rest timer, a plate-loading calculator, and a warm-up
+  ramp calculator, right where you log.
+- **Double-progression suggestions** - the next working load is computed from
+  your last sets (and explained), with bodyweight-aware tonnage for pull-ups,
+  dips, etc.
+- **Supersets** - pair exercises in the builder and run them A1/A2 with grouped
+  navigation and superset-aware rest.
+- **Readiness check-in** - an optional pre-session soreness/readiness prompt that
+  auto-regulates the suggested load and says why it held or dropped.
+- **Quality-of-life** - kilograms or pounds per user, multi-user with strict
+  per-user data isolation, and an installable PWA with offline logging.
+
+### Track progress
+
+- **Strength trends** - estimated-1RM and max-load over time, plus a per-exercise
+  percentage loading table.
+- **Volume and frequency** - weekly volume per muscle group with MEV/MRV landmark
+  bands, and per-muscle weekly training frequency.
+- **Records and consistency** - an all-time records board, personal-record badges
+  in-session and on the summary, and a training-consistency calendar.
+- **Auto-regulation** - stalled-lift detection and a deload recommendation from
+  your stalls and readiness, with a one-tap planned deload that lightens loads
+  10% until it expires.
+- **Goals and body comp** - per-exercise goals (weight x reps) with a progress
+  bar, bodyweight tracking, and body measurements - each with a trend.
+- **Home dashboard** - a coach-insight card surfaces the single most important
+  signal right now (due deload, stalled lift, fresh PR, or your weekly streak),
+  with no AI call.
+
+### Cardio and wearables
+
+- **First-class cardio** - log duration and distance (not weight x reps); a
+  weekly conditioning card (minutes, km, sessions vs the 150 min/week guideline)
+  that never pollutes your lifting metrics.
+- **Watch-file import, no cloud** - bring activities in as **TCX, GPX or Garmin
+  FIT** (duration, distance, heart rate; no OAuth, no cloud account). FIT imports
+  a whole batch at once, and FIT/GPX runs and rides show a **heart-rate-over-time
+  chart** on the session detail.
+
+### AI coach (bring your own model)
+
+- **Weekly debrief and adjustments** - evidence-based, aware of your goals,
+  fatigue signals and conditioning volume.
+- **Conversational coach** - streaming chat grounded in your training data,
+  including mid-session with the live workout attached in one tap.
+- **Program generation** - a full program from a one-sentence goal, editable
+  before saving.
+- **Explainable by design** - a "What your coach sees" card shows the exact
+  structured context the AI receives.
+- **Your provider** - Anthropic SDK or any OpenRouter model. With no key set,
+  the app is still a clean, fast tracker.
+
+### Programs and exercises
+
+- **Built-in templates** - 5/3/1 BBB, GZCLP, nSuns, PPL, Upper/Lower, Starting
+  Strength, StrongLifts 5x5, Madcow, PHUL, PHAT, Full Body - runnable as written
+  and editable like any program.
+- **Exercise catalog** - searchable by name, on top of your custom exercises and
+  muscle-group grouping.
+
+### Your data, your server
+
+- **Self-hosted** - your training lives in your own Postgres; the AI runs on your
+  own key. No subscription, no rate-limited free tier.
+- **Import and export** - bring history in from a Strong or Hevy CSV (dry-run
+  preview, duplicate-safe, cardio included), and export everything back to CSV or
+  TCX anytime.
 
 ## Stack
 
