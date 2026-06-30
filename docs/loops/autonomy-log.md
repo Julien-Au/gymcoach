@@ -1777,3 +1777,35 @@ branching. Recovery identical: CI ran on the push (all green), post-hoc independ
 not the recovery, is the fix.
 
 **Deferred to human.** Nothing - #259 is now fully complete across all three import formats.
+
+---
+
+## 2026-06-30 (triage) - L9 gate spot-check + permissions re-audit: found and closed a rotten gate
+
+**Context.** Backlog empty, code-health current, product wedge complete - but three
+untrusted-input parsers (FIT binary, GPX/TCX XML) and a shared value sanitizer had landed
+since the last L9 pass (2026-06-15), so the right cycle was verifying those security gates
+are genuinely protective.
+
+**Gate spot-check (L9).** Two reverts, never pushed:
+- POSITIVE CONTROL: disabled the FIT CRC verify (lib/import/fit.ts) and re-ran fit.test.ts -
+  exactly the "rejects a CRC mismatch" hostile test FAILED. That gate is sound. Restored.
+- FOUND A ROTTEN GATE: weakened cleanTrackPoint's heart-rate bound (lib/import/track.ts,
+  accept ANY hr) and re-ran ALL 88 importer tests - every one still passed. The shared track
+  sanitizer (cleanTrackPoint + downsampleTrack), which every FIT/GPX/TCX import feeds and
+  whose output is stored on the cardio set AND rendered in the HR chart, had NO direct test:
+  its range checks (t in window, distance 0..1000km, hr 40..250, numbers-only) were entirely
+  uncovered. A regression weakening them would ship silently. Restored.
+
+**Fixed.** Added lib/import/track.test.ts (10 tests) covering cleanTrackPoint (drops
+out-of-window t, out-of-range/non-finite distance and hr, keeps edges, rounds, numbers-only)
+and downsampleTrack (null on empty, <=500 cap, even stride). Verified it CLOSES the gap:
+re-weakening the hr bound now fails the new test.
+
+**Permissions re-audit (L9).** .claude/settings.json deny list intact (rm -rf, git push
+--force/-f/--force-with-lease, git reset --hard, curl, wget). 37 allow entries, no sudo /
+network / broad-rm / scope creep - unchanged from 2026-06-15.
+
+**Filed.** No issues - the one gap was closeable in-cycle (a missing test, not a product
+decision). Code markers: none. The residual high npm advisory (serialize-javascript via the
+next-pwa workbox toolchain) stays human-deferred (a next-pwa major downgrade).
