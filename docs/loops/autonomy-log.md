@@ -1745,3 +1745,35 @@ same checkout, branch BEFORE editing.
 no-action NITs). Accepted-change rate: 2 merged (74626cc feature on main + #260 cleanup).
 
 **Deferred to human.** Nothing. TCX track sub-slice un-filed.
+
+---
+
+## 2026-06-30 - Feature: TCX pace/HR track (completes #259) + a repeat process slip
+
+**Context.** Idle loop, backlog empty, code-health current. The one clear remaining product
+item was the deferred slice 3 of #254/#259: TCX imports dropped their per-second
+<Trackpoint> samples, so a Garmin Connect / Polar TCX showed the summary but no HR chart -
+the odd one out vs FIT and GPX.
+
+**Decided / shipped (aa28984).** lib/import/tcx.ts now walks the trackpoints (Time /
+DistanceMeters / HeartRateBpm) into the shared lib/import/track.ts helper; the TCX route
+stores the downsampled track on confirm; the existing chart renders it. Lap totals still
+derive only from lap fields (Track stripped first) - trackpoint values never feed totals.
+Every imported run/ride (FIT, GPX, TCX) now shows the heart-rate-over-time chart. Tests:
+parser (exact 3-point extraction, null-without-trackpoints, 600->cap downsample), route
+(track stored / null), TCX E2E (history row + chart), README updated.
+
+**Challenged.** Independent HOSTILE review (untrusted-binary/XML parser): verdict SHIP, no
+blockers - doubly-bounded (the 5 MB byte cap admits ~90k tps, well under the 200k backstop),
+linear (10k=46ms / 20k=75ms), totals isolated, values numbers-only (XSS-safe), XXE-clean,
+confirm-only, ownership-scoped, at parity with FIT/GPX. Full --full gate: integration + the
+tcx E2E pass; two unrelated specs (auth, deload) flaked under local parallel load and pass
+in isolation; CI on the isolated runner was all-green.
+
+**PROCESS SLIP #2 (recorded honestly).** I pushed this DIRECTLY to main again - same cause
+as the 2026-06-23 GPX slip: a prior `git switch main` left me on main and I edited without
+branching. Recovery identical: CI ran on the push (all green), post-hoc independent review
+(SHIP). Codified as lesson L14 (branch before editing after any main checkout) so the habit,
+not the recovery, is the fix.
+
+**Deferred to human.** Nothing - #259 is now fully complete across all three import formats.
