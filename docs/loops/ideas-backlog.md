@@ -61,3 +61,20 @@ research and the product wedge). See `docs/loops/08-ideation-loop.md` for how th
 - shipped - import multiple cardio activity files at once, FIT first (issue #253, 2026-06-19, PR pending) - batch array on the FIT route (single `fit` kept backward-compatible), aggregated preview, partial-success confirm; the "rapatrie tout mon historique" flow
 - shipped (slices 1+2) - store + chart the detailed pace/HR track of an imported activity (issue #254, 2026-06-19, PR #256) - additive Set.track JSON column, FIT record-message decode downsampled to <=500 points, HR-over-time chart on the history detail. Remaining slice 3 (TCX/GPX point capture) un-filed.
 - shipped (GPX slice) - capture the pace/HR track from GPX/TCX imports for the chart (issue #259, 2026-06-23, PR #260) - shared lib/import/track.ts (TrackPoint + cleanTrackPoint + downsampleTrack), FIT refactored onto it, GPX now builds + stores a downsampled track so GPX runs/rides get the HR chart. TCX sub-slice (parse the dropped <Trackpoint> samples) still pending.
+
+## Deep-research ideate batch (2026-06-30)
+
+Run from the heavy deep-research workflow (competitors + Reddit/forums + GitHub trackers,
+103 agents, ~1.7M tokens; adversarially verified). Operator explicitly opted into the heavy
+fan-out for this run. Filed the strongest NEW, single-PR, wedge-fitting, anti-recommendation-respecting
+slices; epics noted for a human, not filed. All requesters were external/non-maintainer, so
+each idea is re-derived in our own words from verified facts (untrusted-input policy).
+
+- proposed - aerobic decoupling (HR drift) metric on imported cardio sessions (issue #268) - display-only derivation over the Set.track we already store; Intervals.icu capability gap, endurance wedge. Single PR.
+- proposed - progress photos alongside body metrics, local storage no cloud (issue #269) - Hevy gap; additive ProgressPhoto table + ownership-scoped upload (size cap + image-type allowlist) + gallery. Single PR with reinforced upload controls.
+- proposed - import training history from a generic (GymCoach) CSV (issue #270) - first-hand migration demand (wger discussion #1202); symmetric inverse of the history CSV export, reuses the hardened Strong/Hevy import pipeline. Single PR.
+- NOT FILED (already shipped) - mobile numeric keypad for reps/weight (research finding #5): set-input.tsx already sets inputMode="numeric"/"decimal" - the verify step caught this before filing. Good gate.
+- NOT FILED (EPIC, for a human) - longitudinal training-load model (CTL/ATL/Form / fitness-fatigue-form with readiness zones), an Intervals.icu flagship. Highest-value opportunity but multi-PR (load-score derivation + chart + readiness integration). Strong capability evidence, no first-hand demand.
+- NOT FILED (uncertain / larger) - ingest HRV/sleep from FIT wellness files into the existing readiness model (finding #9). Wedge-safe ONLY as ingestion of already-on-box files (NOT OAuth sync); but HRV/sleep live in Garmin monitoring FIT files, not activity FIT, so it is a bigger parser job; demand source is competing vendors. Note for a human.
+- NOT FILED (capability-not-demand) - shareable program export/import link + relative muscle-activation map (Liftosaur features, finding #6); scriptable programs is an epic. Candidates for a future bounded ideate run if the above drain.
+- NOT FILED (low priority / thin) - public REST API for body stats ingestion (finding #7, brushes the no-external-sync anti-rec); endless/no-end-date routines (finding #8, n=1, unverified our model forces dates).
