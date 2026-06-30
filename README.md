@@ -101,8 +101,8 @@ on your own key - all self-hosted.
   that never pollutes your lifting metrics.
 - **Watch-file import, no cloud** - bring activities in as **TCX, GPX or Garmin
   FIT** (duration, distance, heart rate; no OAuth, no cloud account). FIT imports
-  a whole batch at once, and FIT/GPX runs and rides show a **heart-rate-over-time
-  chart** on the session detail.
+  a whole batch at once, and every imported run or ride shows a
+  **heart-rate-over-time chart** on the session detail.
 
 ### AI coach (bring your own model)
 

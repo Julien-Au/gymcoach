@@ -8,6 +8,7 @@ import {
   MAX_HR_MIN,
 } from '@/lib/cardio';
 import { IMPORT_CSV_MAX_BYTES } from '@/lib/import/csv';
+import { cleanTrackPoint, downsampleTrack, type TrackPoint } from '@/lib/import/track';
 
 // ============================================================
 // TCX activity file parser (issue #152) - pure, no DB
@@ -57,6 +58,9 @@ export interface TcxActivity {
   avgHr: number | null; // duration-weighted average of lap averages
   maxHr: number | null; // max of the per-lap MaximumHeartRateBpm values
   sport: TcxSport;
+  // Downsampled pace/HR track from the per-second <Trackpoint> samples (issue
+  // #259), or null when the file carries no usable trackpoints.
+  track: TrackPoint[] | null;
 }
 
 export interface TcxParseResult {
@@ -222,6 +226,9 @@ function asFiniteNumber(text: string | null): number | null {
 // the byte cap: a real export has one activity and at most a few hundred laps.
 const MAX_ACTIVITIES = 20;
 const MAX_LAPS = 1000;
+// Hard cap on per-second samples collected for the track, so a hostile file
+// cannot blow up memory (the shared downsampleTrack then caps stored points).
+const MAX_TRACKPOINTS = 200_000;
 
 export function parseTcx(input: string): TcxParseResult {
   if (input.length > TCX_MAX_BYTES) {
@@ -293,6 +300,10 @@ export function parseTcx(input: string): TcxParseResult {
   let earliestStart: Date | null = null;
   let sport: TcxSport = 'Other';
   let sportSet = false;
+  // Per-second samples for the track (issue #259): absolute time + cumulative
+  // distance (TCX Trackpoint DistanceMeters is cumulative from the start) + HR.
+  // Bounded by MAX_TRACKPOINTS so a hostile file cannot exhaust memory.
+  const rawPoints: { time: Date; cumMeters: number | null; hr: number | null }[] = [];
 
   for (const activity of activityBlocks) {
     const sportAttr = attrValue(xml, activity.tagStart, 'Sport');
@@ -336,6 +347,23 @@ export function parseTcx(input: string): TcxParseResult {
       if (lapMaxHr !== null && lapMaxHr > 0) {
         maxHrSeen = maxHrSeen === null ? lapMaxHr : Math.max(maxHrSeen, lapMaxHr);
       }
+
+      // Collect the per-second <Trackpoint> samples for the track (issue #259):
+      // each carries a <Time>, a cumulative <DistanceMeters>, and an optional
+      // <HeartRateBpm><Value>. Bounded by the remaining trackpoint budget.
+      if (rawPoints.length < MAX_TRACKPOINTS) {
+        for (const tp of extractBlocks(lap, 'Trackpoint', MAX_TRACKPOINTS - rawPoints.length)) {
+          const timeText = firstTagText(tp, 'Time');
+          const time = timeText ? new Date(timeText) : null;
+          if (!time || Number.isNaN(time.getTime())) continue; // need a time to place it
+          const hrBlk = extractBlocks(tp, 'HeartRateBpm', 1)[0];
+          rawPoints.push({
+            time,
+            cumMeters: asFiniteNumber(firstTagText(tp, 'DistanceMeters')),
+            hr: hrBlk === undefined ? null : asFiniteNumber(firstTagText(hrBlk, 'Value')),
+          });
+        }
+      }
     }
 
     // Fall back to the first lap's StartTime when <Id> is missing/invalid.
@@ -365,7 +393,8 @@ export function parseTcx(input: string): TcxParseResult {
   const durationSec = Math.round(totalSeconds);
   const rawAvgHr = hrSeconds > 0 ? Math.round(hrWeightedSum / hrSeconds) : null;
   const rawMaxHr = maxHrSeen !== null ? Math.round(maxHrSeen) : null;
-  const candidate: TcxActivity = {
+  // Summary fields only; the track is built and attached after validation.
+  const candidate = {
     startedAt: earliestStart,
     durationSec,
     distanceM: sawDistance ? Math.round(totalMeters * 100) / 100 : null,
@@ -383,7 +412,16 @@ export function parseTcx(input: string): TcxParseResult {
       'Activity totals out of bounds: duration must be 1 second to 24 hours and distance at most 1000 km.',
     );
   }
-  return { ok: true, fatalError: null, activity: checked.data };
+  // Build the downsampled track from the per-second samples, relative to the
+  // start, sanitized/bounded by cleanTrackPoint and attached to the validated
+  // summary - matching the FIT and GPX importers.
+  const start = earliestStart.getTime();
+  const track = downsampleTrack(
+    rawPoints
+      .map((pt) => cleanTrackPoint((pt.time.getTime() - start) / 1000, pt.cumMeters, pt.hr))
+      .filter((pt): pt is TrackPoint => pt !== null),
+  );
+  return { ok: true, fatalError: null, activity: { ...checked.data, track } };
 }
 
 // Default exercise name per TCX sport, matching the seeded catalog names

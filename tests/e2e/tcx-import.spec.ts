@@ -13,6 +13,12 @@ const RUN_TCX = `<?xml version="1.0" encoding="UTF-8"?>
         <TotalTimeSeconds>1800</TotalTimeSeconds>
         <DistanceMeters>5000</DistanceMeters>
         <AverageHeartRateBpm><Value>152</Value></AverageHeartRateBpm>
+        <Track>
+          <Trackpoint><Time>2026-05-20T07:30:00.000Z</Time><DistanceMeters>0</DistanceMeters><HeartRateBpm><Value>148</Value></HeartRateBpm></Trackpoint>
+          <Trackpoint><Time>2026-05-20T07:40:00.000Z</Time><DistanceMeters>1700</DistanceMeters><HeartRateBpm><Value>152</Value></HeartRateBpm></Trackpoint>
+          <Trackpoint><Time>2026-05-20T07:50:00.000Z</Time><DistanceMeters>3400</DistanceMeters><HeartRateBpm><Value>158</Value></HeartRateBpm></Trackpoint>
+          <Trackpoint><Time>2026-05-20T08:00:00.000Z</Time><DistanceMeters>5000</DistanceMeters><HeartRateBpm><Value>161</Value></HeartRateBpm></Trackpoint>
+        </Track>
       </Lap>
     </Activity>
   </Activities>
@@ -58,9 +64,16 @@ test('a lifter can import a TCX activity as a cardio session', async ({ page }) 
 
   await page.goto('/history');
   await expect(page.getByText('May 20, 2026')).toBeVisible();
+  // The history list renders it as a cardio activity (name + HR), not an empty
+  // "Free session" row.
+  await expect(page.getByText('Running')).toBeVisible();
+  await expect(page.getByText('152 bpm')).toBeVisible();
+  await expect(page.getByText('Free session')).toHaveCount(0);
 
-  // The session detail shows the cardio set with its average heart rate.
+  // The session detail shows the cardio set with its average heart rate, plus
+  // the heart-rate-over-time chart built from the trackpoints (issue #259).
   await page.getByRole('link', { name: /May 20, 2026/ }).click();
   await expect(page.getByRole('heading', { name: 'Running' })).toBeVisible();
   await expect(page.getByText('152 bpm')).toBeVisible();
+  await expect(page.getByTestId('activity-track-chart')).toBeVisible();
 });

@@ -52,10 +52,12 @@ const minimalTcx = (inner: string) =>
   `<?xml version="1.0"?><TrainingCenterDatabase><Activities>${inner}</Activities></TrainingCenterDatabase>`;
 
 describe('parseTcx (happy paths)', () => {
-  it('sums lap totals and ignores Trackpoint samples', () => {
+  it('takes totals from lap fields (not trackpoint sums) and captures the track', () => {
     const res = parseTcx(RUN_TCX);
     expect(res.ok).toBe(true);
-    expect(res.activity).toEqual({
+    // Totals come from the lap fields - trackpoint DistanceMeters/HeartRateBpm
+    // are never summed into them.
+    expect(res.activity).toMatchObject({
       startedAt: new Date('2026-06-10T07:30:00.000Z'),
       durationSec: 1200,
       distanceM: 3300,
@@ -65,6 +67,9 @@ describe('parseTcx (happy paths)', () => {
       maxHr: 165,
       sport: 'Running',
     });
+    // The per-second <Trackpoint> samples are now captured as a track (#259).
+    expect(Array.isArray(res.activity?.track)).toBe(true);
+    expect(res.activity!.track!.length).toBeGreaterThan(0);
   });
 
   it('handles a duration-only activity without distance or heart rate', () => {
@@ -504,5 +509,53 @@ describe('tcxExerciseName', () => {
     expect(tcxExerciseName('Running')).toBe('Running');
     expect(tcxExerciseName('Biking')).toBe('Cycling');
     expect(tcxExerciseName('Other')).toBe('Cardio (imported)');
+  });
+});
+
+describe('parseTcx track (issue #259)', () => {
+  it('builds a pace/HR track from the per-second Trackpoints', () => {
+    // RUN_TCX has 3 trackpoints: two in lap 1 (t=1s,2s with HR) and one in
+    // lap 2 (t=901s, no HR). Each is relative to the activity start.
+    const r = parseTcx(RUN_TCX);
+    expect(r.ok).toBe(true);
+    expect(r.activity?.track).toEqual([
+      { t: 1, d: 3.2, hr: 120 },
+      { t: 2, d: 6.5, hr: 121 },
+      { t: 901, d: 2501 },
+    ]);
+  });
+
+  it('keeps the track null when the file carries no trackpoints', () => {
+    const r = parseTcx(
+      minimalTcx(
+        `<Activity Sport="Running"><Id>2026-06-10T07:30:00.000Z</Id>` +
+          `<Lap StartTime="2026-06-10T07:30:00.000Z"><TotalTimeSeconds>600</TotalTimeSeconds>` +
+          `<DistanceMeters>2000</DistanceMeters></Lap></Activity>`,
+      ),
+    );
+    expect(r.ok).toBe(true);
+    expect(r.activity?.track).toBeNull();
+  });
+
+  it('downsamples a long track to at most 500 points, ordered from the start', () => {
+    let tps = '';
+    const base = new Date('2026-06-10T07:30:00.000Z').getTime();
+    for (let i = 0; i < 600; i++) {
+      const time = new Date(base + i * 1000).toISOString();
+      tps += `<Trackpoint><Time>${time}</Time><DistanceMeters>${i * 3}</DistanceMeters><HeartRateBpm><Value>150</Value></HeartRateBpm></Trackpoint>`;
+    }
+    const r = parseTcx(
+      minimalTcx(
+        `<Activity Sport="Running"><Id>2026-06-10T07:30:00.000Z</Id>` +
+          `<Lap StartTime="2026-06-10T07:30:00.000Z"><TotalTimeSeconds>600</TotalTimeSeconds>` +
+          `<DistanceMeters>1800</DistanceMeters><Track>${tps}</Track></Lap></Activity>`,
+      ),
+    );
+    expect(r.ok).toBe(true);
+    const track = r.activity!.track!;
+    expect(track.length).toBeGreaterThan(1);
+    expect(track.length).toBeLessThanOrEqual(500);
+    expect(track.length).toBeLessThan(600);
+    expect(track[0]!.t).toBe(0);
   });
 });

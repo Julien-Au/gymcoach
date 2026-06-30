@@ -34,6 +34,16 @@ const RUN_TCX = `<?xml version="1.0" encoding="UTF-8"?>
   </Activities>
 </TrainingCenterDatabase>`;
 
+// Same activity, now with per-second <Trackpoint> samples (issue #259).
+const RUN_TCX_WITH_TRACK = RUN_TCX.replace(
+  '</Lap>',
+  `<Track>
+    <Trackpoint><Time>2026-05-20T07:30:00.000Z</Time><DistanceMeters>0</DistanceMeters><HeartRateBpm><Value>148</Value></HeartRateBpm></Trackpoint>
+    <Trackpoint><Time>2026-05-20T07:45:00.000Z</Time><DistanceMeters>2500</DistanceMeters><HeartRateBpm><Value>156</Value></HeartRateBpm></Trackpoint>
+    <Trackpoint><Time>2026-05-20T08:00:00.000Z</Time><DistanceMeters>5000</DistanceMeters><HeartRateBpm><Value>161</Value></HeartRateBpm></Trackpoint>
+  </Track></Lap>`,
+);
+
 async function seedUser(email: string) {
   return db.user.create({ data: { email, passwordHash: 'x' } });
 }
@@ -111,6 +121,28 @@ describe('POST /api/import/tcx (preview)', () => {
 });
 
 describe('POST /api/import/tcx (confirm)', () => {
+  it('stores the downsampled pace/HR track when the file has trackpoints (#259)', async () => {
+    const user = await seedUser('tcx-track@test.dev');
+    actAs(user.id);
+
+    const res = await postImport(importReq({ xml: RUN_TCX_WITH_TRACK, mode: 'confirm' }));
+    expect(res.status).toBe(200);
+    const set = await db.set.findFirst({ where: { session: { userId: user.id } } });
+    expect(Array.isArray(set?.track)).toBe(true);
+    const track = set?.track as Array<{ t: number; d?: number; hr?: number }>;
+    expect(track).toHaveLength(3);
+    expect(track[0]).toEqual({ t: 0, d: 0, hr: 148 });
+    expect(track[2]).toEqual({ t: 1800, d: 5000, hr: 161 });
+  });
+
+  it('leaves the track null when the file has no trackpoints', async () => {
+    const user = await seedUser('tcx-notrack@test.dev');
+    actAs(user.id);
+    await postImport(importReq({ xml: RUN_TCX, mode: 'confirm' }));
+    const set = await db.set.findFirst({ where: { session: { userId: user.id } } });
+    expect(set?.track ?? null).toBeNull();
+  });
+
   it('creates one session with one cardio set carrying avgHr, on an auto-created CARDIO exercise', async () => {
     const user = await seedUser('tcx-confirm@test.dev');
     actAs(user.id);
