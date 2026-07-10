@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Flame } from 'lucide-react';
 import type { WeightUnit } from '@/lib/prisma-client';
 import {
@@ -28,6 +29,7 @@ interface Props {
 // descending reps, in the user's display unit and rounded to loadable plates.
 // Display-only; it never creates or mutates a set (mirrors the plate calculator).
 export function WarmupCalculator({ weightKg, unit }: Props) {
+  const t = useTranslations('session.calculator');
   const [open, setOpen] = useState(false);
 
   // Compute lazily when the dialog opens so the bar weight is only read from
@@ -49,25 +51,26 @@ export function WarmupCalculator({ weightKg, unit }: Props) {
           variant="ghost"
           size="sm"
           className="h-7 gap-1 px-2 text-xs text-muted-foreground"
-          aria-label="Open the warm-up calculator"
+          aria-label={t('openWarmup')}
         >
           <Flame className="size-4" />
-          Warm-up
+          {t('warmupButton')}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Warm-up ramp</DialogTitle>
+          <DialogTitle>{t('warmup')}</DialogTitle>
           <DialogDescription>
-            Suggested warm-up sets up to a working weight of{' '}
-            {ramp ? `${ramp.workingWeight} ${label}` : 'the current weight'}.
+            {t('warmupDescription', {
+              weight: ramp ? `${ramp.workingWeight} ${label}` : t('currentWeight'),
+            })}
           </DialogDescription>
         </DialogHeader>
 
         {ramp && (
           <div className="space-y-4">
             {ramp.sets.length > 0 ? (
-              <ol className="space-y-2" aria-label="Warm-up sets">
+              <ol className="space-y-2" aria-label={t('warmupSets')}>
                 {ramp.sets.map((set, index) => (
                   <li
                     key={`${set.weight}-${index}`}
@@ -80,20 +83,19 @@ export function WarmupCalculator({ weightKg, unit }: Props) {
                       </span>
                     </span>
                     <Badge variant="secondary" className="text-sm font-semibold">
-                      {set.reps} reps
+                      {t('reps', { count: set.reps })}
                     </Badge>
                   </li>
                 ))}
               </ol>
             ) : (
               <p className="text-sm text-muted-foreground">
-                This load is at or below the bar - no warm-up ramp needed.
+                {t('noWarmup')}
               </p>
             )}
 
             <p className="text-xs text-muted-foreground">
-              Suggestions only - log your warm-ups with the Warmup toggle. Weights
-              are rounded down to loadable plates.
+              {t('warmupHelp')}
             </p>
           </div>
         )}

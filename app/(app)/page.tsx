@@ -1,14 +1,28 @@
 import Link from 'next/link';
 import { Dumbbell, Play, AlertCircle, Lightbulb } from 'lucide-react';
+import { getFormatter, getLocale, getTranslations } from 'next-intl/server';
 import { db } from '@/lib/db';
 import { requireSession } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { DAY_LABELS } from '@/lib/schemas/workout';
 import { getHomeInsight } from '@/lib/home-insight';
 
+const DAY_KEYS = [
+  'monday',
+  'tuesday',
+  'wednesday',
+  'thursday',
+  'friday',
+  'saturday',
+  'sunday',
+] as const;
+
 export default async function DashboardPage() {
+  const t = await getTranslations('dashboard');
+  const common = await getTranslations('common');
+  const format = await getFormatter();
+  const locale = await getLocale();
   const session = await requireSession();
 
   // Look for an unfinished session to offer resuming it.
@@ -32,7 +46,7 @@ export default async function DashboardPage() {
   // deterministic signal (recommended deload / stalled lift / fresh PR /
   // on-track), composed from the existing derivations. Display-only, no LLM
   // call; null on a brand-new account with no history.
-  const insight = await getHomeInsight(session.userId);
+  const insight = await getHomeInsight(session.userId, new Date(), locale);
 
   return (
     <main className="flex-1 px-4 py-6">
@@ -62,48 +76,48 @@ export default async function DashboardPage() {
         {inProgressSession ? (
           <Card className="border-primary/40 bg-primary/5">
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Active session</CardTitle>
+              <CardTitle className="text-base">{t('activeSession')}</CardTitle>
               <CardDescription>
-                {inProgressSession.workout?.name ?? 'Session'} started on{' '}
-                {new Intl.DateTimeFormat('en-US', {
-                  day: '2-digit',
-                  month: '2-digit',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                }).format(inProgressSession.startedAt)}
+                {t('startedOn', {
+                  name: inProgressSession.workout?.name ?? t('sessionFallback'),
+                  date: format.dateTime(inProgressSession.startedAt, {
+                    day: '2-digit',
+                    month: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  }),
+                })}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Button asChild className="min-h-tap w-full text-base">
-                <Link href={`/session/${inProgressSession.id}`}>Resume session</Link>
+                <Link href={`/session/${inProgressSession.id}`}>{t('resumeSession')}</Link>
               </Button>
             </CardContent>
           </Card>
         ) : !activeProgram ? (
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">No active program</CardTitle>
-              <CardDescription>
-                Activate a program to start a session.
-              </CardDescription>
+              <CardTitle className="text-base">{t('noActiveProgram')}</CardTitle>
+              <CardDescription>{t('noActiveProgramDescription')}</CardDescription>
             </CardHeader>
             <CardContent>
               <Button asChild>
-                <Link href="/programs">View programs</Link>
+                <Link href="/programs">{t('viewPrograms')}</Link>
               </Button>
             </CardContent>
           </Card>
         ) : activeProgram.workouts.length === 0 ? (
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Empty program</CardTitle>
+              <CardTitle className="text-base">{t('emptyProgram')}</CardTitle>
               <CardDescription>
-                {activeProgram.name} has no session configured.
+                {t('emptyProgramDescription', { name: activeProgram.name })}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Button asChild>
-                <Link href={`/programs/${activeProgram.id}`}>Configure program</Link>
+                <Link href={`/programs/${activeProgram.id}`}>{t('configureProgram')}</Link>
               </Button>
             </CardContent>
           </Card>
@@ -111,16 +125,16 @@ export default async function DashboardPage() {
           <>
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base">Start a session</CardTitle>
+                <CardTitle className="text-base">{t('startSession')}</CardTitle>
                 <CardDescription>
-                  Active program: {activeProgram.name}
+                  {t('activeProgram', { name: activeProgram.name })}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <Button asChild className="min-h-tap w-full text-base">
                   <Link href="/session/new">
                     <Play className="size-5" />
-                    <span className="ml-2">Choose a session</span>
+                    <span className="ml-2">{t('chooseSession')}</span>
                   </Link>
                 </Button>
               </CardContent>
@@ -128,11 +142,12 @@ export default async function DashboardPage() {
 
             <div>
               <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                Program sessions
+                {t('programSessions')}
               </h2>
               <ul className="flex flex-col gap-2">
                 {activeProgram.workouts.map((w) => {
-                  const day = w.dayOfWeek != null ? DAY_LABELS[w.dayOfWeek - 1] : null;
+                  const dayKey = w.dayOfWeek != null ? DAY_KEYS[w.dayOfWeek - 1] : null;
+                  const day = dayKey ? common(`days.${dayKey}`) : null;
                   const empty = w._count.exercises === 0;
                   return (
                     <li key={w.id}>
@@ -143,12 +158,12 @@ export default async function DashboardPage() {
                             <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
                               {day && <Badge variant="secondary">{day}</Badge>}
                               <span>
-                                {w._count.exercises} exercise{w._count.exercises > 1 ? 's' : ''}
+                                {common('counts.exercises', { count: w._count.exercises })}
                               </span>
                               {empty && (
                                 <span className="flex items-center gap-1 text-amber-600">
                                   <AlertCircle className="size-3" />
-                                  empty
+                                  {common('states.empty')}
                                 </span>
                               )}
                             </div>

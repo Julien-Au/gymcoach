@@ -1,10 +1,5 @@
 import { db } from './db';
-import {
-  applyBodyweight,
-  exerciseProgress,
-  isStalled,
-  isoWeekStart,
-} from './stats';
+import { applyBodyweight, exerciseProgress, isStalled, isoWeekStart } from './stats';
 import { exerciseRecords } from './records';
 import {
   recommendDeload,
@@ -13,6 +8,7 @@ import {
   DELOAD_READINESS_LOOKBACK,
   type DeloadRecommendation,
 } from './deload';
+import { getExerciseDisplayName } from '@/i18n/exercise-names';
 
 // How far back to look when judging stalled lifts and all-time records for the
 // home insight. Matches the progress page's recent window so the home nudge and
@@ -99,6 +95,7 @@ export function selectHomeInsight(input: HomeInsightInput): HomeInsight | null {
 export async function getHomeInsight(
   userId: string,
   now: Date = new Date(),
+  locale = 'en',
 ): Promise<HomeInsight | null> {
   const since = new Date(now);
   since.setUTCDate(since.getUTCDate() - INSIGHT_WINDOW_WEEKS * 7);
@@ -233,5 +230,29 @@ export async function getHomeInsight(
   const days = new Set(thisWeekSessions.map((s) => s.startedAt.toISOString().slice(0, 10)));
   const trainingDaysThisWeek = thisWeekSessions.length > 0 ? days.size : null;
 
-  return selectHomeInsight({ deload, stalledExerciseNames, recentPR, trainingDaysThisWeek });
+  const displayNames = stalledExerciseNames.map((name) => getExerciseDisplayName(name, locale));
+  const displayDeload = {
+    ...deload,
+    reasons: deload.reasons.map((reason) =>
+      reason.kind === 'stalled-lifts'
+        ? {
+            ...reason,
+            exerciseNames: reason.exerciseNames.map((name) => getExerciseDisplayName(name, locale)),
+          }
+        : reason,
+    ),
+  };
+  const displayRecentPR = recentPR
+    ? {
+        ...recentPR,
+        exerciseName: getExerciseDisplayName(recentPR.exerciseName, locale),
+      }
+    : null;
+
+  return selectHomeInsight({
+    deload: displayDeload,
+    stalledExerciseNames: displayNames,
+    recentPR: displayRecentPR,
+    trainingDaysThisWeek,
+  });
 }

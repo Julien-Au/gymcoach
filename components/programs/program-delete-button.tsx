@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -24,6 +25,8 @@ export function ProgramDeleteButton({
   programId: string;
   programName: string;
 }) {
+  const t = useTranslations('programs');
+  const common = useTranslations('common');
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -32,11 +35,10 @@ export function ProgramDeleteButton({
     startTransition(async () => {
       const res = await fetch(`/api/programs/${programId}`, { method: 'DELETE' });
       if (!res.ok) {
-        const data = (await res.json().catch(() => null)) as { error?: string } | null;
-        toast.error(data?.error ?? 'Could not delete.');
+        toast.error(t('deleteError'));
         return;
       }
-      toast.success('Program deleted.');
+      toast.success(t('deleted'));
       setOpen(false);
       router.push('/programs');
       router.refresh();
@@ -52,20 +54,18 @@ export function ProgramDeleteButton({
           className="min-h-tap text-destructive hover:bg-destructive/10 hover:text-destructive"
         >
           <Trash2 className="size-4" />
-          <span className="ml-2">Delete</span>
+          <span className="ml-2">{common('actions.delete')}</span>
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete this program?</AlertDialogTitle>
+          <AlertDialogTitle>{t('deleteTitle')}</AlertDialogTitle>
           <AlertDialogDescription>
-            <span className="font-medium text-foreground">{programName}</span> will be deleted along with
-            all its sessions and programmed exercises. Past sessions will be
-            detached (kept without an associated program).
+            {t('deleteDescription', { name: programName })}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={isPending}>{common('actions.cancel')}</AlertDialogCancel>
           <AlertDialogAction
             onClick={(e) => {
               e.preventDefault();
@@ -74,7 +74,7 @@ export function ProgramDeleteButton({
             disabled={isPending}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            {isPending ? 'Deleting...' : 'Delete'}
+            {isPending ? t('deleting') : common('actions.delete')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

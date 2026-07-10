@@ -1,23 +1,37 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { getFormatter, getLocale, getTranslations } from 'next-intl/server';
 import { ArrowLeft, Calendar, Clock, Download, Dumbbell } from 'lucide-react';
 import { db } from '@/lib/db';
 import { requireSession } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MUSCLE_GROUP_LABELS } from '@/lib/schemas/exercise';
+import { muscleGroupMessageKeys } from '@/i18n/enum-keys';
 import { applyBodyweight, best1RM, totalVolume } from '@/lib/stats';
-import { formatCardioSet, formatDistance, formatDuration, formatPace, formatSpeed, sumCardioWorkingSets } from '@/lib/cardio';
+import {
+  formatCardioSet,
+  formatDistance,
+  formatDuration,
+  formatPace,
+  formatSpeed,
+  sumCardioWorkingSets,
+} from '@/lib/cardio';
 import { formatWeight } from '@/lib/units';
 import { DeleteSessionButton } from '@/components/history/delete-session-button';
 import { ActivityTrackChart } from '@/components/history/activity-track-chart';
+import { getExerciseDisplayName } from '@/i18n/exercise-names';
 
 interface Params {
   params: Promise<{ id: string }>;
 }
 
 export default async function HistorySessionPage(props: Params) {
+  const t = await getTranslations('history');
+  const detail = await getTranslations('history.detail');
+  const exerciseT = await getTranslations('exercises');
+  const locale = await getLocale();
+  const format = await getFormatter();
   const params = await props.params;
   const auth = await requireSession();
 
@@ -88,8 +102,7 @@ export default async function HistorySessionPage(props: Params) {
   // TCX export (issue #175) is offered only for a FINISHED session that has
   // cardio sets; the route 400s on a cardio-less session, and an in-progress
   // session (reachable only by direct URL here) is not a complete export.
-  const hasCardio =
-    session.finishedAt != null && session.sets.some((s) => s.durationSec != null);
+  const hasCardio = session.finishedAt != null && session.sets.some((s) => s.durationSec != null);
   const durationMin =
     session.finishedAt && session.startedAt
       ? Math.round((session.finishedAt.getTime() - session.startedAt.getTime()) / 60000)
@@ -102,7 +115,7 @@ export default async function HistorySessionPage(props: Params) {
           <Button asChild variant="ghost" size="sm" className="-ml-2">
             <Link href="/history">
               <ArrowLeft className="size-4" />
-              <span className="ml-1">History</span>
+              <span className="ml-1">{t('title')}</span>
             </Link>
           </Button>
           <div className="flex items-center gap-2">
@@ -110,7 +123,7 @@ export default async function HistorySessionPage(props: Params) {
               <Button asChild variant="outline" size="sm">
                 <a href={`/api/cardio/tcx?sessionId=${session.id}`} download>
                   <Download className="size-4" />
-                  <span className="ml-1">Download .tcx</span>
+                  <span className="ml-1">{detail('downloadTcx')}</span>
                 </a>
               </Button>
             )}
@@ -125,36 +138,34 @@ export default async function HistorySessionPage(props: Params) {
         <Card>
           <CardHeader className="pb-3">
             <h1 className="text-2xl font-bold tracking-tight">
-              {session.workout?.name ?? 'Free session'}
+              {session.workout?.name ?? t('freeSession')}
             </h1>
             <div className="mt-1 flex flex-wrap gap-1.5">
-              {session.program && (
-                <Badge variant="secondary">{session.program.name}</Badge>
-              )}
+              {session.program && <Badge variant="secondary">{session.program.name}</Badge>}
               <Badge variant="outline" className="gap-1">
                 <Calendar className="size-3" />
-                {new Intl.DateTimeFormat('en-US', {
+                {format.dateTime(session.startedAt, {
                   day: '2-digit',
                   month: 'long',
                   year: 'numeric',
                   hour: '2-digit',
                   minute: '2-digit',
-                }).format(session.startedAt)}
+                })}
               </Badge>
               {durationMin != null && (
                 <Badge variant="outline" className="gap-1">
                   <Clock className="size-3" />
-                  {durationMin} min
+                  {t('minutes', { count: durationMin })}
                 </Badge>
               )}
             </div>
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-3 pt-0 text-sm sm:grid-cols-3">
-            <Stat label="Sets" value={String(workingSetCount)} />
-            <Stat label="Exercises" value={String(setsByExercise.size)} />
+            <Stat label={detail('sets')} value={String(workingSetCount)} />
+            <Stat label={detail('exercises')} value={String(setsByExercise.size)} />
             <Stat
-              label="Total volume"
-              value={formatWeight(volume, unit, { decimals: 0 })}
+              label={detail('totalVolume')}
+              value={formatWeight(volume, unit, { decimals: 0, locale })}
             />
           </CardContent>
         </Card>
@@ -163,7 +174,7 @@ export default async function HistorySessionPage(props: Params) {
           <Card>
             <CardContent className="py-4 text-sm">
               <p className="mb-1 text-xs uppercase tracking-wide text-muted-foreground">
-                Notes
+                {detail('notes')}
               </p>
               <p className="whitespace-pre-line">{session.notes}</p>
             </CardContent>
@@ -173,7 +184,7 @@ export default async function HistorySessionPage(props: Params) {
         {exerciseOrder.length === 0 ? (
           <Card>
             <CardContent className="py-8 text-center text-sm text-muted-foreground">
-              No set recorded.
+              {detail('noSets')}
             </CardContent>
           </Card>
         ) : (
@@ -214,30 +225,38 @@ export default async function HistorySessionPage(props: Params) {
                   <Card>
                     <CardHeader className="pb-2">
                       <div className="flex items-start justify-between gap-2">
-                        <h2 className="text-base font-semibold">{entry.exercise.name}</h2>
+                        <h2 className="text-base font-semibold">
+                          {getExerciseDisplayName(entry.exercise.name, locale)}
+                        </h2>
                         <Badge variant="secondary" className="text-xs">
-                          {MUSCLE_GROUP_LABELS[entry.exercise.muscleGroup]}
+                          {exerciseT(
+                            `muscleGroups.${muscleGroupMessageKeys[entry.exercise.muscleGroup]}`,
+                          )}
                         </Badge>
                       </div>
                       <div className="mt-1 flex gap-3 text-xs text-muted-foreground">
                         {cardioTotal ? (
-                          <span>Total: {cardioTotal}</span>
+                          <span>{detail('total', { value: cardioTotal })}</span>
                         ) : (
                           <span>
-                            Volume:{' '}
-                            {formatWeight(exoVolume, unit, {
-                              decimals: 0,
-                              group: false,
+                            {detail('volume', {
+                              value: formatWeight(exoVolume, unit, {
+                                decimals: 0,
+                                group: false,
+                                locale,
+                              }),
                             })}
                           </span>
                         )}
                         {e1rm > 0 && (
                           <span>
-                            Est. 1RM:{' '}
-                            {formatWeight(e1rm, unit, {
-                              decimals: 1,
-                              fixed: true,
-                              group: false,
+                            {detail('oneRm', {
+                              value: formatWeight(e1rm, unit, {
+                                decimals: 1,
+                                fixed: true,
+                                group: false,
+                                locale,
+                              }),
                             })}
                           </span>
                         )}
@@ -249,11 +268,11 @@ export default async function HistorySessionPage(props: Params) {
                           <thead>
                             <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
                               <th className="py-1.5 font-medium">#</th>
-                              <th className="py-1.5 font-medium">Duration</th>
-                              <th className="py-1.5 font-medium">Distance</th>
-                              <th className="py-1.5 font-medium">Pace</th>
-                              <th className="py-1.5 font-medium">Avg HR</th>
-                              <th className="py-1.5 font-medium">Max HR</th>
+                              <th className="py-1.5 font-medium">{detail('duration')}</th>
+                              <th className="py-1.5 font-medium">{detail('distance')}</th>
+                              <th className="py-1.5 font-medium">{detail('pace')}</th>
+                              <th className="py-1.5 font-medium">{detail('avgHr')}</th>
+                              <th className="py-1.5 font-medium">{detail('maxHr')}</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -263,24 +282,24 @@ export default async function HistorySessionPage(props: Params) {
                                   ? formatPace(s.durationSec, s.distanceM, unit)
                                   : null;
                               return (
-                              <tr key={s.id} className="border-b border-border/40">
-                                <td className="py-1.5">{s.setNumber}</td>
-                                <td className="py-1.5">
-                                  {s.durationSec != null ? formatDuration(s.durationSec) : '-'}
-                                </td>
-                                <td className="py-1.5">
-                                  {s.distanceM != null && s.distanceM > 0
-                                    ? formatDistance(s.distanceM)
-                                    : '-'}
-                                </td>
-                                <td className="py-1.5">{pace ?? '-'}</td>
-                                <td className="py-1.5">
-                                  {s.avgHr != null ? `${s.avgHr} bpm` : '-'}
-                                </td>
-                                <td className="py-1.5">
-                                  {s.maxHr != null ? `${s.maxHr} bpm` : '-'}
-                                </td>
-                              </tr>
+                                <tr key={s.id} className="border-b border-border/40">
+                                  <td className="py-1.5">{s.setNumber}</td>
+                                  <td className="py-1.5">
+                                    {s.durationSec != null ? formatDuration(s.durationSec) : '-'}
+                                  </td>
+                                  <td className="py-1.5">
+                                    {s.distanceM != null && s.distanceM > 0
+                                      ? formatDistance(s.distanceM)
+                                      : '-'}
+                                  </td>
+                                  <td className="py-1.5">{pace ?? '-'}</td>
+                                  <td className="py-1.5">
+                                    {s.avgHr != null ? `${s.avgHr} bpm` : '-'}
+                                  </td>
+                                  <td className="py-1.5">
+                                    {s.maxHr != null ? `${s.maxHr} bpm` : '-'}
+                                  </td>
+                                </tr>
                               );
                             })}
                           </tbody>
@@ -296,70 +315,73 @@ export default async function HistorySessionPage(props: Params) {
                           ) : null,
                         )}
                       {!isCardio && (
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
-                            <th className="py-1.5 font-medium">#</th>
-                            <th className="py-1.5 font-medium">Load</th>
-                            <th className="py-1.5 font-medium">Reps</th>
-                            <th className="py-1.5 font-medium">RIR</th>
-                            <th className="py-1.5 font-medium">Type</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {entry.sets.map((s) => {
-                            const isBw = entry.exercise.usesBodyweight && bodyweight;
-                            const effective = isBw ? bodyweight + s.weight : s.weight;
-                            return (
-                              <tr
-                                key={s.id}
-                                className={
-                                  s.isWarmup
-                                    ? 'text-muted-foreground'
-                                    : 'border-b border-border/40'
-                                }
-                              >
-                                <td className="py-1.5">{s.setNumber}</td>
-                                <td className="py-1.5">
-                                  {isBw ? (
-                                    <span>
-                                      {formatWeight(effective, unit, {
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
+                              <th className="py-1.5 font-medium">#</th>
+                              <th className="py-1.5 font-medium">{detail('load')}</th>
+                              <th className="py-1.5 font-medium">{detail('reps')}</th>
+                              <th className="py-1.5 font-medium">RIR</th>
+                              <th className="py-1.5 font-medium">{detail('type')}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {entry.sets.map((s) => {
+                              const isBw = entry.exercise.usesBodyweight && bodyweight;
+                              const effective = isBw ? bodyweight + s.weight : s.weight;
+                              return (
+                                <tr
+                                  key={s.id}
+                                  className={
+                                    s.isWarmup
+                                      ? 'text-muted-foreground'
+                                      : 'border-b border-border/40'
+                                  }
+                                >
+                                  <td className="py-1.5">{s.setNumber}</td>
+                                  <td className="py-1.5">
+                                    {isBw ? (
+                                      <span>
+                                        {formatWeight(effective, unit, {
+                                          decimals: 2,
+                                          group: false,
+                                          locale,
+                                        })}
+                                        <span className="ml-1 text-xs text-muted-foreground">
+                                          ({s.weight >= 0 ? '+' : ''}
+                                          {formatWeight(s.weight, unit, {
+                                            decimals: 2,
+                                            withUnit: false,
+                                            group: false,
+                                            locale,
+                                          })}{' '}
+                                          {detail('external')})
+                                        </span>
+                                      </span>
+                                    ) : effective === 0 ? (
+                                      detail('bodyweight')
+                                    ) : (
+                                      formatWeight(effective, unit, {
                                         decimals: 2,
                                         group: false,
-                                      })}
-                                      <span className="ml-1 text-xs text-muted-foreground">
-                                        ({s.weight >= 0 ? '+' : ''}
-                                        {formatWeight(s.weight, unit, {
-                                          decimals: 2,
-                                          withUnit: false,
-                                          group: false,
-                                        })}{' '}
-                                        ext)
-                                      </span>
-                                    </span>
-                                  ) : effective === 0 ? (
-                                    'BW'
-                                  ) : (
-                                    formatWeight(effective, unit, {
-                                      decimals: 2,
-                                      group: false,
-                                    })
-                                  )}
-                                </td>
-                                <td className="py-1.5">{s.reps}</td>
-                                <td className="py-1.5">{s.rir ?? '-'}</td>
-                                <td className="py-1.5 text-xs">
-                                  {s.isWarmup
-                                    ? 'Warmup'
-                                    : s.isDropSet
-                                      ? 'Drop set'
-                                      : 'Working'}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
+                                        locale,
+                                      })
+                                    )}
+                                  </td>
+                                  <td className="py-1.5">{s.reps}</td>
+                                  <td className="py-1.5">{s.rir ?? '-'}</td>
+                                  <td className="py-1.5 text-xs">
+                                    {s.isWarmup
+                                      ? detail('warmup')
+                                      : s.isDropSet
+                                        ? detail('dropSet')
+                                        : detail('working')}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
                       )}
                       {entry.sets.some((s) => s.notes) && (
                         <div className="mt-2 space-y-1 text-xs text-muted-foreground">
@@ -367,7 +389,9 @@ export default async function HistorySessionPage(props: Params) {
                             .filter((s) => s.notes)
                             .map((s) => (
                               <p key={s.id}>
-                                <span className="font-medium">Set {s.setNumber}: </span>
+                                <span className="font-medium">
+                                  {detail('setNote', { number: s.setNumber })}{' '}
+                                </span>
                                 {s.notes}
                               </p>
                             ))}

@@ -1,22 +1,22 @@
 'use client';
 
 import { useState } from 'react';
+import { useFormatter, useLocale, useTranslations } from 'next-intl';
 import { ChevronDown, ChevronUp, HelpCircle, Lightbulb, TrendingUp } from 'lucide-react';
-import type { Exercise, MuscleGroup, ProgramExercise, WeightUnit } from '@/lib/prisma-client';
+import type { Exercise, ProgramExercise, WeightUnit } from '@/lib/prisma-client';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MUSCLE_GROUP_LABELS, CATEGORY_LABELS } from '@/lib/schemas/exercise';
+import { exerciseCategoryMessageKeys, muscleGroupMessageKeys } from '@/i18n/enum-keys';
 import {
   suggestNextWeight,
   SORENESS_HOLD_AT_OR_ABOVE,
   type ReadinessSignal,
-  type SuggestionReason,
-  type SuggestionResult,
 } from '@/lib/progression';
 import { formatWeight } from '@/lib/units';
 import { formatCardioSet } from '@/lib/cardio';
 import type { SerializedLastPerformance } from './session-runner';
+import { useExerciseName } from '@/components/shared/use-exercise-name';
 
 // Last-session reference line for a cardio exercise (issue #176): duration and
 // distance via the shared cardio formatter, with average heart rate appended
@@ -36,45 +36,6 @@ interface Props {
   unit: WeightUnit;
 }
 
-// Short, plain-language explainer shown next to the suggested load when a
-// planned deload week or a recent readiness/soreness check-in made the
-// suggestion more conservative. Returns null for the normal reasons so the UI
-// is unchanged then. The note names the likelier cause - the planned deload,
-// reported soreness for the trained muscle, or low overall readiness - so the
-// adjustment reads as deliberate, not arbitrary.
-function readinessExplainer(
-  reason: SuggestionReason,
-  readiness: ReadinessSignal | null,
-  muscleGroup: MuscleGroup,
-): string | null {
-  if (reason === 'planned-deload') return 'Lighter - planned deload week';
-  if (reason !== 'readiness-hold' && reason !== 'readiness-deload') return null;
-  const verb = reason === 'readiness-deload' ? 'Lighter' : 'Held';
-  const groupSoreness = readiness?.soreness?.[muscleGroup];
-  const cause =
-    typeof groupSoreness === 'number' && groupSoreness >= SORENESS_HOLD_AT_OR_ABOVE
-      ? 'reported soreness'
-      : 'low readiness today';
-  return `${verb} - ${cause}`;
-}
-
-// Long-form explanation behind the help (?) toggle, per suggestion reason.
-function helpText(suggestion: SuggestionResult, unit: WeightUnit): string {
-  const working = formatWeight(suggestion.workingWeight ?? 0, unit, { decimals: 2, group: false });
-  switch (suggestion.reason) {
-    case 'progression':
-      return `All working sets reached ${suggestion.targetRepsMax} reps at ${working}: load goes up by ${formatWeight(suggestion.delta ?? 0, unit, { decimals: 2, group: false })} to drop back to the bottom of the rep range (double progression).`;
-    case 'readiness-hold':
-      return `A recent readiness check-in flagged poor recovery, so the load stays at ${working} instead of increasing today. Push the reps, not the weight.`;
-    case 'readiness-deload':
-      return `A recent readiness check-in flagged very poor recovery, so the load steps down from ${working} for a lighter session. It will climb back as recovery improves.`;
-    case 'planned-deload':
-      return `You are in a planned deload week, so the load steps down about 10% from ${working}. Normal progression resumes when the week ends (you can end it early on the progress page).`;
-    default:
-      return `Keep the same load and try to beat your reps. Progression unlocks once all working sets reach ${suggestion.targetRepsMax} reps.`;
-  }
-}
-
 export function ExerciseCard({
   programExercise,
   lastPerformance,
@@ -82,6 +43,11 @@ export function ExerciseCard({
   deloadActive,
   unit,
 }: Props) {
+  const t = useTranslations('session.exerciseCard');
+  const exerciseT = useTranslations('exercises');
+  const locale = useLocale();
+  const exerciseName = useExerciseName();
+  const format = useFormatter();
   const [notesOpen, setNotesOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const exo = programExercise.exercise;
@@ -101,20 +67,60 @@ export function ExerciseCard({
     readiness,
     deloadActive,
   );
-  const readinessNote = readinessExplainer(suggestion.reason, readiness, exo.muscleGroup);
+  const groupSoreness = readiness?.soreness?.[exo.muscleGroup];
+  const sorenessHigh =
+    typeof groupSoreness === 'number' && groupSoreness >= SORENESS_HOLD_AT_OR_ABOVE;
+  const readinessNote =
+    suggestion.reason === 'planned-deload'
+      ? t('readiness.planned')
+      : suggestion.reason === 'readiness-deload'
+        ? t(sorenessHigh ? 'readiness.sorenessLighter' : 'readiness.readinessLighter')
+        : suggestion.reason === 'readiness-hold'
+          ? t(sorenessHigh ? 'readiness.sorenessHeld' : 'readiness.readinessHeld')
+          : null;
+  const working = formatWeight(suggestion.workingWeight ?? 0, unit, {
+    decimals: 2,
+    group: false,
+    locale,
+  });
+  const suggestionHelp =
+    suggestion.reason === 'progression'
+      ? t('help.progression', {
+          reps: suggestion.targetRepsMax ?? programExercise.targetRepsMax,
+          weight: working,
+          delta: formatWeight(suggestion.delta ?? 0, unit, {
+            decimals: 2,
+            group: false,
+            locale,
+          }),
+        })
+      : suggestion.reason === 'readiness-hold'
+        ? t('help.readinessHold', { weight: working })
+        : suggestion.reason === 'readiness-deload'
+          ? t('help.readinessDeload', { weight: working })
+          : suggestion.reason === 'planned-deload'
+            ? t('help.plannedDeload', { weight: working })
+            : t('help.hold', {
+                reps: suggestion.targetRepsMax ?? programExercise.targetRepsMax,
+              });
   const lastDate = lastPerformance
-    ? new Intl.DateTimeFormat('en-US', { day: '2-digit', month: '2-digit' }).format(
-        new Date(lastPerformance.sessionStartedAt),
-      )
+    ? format.dateTime(new Date(lastPerformance.sessionStartedAt), {
+        day: '2-digit',
+        month: '2-digit',
+      })
     : null;
 
   return (
     <Card>
       <CardHeader className="pb-3">
-        <h2 className="text-2xl font-bold tracking-tight">{exo.name}</h2>
+        <h2 className="text-2xl font-bold tracking-tight">{exerciseName(exo.name)}</h2>
         <div className="mt-1 flex flex-wrap gap-1.5">
-          <Badge variant="secondary">{MUSCLE_GROUP_LABELS[exo.muscleGroup]}</Badge>
-          <Badge variant="outline">{CATEGORY_LABELS[exo.category]}</Badge>
+          <Badge variant="secondary">
+            {exerciseT(`muscleGroups.${muscleGroupMessageKeys[exo.muscleGroup]}`)}
+          </Badge>
+          <Badge variant="outline">
+            {exerciseT(`categories.${exerciseCategoryMessageKeys[exo.category]}`)}
+          </Badge>
         </div>
         {/* Exercise cue (issue #224): when the exercise carries a technique
             note, surface it as an always-visible muted line right under the
@@ -133,14 +139,20 @@ export function ExerciseCard({
         <p className="text-sm font-medium">
           {isCardio ? (
             <>
-              {programExercise.targetSets} set
-              {programExercise.targetSets > 1 ? 's' : ''} · Rest {programExercise.restSec}s
+              {t('cardioPrescription', {
+                sets: programExercise.targetSets,
+                seconds: programExercise.restSec,
+              })}
             </>
           ) : (
             <>
-              {programExercise.targetSets} sets × {repsLabel} reps · RIR{' '}
-              {programExercise.targetRIR} · Rest {programExercise.restSec}s
-              {programExercise.tempo && ` · Tempo ${programExercise.tempo}`}
+              {t('strengthPrescription', {
+                sets: programExercise.targetSets,
+                reps: repsLabel,
+                rir: programExercise.targetRIR,
+                seconds: programExercise.restSec,
+                tempo: programExercise.tempo ?? 'none',
+              })}
             </>
           )}
         </p>
@@ -148,14 +160,21 @@ export function ExerciseCard({
         {lastPerformance && (!isCardio || lastPerformance.cardio) && (
           <div className="rounded-md bg-secondary/50 p-3 text-sm">
             <div className="flex items-center gap-2 text-muted-foreground">
-              <span className="text-xs">Last session ({lastDate})</span>
+              <span className="text-xs">{t('lastSession', { date: lastDate ?? '' })}</span>
             </div>
             <p className="font-medium">
               {isCardio && lastPerformance.cardio
                 ? cardioLastLine(lastPerformance.cardio)
                 : lastPerformance.maxWeight === 0
-                  ? `${lastPerformance.repsAtMaxWeight} reps bodyweight`
-                  : `${formatWeight(lastPerformance.maxWeight, unit, { decimals: 2, group: false })} × ${lastPerformance.repsAtMaxWeight} reps`}
+                  ? t('bodyweightReps', { reps: lastPerformance.repsAtMaxWeight })
+                  : t('weightedReps', {
+                      weight: formatWeight(lastPerformance.maxWeight, unit, {
+                        decimals: 2,
+                        group: false,
+                        locale,
+                      }),
+                      reps: lastPerformance.repsAtMaxWeight,
+                    })}
             </p>
           </div>
         )}
@@ -169,15 +188,25 @@ export function ExerciseCard({
                 <Lightbulb className="size-4 text-primary" />
               )}
               <span className="flex-1">
-                Suggestion:{' '}
+                {t('suggestion')}{' '}
                 <span className="font-medium">
                   {suggestion.weight === 0
-                    ? 'bodyweight'
-                    : formatWeight(suggestion.weight, unit, { decimals: 2, group: false })}
+                    ? t('bodyweight')
+                    : formatWeight(suggestion.weight, unit, {
+                        decimals: 2,
+                        group: false,
+                        locale,
+                      })}
                 </span>
                 {suggestion.reason === 'progression' && suggestion.delta && (
                   <span className="ml-1 text-xs text-primary">
-                    (+{formatWeight(suggestion.delta, unit, { decimals: 2, group: false })})
+                    (+
+                    {formatWeight(suggestion.delta, unit, {
+                      decimals: 2,
+                      group: false,
+                      locale,
+                    })}
+                    )
                   </span>
                 )}
                 {readinessNote && (
@@ -189,7 +218,7 @@ export function ExerciseCard({
               <button
                 type="button"
                 onClick={() => setHelpOpen((v) => !v)}
-                aria-label="How the suggestion is calculated"
+                aria-label={t('suggestionHelp')}
                 aria-expanded={helpOpen}
                 className="text-muted-foreground hover:text-foreground"
               >
@@ -197,9 +226,7 @@ export function ExerciseCard({
               </button>
             </div>
             {helpOpen && (
-              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                {helpText(suggestion, unit)}
-              </p>
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{suggestionHelp}</p>
             )}
           </div>
         )}
@@ -213,14 +240,16 @@ export function ExerciseCard({
               className="-ml-2"
             >
               {notesOpen ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
-              <span className="ml-1">Notes / mind-muscle cue</span>
+              <span className="ml-1">{t('notes')}</span>
             </Button>
             {notesOpen && (
               <div className="mt-2 space-y-2 rounded-md bg-muted/50 p-3 text-xs leading-relaxed text-muted-foreground">
                 {/* The exercise's own notes are the always-visible cue under the
                     header; this block holds only the program-specific note so
                     the same text is never shown twice. */}
-                {programExercise.notes && <p className="whitespace-pre-line">{programExercise.notes}</p>}
+                {programExercise.notes && (
+                  <p className="whitespace-pre-line">{programExercise.notes}</p>
+                )}
               </div>
             )}
           </div>

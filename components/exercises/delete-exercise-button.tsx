@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -24,6 +25,8 @@ export function DeleteExerciseButton({
   exerciseId: string;
   exerciseName: string;
 }) {
+  const t = useTranslations('exercises');
+  const common = useTranslations('common');
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -32,11 +35,10 @@ export function DeleteExerciseButton({
     startTransition(async () => {
       const res = await fetch(`/api/exercises/${exerciseId}`, { method: 'DELETE' });
       if (!res.ok) {
-        const data = (await res.json().catch(() => null)) as { error?: string } | null;
-        toast.error(data?.error ?? 'Could not delete.');
+        toast.error(t('deleteError'));
         return;
       }
-      toast.success('Exercise deleted.');
+      toast.success(t('deleted'));
       setOpen(false);
       router.refresh();
     });
@@ -48,7 +50,7 @@ export function DeleteExerciseButton({
         <Button
           variant="ghost"
           size="icon"
-          aria-label="Delete"
+          aria-label={common('actions.delete')}
           className="min-h-tap min-w-tap text-destructive hover:text-destructive"
         >
           <Trash2 className="size-4" />
@@ -56,15 +58,13 @@ export function DeleteExerciseButton({
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete this exercise?</AlertDialogTitle>
+          <AlertDialogTitle>{t('deleteTitle')}</AlertDialogTitle>
           <AlertDialogDescription>
-            <span className="font-medium text-foreground">{exerciseName}</span> will be removed from
-            the catalog. Not possible if the exercise is used in a program or in
-            history.
+            {t('deleteDescription', { name: exerciseName })}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={isPending}>{common('actions.cancel')}</AlertDialogCancel>
           <AlertDialogAction
             onClick={(e) => {
               e.preventDefault();
@@ -73,7 +73,7 @@ export function DeleteExerciseButton({
             disabled={isPending}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            {isPending ? 'Deleting...' : 'Delete'}
+            {isPending ? t('deleting') : common('actions.delete')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

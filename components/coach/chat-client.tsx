@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Dumbbell, Loader2, MessageSquarePlus, Send } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
@@ -40,6 +41,7 @@ export function ChatClient({
   providerLabel,
   apiKeyEnvVar,
 }: Props) {
+  const t = useTranslations('coach.chat');
   const [conversations, setConversations] = useState(initialConversations);
   const [activeId, setActiveId] = useState<string | null>(initialActiveId);
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
@@ -158,7 +160,7 @@ export function ChatClient({
             {providerLabel} key missing
           </p>
           <p className="text-xs text-muted-foreground">
-            Set <code>{apiKeyEnvVar}</code> in <code>.env</code> to enable the chat.
+            {t('apiKey', { variable: apiKeyEnvVar })}
           </p>
         </div>
       )}
@@ -167,9 +169,8 @@ export function ChatClient({
         <div className="flex items-center gap-2 rounded-md border border-primary/30 bg-primary/5 p-3 text-sm">
           <Dumbbell className="size-4 shrink-0 text-primary" />
           <p className="text-xs text-muted-foreground">
-            <span className="font-medium text-foreground">Live session attached.</span>{' '}
-            The coach sees the sets you have logged so far and your program
-            targets for this workout.
+            <span className="font-medium text-foreground">{t('liveSession')}</span>{' '}
+            {t('liveSessionDescription')}
           </p>
         </div>
       )}
@@ -183,7 +184,7 @@ export function ChatClient({
           className="shrink-0"
         >
           <MessageSquarePlus className="size-4" />
-          <span className="ml-1.5">New</span>
+          <span className="ml-1.5">{t('new')}</span>
         </Button>
         {conversations.map((c) => (
           <button
@@ -209,8 +210,8 @@ export function ChatClient({
         {messages.length === 0 ? (
           <p className="m-auto max-w-sm text-center text-sm text-muted-foreground">
             {sessionId
-              ? 'Mid-workout question? Ask about your next set, a load that feels off, or whether to swap an exercise.'
-              : 'Ask your coach anything: how to break a plateau, whether your volume is on track, how to adjust around an injury...'}
+              ? t('emptySession')
+              : t('empty')}
           </p>
         ) : (
           messages.map((m, i) => (
@@ -245,7 +246,8 @@ export function ChatClient({
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={onKeyDown}
           rows={2}
-          placeholder="Message your coach..."
+          placeholder={t('placeholder')}
+          aria-label={t('placeholder')}
           disabled={!hasApiKey || streaming}
           className="resize-none"
         />
@@ -254,6 +256,7 @@ export function ChatClient({
           onClick={send}
           disabled={!hasApiKey || streaming || input.trim() === ''}
           className="min-h-tap"
+          aria-label={t('send')}
         >
           {streaming ? (
             <Loader2 className="size-4 animate-spin" />

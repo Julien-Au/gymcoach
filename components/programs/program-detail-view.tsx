@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { ChevronLeft, Plus } from 'lucide-react';
 import type { Exercise, Program, ProgramExercise, Workout } from '@/lib/prisma-client';
 import { toast } from 'sonner';
@@ -30,6 +31,8 @@ interface Props {
 }
 
 export function ProgramDetailView({ program, catalog }: Props) {
+  const t = useTranslations('programs');
+  const common = useTranslations('common');
   const router = useRouter();
   const [editOpen, setEditOpen] = useState(false);
   const [addWorkoutOpen, setAddWorkoutOpen] = useState(false);
@@ -44,11 +47,10 @@ export function ProgramDetailView({ program, catalog }: Props) {
         body: JSON.stringify({ active: !program.isActive }),
       });
       if (!res.ok) {
-        const data = (await res.json().catch(() => null)) as { error?: string } | null;
-        toast.error(data?.error ?? 'Error');
+        toast.error(t('saveError'));
         return;
       }
-      toast.success(program.isActive ? 'Program deactivated.' : 'Program activated.');
+      toast.success(program.isActive ? t('deactivated') : t('activated'));
       router.refresh();
     } finally {
       setActivating(false);
@@ -60,7 +62,7 @@ export function ProgramDetailView({ program, catalog }: Props) {
       <Button asChild variant="ghost" size="sm" className="self-start">
         <Link href="/programs">
           <ChevronLeft className="size-4" />
-          <span className="ml-1">Back</span>
+          <span className="ml-1">{common('actions.back')}</span>
         </Link>
       </Button>
 
@@ -71,7 +73,7 @@ export function ProgramDetailView({ program, catalog }: Props) {
               <CardTitle className="text-xl">{program.name}</CardTitle>
               <CardDescription>{program.phase}</CardDescription>
             </div>
-            {program.isActive && <Badge>Active</Badge>}
+            {program.isActive && <Badge>{t('active')}</Badge>}
           </div>
         </CardHeader>
         {program.description && (
@@ -85,7 +87,7 @@ export function ProgramDetailView({ program, catalog }: Props) {
             disabled={activating}
             className="min-h-tap"
           >
-            {program.isActive ? 'Deactivate' : 'Activate'}
+            {program.isActive ? t('deactivate') : t('activate')}
           </Button>
           <Button
             variant="outline"
@@ -93,14 +95,14 @@ export function ProgramDetailView({ program, catalog }: Props) {
             onClick={() => setEditOpen(true)}
             className="min-h-tap"
           >
-            Edit
+            {common('actions.edit')}
           </Button>
           <ProgramDeleteButton programId={program.id} programName={program.name} />
         </CardContent>
       </Card>
 
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold">Sessions</h2>
+        <h2 className="text-lg font-semibold">{t('sessions')}</h2>
         <Button
           size="sm"
           variant="outline"
@@ -108,16 +110,16 @@ export function ProgramDetailView({ program, catalog }: Props) {
           className="min-h-tap"
         >
           <Plus className="size-4" />
-          <span className="ml-2">Add a session</span>
+          <span className="ml-2">{t('addSession')}</span>
         </Button>
       </div>
 
       {program.workouts.length === 0 ? (
         <Card>
           <CardHeader>
-            <CardTitle>No sessions</CardTitle>
+            <CardTitle>{t('noSessions')}</CardTitle>
             <CardDescription>
-              Add a first session to structure this program (e.g. Upper, Lower).
+              {t('noSessionsDescription')}
             </CardDescription>
           </CardHeader>
         </Card>

@@ -49,6 +49,9 @@ services:
       OPENROUTER_MODEL: ${OPENROUTER_MODEL}
       OPENROUTER_APP_NAME: ${OPENROUTER_APP_NAME:-GymCoach}
       OPENROUTER_APP_URL: ${OPENROUTER_APP_URL}
+      CODEX_LB_BASE_URL: ${CODEX_LB_BASE_URL:-http://127.0.0.1:8317/v1}
+      CODEX_LB_API_KEY: ${CODEX_LB_API_KEY:-}
+      CODEX_LB_MODEL: ${CODEX_LB_MODEL:-gpt-5.6-sol}
       NEXTAUTH_URL: ${NEXTAUTH_URL}
       NODE_ENV: production
     # Applique les migrations Prisma puis lance Next.js standalone.

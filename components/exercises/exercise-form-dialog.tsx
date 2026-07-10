@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
@@ -27,13 +28,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
-  CATEGORY_LABELS,
-  MUSCLE_GROUP_LABELS,
   exerciseCategoryValues,
   exerciseInputSchema,
   muscleGroupValues,
   type ExerciseInput,
 } from '@/lib/schemas/exercise';
+import { exerciseCategoryMessageKeys, muscleGroupMessageKeys } from '@/i18n/enum-keys';
 
 interface Props {
   open: boolean;
@@ -52,6 +52,8 @@ const DEFAULT_VALUES: ExerciseInput = {
 };
 
 export function ExerciseFormDialog({ open, onOpenChange, mode, exercise }: Props) {
+  const t = useTranslations('exercises');
+  const common = useTranslations('common');
   const router = useRouter();
   const form = useForm<ExerciseInput>({
     resolver: zodResolver(exerciseInputSchema),
@@ -85,11 +87,10 @@ export function ExerciseFormDialog({ open, onOpenChange, mode, exercise }: Props
       body: JSON.stringify({ ...values, notes: values.notes || null }),
     });
     if (!res.ok) {
-      const data = (await res.json().catch(() => null)) as { error?: string } | null;
-      toast.error(data?.error ?? 'Error');
+      toast.error(t('saveError'));
       return;
     }
-    toast.success(mode === 'edit' ? 'Exercise updated.' : 'Exercise created.');
+    toast.success(mode === 'edit' ? t('updated') : t('created'));
     onOpenChange(false);
     router.refresh();
   }
@@ -99,16 +100,16 @@ export function ExerciseFormDialog({ open, onOpenChange, mode, exercise }: Props
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {mode === 'edit' ? 'Edit exercise' : 'Add an exercise'}
+            {mode === 'edit' ? t('editTitle') : t('addTitle')}
           </DialogTitle>
           <DialogDescription>
-            Enter the name, the muscle group and the category.
+            {t('formDescription')}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
           <div className="space-y-2">
-            <Label htmlFor="name">Name</Label>
+            <Label htmlFor="name">{common('fields.name')}</Label>
             <Input id="name" {...form.register('name')} />
             {form.formState.errors.name && (
               <p className="text-sm text-destructive">{form.formState.errors.name.message}</p>
@@ -117,7 +118,7 @@ export function ExerciseFormDialog({ open, onOpenChange, mode, exercise }: Props
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label htmlFor="muscleGroup">Muscle group</Label>
+              <Label htmlFor="muscleGroup">{t('muscleGroup')}</Label>
               <Select
                 value={form.watch('muscleGroup')}
                 onValueChange={(v) => form.setValue('muscleGroup', v as ExerciseInput['muscleGroup'])}
@@ -128,7 +129,7 @@ export function ExerciseFormDialog({ open, onOpenChange, mode, exercise }: Props
                 <SelectContent>
                   {muscleGroupValues.map((g) => (
                     <SelectItem key={g} value={g}>
-                      {MUSCLE_GROUP_LABELS[g]}
+                      {t(`muscleGroups.${muscleGroupMessageKeys[g]}`)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -136,7 +137,7 @@ export function ExerciseFormDialog({ open, onOpenChange, mode, exercise }: Props
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="category">Category</Label>
+              <Label htmlFor="category">{t('category')}</Label>
               <Select
                 value={form.watch('category')}
                 onValueChange={(v) => form.setValue('category', v as ExerciseInput['category'])}
@@ -147,7 +148,7 @@ export function ExerciseFormDialog({ open, onOpenChange, mode, exercise }: Props
                 <SelectContent>
                   {exerciseCategoryValues.map((c) => (
                     <SelectItem key={c} value={c}>
-                      {CATEGORY_LABELS[c]}
+                      {t(`categories.${exerciseCategoryMessageKeys[c]}`)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -156,7 +157,7 @@ export function ExerciseFormDialog({ open, onOpenChange, mode, exercise }: Props
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="defaultRestSec">Default rest (seconds)</Label>
+            <Label htmlFor="defaultRestSec">{t('defaultRest')}</Label>
             <Input
               id="defaultRestSec"
               type="number"
@@ -174,11 +175,9 @@ export function ExerciseFormDialog({ open, onOpenChange, mode, exercise }: Props
 
           <label className="flex cursor-pointer items-start justify-between gap-3 rounded-md border border-border/40 p-3">
             <div className="min-w-0 space-y-0.5">
-              <p className="text-sm font-medium">Bodyweight exercise</p>
+              <p className="text-sm font-medium">{t('bodyweight')}</p>
               <p className="text-xs text-muted-foreground">
-                Pull-ups, dips, push-ups... The effective tonnage includes your
-                bodyweight. The load you enter represents the added weight
-                (negative for an assistance machine).
+                {t('bodyweightDescription')}
               </p>
             </div>
             <Switch
@@ -188,7 +187,7 @@ export function ExerciseFormDialog({ open, onOpenChange, mode, exercise }: Props
           </label>
 
           <div className="space-y-2">
-            <Label htmlFor="notes">Notes / instructions (optional)</Label>
+            <Label htmlFor="notes">{t('notes')}</Label>
             <Textarea id="notes" rows={3} {...form.register('notes')} />
           </div>
 
@@ -199,14 +198,14 @@ export function ExerciseFormDialog({ open, onOpenChange, mode, exercise }: Props
               onClick={() => onOpenChange(false)}
               disabled={form.formState.isSubmitting}
             >
-              Cancel
+              {common('actions.cancel')}
             </Button>
             <Button type="submit" disabled={form.formState.isSubmitting}>
               {form.formState.isSubmitting
-                ? 'Saving...'
+                ? common('actions.saving')
                 : mode === 'edit'
-                  ? 'Save'
-                  : 'Create'}
+                  ? common('actions.save')
+                  : common('actions.create')}
             </Button>
           </DialogFooter>
         </form>

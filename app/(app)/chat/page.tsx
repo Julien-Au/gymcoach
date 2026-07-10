@@ -1,4 +1,5 @@
 import { MessageSquare } from 'lucide-react';
+import { getTranslations } from 'next-intl/server';
 import { requireSession } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { getLlmProvider } from '@/lib/llm';
@@ -17,6 +18,7 @@ export default async function ChatPage(
     searchParams: Promise<SearchParams>;
   }
 ) {
+  const t = await getTranslations('coach');
   const searchParams = await props.searchParams;
   const auth = await requireSession();
 
@@ -57,7 +59,7 @@ export default async function ChatPage(
 
   const initialConversations: ConversationSummary[] = conversations.map((c) => ({
     id: c.id,
-    title: c.title ?? 'Conversation',
+    title: c.title ?? t('conversation'),
     updatedAt: c.updatedAt.toISOString(),
   }));
 
@@ -69,9 +71,9 @@ export default async function ChatPage(
         <div className="flex items-center gap-3">
           <MessageSquare className="size-6" />
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Chat</h1>
+            <h1 className="text-2xl font-bold tracking-tight">{t('chatTitle')}</h1>
             <p className="text-xs text-muted-foreground">
-              Talk to your coach with your training data in context.
+              {t('chatDescription')}
             </p>
           </div>
         </div>

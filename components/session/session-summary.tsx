@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useLocale, useTranslations } from 'next-intl';
 import { ChevronLeft, Check, Trophy } from 'lucide-react';
 import type { Exercise, ProgramExercise, Session, WeightUnit } from '@/lib/prisma-client';
 import { Button } from '@/components/ui/button';
@@ -13,6 +14,7 @@ import type { PendingSet } from '@/lib/indexeddb';
 import { formatWeight } from '@/lib/units';
 import { detectPRs, type PRType } from '@/lib/records';
 import { formatCardioSet, formatPace, formatSpeed } from '@/lib/cardio';
+import { useExerciseName } from '@/components/shared/use-exercise-name';
 
 // Prior (previous-session) non-warmup sets per exerciseId, used as the PR
 // baseline. Same source as the in-session badge (getLastPerformances): a PR
@@ -40,10 +42,7 @@ export interface SessionPR {
   bestWeight: number;
 }
 
-const PR_TYPE_LABEL: Record<PRType, string> = {
-  weight: 'heaviest load',
-  e1rm: 'best est. 1RM',
-};
+const PR_TYPE_KEYS = { weight: 'heaviest', e1rm: 'bestOneRm' } as const;
 
 // Computes which exercises set a personal record during this session. PR math
 // is reused from lib/records (detectPRs); the comparison baseline is the prior
@@ -104,13 +103,14 @@ export function SessionSummary({
   onFinish,
   finishing,
 }: Props) {
+  const t = useTranslations('session.summary');
+  const locale = useLocale();
+  const exerciseName = useExerciseName();
   const [notes, setNotes] = useState(session.notes ?? '');
 
   const sessionPRs = computeSessionPRs(sets, programExercises, priorSets);
 
-  const durationMin = Math.round(
-    (Date.now() - new Date(session.startedAt).getTime()) / 60000,
-  );
+  const durationMin = Math.round((Date.now() - new Date(session.startedAt).getTime()) / 60000);
   const totalSets = sets.filter((s) => !s.isWarmup).length;
   // Cardio sets (issue #133) store reps = 1 / weight = 0 by convention, so
   // they are excluded from the rep count (and contribute 0 to the volume).
@@ -153,7 +153,7 @@ export function SessionSummary({
         body: JSON.stringify({ notes }),
       });
       if (!res.ok) {
-        toast.error('Could not save the notes.');
+        toast.error(t('noteSaveError'));
         return;
       }
     }
@@ -165,28 +165,29 @@ export function SessionSummary({
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 py-6">
         <Button variant="ghost" size="sm" onClick={onBack} className="self-start">
           <ChevronLeft className="size-4" />
-          <span className="ml-1">Back to the session</span>
+          <span className="ml-1">{t('back')}</span>
         </Button>
 
-        <h1 className="text-2xl font-bold tracking-tight">Session summary</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{t('title')}</h1>
 
         <div className="grid grid-cols-3 gap-3">
-          <Stat label="Duration" value={`${durationMin} min`} />
-          <Stat label="Sets" value={totalSets} />
-          <Stat label="Volume" value={formatWeight(totalVolume, unit, { decimals: 0 })} />
+          <Stat label={t('duration')} value={t('minutes', { count: durationMin })} />
+          <Stat label={t('sets')} value={totalSets} />
+          <Stat
+            label={t('volume')}
+            value={formatWeight(totalVolume, unit, { decimals: 0, locale })}
+          />
         </div>
-        <p className="text-xs text-muted-foreground">
-          Volume = Σ (load × reps), {totalReps} reps total.
-        </p>
+        <p className="text-xs text-muted-foreground">{t('volumeFormula', { reps: totalReps })}</p>
 
         {sessionPRs.length > 0 && (
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-base">
                 <Trophy className="size-4 text-primary" />
-                Personal records this session
+                {t('records')}
               </CardTitle>
-              <CardDescription>New bests versus your last session</CardDescription>
+              <CardDescription>{t('bests')}</CardDescription>
             </CardHeader>
             <CardContent className="pt-0">
               <ul className="divide-y divide-border">
@@ -195,16 +196,22 @@ export function SessionSummary({
                     key={pr.exerciseId}
                     className="flex items-center justify-between gap-2 py-2 text-sm"
                   >
-                    <span className="min-w-0 truncate font-medium">{pr.exerciseName}</span>
+                    <span className="min-w-0 truncate font-medium">
+                      {exerciseName(pr.exerciseName)}
+                    </span>
                     <div className="flex flex-shrink-0 items-center gap-1.5">
                       {pr.types.map((type) => (
                         <Badge key={type} className="gap-1 text-xs">
                           <Trophy className="size-3" />
-                          {PR_TYPE_LABEL[type]}
+                          {t(PR_TYPE_KEYS[type])}
                         </Badge>
                       ))}
                       <span className="text-xs text-muted-foreground">
-                        {formatWeight(pr.bestWeight, unit, { decimals: 2, group: false })}
+                        {formatWeight(pr.bestWeight, unit, {
+                          decimals: 2,
+                          group: false,
+                          locale,
+                        })}
                       </span>
                     </div>
                   </li>
@@ -216,30 +223,33 @@ export function SessionSummary({
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Exercises</CardTitle>
-            <CardDescription>Progress per exercise</CardDescription>
+            <CardTitle className="text-base">{t('exercises')}</CardTitle>
+            <CardDescription>{t('exerciseProgress')}</CardDescription>
           </CardHeader>
           <CardContent className="pt-0">
             <ul className="divide-y divide-border">
               {exerciseStats.map((s) => (
-                <li
-                  key={s.pe.id}
-                  className="flex items-center justify-between gap-2 py-2 text-sm"
-                >
+                <li key={s.pe.id} className="flex items-center justify-between gap-2 py-2 text-sm">
                   <div className="flex min-w-0 items-center gap-2">
                     {s.complete ? (
                       <Check className="size-4 text-primary" />
                     ) : (
                       <span className="size-4 flex-shrink-0 rounded-full border border-muted-foreground/40" />
                     )}
-                    <span className="truncate">{s.pe.exercise.name}</span>
+                    <span className="truncate">{exerciseName(s.pe.exercise.name)}</span>
                   </div>
                   <span className="flex-shrink-0 text-xs text-muted-foreground">
-                    {s.doneSets}/{s.targetSets} sets
+                    {t('setProgress', { done: s.doneSets, target: s.targetSets })}
                     {s.cardioLabel
                       ? ` · ${s.cardioLabel}`
                       : s.maxWeight > 0
-                        ? ` · max ${formatWeight(s.maxWeight, unit, { decimals: 2, group: false })}`
+                        ? t('maxWeight', {
+                            weight: formatWeight(s.maxWeight, unit, {
+                              decimals: 2,
+                              group: false,
+                              locale,
+                            }),
+                          })
                         : ''}
                   </span>
                 </li>
@@ -249,13 +259,13 @@ export function SessionSummary({
         </Card>
 
         <div className="space-y-2">
-          <Label htmlFor="session-notes">Session note (optional)</Label>
+          <Label htmlFor="session-notes">{t('note')}</Label>
           <Textarea
             id="session-notes"
             rows={3}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Overall feel, pain, points to work on..."
+            placeholder={t('notePlaceholder')}
           />
         </div>
 
@@ -264,7 +274,7 @@ export function SessionSummary({
           disabled={finishing}
           className="h-16 w-full text-base font-semibold"
         >
-          {finishing ? 'Finishing...' : 'Finish the session'}
+          {finishing ? t('finishing') : t('finish')}
         </Button>
       </div>
     </main>

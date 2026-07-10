@@ -1,7 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useFormatter, useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { Ruler, Trash2 } from 'lucide-react';
 import {
@@ -43,21 +44,22 @@ interface Props {
   listLimit?: number;
 }
 
-function shortDate(iso: string) {
-  return new Intl.DateTimeFormat('en-US', {
-    day: '2-digit',
-    month: '2-digit',
-  }).format(new Date(iso));
-}
-
 // Body-measurement card (issue #202), mirroring the bodyweight card (#99):
 // pick a site, quick-add a value in the display unit (cm in metric, inches in
 // imperial), see the latest value per site and a trend for the selected site,
 // delete bad entries. Storage is always cm; the unit only affects display.
 export function MeasurementsCard({ entries, unit, listLimit = 5 }: Props) {
+  const t = useTranslations('progress.measurements');
+  const common = useTranslations('common');
+  const format = useFormatter();
   const router = useRouter();
   const metric = unit !== 'LB';
   const unitSuffix = metric ? 'cm' : 'in';
+  const shortDate = useCallback(
+    (iso: string) =>
+      format.dateTime(new Date(iso), { day: '2-digit', month: '2-digit' }),
+    [format],
+  );
 
   const [site, setSite] = useState<BodyMeasurementSite>('WAIST');
   const [valueField, setValueField] = useState('');
@@ -88,7 +90,7 @@ export function MeasurementsCard({ entries, unit, listLimit = 5 }: Props) {
           label: shortDate(e.measuredAt),
           value: roundLength(toDisplayLength(e.valueCm, metric)),
         })),
-    [siteEntries, metric],
+    [siteEntries, metric, shortDate],
   );
 
   async function addEntry() {
@@ -139,7 +141,7 @@ export function MeasurementsCard({ entries, unit, listLimit = 5 }: Props) {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="flex items-center gap-2 text-base font-semibold">
             <Ruler className="size-4" />
-            Measurements
+            {t('title')}
           </h2>
         </div>
       </CardHeader>
@@ -153,7 +155,7 @@ export function MeasurementsCard({ entries, unit, listLimit = 5 }: Props) {
           }}
         >
           <div className="flex-1 space-y-1">
-            <Label htmlFor="measurement-site">Site</Label>
+            <Label htmlFor="measurement-site">{t('site')}</Label>
             <select
               id="measurement-site"
               className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
@@ -168,7 +170,7 @@ export function MeasurementsCard({ entries, unit, listLimit = 5 }: Props) {
             </select>
           </div>
           <div className="flex-1 space-y-1">
-            <Label htmlFor="measurement-value">Value ({unitSuffix})</Label>
+            <Label htmlFor="measurement-value">{t('value', { unit: unitSuffix })}</Label>
             <Input
               id="measurement-value"
               type="number"
@@ -180,7 +182,7 @@ export function MeasurementsCard({ entries, unit, listLimit = 5 }: Props) {
             />
           </div>
           <Button type="submit" disabled={busy}>
-            {busy ? 'Saving...' : 'Log'}
+            {busy ? common('actions.saving') : t('log')}
           </Button>
         </form>
 
@@ -202,8 +204,8 @@ export function MeasurementsCard({ entries, unit, listLimit = 5 }: Props) {
         {chartData.length < 2 ? (
           <p className="text-sm text-muted-foreground">
             {chartData.length === 0
-              ? `No ${measurementSiteLabel(site).toLowerCase()} measurement yet. Log one to start the trend.`
-              : `Log a second ${measurementSiteLabel(site).toLowerCase()} measurement to see the trend.`}
+              ? t('empty', { site: measurementSiteLabel(site).toLowerCase() })
+              : t('second', { site: measurementSiteLabel(site).toLowerCase() })}
           </p>
         ) : (
           <div className="h-48 w-full">
@@ -247,7 +249,9 @@ export function MeasurementsCard({ entries, unit, listLimit = 5 }: Props) {
               >
                 <span>
                   <span className="font-medium">{formatLength(e.valueCm, metric)}</span>{' '}
-                  <span className="text-muted-foreground">on {shortDate(e.measuredAt)}</span>
+                  <span className="text-muted-foreground">
+                    {t('onDate', { date: shortDate(e.measuredAt) })}
+                  </span>
                 </span>
                 <Button
                   type="button"

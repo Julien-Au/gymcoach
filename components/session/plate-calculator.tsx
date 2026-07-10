@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Calculator } from 'lucide-react';
 import type { WeightUnit } from '@/lib/prisma-client';
 import {
@@ -27,6 +28,7 @@ interface Props {
 // bar weight + plate inventory from preferences and shows the plates to load
 // per side for the current target weight. Display-only; never mutates the set.
 export function PlateCalculator({ weightKg, unit }: Props) {
+  const t = useTranslations('session.calculator');
   const [open, setOpen] = useState(false);
 
   // Compute lazily when the dialog opens so localStorage is only read on the
@@ -48,26 +50,27 @@ export function PlateCalculator({ weightKg, unit }: Props) {
           variant="ghost"
           size="sm"
           className="h-7 gap-1 px-2 text-xs text-muted-foreground"
-          aria-label="Open the plate calculator"
+          aria-label={t('openPlates')}
         >
           <Calculator className="size-4" />
-          Plates
+          {t('plates')}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Plate calculator</DialogTitle>
+          <DialogTitle>{t('plates')}</DialogTitle>
           <DialogDescription>
-            Plates to load per side for{' '}
-            {result ? `${result.target} ${label}` : `the current weight`} on a{' '}
-            {result ? `${result.barWeight} ${label}` : ''} bar.
+            {t('plateDescription', {
+              target: result ? `${result.target} ${label}` : t('currentWeight'),
+              bar: result ? `${result.barWeight} ${label}` : '',
+            })}
           </DialogDescription>
         </DialogHeader>
 
         {result && (
           <div className="space-y-4">
             {result.perSide.length > 0 ? (
-              <div className="flex flex-wrap gap-2" aria-label="Plates per side">
+              <div className="flex flex-wrap gap-2" aria-label={t('platesPerSide')}>
                 {result.perSide.map((g) => (
                   <Badge
                     key={g.plate}
@@ -80,18 +83,20 @@ export function PlateCalculator({ weightKg, unit }: Props) {
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">
-                Just the bar - no plates needed.
+                {t('barOnly')}
               </p>
             )}
 
             <p className="text-sm text-muted-foreground">
-              Loads to {result.achievedWeight} {label} (bar {result.barWeight} {label}).
+              {t('achieved', {
+                weight: `${result.achievedWeight} ${label}`,
+                bar: `${result.barWeight} ${label}`,
+              })}
             </p>
 
             {!result.exact && result.remainder > 0 && (
               <p className="text-sm text-amber-600 dark:text-amber-500">
-                {result.remainder} {label} cannot be loaded with your available
-                plates. Adjust the target or your plate inventory in settings.
+                {t('remainder', { remainder: `${result.remainder} ${label}` })}
               </p>
             )}
           </div>

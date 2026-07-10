@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Check, Loader2, SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -9,6 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import type { Adjustment } from '@/lib/coach-adjustments';
 import type { ProgramExerciseDefaults } from './coach-client';
+import { useExerciseName } from '@/components/shared/use-exercise-name';
 
 interface Props {
   debriefId: string;
@@ -30,6 +32,8 @@ export function CoachAdjustments({
   alreadyApplied,
   onApplied,
 }: Props) {
+  const t = useTranslations('coach.adjustments');
+  const exerciseName = useExerciseName();
   const [rows, setRows] = useState<Row[]>(() =>
     initialAdjustments.map((a) => {
       const def = programDefaults[a.exerciseName];
@@ -53,9 +57,7 @@ export function CoachAdjustments({
   if (initialAdjustments.length === 0) return null;
 
   function patchRow(index: number, patch: Partial<Adjustment>) {
-    setRows((rs) =>
-      rs.map((r, i) => (i === index ? { ...r, data: { ...r.data, ...patch } } : r)),
-    );
+    setRows((rs) => rs.map((r, i) => (i === index ? { ...r, data: { ...r.data, ...patch } } : r)));
   }
 
   function toggleRow(index: number, selected: boolean) {
@@ -88,7 +90,9 @@ export function CoachAdjustments({
       };
       const skippedMsg =
         j.skipped.length > 0
-          ? ` (${j.skipped.length} skipped: ${j.skipped.map((s) => s.exerciseName).join(', ')})`
+          ? ` (${j.skipped.length} skipped: ${j.skipped
+              .map((s) => exerciseName(s.exerciseName))
+              .join(', ')})`
           : '';
       setFeedback(
         `${j.applied.length} adjustment${j.applied.length > 1 ? 's' : ''} applied${skippedMsg}.`,
@@ -109,16 +113,11 @@ export function CoachAdjustments({
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <SlidersHorizontal className="size-5" />
-            <h2 className="text-base font-semibold">Suggested adjustments</h2>
+            <h2 className="text-base font-semibold">{t('title')}</h2>
           </div>
-          {alreadyApplied && (
-            <Badge variant="secondary">Already applied</Badge>
-          )}
+          {alreadyApplied && <Badge variant="secondary">{t('applied')}</Badge>}
         </div>
-        <p className="text-xs text-muted-foreground">
-          Check what you want to apply to the active program. You can tweak the
-          values before confirming.
-        </p>
+        <p className="text-xs text-muted-foreground">{t('description')}</p>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         <ul className="flex flex-col gap-3">
@@ -131,37 +130,35 @@ export function CoachAdjustments({
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <p className="font-medium">{row.data.exerciseName}</p>
+                  <p className="font-medium">{exerciseName(row.data.exerciseName)}</p>
                   <p className="text-sm">{row.data.summary}</p>
                   {row.data.rationale && (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {row.data.rationale}
-                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">{row.data.rationale}</p>
                   )}
                 </div>
                 <Switch
                   checked={row.selected}
                   onCheckedChange={(v) => toggleRow(i, v)}
                   disabled={pending}
-                  aria-label={`Apply the adjustment to ${row.data.exerciseName}`}
+                  aria-label={t('aria', { exercise: exerciseName(row.data.exerciseName) })}
                 />
               </div>
 
               <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
                 <NumberField
-                  label="Reps min"
+                  label={t('repsMin')}
                   value={row.data.suggestedRepsMin ?? null}
                   onChange={(v) => patchRow(i, { suggestedRepsMin: v })}
                   disabled={!row.selected || pending}
                 />
                 <NumberField
-                  label="Reps max"
+                  label={t('repsMax')}
                   value={row.data.suggestedRepsMax ?? null}
                   onChange={(v) => patchRow(i, { suggestedRepsMax: v })}
                   disabled={!row.selected || pending}
                 />
                 <NumberField
-                  label="Sets"
+                  label={t('sets')}
                   value={row.data.suggestedSets ?? null}
                   onChange={(v) => patchRow(i, { suggestedSets: v })}
                   disabled={!row.selected || pending}
@@ -173,7 +170,7 @@ export function CoachAdjustments({
                   disabled={!row.selected || pending}
                 />
                 <NumberField
-                  label="Rest (s)"
+                  label={t('rest')}
                   value={row.data.suggestedRestSec ?? null}
                   onChange={(v) => patchRow(i, { suggestedRestSec: v })}
                   disabled={!row.selected || pending}
@@ -181,12 +178,11 @@ export function CoachAdjustments({
                 {row.data.suggestedLoad != null && (
                   <div className="flex flex-col gap-1">
                     <span className="text-xs uppercase tracking-wide text-muted-foreground">
-                      Target load
+                      {t('targetLoad')}
                     </span>
                     <span className="text-sm font-medium">
                       {row.data.suggestedLoad} kg
-                      {row.data.currentLoad != null &&
-                        ` (vs ${row.data.currentLoad})`}
+                      {row.data.currentLoad != null && t('versus', { value: row.data.currentLoad })}
                     </span>
                   </div>
                 )}
@@ -207,15 +203,12 @@ export function CoachAdjustments({
             {pending ? (
               <>
                 <Loader2 className="size-5 animate-spin" />
-                <span className="ml-2">Applying...</span>
+                <span className="ml-2">{t('applying')}</span>
               </>
             ) : (
               <>
                 <Check className="size-5" />
-                <span className="ml-2">
-                  Apply {selectedCount} adjustment
-                  {selectedCount > 1 ? 's' : ''}
-                </span>
+                <span className="ml-2">{t('apply', { count: selectedCount })}</span>
               </>
             )}
           </Button>
@@ -238,9 +231,7 @@ function NumberField({
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-xs uppercase tracking-wide text-muted-foreground">
-        {label}
-      </span>
+      <span className="text-xs uppercase tracking-wide text-muted-foreground">{label}</span>
       <Input
         type="number"
         inputMode="numeric"

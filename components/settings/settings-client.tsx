@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useTheme } from 'next-themes';
-import { Activity, Moon, Smartphone, Sun, Volume2, Monitor } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { Activity, Languages, Moon, Smartphone, Sun, Volume2, Monitor } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
@@ -15,8 +16,11 @@ import {
   type UserPreferences,
 } from '@/lib/preferences';
 import { BackupSection } from './backup-section';
+import { LanguageSelector } from '@/components/shared/language-selector';
 
 export function SettingsClient() {
+  const t = useTranslations('settings');
+  const common = useTranslations('common');
   const { theme, setTheme } = useTheme();
   const [prefs, setPrefs] = useState<UserPreferences>(DEFAULT_PREFERENCES);
   const [hydrated, setHydrated] = useState(false);
@@ -38,7 +42,20 @@ export function SettingsClient() {
     <>
       <Card>
         <CardHeader className="pb-3">
-          <h2 className="text-base font-semibold">Appearance</h2>
+          <h2 className="flex items-center gap-2 text-base font-semibold">
+            <Languages className="size-4" />
+            {common('language.label')}
+          </h2>
+          <p className="text-xs text-muted-foreground">{common('language.description')}</p>
+        </CardHeader>
+        <CardContent>
+          <LanguageSelector showLabel />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <h2 className="text-base font-semibold">{t('appearance')}</h2>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-2">
@@ -46,21 +63,21 @@ export function SettingsClient() {
               current={theme}
               value="dark"
               icon={<Moon className="size-4" />}
-              label="Dark"
+              label={common('theme.dark')}
               onClick={() => setTheme('dark')}
             />
             <ThemeChoice
               current={theme}
               value="light"
               icon={<Sun className="size-4" />}
-              label="Light"
+              label={common('theme.light')}
               onClick={() => setTheme('light')}
             />
             <ThemeChoice
               current={theme}
               value="system"
               icon={<Monitor className="size-4" />}
-              label="System"
+              label={common('theme.system')}
               onClick={() => setTheme('system')}
             />
           </div>
@@ -69,32 +86,32 @@ export function SettingsClient() {
 
       <Card>
         <CardHeader className="pb-3">
-          <h2 className="text-base font-semibold">Session</h2>
+          <h2 className="text-base font-semibold">{t('session')}</h2>
           <p className="text-xs text-muted-foreground">
-            These preferences are saved on this device only.
+            {t('deviceOnly')}
           </p>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           <PrefRow
             icon={<Smartphone className="size-4" />}
-            label="Vibration"
-            description="Set logging and end of timer."
+            label={t('vibration')}
+            description={t('vibrationDescription')}
             checked={prefs.vibration}
             onChange={(v) => update('vibration', v)}
             disabled={!hydrated}
           />
           <PrefRow
             icon={<Volume2 className="size-4" />}
-            label="End of timer beep"
-            description="Plays a short 880 Hz beep at the end of the rest."
+            label={t('timerSound')}
+            description={t('timerSoundDescription')}
             checked={prefs.restTimerSound}
             onChange={(v) => update('restTimerSound', v)}
             disabled={!hydrated}
           />
           <PrefRow
             icon={<Activity className="size-4" />}
-            label="Let readiness/soreness adjust my suggested weights"
-            description="When on, a recent readiness check-in can hold or lower the suggested load. When off, suggestions follow pure programmed progression."
+            label={t('readiness')}
+            description={t('readinessDescription')}
             checked={prefs.readinessAutoRegulation}
             onChange={(v) => update('readinessAutoRegulation', v)}
             disabled={!hydrated}
@@ -104,10 +121,9 @@ export function SettingsClient() {
 
       <Card>
         <CardHeader className="pb-3">
-          <h2 className="text-base font-semibold">Plate calculator</h2>
+          <h2 className="text-base font-semibold">{t('plateCalculator')}</h2>
           <p className="text-xs text-muted-foreground">
-            Bar weight and available plates per side, used by the in-workout
-            plate calculator. Set the values for the unit you train in.
+            {t('plateCalculatorDescription')}
           </p>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
@@ -150,6 +166,7 @@ function BarPlatesRow({
   onPlatesChange: (v: number[]) => void;
   disabled?: boolean;
 }) {
+  const t = useTranslations('settings');
   // Edit plates as comma-separated text; commit a cleaned, descending list on
   // change. Empty / invalid entries are dropped so the calculator stays sane.
   function commitPlates(raw: string) {
@@ -163,14 +180,14 @@ function BarPlatesRow({
 
   return (
     <div className="rounded-md border border-border/40 p-3">
-      <p className="mb-2 text-sm font-medium">Equipment ({unitLabel})</p>
+      <p className="mb-2 text-sm font-medium">{t('equipment', { unit: unitLabel })}</p>
       <div className="flex flex-col gap-3">
         <div className="space-y-1">
           <Label
             htmlFor={`bar-${unitLabel}`}
             className="text-xs uppercase tracking-wide text-muted-foreground"
           >
-            Bar weight ({unitLabel})
+            {t('barWeight', { unit: unitLabel })}
           </Label>
           <Input
             id={`bar-${unitLabel}`}
@@ -187,7 +204,7 @@ function BarPlatesRow({
             htmlFor={`plates-${unitLabel}`}
             className="text-xs uppercase tracking-wide text-muted-foreground"
           >
-            Plates per side ({unitLabel})
+            {t('platesPerSide', { unit: unitLabel })}
           </Label>
           <Input
             id={`plates-${unitLabel}`}
@@ -196,7 +213,7 @@ function BarPlatesRow({
             defaultValue={plates.join(', ')}
             disabled={disabled}
             onBlur={(e) => commitPlates(e.target.value)}
-            placeholder="e.g. 25, 20, 15, 10, 5, 2.5, 1.25"
+            placeholder={t('platesPlaceholder')}
           />
         </div>
       </div>

@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTransition } from 'react';
+import { useFormatter, useTranslations } from 'next-intl';
 import { Download, Filter, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -18,29 +19,14 @@ interface Props {
   selectedMonth?: string; // YYYY-MM
 }
 
-const MONTH_NAMES = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-];
-
 // Generates the last 12 months (including the current month) in YYYY-MM format.
-function recentMonths(): { value: string; label: string }[] {
+function recentMonths(formatLabel: (date: Date) => string): { value: string; label: string }[] {
   const now = new Date();
   const out: { value: string; label: string }[] = [];
   for (let i = 0; i < 12; i++) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    out.push({ value, label: `${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}` });
+    out.push({ value, label: formatLabel(d) });
   }
   return out;
 }
@@ -50,10 +36,14 @@ export function HistoryFilters({
   selectedProgramId,
   selectedMonth,
 }: Props) {
+  const t = useTranslations('history.filters');
+  const format = useFormatter();
   const router = useRouter();
   const search = useSearchParams();
   const [isPending, startTransition] = useTransition();
-  const months = recentMonths();
+  const months = recentMonths((date) =>
+    format.dateTime(date, { month: 'long', year: 'numeric' }),
+  );
   const hasFilter = !!(selectedProgramId || selectedMonth);
 
   function update(key: 'programId' | 'month', value: string | undefined) {
@@ -70,7 +60,7 @@ export function HistoryFilters({
     <div className="flex flex-wrap items-center gap-2">
       <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
         <Filter className="size-4" />
-        <span>Filters:</span>
+        <span>{t('title')}</span>
       </div>
 
       <Select
@@ -78,10 +68,10 @@ export function HistoryFilters({
         onValueChange={(v) => update('programId', v === 'all' ? undefined : v)}
       >
         <SelectTrigger className="h-9 w-auto min-w-[10rem]">
-          <SelectValue placeholder="Program" />
+          <SelectValue placeholder={t('program')} />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">All programs</SelectItem>
+          <SelectItem value="all">{t('allPrograms')}</SelectItem>
           {programs.map((p) => (
             <SelectItem key={p.id} value={p.id}>
               {p.name}
@@ -95,10 +85,10 @@ export function HistoryFilters({
         onValueChange={(v) => update('month', v === 'all' ? undefined : v)}
       >
         <SelectTrigger className="h-9 w-auto min-w-[9rem]">
-          <SelectValue placeholder="Month" />
+          <SelectValue placeholder={t('month')} />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">All months</SelectItem>
+          <SelectItem value="all">{t('allMonths')}</SelectItem>
           {months.map((m) => (
             <SelectItem key={m.value} value={m.value}>
               {m.label}
@@ -115,7 +105,7 @@ export function HistoryFilters({
           disabled={isPending}
         >
           <X className="size-4" />
-          <span className="ml-1">Clear</span>
+          <span className="ml-1">{t('clear')}</span>
         </Button>
       )}
 
@@ -124,7 +114,7 @@ export function HistoryFilters({
         size="sm"
         asChild
         className="ml-auto"
-        title="Download the CSV of sets for the active filters"
+        title={t('csvTitle')}
       >
         <a href={buildCsvHref(selectedProgramId, selectedMonth)} download>
           <Download className="size-4" />

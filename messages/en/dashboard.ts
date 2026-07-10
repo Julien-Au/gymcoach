@@ -1,0 +1,16 @@
+export const dashboard = {
+  activeSession: 'Active session',
+  sessionFallback: 'Session',
+  startedOn: '{name} started on {date}',
+  resumeSession: 'Resume session',
+  noActiveProgram: 'No active program',
+  noActiveProgramDescription: 'Activate a program to start a session.',
+  viewPrograms: 'View programs',
+  emptyProgram: 'Empty program',
+  emptyProgramDescription: '{name} has no session configured.',
+  configureProgram: 'Configure program',
+  startSession: 'Start a session',
+  activeProgram: 'Active program: {name}',
+  chooseSession: 'Choose a session',
+  programSessions: 'Program sessions',
+};

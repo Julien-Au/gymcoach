@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import {
   CartesianGrid,
   Line,
@@ -22,6 +23,7 @@ interface TrackPoint {
 // Renders nothing unless there are at least two HR samples, so a track without
 // heart rate (or a strength set) shows no empty chart.
 export function ActivityTrackChart({ track }: { track: TrackPoint[] }) {
+  const t = useTranslations('history.detail');
   const data = track
     .filter((p) => typeof p.hr === 'number')
     .map((p) => ({ min: Math.round((p.t / 60) * 10) / 10, hr: p.hr as number }));
@@ -30,7 +32,7 @@ export function ActivityTrackChart({ track }: { track: TrackPoint[] }) {
 
   return (
     <div className="mt-3">
-      <p className="mb-1 text-xs font-medium text-muted-foreground">Heart rate over time</p>
+      <p className="mb-1 text-xs font-medium text-muted-foreground">{t('heartRateChart')}</p>
       <div className="h-40 w-full" data-testid="activity-track-chart">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: -12 }}>
@@ -49,8 +51,8 @@ export function ActivityTrackChart({ track }: { track: TrackPoint[] }) {
               domain={['dataMin - 5', 'dataMax + 5']}
             />
             <Tooltip
-              formatter={(value) => [`${value} bpm`, 'HR'] as [string, string]}
-              labelFormatter={(label) => `${label} min`}
+              formatter={(value) => [`${value} bpm`, t('heartRate')] as [string, string]}
+              labelFormatter={(label) => t('chartMinutes', { value: String(label) })}
               contentStyle={{
                 fontSize: 12,
                 background: 'hsl(var(--background))',

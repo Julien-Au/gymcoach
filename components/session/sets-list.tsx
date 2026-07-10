@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Check, Circle, CircleDot, CloudOff, Loader2, Trash2, Trophy } from 'lucide-react';
 import type { Exercise, ProgramExercise } from '@/lib/prisma-client';
 import { Button } from '@/components/ui/button';
@@ -21,17 +22,11 @@ interface Props {
   priorSets?: { weight: number; reps: number }[];
 }
 
-const PR_LABEL: Record<PRType, string> = {
-  weight: 'Weight PR',
-  e1rm: 'e1RM PR',
-};
-
-const PR_TITLE: Record<PRType, string> = {
-  weight: 'Heaviest load since your last session',
-  e1rm: 'Best estimated 1RM since your last session',
-};
+const PR_LABEL_KEYS = { weight: 'weightPr', e1rm: 'oneRmPr' } as const;
+const PR_TITLE_KEYS = { weight: 'weightPrTitle', e1rm: 'oneRmPrTitle' } as const;
 
 export function SetsList({ programExercise, sets, isInputActive, onDeleteSet, priorSets }: Props) {
+  const t = useTranslations('session.setsList');
   const completedNonWarmup = sets.filter((s) => !s.isWarmup);
   const totalRows = Math.max(programExercise.targetSets, completedNonWarmup.length + 1);
   const currentSetNumber = completedNonWarmup.length + 1;
@@ -64,8 +59,7 @@ export function SetsList({ programExercise, sets, isInputActive, onDeleteSet, pr
 
       {!isInputActive && completedNonWarmup.length === 0 && sets.length === 0 && (
         <div className="px-3 py-2 text-xs text-muted-foreground">
-          No sets yet. Once the rest ends you will be able to log
-          set {currentSetNumber}.
+          {t('noneDuringRest', { number: currentSetNumber })}
         </div>
       )}
     </div>
@@ -81,7 +75,8 @@ function RowDone({
   prs: PRType[];
   onDelete: () => void;
 }) {
-  const weightLabel = set.weight === 0 ? 'BW' : `${set.weight} kg`;
+  const t = useTranslations('session.setsList');
+  const weightLabel = set.weight === 0 ? t('bodyweight') : `${set.weight} kg`;
   // Cardio sets (issue #133) render as duration/distance, never weight x reps.
   const isCardio = set.durationSec != null;
   return (
@@ -89,9 +84,9 @@ function RowDone({
       <div className="flex min-w-0 items-center gap-2">
         <SyncIcon status={set.status} />
         <span className="text-sm font-medium">
-          Set {set.setNumber}
-          {set.isWarmup ? ' (warmup)' : ''}
-          {set.isDropSet ? ' (drop)' : ''}
+          {t('set', { number: set.setNumber })}
+          {set.isWarmup ? t('warmup') : ''}
+          {set.isDropSet ? t('drop') : ''}
         </span>
         <span className="truncate text-sm text-muted-foreground">
           {isCardio ? (
@@ -104,14 +99,14 @@ function RowDone({
           )}
         </span>
         {prs.map((pr) => (
-          <Badge key={pr} className="gap-1 text-xs" title={PR_TITLE[pr]}>
+          <Badge key={pr} className="gap-1 text-xs" title={t(PR_TITLE_KEYS[pr])}>
             <Trophy className="size-3" />
-            {PR_LABEL[pr]}
+            {t(PR_LABEL_KEYS[pr])}
           </Badge>
         ))}
         {set.notes && (
           <Badge variant="secondary" className="text-xs">
-            note
+            {t('note')}
           </Badge>
         )}
       </div>
@@ -119,7 +114,7 @@ function RowDone({
         variant="ghost"
         size="icon"
         onClick={onDelete}
-        aria-label="Delete the set"
+        aria-label={t('delete')}
         className="size-8 text-muted-foreground hover:text-destructive"
       >
         <Trash2 className="size-3.5" />
@@ -139,6 +134,8 @@ function SyncIcon({ status }: { status: PendingSet['status'] }) {
 }
 
 function RowUpcoming({ setNumber, isCurrent }: { setNumber: number; isCurrent: boolean }) {
+  const t = useTranslations('session.setsList');
+
   return (
     <div
       className={`flex items-center gap-2 border-b border-border px-3 py-2 last:border-b-0 ${
@@ -151,7 +148,7 @@ function RowUpcoming({ setNumber, isCurrent }: { setNumber: number; isCurrent: b
         <Circle className="size-4 flex-shrink-0 text-muted-foreground" />
       )}
       <span className={`text-sm ${isCurrent ? 'font-medium' : 'text-muted-foreground'}`}>
-        Set {setNumber} {isCurrent ? '· in progress' : '· upcoming'}
+        {isCurrent ? t('current', { number: setNumber }) : t('upcoming', { number: setNumber })}
       </span>
     </div>
   );

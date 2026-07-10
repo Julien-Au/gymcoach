@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Link2, MoreHorizontal, Pencil, Trash2, Unlink } from 'lucide-react';
 import type { Exercise, ProgramExercise } from '@/lib/prisma-client';
 import { toast } from 'sonner';
@@ -15,7 +16,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ProgramExerciseFormDialog } from '@/components/programs/program-exercise-form-dialog';
-import { CATEGORY_LABELS, MUSCLE_GROUP_LABELS } from '@/lib/schemas/exercise';
+import { exerciseCategoryMessageKeys, muscleGroupMessageKeys } from '@/i18n/enum-keys';
+import { useExerciseName } from '@/components/shared/use-exercise-name';
 
 type ProgramExerciseWithExercise = ProgramExercise & { exercise: Exercise };
 
@@ -37,23 +39,26 @@ export function ProgramExerciseRow({
   onPairWithPrevious = null,
   onUnpair = null,
 }: Props) {
+  const t = useTranslations('programs.exercise');
+  const exerciseT = useTranslations('exercises');
+  const common = useTranslations('common');
+  const exerciseName = useExerciseName();
   const router = useRouter();
   const [editOpen, setEditOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   async function handleDelete() {
-    if (!confirm(`Remove "${programExercise.exercise.name}" from this session?`)) return;
+    if (!confirm(t('removeConfirm', { name: exerciseName(programExercise.exercise.name) }))) return;
     setDeleting(true);
     try {
       const res = await fetch(`/api/program-exercises/${programExercise.id}`, {
         method: 'DELETE',
       });
       if (!res.ok) {
-        const data = (await res.json().catch(() => null)) as { error?: string } | null;
-        toast.error(data?.error ?? 'Could not delete.');
+        toast.error(t('removeError'));
         return;
       }
-      toast.success('Exercise removed.');
+      toast.success(t('removed'));
       router.refresh();
     } finally {
       setDeleting(false);
@@ -70,20 +75,30 @@ export function ProgramExerciseRow({
       <div className="rounded-md border border-border bg-card/50 p-3">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <p className="truncate text-sm font-medium">{programExercise.exercise.name}</p>
+            <p className="truncate text-sm font-medium">
+              {exerciseName(programExercise.exercise.name)}
+            </p>
             <div className="mt-1 flex flex-wrap gap-1.5 text-xs text-muted-foreground">
-              {supersetLabel && <Badge>Superset {supersetLabel}</Badge>}
+              {supersetLabel && <Badge>{t('superset', { label: supersetLabel })}</Badge>}
               <Badge variant="secondary">
-                {MUSCLE_GROUP_LABELS[programExercise.exercise.muscleGroup]}
+                {exerciseT(
+                  `muscleGroups.${muscleGroupMessageKeys[programExercise.exercise.muscleGroup]}`,
+                )}
               </Badge>
               <Badge variant="outline">
-                {CATEGORY_LABELS[programExercise.exercise.category]}
+                {exerciseT(
+                  `categories.${exerciseCategoryMessageKeys[programExercise.exercise.category]}`,
+                )}
               </Badge>
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              {programExercise.targetSets} sets × {repsLabel} reps · RIR{' '}
-              {programExercise.targetRIR} · rest {programExercise.restSec}s
-              {programExercise.tempo && ` · tempo ${programExercise.tempo}`}
+              {t('prescription', {
+                sets: programExercise.targetSets,
+                reps: repsLabel,
+                rir: programExercise.targetRIR,
+                seconds: programExercise.restSec,
+              })}
+              {programExercise.tempo && t('tempoValue', { tempo: programExercise.tempo })}
             </p>
             {programExercise.notes && (
               <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">
@@ -97,7 +112,7 @@ export function ProgramExerciseRow({
                 variant="ghost"
                 size="icon"
                 className="min-h-tap min-w-tap"
-                aria-label="Exercise actions"
+                aria-label={t('actions')}
               >
                 <MoreHorizontal className="size-4" />
               </Button>
@@ -105,18 +120,18 @@ export function ProgramExerciseRow({
             <DropdownMenuContent align="end">
               <DropdownMenuItem onSelect={() => setEditOpen(true)}>
                 <Pencil className="mr-2 size-4" />
-                Edit
+                {common('actions.edit')}
               </DropdownMenuItem>
               {onPairWithPrevious && (
                 <DropdownMenuItem onSelect={() => onPairWithPrevious()}>
                   <Link2 className="mr-2 size-4" />
-                  Pair with previous
+                  {t('pairPrevious')}
                 </DropdownMenuItem>
               )}
               {onUnpair && (
                 <DropdownMenuItem onSelect={() => onUnpair()}>
                   <Unlink className="mr-2 size-4" />
-                  Unpair superset
+                  {t('unpair')}
                 </DropdownMenuItem>
               )}
               <DropdownMenuSeparator />
@@ -126,7 +141,7 @@ export function ProgramExerciseRow({
                 className="text-destructive focus:text-destructive"
               >
                 <Trash2 className="mr-2 size-4" />
-                Remove
+                {common('actions.remove')}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

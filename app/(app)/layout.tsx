@@ -4,6 +4,7 @@ import { NavLinks } from '@/components/shared/nav-links';
 import { OfflineIndicator } from '@/components/shared/offline-indicator';
 import { SyncBootstrap } from '@/components/shared/sync-bootstrap';
 import { ThemeToggle } from '@/components/shared/theme-toggle';
+import { LanguageSelector } from '@/components/shared/language-selector';
 import Link from 'next/link';
 
 // Layout for protected routes (post-login).
@@ -19,6 +20,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </Link>
           <div className="flex items-center gap-2">
             <OfflineIndicator />
+            <LanguageSelector />
             <ThemeToggle />
             <LogoutButton />
           </div>

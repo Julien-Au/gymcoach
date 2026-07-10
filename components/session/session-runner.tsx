@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight, Flag, MessageSquare, X } from 'lucide-react';
 import type {
@@ -20,11 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { acquireWakeLock, bindWakeLockToVisibility, releaseWakeLock } from '@/lib/wake-lock';
 import { vibrate, VIBRATION_PATTERNS } from '@/lib/vibrate';
-import {
-  generateLocalId,
-  getDB,
-  type PendingSet,
-} from '@/lib/indexeddb';
+import { generateLocalId, getDB, type PendingSet } from '@/lib/indexeddb';
 import { readinessForSuggestion, type ReadinessSignal } from '@/lib/progression';
 import {
   buildSupersetView,
@@ -41,6 +38,7 @@ import { SetsList } from '@/components/session/sets-list';
 import { SetInput } from '@/components/session/set-input';
 import { RestTimer } from '@/components/session/rest-timer';
 import { SessionSummary } from '@/components/session/session-summary';
+import { useExerciseName } from '@/components/shared/use-exercise-name';
 
 export interface SerializedLastPerformance {
   sessionStartedAt: string;
@@ -87,6 +85,8 @@ export function SessionRunner({
   deloadActive,
   unit,
 }: SessionRunnerProps) {
+  const t = useTranslations('session');
+  const exerciseName = useExerciseName();
   const router = useRouter();
   const workout = session.workout!;
   // Supersets (issue #146, slice 1): run the workout in presentation order -
@@ -133,9 +133,7 @@ export function SessionRunner({
     async () => {
       const db = getDB();
       const items = await db.pendingSets.where('sessionId').equals(session.id).toArray();
-      items.sort((a, b) =>
-        a.exerciseId.localeCompare(b.exerciseId) || a.setNumber - b.setNumber,
-      );
+      items.sort((a, b) => a.exerciseId.localeCompare(b.exerciseId) || a.setNumber - b.setNumber);
       return items;
     },
     [session.id],
@@ -245,13 +243,12 @@ export function SessionRunner({
     if (set.serverId) {
       const res = await fetch(`/api/sets/${set.serverId}`, { method: 'DELETE' });
       if (!res.ok && res.status !== 404) {
-        const data = (await res.json().catch(() => null)) as { error?: string } | null;
-        toast.error(data?.error ?? 'Could not delete.');
+        toast.error(t('setDeleteError'));
         return;
       }
     }
     await db.pendingSets.delete(set.localId);
-    toast.success('Set deleted.');
+    toast.success(t('setDeleted'));
   }
 
   async function handleFinishSession() {
@@ -267,11 +264,10 @@ export function SessionRunner({
         body: JSON.stringify({ finish: true }),
       });
       if (!res.ok) {
-        const data = (await res.json().catch(() => null)) as { error?: string } | null;
-        toast.error(data?.error ?? 'Could not finish.');
+        toast.error(t('finishError'));
         return;
       }
-      toast.success('Session finished.');
+      toast.success(t('finished'));
       router.replace('/');
       router.refresh();
     } finally {
@@ -332,7 +328,7 @@ export function SessionRunner({
   if (!currentPE) {
     return (
       <main className="flex flex-1 items-center justify-center px-4 py-6">
-        <p className="text-muted-foreground">No exercises in this session.</p>
+        <p className="text-muted-foreground">{t('noExercises')}</p>
       </main>
     );
   }
@@ -348,16 +344,20 @@ export function SessionRunner({
           <div className="min-w-0">
             <p className="truncate text-xs text-muted-foreground">{workout.name}</p>
             <p className="text-sm font-medium">
-              Exercise {currentIdx + 1}/{programExercises.length} · {currentPE.exercise.name}
+              {t('exerciseProgress', {
+                current: currentIdx + 1,
+                total: programExercises.length,
+                name: exerciseName(currentPE.exercise.name),
+              })}
             </p>
             {supersetView.labels.has(currentPE.id) && (
               <Badge variant="secondary" className="mt-1">
-                Superset {supersetView.labels.get(currentPE.id)}
+                {t('superset', { label: supersetView.labels.get(currentPE.id) ?? '' })}
               </Badge>
             )}
             {deloadActive && (
               <Badge variant="secondary" className="mt-1 text-emerald-700 dark:text-emerald-400">
-                Deload week
+                {t('deloadWeek')}
               </Badge>
             )}
           </div>
@@ -366,7 +366,7 @@ export function SessionRunner({
             size="sm"
             asChild
             className="text-muted-foreground"
-            aria-label="Quit without finishing"
+            aria-label={t('quit')}
           >
             <Link href="/">
               <X className="size-4" />
@@ -409,7 +409,7 @@ export function SessionRunner({
             totalSec={mode.totalSec}
             nextLabel={
               mode.nextExerciseIdx != null
-                ? programExercises[mode.nextExerciseIdx]?.exercise.name
+                ? exerciseName(programExercises[mode.nextExerciseIdx]?.exercise.name ?? '')
                 : null
             }
             onEnd={handleRestEnd}
@@ -424,7 +424,7 @@ export function SessionRunner({
         <Button variant="outline" size="sm" asChild className="min-h-tap">
           <Link href={`/chat?sessionId=${session.id}`}>
             <MessageSquare className="size-4" />
-            <span className="ml-2">Ask the coach</span>
+            <span className="ml-2">{t('askCoach')}</span>
           </Link>
         </Button>
 
@@ -437,7 +437,7 @@ export function SessionRunner({
             className="min-h-tap"
           >
             <ChevronLeft className="size-4" />
-            <span className="ml-1">Previous</span>
+            <span className="ml-1">{t('previous')}</span>
           </Button>
 
           <Button
@@ -447,7 +447,7 @@ export function SessionRunner({
             className="min-h-tap"
           >
             <Flag className="size-4" />
-            <span className="ml-2">Finish</span>
+            <span className="ml-2">{t('finish')}</span>
           </Button>
 
           <Button
@@ -457,7 +457,7 @@ export function SessionRunner({
             disabled={navNextIdx == null || mode.kind !== 'input'}
             className="min-h-tap"
           >
-            <span className="mr-1">Next</span>
+            <span className="mr-1">{t('next')}</span>
             <ChevronRight className="size-4" />
           </Button>
         </div>
