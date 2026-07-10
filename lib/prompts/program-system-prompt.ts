@@ -27,6 +27,10 @@ Respond with a SINGLE JSON object and NOTHING else (no prose, no markdown, no co
           "targetRepsMax": 10,        // >= targetRepsMin
           "targetRIR": 2,             // 0-5 reps in reserve
           "restSec": 120,             // 15-600
+          "autoregulationMode": "PRESERVE_RIR", // or PRESERVE_REPS
+          "fatigueRate": 0.75,         // 0.25-2.0 capacity reps lost per set
+          "loadAdjustmentPct": 2.5,    // 1-5% load change per capacity-rep gap
+          "supersetGroup": null,       // optional 1-9; same number pairs exercises
           "tempo": "3-0-1-0",         // optional
           "notes": "short cue"         // optional
         }
@@ -43,4 +47,14 @@ Guidelines:
 - 4 to 10 exercises per workout, ordered compounds first.
 - Evidence-based volume and intensity for the stated goal.
 - Use whole, gym-realistic numbers. targetRepsMax must be >= targetRepsMin.
+- Choose an autoregulation mode for every exercise. Use PRESERVE_RIR when effort
+  should stay stable and reps may fall across sets. Use PRESERVE_REPS when the
+  exact rep target matters and load should change across sets.
+- Choose conservative fatigueRate values: about 0.9-1.2 for demanding lower-body
+  compounds, 0.65-0.9 for other compounds, and 0.35-0.65 for isolation work.
+  Longer rest supports the lower end; short rest or same-muscle supersets support
+  the higher end. These are starting coefficients, not physiological certainties.
+- Choose loadAdjustmentPct around 2-3 for compounds and 2.5-4 for isolation.
+- Use supersetGroup only for intentional supersets. Prefer different or opposing
+  muscle groups; same-muscle supersets should use a higher fatigueRate.
 - Output ONLY the JSON object.`;

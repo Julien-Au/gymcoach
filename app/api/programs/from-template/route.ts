@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { handleApiError, parseJsonBody, requireApiUserId } from '@/lib/api';
 import { generatedProgramSchema } from '@/lib/schemas/program-generation';
+import { defaultIntraSetConfig } from '@/lib/intra-set-autoregulation';
 
 export async function POST(req: Request) {
   try {
@@ -68,8 +69,15 @@ export async function POST(req: Request) {
               targetRepsMax: exercise.targetRepsMax,
               targetRIR: exercise.targetRIR,
               restSec: exercise.restSec,
+              autoregulationMode: exercise.autoregulationMode ?? 'PRESERVE_RIR',
+              fatigueRate:
+                exercise.fatigueRate ?? defaultIntraSetConfig(createdExercise).fatigueRate,
+              loadAdjustmentPct:
+                exercise.loadAdjustmentPct ??
+                defaultIntraSetConfig(createdExercise).loadAdjustmentPct,
               tempo: exercise.tempo ?? null,
               notes: exercise.notes ?? null,
+              supersetGroup: exercise.supersetGroup ?? null,
             },
           });
         }

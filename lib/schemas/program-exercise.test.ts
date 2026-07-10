@@ -9,6 +9,9 @@ describe('programExerciseInputSchema', () => {
     targetRepsMax: 12,
     targetRIR: 2,
     restSec: 120,
+    autoregulationMode: 'PRESERVE_RIR' as const,
+    fatigueRate: 0.75,
+    loadAdjustmentPct: 2.5,
   };
 
   it('accepts a valid program exercise and coerces numeric strings', () => {
@@ -55,8 +58,32 @@ describe('programExerciseInputSchema', () => {
   });
 
   it('rejects out-of-bounds or non-integer superset groups', () => {
-    expect(programExerciseInputSchema.safeParse({ ...valid, supersetGroup: 0 }).success).toBe(false);
-    expect(programExerciseInputSchema.safeParse({ ...valid, supersetGroup: 10 }).success).toBe(false);
-    expect(programExerciseInputSchema.safeParse({ ...valid, supersetGroup: 1.5 }).success).toBe(false);
+    expect(programExerciseInputSchema.safeParse({ ...valid, supersetGroup: 0 }).success).toBe(
+      false,
+    );
+    expect(programExerciseInputSchema.safeParse({ ...valid, supersetGroup: 10 }).success).toBe(
+      false,
+    );
+    expect(programExerciseInputSchema.safeParse({ ...valid, supersetGroup: 1.5 }).success).toBe(
+      false,
+    );
+  });
+
+  it('accepts both next-set autoregulation modes', () => {
+    expect(
+      programExerciseInputSchema.parse({
+        ...valid,
+        autoregulationMode: 'PRESERVE_REPS',
+      }).autoregulationMode,
+    ).toBe('PRESERVE_REPS');
+  });
+
+  it('rejects unsafe autoregulation coefficients', () => {
+    expect(programExerciseInputSchema.safeParse({ ...valid, fatigueRate: 2.1 }).success).toBe(
+      false,
+    );
+    expect(programExerciseInputSchema.safeParse({ ...valid, loadAdjustmentPct: 0.5 }).success).toBe(
+      false,
+    );
   });
 });

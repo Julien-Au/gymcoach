@@ -39,6 +39,9 @@ export async function PUT(req: Request, props: Params) {
         targetRepsMax: data.targetRepsMax,
         targetRIR: data.targetRIR,
         restSec: data.restSec,
+        autoregulationMode: data.autoregulationMode ?? undefined,
+        fatigueRate: data.fatigueRate,
+        loadAdjustmentPct: data.loadAdjustmentPct,
         tempo: data.tempo ?? null,
         notes: data.notes ?? null,
         // Superset pairing (issue #146): absent = leave unchanged (Prisma

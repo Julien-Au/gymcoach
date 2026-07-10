@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { programExerciseInputSchema } from '@/lib/schemas/program-exercise';
 import { ApiError, handleApiError, parseJsonBody, requireApiUserId } from '@/lib/api';
+import { defaultIntraSetConfig } from '@/lib/intra-set-autoregulation';
 
 interface Params {
   params: Promise<{ id: string }>;
@@ -35,6 +36,7 @@ export async function POST(req: Request, props: Params) {
       select: { order: true },
     });
     const nextOrder = (last?.order ?? 0) + 1;
+    const autoregulationDefaults = defaultIntraSetConfig(exercise);
 
     const created = await db.programExercise.create({
       data: {
@@ -46,6 +48,9 @@ export async function POST(req: Request, props: Params) {
         targetRepsMax: data.targetRepsMax,
         targetRIR: data.targetRIR,
         restSec: data.restSec,
+        autoregulationMode: data.autoregulationMode ?? 'PRESERVE_RIR',
+        fatigueRate: data.fatigueRate ?? autoregulationDefaults.fatigueRate,
+        loadAdjustmentPct: data.loadAdjustmentPct ?? autoregulationDefaults.loadAdjustmentPct,
         tempo: data.tempo ?? null,
         notes: data.notes ?? null,
         // Superset pairing (issue #146): optional at creation, null = standalone.

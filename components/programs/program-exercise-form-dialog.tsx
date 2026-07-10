@@ -6,7 +6,12 @@ import { useTranslations } from 'next-intl';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
-import type { Exercise, MuscleGroup, ProgramExercise } from '@/lib/prisma-client';
+import type {
+  Exercise,
+  MuscleGroup,
+  ProgramExercise,
+  SetAutoregulationMode,
+} from '@/lib/prisma-client';
 import {
   Dialog,
   DialogContent,
@@ -59,6 +64,9 @@ const DEFAULT_VALUES: ProgramExerciseInput = {
   targetRepsMax: 10,
   targetRIR: 2,
   restSec: 90,
+  autoregulationMode: 'PRESERVE_RIR',
+  fatigueRate: null,
+  loadAdjustmentPct: null,
   tempo: '',
   notes: '',
 };
@@ -80,6 +88,9 @@ export function ProgramExerciseFormDialog(props: Props) {
         targetRepsMax: pe.targetRepsMax,
         targetRIR: pe.targetRIR,
         restSec: pe.restSec,
+        autoregulationMode: pe.autoregulationMode,
+        fatigueRate: pe.fatigueRate,
+        loadAdjustmentPct: pe.loadAdjustmentPct,
         tempo: pe.tempo ?? '',
         notes: pe.notes ?? '',
       };
@@ -247,6 +258,62 @@ export function ProgramExerciseFormDialog(props: Props) {
             <div className="space-y-2">
               <Label htmlFor="tempo">{t('tempo')}</Label>
               <Input id="tempo" placeholder="3-1-1-0" {...form.register('tempo')} />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="autoregulationMode">{t('autoregulationMode')}</Label>
+            <Select
+              value={form.watch('autoregulationMode') ?? 'PRESERVE_RIR'}
+              onValueChange={(value) =>
+                form.setValue('autoregulationMode', value as SetAutoregulationMode)
+              }
+            >
+              <SelectTrigger id="autoregulationMode">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="PRESERVE_RIR">{t('preserveRir')}</SelectItem>
+                <SelectItem value="PRESERVE_REPS">{t('preserveReps')}</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              {form.watch('autoregulationMode') === 'PRESERVE_REPS'
+                ? t('preserveRepsHelp')
+                : t('preserveRirHelp')}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="fatigueRate">{t('fatigueRate')}</Label>
+              <Input
+                id="fatigueRate"
+                type="number"
+                inputMode="decimal"
+                min="0.25"
+                max="2"
+                step="0.05"
+                placeholder={t('automatic')}
+                {...form.register('fatigueRate', {
+                  setValueAs: (value) => (value === '' ? null : Number(value)),
+                })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="loadAdjustmentPct">{t('loadAdjustment')}</Label>
+              <Input
+                id="loadAdjustmentPct"
+                type="number"
+                inputMode="decimal"
+                min="1"
+                max="5"
+                step="0.1"
+                placeholder={t('automatic')}
+                {...form.register('loadAdjustmentPct', {
+                  setValueAs: (value) => (value === '' ? null : Number(value)),
+                })}
+              />
             </div>
           </div>
 

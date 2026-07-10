@@ -1,17 +1,12 @@
 import { db } from '@/lib/db';
 import { getLlmProvider, LlmError } from '@/lib/llm';
 import { PROGRAM_GEN_SYSTEM_PROMPT } from '@/lib/prompts/program-system-prompt';
-import {
-  parseGeneratedProgram,
-  type GeneratedProgram,
-} from '@/lib/schemas/program-generation';
+import { parseGeneratedProgram, type GeneratedProgram } from '@/lib/schemas/program-generation';
+import { defaultIntraSetConfig } from '@/lib/intra-set-autoregulation';
 
 // Generates a structured program draft from a natural-language goal. Does not
 // persist anything: the result is previewed (and edited) before saving.
-export async function generateProgram(
-  userId: string,
-  goal: string,
-): Promise<GeneratedProgram> {
+export async function generateProgram(userId: string, goal: string): Promise<GeneratedProgram> {
   const provider = getLlmProvider();
 
   const [user, exercises] = await Promise.all([
@@ -111,8 +106,13 @@ export async function buildProgramFromGenerated(
             targetRepsMax: Math.max(ex.targetRepsMax, ex.targetRepsMin),
             targetRIR: ex.targetRIR,
             restSec: ex.restSec,
+            autoregulationMode: ex.autoregulationMode ?? 'PRESERVE_RIR',
+            fatigueRate: ex.fatigueRate ?? defaultIntraSetConfig(exercise).fatigueRate,
+            loadAdjustmentPct:
+              ex.loadAdjustmentPct ?? defaultIntraSetConfig(exercise).loadAdjustmentPct,
             tempo: ex.tempo ?? null,
             notes: ex.notes ?? null,
+            supersetGroup: ex.supersetGroup ?? null,
           },
         });
       }

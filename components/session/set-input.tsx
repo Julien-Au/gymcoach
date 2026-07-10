@@ -25,6 +25,7 @@ import { PlateCalculator } from '@/components/session/plate-calculator';
 import { WarmupCalculator } from '@/components/session/warmup-calculator';
 import type { PendingSet } from '@/lib/indexeddb';
 import type { SerializedLastPerformance } from './session-runner';
+import type { IntraSetRecommendation } from '@/lib/intra-set-autoregulation';
 
 interface Props {
   programExercise: ProgramExercise & { exercise: Exercise };
@@ -34,6 +35,7 @@ interface Props {
   // True while a planned deload week is active (issue #112).
   deloadActive: boolean;
   unit: WeightUnit;
+  recommendation?: IntraSetRecommendation | null;
   onSubmit: (values: {
     weight: number;
     reps: number;
@@ -72,9 +74,11 @@ export function SetInput({
   readiness,
   deloadActive,
   unit,
+  recommendation = null,
   onSubmit,
 }: Props) {
   const t = useTranslations('session.input');
+  const autoT = useTranslations('session.autoregulation');
   const common = useTranslations('common');
   // Pre-fill: last set of this exercise in the current session,
   // otherwise the last performance, otherwise defaults.
@@ -84,6 +88,7 @@ export function SetInput({
     lastPerformance,
     readiness,
     deloadActive,
+    recommendation,
   );
   const [form, setForm] = useState<FormState>(initial);
   const [submitting, setSubmitting] = useState(false);
@@ -98,7 +103,14 @@ export function SetInput({
   // Re-init when the exercise changes or a set changes.
   useEffect(() => {
     setForm(
-      computeInitial(programExercise, existingSets, lastPerformance, readiness, deloadActive),
+      computeInitial(
+        programExercise,
+        existingSets,
+        lastPerformance,
+        readiness,
+        deloadActive,
+        recommendation,
+      ),
     );
     setQuickEntry('');
     setAiText('');
@@ -195,9 +207,7 @@ export function SetInput({
           // value of 4-5 maps to the closest option instead of leaving no
           // button highlighted (the set API still accepts 0-5).
           rir:
-            parsed.rir != null
-              ? Math.min(parsed.rir, RIR_OPTIONS[RIR_OPTIONS.length - 1]!)
-              : f.rir,
+            parsed.rir != null ? Math.min(parsed.rir, RIR_OPTIONS[RIR_OPTIONS.length - 1]!) : f.rir,
         }));
       }
     } catch {
@@ -257,6 +267,22 @@ export function SetInput({
   return (
     <Card>
       <CardContent className="flex flex-col gap-4 pt-6">
+        {recommendation && !isCardio && (
+          <div className="rounded-md border border-primary/30 bg-primary/5 p-3">
+            <p className="text-xs font-medium uppercase text-muted-foreground">
+              {autoT('nextSet')}
+            </p>
+            <p className="mt-1 text-lg font-semibold">
+              {unit === 'LB'
+                ? roundWeight(toDisplayWeight(recommendation.weight, unit), 1)
+                : recommendation.weight}{' '}
+              {unitLabel(unit)} × {recommendation.reps} · RIR {recommendation.rir}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {autoT(`reasons.${recommendation.reason}`)}
+            </p>
+          </div>
+        )}
         {/* Opt-in AI free-text parse (issue #210): fills the form below from a
             plain-language description. Deliberate action, never auto-logs. */}
         <div className="space-y-1">
@@ -277,11 +303,7 @@ export function SetInput({
                 setAiText(e.target.value);
                 if (aiHint) setAiHint(null);
               }}
-              placeholder={
-                isCardio
-                  ? t('cardioExample')
-                  : t('strengthExample')
-              }
+              placeholder={isCardio ? t('cardioExample') : t('strengthExample')}
             />
             <Button
               type="button"
@@ -296,9 +318,7 @@ export function SetInput({
           {aiHint ? (
             <p className="text-xs text-muted-foreground">{aiHint}</p>
           ) : (
-            <p className="text-xs text-muted-foreground">
-              {t('parseHelp')}
-            </p>
+            <p className="text-xs text-muted-foreground">{t('parseHelp')}</p>
           )}
         </div>
 
@@ -324,9 +344,7 @@ export function SetInput({
                 className="h-14 text-center text-2xl font-semibold"
               />
               {durationInvalid && (
-                <p className="text-xs text-muted-foreground">
-                  {t('durationError')}
-                </p>
+                <p className="text-xs text-muted-foreground">{t('durationError')}</p>
               )}
             </div>
 
@@ -351,168 +369,167 @@ export function SetInput({
                 className="h-14 text-center text-2xl font-semibold"
               />
               {distanceInvalid && (
-                <p className="text-xs text-muted-foreground">
-                  {t('distanceError')}
-                </p>
+                <p className="text-xs text-muted-foreground">{t('distanceError')}</p>
               )}
             </div>
           </>
         ) : (
           <>
-        {/* Quick entry shorthand */}
-        <div className="space-y-1">
-          <Label
-            htmlFor="quick-entry"
-            className="text-xs uppercase tracking-wide text-muted-foreground"
-          >
-            {t('quickEntry')}
-          </Label>
-          <Input
-            id="quick-entry"
-            type="text"
-            inputMode="text"
-            autoComplete="off"
-            value={quickEntry}
-            onChange={(e) => handleQuickEntry(e.target.value)}
-            placeholder={t('quickEntryExample', { unit: unitLabel(unit) })}
-            aria-invalid={quickEntryInvalid}
-          />
-          {quickEntryInvalid && (
-            <p className="text-xs text-muted-foreground">
-              {t('quickEntryError')}
-            </p>
-          )}
-        </div>
-
-        {/* Load */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-              {t('load', { unit: unitLabel(unit) })}
-            </Label>
-            <div className="flex items-center gap-1">
-              <WarmupCalculator weightKg={form.weight} unit={unit} />
-              <PlateCalculator weightKg={form.weight} unit={unit} />
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              onClick={() => adjustWeight(-stepKg)}
-              className="min-h-tap min-w-tap"
-              aria-label={`-${stepDisplay} ${unitLabel(unit)}`}
-            >
-              <Minus className="size-5" />
-            </Button>
-            <Input
-              type="number"
-              inputMode="decimal"
-              step="0.1"
-              value={displayWeight}
-              onChange={(e) =>
-                setForm((f) => ({
-                  ...f,
-                  weight: fromDisplayWeight(parseFloat(e.target.value) || 0, unit),
-                }))
-              }
-              className="h-14 text-center text-2xl font-semibold"
-            />
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              onClick={() => adjustWeight(stepKg)}
-              className="min-h-tap min-w-tap"
-              aria-label={`+${stepDisplay} ${unitLabel(unit)}`}
-            >
-              <Plus className="size-5" />
-            </Button>
-          </div>
-        </div>
-
-        {/* Reps */}
-        <div className="space-y-2">
-          <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-            {t('reps')}
-          </Label>
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              onClick={() => adjustReps(-1)}
-              className="min-h-tap min-w-tap"
-              aria-label="-1 rep"
-            >
-              <Minus className="size-5" />
-            </Button>
-            <Input
-              type="number"
-              inputMode="numeric"
-              value={form.reps}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, reps: parseInt(e.target.value, 10) || 0 }))
-              }
-              className="h-14 text-center text-2xl font-semibold"
-            />
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              onClick={() => adjustReps(1)}
-              className="min-h-tap min-w-tap"
-              aria-label="+1 rep"
-            >
-              <Plus className="size-5" />
-            </Button>
-          </div>
-        </div>
-
-        {/* RIR */}
-        <div className="space-y-2">
-          <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-            {t('repsInReserve')}
-          </Label>
-          <div className="grid grid-cols-4 gap-2">
-            {RIR_OPTIONS.map((opt) => (
-              <Button
-                key={opt}
-                type="button"
-                variant={form.rir === opt ? 'default' : 'outline'}
-                onClick={() => setForm((f) => ({ ...f, rir: opt }))}
-                className="min-h-tap text-lg font-semibold"
+            {/* Quick entry shorthand */}
+            <div className="space-y-1">
+              <Label
+                htmlFor="quick-entry"
+                className="text-xs uppercase tracking-wide text-muted-foreground"
               >
-                {opt}
-              </Button>
-            ))}
-          </div>
-        </div>
+                {t('quickEntry')}
+              </Label>
+              <Input
+                id="quick-entry"
+                type="text"
+                inputMode="text"
+                autoComplete="off"
+                value={quickEntry}
+                onChange={(e) => handleQuickEntry(e.target.value)}
+                placeholder={t('quickEntryExample', { unit: unitLabel(unit) })}
+                aria-invalid={quickEntryInvalid}
+              />
+              {quickEntryInvalid && (
+                <p className="text-xs text-muted-foreground">{t('quickEntryError')}</p>
+              )}
+            </div>
 
-        {/* Toggles */}
-        <div className="flex flex-wrap items-center gap-4 text-sm">
-          <label className="flex cursor-pointer items-center gap-2">
-            <Switch
-              checked={form.isDropSet}
-              onCheckedChange={(v) => setForm((f) => ({ ...f, isDropSet: v }))}
-            />
-            <span>{t('dropSet')}</span>
-          </label>
-          <label className="flex cursor-pointer items-center gap-2">
-            <Switch
-              checked={form.isWarmup}
-              onCheckedChange={(v) => setForm((f) => ({ ...f, isWarmup: v }))}
-            />
-            <span>{t('warmup')}</span>
-          </label>
-        </div>
+            {/* Load */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                  {t('load', { unit: unitLabel(unit) })}
+                </Label>
+                <div className="flex items-center gap-1">
+                  <WarmupCalculator weightKg={form.weight} unit={unit} />
+                  <PlateCalculator weightKg={form.weight} unit={unit} />
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => adjustWeight(-stepKg)}
+                  className="min-h-tap min-w-tap"
+                  aria-label={`-${stepDisplay} ${unitLabel(unit)}`}
+                >
+                  <Minus className="size-5" />
+                </Button>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.1"
+                  value={displayWeight}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      weight: fromDisplayWeight(parseFloat(e.target.value) || 0, unit),
+                    }))
+                  }
+                  className="h-14 text-center text-2xl font-semibold"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => adjustWeight(stepKg)}
+                  className="min-h-tap min-w-tap"
+                  aria-label={`+${stepDisplay} ${unitLabel(unit)}`}
+                >
+                  <Plus className="size-5" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Reps */}
+            <div className="space-y-2">
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                {t('reps')}
+              </Label>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => adjustReps(-1)}
+                  className="min-h-tap min-w-tap"
+                  aria-label="-1 rep"
+                >
+                  <Minus className="size-5" />
+                </Button>
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  value={form.reps}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, reps: parseInt(e.target.value, 10) || 0 }))
+                  }
+                  className="h-14 text-center text-2xl font-semibold"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => adjustReps(1)}
+                  className="min-h-tap min-w-tap"
+                  aria-label="+1 rep"
+                >
+                  <Plus className="size-5" />
+                </Button>
+              </div>
+            </div>
+
+            {/* RIR */}
+            <div className="space-y-2">
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                {t('repsInReserve')}
+              </Label>
+              <div className="grid grid-cols-4 gap-2">
+                {RIR_OPTIONS.map((opt) => (
+                  <Button
+                    key={opt}
+                    type="button"
+                    variant={form.rir === opt ? 'default' : 'outline'}
+                    onClick={() => setForm((f) => ({ ...f, rir: opt }))}
+                    className="min-h-tap text-lg font-semibold"
+                  >
+                    {opt}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {/* Toggles */}
+            <div className="flex flex-wrap items-center gap-4 text-sm">
+              <label className="flex cursor-pointer items-center gap-2">
+                <Switch
+                  checked={form.isDropSet}
+                  onCheckedChange={(v) => setForm((f) => ({ ...f, isDropSet: v }))}
+                />
+                <span>{t('dropSet')}</span>
+              </label>
+              <label className="flex cursor-pointer items-center gap-2">
+                <Switch
+                  checked={form.isWarmup}
+                  onCheckedChange={(v) => setForm((f) => ({ ...f, isWarmup: v }))}
+                />
+                <span>{t('warmup')}</span>
+              </label>
+            </div>
           </>
         )}
 
         {/* Notes */}
         <div className="space-y-2">
-          <Label htmlFor="set-notes" className="text-xs uppercase tracking-wide text-muted-foreground">
+          <Label
+            htmlFor="set-notes"
+            className="text-xs uppercase tracking-wide text-muted-foreground"
+          >
             {t('note')}
           </Label>
           <Textarea
@@ -531,9 +548,7 @@ export function SetInput({
           className="h-20 w-full text-lg font-semibold"
         >
           <Check className="size-6" />
-          <span className="ml-2">
-            {submitting ? common('actions.saving') : t('logSet')}
-          </span>
+          <span className="ml-2">{submitting ? common('actions.saving') : t('logSet')}</span>
         </Button>
       </CardContent>
     </Card>
@@ -546,6 +561,7 @@ function computeInitial(
   lastPerf: SerializedLastPerformance | undefined,
   readiness: ReadinessSignal | null,
   deloadActive: boolean,
+  recommendation: IntraSetRecommendation | null = null,
 ): FormState {
   // Cardio exercises (issue #133): prefill the duration/distance from the
   // last cardio set of this session, otherwise leave the inputs empty. The
@@ -572,9 +588,9 @@ function computeInitial(
   const lastInSession = existingSets.filter((s) => !s.isWarmup).at(-1);
   if (lastInSession) {
     return {
-      weight: lastInSession.weight,
-      reps: lastInSession.reps,
-      rir: lastInSession.rir,
+      weight: recommendation?.weight ?? lastInSession.weight,
+      reps: recommendation?.reps ?? lastInSession.reps,
+      rir: recommendation?.rir ?? lastInSession.rir,
       durationInput: '',
       distanceInput: '',
       isWarmup: false,
@@ -588,9 +604,7 @@ function computeInitial(
   if (lastPerf) {
     const suggestion = suggestNextWeight(pe, lastPerf.sets, readiness, deloadActive);
     const initialReps =
-      suggestion.reason === 'progression'
-        ? pe.targetRepsMin
-        : lastPerf.repsAtMaxWeight;
+      suggestion.reason === 'progression' ? pe.targetRepsMin : lastPerf.repsAtMaxWeight;
     return {
       weight: suggestion.weight ?? lastPerf.maxWeight,
       reps: initialReps,
