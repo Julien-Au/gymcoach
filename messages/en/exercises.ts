@@ -28,6 +28,29 @@ export const exercises = {
   deleteDescription:
     '{name} will be removed from the catalog. It cannot be deleted while used in a program or training history.',
   deleting: 'Deleting...',
+  media: {
+    button: 'Technique',
+    open: 'View technique for {name}',
+    description:
+      'Start and finish frames alternate automatically. Pause to inspect either position.',
+    start: 'Start',
+    finish: 'Finish',
+    startAlt: '{name} starting position',
+    finishAlt: '{name} finishing position',
+    showStart: 'Show starting position',
+    showFinish: 'Show finishing position',
+    play: 'Play animation',
+    pause: 'Pause animation',
+    similarVariant: 'Similar variant',
+    equipment: 'Equipment',
+    equipmentDescription:
+      'Required equipment: {equipment}. The frames also show how the equipment or machine should look and be positioned.',
+    disclaimer:
+      'Use the frames as a visual reference, not as a substitute for coaching. Stop if the movement causes sharp pain.',
+    source: 'Source: {source} · {license}',
+    missing: 'No verified local media is mapped to this custom exercise yet.',
+    searchCommons: 'Search Wikimedia Commons',
+  },
   muscleGroups: {
     chest: 'Chest',
     backWidth: 'Back (width)',
