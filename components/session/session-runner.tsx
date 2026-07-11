@@ -39,6 +39,7 @@ import { SetInput } from '@/components/session/set-input';
 import { RestTimer } from '@/components/session/rest-timer';
 import { SessionSummary } from '@/components/session/session-summary';
 import { useExerciseName } from '@/components/shared/use-exercise-name';
+import { useTrainingName } from '@/components/shared/use-training-name';
 
 export interface SerializedLastPerformance {
   sessionStartedAt: string;
@@ -87,6 +88,7 @@ export function SessionRunner({
 }: SessionRunnerProps) {
   const t = useTranslations('session');
   const exerciseName = useExerciseName();
+  const trainingName = useTrainingName();
   const router = useRouter();
   const workout = session.workout!;
   // Supersets (issue #146, slice 1): run the workout in presentation order -
@@ -342,7 +344,7 @@ export function SessionRunner({
       <div className="sticky top-[97px] z-10 border-b border-border bg-background/95 px-4 py-3 backdrop-blur">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="truncate text-xs text-muted-foreground">{workout.name}</p>
+            <p className="truncate text-xs text-muted-foreground">{trainingName(workout.name)}</p>
             <p className="text-sm font-medium">
               {t('exerciseProgress', {
                 current: currentIdx + 1,

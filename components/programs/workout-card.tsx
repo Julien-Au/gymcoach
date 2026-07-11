@@ -6,12 +6,7 @@ import { useTranslations } from 'next-intl';
 import { MoreHorizontal, Plus, Pencil, Trash2 } from 'lucide-react';
 import type { Exercise, ProgramExercise, Workout } from '@/lib/prisma-client';
 import { toast } from 'sonner';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -25,6 +20,7 @@ import { ProgramExerciseRow } from '@/components/programs/program-exercise-row';
 import { WorkoutFormDialog } from '@/components/programs/workout-form-dialog';
 import { ProgramExerciseFormDialog } from '@/components/programs/program-exercise-form-dialog';
 import { buildSupersetView, smallestFreeGroup } from '@/lib/supersets';
+import { useTrainingName } from '@/components/shared/use-training-name';
 
 const DAY_KEYS = [
   'monday',
@@ -48,13 +44,14 @@ export function WorkoutCard({ workout, catalog }: Props) {
   const t = useTranslations('programs.workout');
   const exerciseT = useTranslations('programs.exercise');
   const common = useTranslations('common');
+  const trainingName = useTrainingName();
   const router = useRouter();
   const [editOpen, setEditOpen] = useState(false);
   const [addExoOpen, setAddExoOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   async function handleDelete() {
-    if (!confirm(t('deleteConfirm', { name: workout.name }))) return;
+    if (!confirm(t('deleteConfirm', { name: trainingName(workout.name) }))) return;
     setDeleting(true);
     try {
       const res = await fetch(`/api/workouts/${workout.id}`, { method: 'DELETE' });
@@ -135,12 +132,10 @@ export function WorkoutCard({ workout, catalog }: Props) {
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <CardTitle className="text-base">{workout.name}</CardTitle>
+            <CardTitle className="text-base">{trainingName(workout.name)}</CardTitle>
             <div className="mt-1 flex flex-wrap gap-1.5 text-xs text-muted-foreground">
               {dayLabel && <Badge variant="secondary">{dayLabel}</Badge>}
-              <span>
-                {common('counts.exercises', { count: workout.exercises.length })}
-              </span>
+              <span>{common('counts.exercises', { count: workout.exercises.length })}</span>
             </div>
           </div>
           <DropdownMenu>
@@ -175,9 +170,7 @@ export function WorkoutCard({ workout, catalog }: Props) {
 
       <CardContent className="flex flex-col gap-2 pt-0">
         {workout.exercises.length === 0 ? (
-          <p className="text-xs text-muted-foreground">
-            {t('empty')}
-          </p>
+          <p className="text-xs text-muted-foreground">{t('empty')}</p>
         ) : (
           <ul className="flex flex-col gap-2">
             {supersetView.ordered.map((pe, index) => {
@@ -216,18 +209,11 @@ export function WorkoutCard({ workout, catalog }: Props) {
           <span className="ml-2">{exerciseT('add')}</span>
         </Button>
         {catalog.length === 0 && (
-          <p className="text-xs text-muted-foreground">
-            {t('catalogEmpty')}
-          </p>
+          <p className="text-xs text-muted-foreground">{t('catalogEmpty')}</p>
         )}
       </CardContent>
 
-      <WorkoutFormDialog
-        open={editOpen}
-        onOpenChange={setEditOpen}
-        mode="edit"
-        workout={workout}
-      />
+      <WorkoutFormDialog open={editOpen} onOpenChange={setEditOpen} mode="edit" workout={workout} />
       <ProgramExerciseFormDialog
         open={addExoOpen}
         onOpenChange={setAddExoOpen}

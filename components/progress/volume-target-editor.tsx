@@ -64,15 +64,15 @@ export function VolumeTargetEditor({
     const m = Number(mevValue);
     const r = Number(mrvValue);
     if (!Number.isInteger(m) || !Number.isInteger(r)) {
-      setError('Enter whole numbers of sets.');
+      setError(t('wholeNumbers'));
       return null;
     }
     if (m < 1 || m > VOLUME_TARGET_MAX || r < 1 || r > VOLUME_TARGET_MAX) {
-      setError(`Values must be between 1 and ${VOLUME_TARGET_MAX} sets.`);
+      setError(t('range', { max: VOLUME_TARGET_MAX }));
       return null;
     }
     if (r <= m) {
-      setError('MRV must be greater than MEV.');
+      setError(t('order'));
       return null;
     }
     return { mev: m, mrv: r };
@@ -90,13 +90,13 @@ export function VolumeTargetEditor({
         body: JSON.stringify({ muscleGroup, mev: parsed.mev, mrv: parsed.mrv }),
       });
       if (!res.ok) {
-        setError('Could not save the target.');
+        setError(t('saveError'));
         return;
       }
       setOpen(false);
       router.refresh();
     } catch {
-      setError('Could not save the target.');
+      setError(t('saveError'));
     } finally {
       setBusy(false);
     }
@@ -112,13 +112,13 @@ export function VolumeTargetEditor({
         body: JSON.stringify({ muscleGroup }),
       });
       if (!res.ok) {
-        setError('Could not reset the target.');
+        setError(t('resetError'));
         return;
       }
       setOpen(false);
       router.refresh();
     } catch {
-      setError('Could not reset the target.');
+      setError(t('resetError'));
     } finally {
       setBusy(false);
     }
@@ -175,12 +175,7 @@ export function VolumeTargetEditor({
         {error && <p className="text-sm text-destructive">{error}</p>}
         <DialogFooter className="gap-2 sm:gap-2">
           {custom && (
-            <Button
-              variant="outline"
-              onClick={clear}
-              disabled={busy}
-              className="mr-auto"
-            >
+            <Button variant="outline" onClick={clear} disabled={busy} className="mr-auto">
               {t('reset')}
             </Button>
           )}

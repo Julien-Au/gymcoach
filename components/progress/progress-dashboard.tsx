@@ -145,6 +145,7 @@ export function ProgressDashboard({
   selectedUsesBodyweight,
 }: Props) {
   const t = useTranslations('progress.dashboard');
+  const common = useTranslations('common');
   const exerciseT = useTranslations('exercises');
   const format = useFormatter();
   const exerciseName = useExerciseName();
@@ -156,6 +157,10 @@ export function ProgressDashboard({
   const muscleGroupLabel = (group: string) => {
     const key = muscleGroupMessageKeys[group as MuscleGroup];
     return key ? exerciseT(`muscleGroups.${key}`) : group;
+  };
+  const weekLabel = (weekKey: string) => {
+    const week = weekNumberFromKey(weekKey);
+    return week ? t('weekLabel', { week }) : weekKey;
   };
 
   // Convert a kg value to the display unit. KG returns the raw value unchanged
@@ -209,12 +214,12 @@ export function ProgressDashboard({
       }
       return {
         weekKey: p.weekKey,
-        label: shortLabelFromWeekKey(p.weekKey),
+        label: weekLabel(p.weekKey),
         ...converted,
       };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [weeklyPoints, unit]);
+  }, [weeklyPoints, unit, t]);
 
   // Sort the landmark rows by descending set count for a readable list.
   const landmarkRows = useMemo(() => {
@@ -256,14 +261,14 @@ export function ProgressDashboard({
             </Select>
           </div>
           {selectedExo && (
-            <p className="text-xs text-muted-foreground">{selectedExo.muscleGroup}</p>
+            <p className="text-xs text-muted-foreground">
+              {muscleGroupLabel(selectedExo.muscleGroup)}
+            </p>
           )}
         </CardHeader>
         <CardContent>
           {exerciseChartData.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              No data for this exercise.
-            </p>
+            <p className="py-8 text-center text-sm text-muted-foreground">{t('noExerciseData')}</p>
           ) : (
             <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
@@ -317,17 +322,20 @@ export function ProgressDashboard({
             <details className="group">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-2">
                 <span className="text-base font-semibold">{t('trainingLoads')}</span>
-                <span className="text-xs text-muted-foreground group-open:hidden">Show</span>
-                <span className="hidden text-xs text-muted-foreground group-open:inline">Hide</span>
+                <span className="text-xs text-muted-foreground group-open:hidden">{t('show')}</span>
+                <span className="hidden text-xs text-muted-foreground group-open:inline">
+                  {t('hide')}
+                </span>
               </summary>
               <p className="mt-1 text-xs text-muted-foreground">
-                Percentages of your best estimated 1RM ({toDisplay(selectedBestE1RM)} {unitSuffix}),
-                rounded to a loadable increment. Planning aid, not a prescription.
+                {t('loadingDescription', {
+                  value: `${toDisplay(selectedBestE1RM)} ${unitSuffix}`,
+                })}
               </p>
               <table className="mt-3 w-full text-sm">
                 <thead>
                   <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
-                    <th className="py-2 font-medium">% of e1RM</th>
+                    <th className="py-2 font-medium">{t('oneRmPercent')}</th>
                     <th className="py-2 text-right font-medium">{t('load')}</th>
                   </tr>
                 </thead>
@@ -363,13 +371,11 @@ export function ProgressDashboard({
       <Card>
         <CardHeader className="pb-3">
           <h2 className="text-base font-semibold">{t('weeklyVolume')}</h2>
-          <p className="text-xs text-muted-foreground">
-            Volume = sum of load × reps (working sets only).
-          </p>
+          <p className="text-xs text-muted-foreground">{t('weeklyVolumeDescription')}</p>
         </CardHeader>
         <CardContent>
           {weeklyChartData.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">No weekly data.</p>
+            <p className="py-8 text-center text-sm text-muted-foreground">{t('noWeeklyData')}</p>
           ) : (
             <div className="h-72 w-full">
               <ResponsiveContainer width="100%" height="100%">
@@ -395,7 +401,7 @@ export function ProgressDashboard({
                       dataKey={group}
                       stackId="vol"
                       fill={MUSCLE_COLORS[group] ?? '#94a3b8'}
-                      name={group}
+                      name={muscleGroupLabel(group)}
                     />
                   ))}
                 </BarChart>
@@ -434,10 +440,11 @@ export function ProgressDashboard({
           <CardHeader className="pb-3">
             <h2 className="text-base font-semibold">{t('landmarks')}</h2>
             <p className="text-xs text-muted-foreground">
-              Working sets in {shortLabelFromWeekKey(volumeLandmarks.weekKey)} vs your reference
-              band (MEV-MRV) per muscle group. Defaults to {defaultBand.mev}-{defaultBand.mrv}{' '}
-              sets/week; edit a group to set your own. General hypertrophy heuristic, not a
-              prescription.
+              {t('landmarksDescription', {
+                week: weekLabel(volumeLandmarks.weekKey),
+                mev: defaultBand.mev,
+                mrv: defaultBand.mrv,
+              })}
             </p>
           </CardHeader>
           <CardContent>
@@ -445,21 +452,26 @@ export function ProgressDashboard({
               {landmarkRows.map((row) => {
                 const meta = ZONE_META[row.zone];
                 return (
-                  <li key={row.group} className="flex items-center justify-between gap-3 text-sm">
-                    <span className="flex items-center gap-2">
-                      <span className="font-medium">{muscleGroupLabel(row.group)}</span>
-                      <span className="text-xs text-muted-foreground">
+                  <li
+                    key={row.group}
+                    className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 text-sm"
+                  >
+                    <span className="min-w-0">
+                      <span className="block font-medium">{muscleGroupLabel(row.group)}</span>
+                      <span className="block text-xs text-muted-foreground">
                         {row.mev}-{row.mrv}
-                        {row.custom ? ' (custom)' : ' (default)'}
+                        {` (${t(row.custom ? 'custom' : 'default')})`}
                       </span>
                     </span>
-                    <span className="flex items-center gap-2">
+                    <span className="flex max-w-[11rem] flex-wrap items-center justify-end gap-2 sm:max-w-none">
                       <span className="text-muted-foreground">
-                        {row.sets} {row.sets === 1 ? 'set' : 'sets'}
+                        {common('counts.sets', { count: row.sets })}
                       </span>
                       {/* Weekly training frequency (issue #225): distinct
                           training days for this muscle in the same week. */}
-                      <span className="text-xs text-muted-foreground">{row.frequency}x/week</span>
+                      <span className="text-xs text-muted-foreground">
+                        {t('frequency', { count: row.frequency })}
+                      </span>
                       <Badge variant={meta.variant}>{t(meta.key)}</Badge>
                       <VolumeTargetEditor
                         muscleGroup={row.group}
@@ -486,9 +498,7 @@ export function ProgressDashboard({
         </CardHeader>
         <CardContent>
           {recap.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              No exercise with enough data.
-            </p>
+            <p className="py-8 text-center text-sm text-muted-foreground">{t('noRecapData')}</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -497,7 +507,7 @@ export function ProgressDashboard({
                     <th className="py-2 font-medium">{t('exercise')}</th>
                     <th className="py-2 font-medium">{t('sessions')}</th>
                     <th className="py-2 font-medium">{t('loadRange')}</th>
-                    <th className="py-2 font-medium">Δ load</th>
+                    <th className="py-2 font-medium">{t('deltaLoad')}</th>
                     <th className="py-2 font-medium">Δ 1RM</th>
                   </tr>
                 </thead>
@@ -513,11 +523,13 @@ export function ProgressDashboard({
                               className="text-[10px] font-medium uppercase tracking-wide text-amber-700 dark:text-amber-400"
                               title={t('noProgress', { count: STALL_LOOKBACK_SESSIONS })}
                             >
-                              Stalled
+                              {t('stalledBadge')}
                             </Badge>
                           )}
                         </div>
-                        <div className="text-xs text-muted-foreground">{r.muscleGroup}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {muscleGroupLabel(r.muscleGroup)}
+                        </div>
                       </td>
                       <td className="py-2">{r.sessions}</td>
                       <td className="py-2">
@@ -541,10 +553,10 @@ export function ProgressDashboard({
   );
 }
 
-function shortLabelFromWeekKey(weekKey: string) {
-  // "2026-W18" -> "W18"
+function weekNumberFromKey(weekKey: string) {
+  // "2026-W18" -> "18"
   const parts = weekKey.split('-W');
-  return parts[1] ? `W${parts[1]}` : weekKey;
+  return parts[1] ?? null;
 }
 
 function formatDelta(n: number) {

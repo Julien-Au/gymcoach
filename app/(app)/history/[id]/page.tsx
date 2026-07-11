@@ -21,6 +21,7 @@ import { formatWeight } from '@/lib/units';
 import { DeleteSessionButton } from '@/components/history/delete-session-button';
 import { ActivityTrackChart } from '@/components/history/activity-track-chart';
 import { getExerciseDisplayName } from '@/i18n/exercise-names';
+import { getTrainingDisplayName } from '@/i18n/training-names';
 
 interface Params {
   params: Promise<{ id: string }>;
@@ -129,7 +130,9 @@ export default async function HistorySessionPage(props: Params) {
             )}
             <DeleteSessionButton
               sessionId={session.id}
-              workoutName={session.workout?.name ?? null}
+              workoutName={
+                session.workout?.name ? getTrainingDisplayName(session.workout.name, locale) : null
+              }
               startedAt={session.startedAt}
             />
           </div>
@@ -138,10 +141,16 @@ export default async function HistorySessionPage(props: Params) {
         <Card>
           <CardHeader className="pb-3">
             <h1 className="text-2xl font-bold tracking-tight">
-              {session.workout?.name ?? t('freeSession')}
+              {session.workout?.name
+                ? getTrainingDisplayName(session.workout.name, locale)
+                : t('freeSession')}
             </h1>
             <div className="mt-1 flex flex-wrap gap-1.5">
-              {session.program && <Badge variant="secondary">{session.program.name}</Badge>}
+              {session.program && (
+                <Badge variant="secondary">
+                  {getTrainingDisplayName(session.program.name, locale)}
+                </Badge>
+              )}
               <Badge variant="outline" className="gap-1">
                 <Calendar className="size-3" />
                 {format.dateTime(session.startedAt, {

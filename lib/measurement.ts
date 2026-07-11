@@ -29,27 +29,6 @@ export const MEASUREMENT_SITES: BodyMeasurementSite[] = [
   'CALF_RIGHT',
 ];
 
-// Human-readable label per site, for the selector and the list rows.
-const SITE_LABELS: Record<BodyMeasurementSite, string> = {
-  WAIST: 'Waist',
-  HIPS: 'Hips',
-  CHEST: 'Chest',
-  SHOULDERS: 'Shoulders',
-  NECK: 'Neck',
-  ARM_LEFT: 'Arm (left)',
-  ARM_RIGHT: 'Arm (right)',
-  FOREARM_LEFT: 'Forearm (left)',
-  FOREARM_RIGHT: 'Forearm (right)',
-  THIGH_LEFT: 'Thigh (left)',
-  THIGH_RIGHT: 'Thigh (right)',
-  CALF_LEFT: 'Calf (left)',
-  CALF_RIGHT: 'Calf (right)',
-};
-
-export function measurementSiteLabel(site: BodyMeasurementSite): string {
-  return SITE_LABELS[site];
-}
-
 // Converts a stored cm value to the display unit. The app's weight unit doubles
 // as the length unit: KG -> metric (cm), LB -> imperial (inches), matching how
 // bodyweight already keys off User.unit.

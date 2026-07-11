@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useTrainingName } from '@/components/shared/use-training-name';
 
 interface Props {
   programs: { id: string; name: string }[];
@@ -31,19 +32,14 @@ function recentMonths(formatLabel: (date: Date) => string): { value: string; lab
   return out;
 }
 
-export function HistoryFilters({
-  programs,
-  selectedProgramId,
-  selectedMonth,
-}: Props) {
+export function HistoryFilters({ programs, selectedProgramId, selectedMonth }: Props) {
   const t = useTranslations('history.filters');
+  const trainingName = useTrainingName();
   const format = useFormatter();
   const router = useRouter();
   const search = useSearchParams();
   const [isPending, startTransition] = useTransition();
-  const months = recentMonths((date) =>
-    format.dateTime(date, { month: 'long', year: 'numeric' }),
-  );
+  const months = recentMonths((date) => format.dateTime(date, { month: 'long', year: 'numeric' }));
   const hasFilter = !!(selectedProgramId || selectedMonth);
 
   function update(key: 'programId' | 'month', value: string | undefined) {
@@ -74,7 +70,7 @@ export function HistoryFilters({
           <SelectItem value="all">{t('allPrograms')}</SelectItem>
           {programs.map((p) => (
             <SelectItem key={p.id} value={p.id}>
-              {p.name}
+              {trainingName(p.name)}
             </SelectItem>
           ))}
         </SelectContent>
@@ -109,13 +105,7 @@ export function HistoryFilters({
         </Button>
       )}
 
-      <Button
-        variant="outline"
-        size="sm"
-        asChild
-        className="ml-auto"
-        title={t('csvTitle')}
-      >
+      <Button variant="outline" size="sm" asChild className="ml-auto" title={t('csvTitle')}>
         <a href={buildCsvHref(selectedProgramId, selectedMonth)} download>
           <Download className="size-4" />
           <span className="ml-1">CSV</span>

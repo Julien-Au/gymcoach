@@ -11,6 +11,7 @@ import { formatWeight } from '@/lib/units';
 import { formatDistance, formatDuration } from '@/lib/cardio';
 import { HistoryFilters } from '@/components/history/history-filters';
 import { getExerciseDisplayName } from '@/i18n/exercise-names';
+import { getTrainingDisplayName } from '@/i18n/training-names';
 
 interface SearchParams {
   programId?: string;
@@ -163,10 +164,18 @@ export default async function HistoryPage(props: { searchParams: Promise<SearchP
                             </span>
                           </div>
                           <p className="mt-0.5 truncate text-base font-medium">
-                            {s.workout?.name ?? (isCardio ? cardioName : t('freeSession'))}
+                            {s.workout?.name
+                              ? getTrainingDisplayName(s.workout.name, locale)
+                              : isCardio
+                                ? cardioName
+                                : t('freeSession')}
                           </p>
                           <div className="mt-1 flex flex-wrap gap-1.5 text-xs">
-                            {s.program && <Badge variant="secondary">{s.program.name}</Badge>}
+                            {s.program && (
+                              <Badge variant="secondary">
+                                {getTrainingDisplayName(s.program.name, locale)}
+                              </Badge>
+                            )}
                             {isCardio ? (
                               <>
                                 {cardioDistance > 0 && (

@@ -33,5 +33,7 @@ describe('i18n configuration', () => {
     expect(t('common.counts.sets', { count: 3 })).toBe('3 подхода');
     expect(t('common.counts.sets', { count: 12 })).toBe('12 подходов');
     expect(t('navigation.settings')).toBe('Настройки');
+    expect(t('progress.measurements.sites.armLeft')).toBe('Плечо (левое)');
+    expect(t('progress.dashboard.frequency', { count: 3 })).toBe('3 раза/нед.');
   });
 });

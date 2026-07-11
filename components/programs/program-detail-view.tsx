@@ -9,17 +9,12 @@ import type { Exercise, Program, ProgramExercise, Workout } from '@/lib/prisma-c
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ProgramEditDialog } from '@/components/programs/program-edit-dialog';
 import { ProgramDeleteButton } from '@/components/programs/program-delete-button';
 import { WorkoutCard } from '@/components/programs/workout-card';
 import { WorkoutFormDialog } from '@/components/programs/workout-form-dialog';
+import { useTrainingName } from '@/components/shared/use-training-name';
 
 type ProgramExerciseWithExercise = ProgramExercise & { exercise: Exercise };
 type WorkoutWithExercises = Workout & { exercises: ProgramExerciseWithExercise[] };
@@ -33,6 +28,7 @@ interface Props {
 export function ProgramDetailView({ program, catalog }: Props) {
   const t = useTranslations('programs');
   const common = useTranslations('common');
+  const trainingName = useTrainingName();
   const router = useRouter();
   const [editOpen, setEditOpen] = useState(false);
   const [addWorkoutOpen, setAddWorkoutOpen] = useState(false);
@@ -70,7 +66,7 @@ export function ProgramDetailView({ program, catalog }: Props) {
         <CardHeader>
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <CardTitle className="text-xl">{program.name}</CardTitle>
+              <CardTitle className="text-xl">{trainingName(program.name)}</CardTitle>
               <CardDescription>{program.phase}</CardDescription>
             </div>
             {program.isActive && <Badge>{t('active')}</Badge>}
@@ -97,7 +93,7 @@ export function ProgramDetailView({ program, catalog }: Props) {
           >
             {common('actions.edit')}
           </Button>
-          <ProgramDeleteButton programId={program.id} programName={program.name} />
+          <ProgramDeleteButton programId={program.id} programName={trainingName(program.name)} />
         </CardContent>
       </Card>
 
@@ -118,9 +114,7 @@ export function ProgramDetailView({ program, catalog }: Props) {
         <Card>
           <CardHeader>
             <CardTitle>{t('noSessions')}</CardTitle>
-            <CardDescription>
-              {t('noSessionsDescription')}
-            </CardDescription>
+            <CardDescription>{t('noSessionsDescription')}</CardDescription>
           </CardHeader>
         </Card>
       ) : (
@@ -131,11 +125,7 @@ export function ProgramDetailView({ program, catalog }: Props) {
         </div>
       )}
 
-      <ProgramEditDialog
-        open={editOpen}
-        onOpenChange={setEditOpen}
-        program={program}
-      />
+      <ProgramEditDialog open={editOpen} onOpenChange={setEditOpen} program={program} />
       <WorkoutFormDialog
         open={addWorkoutOpen}
         onOpenChange={setAddWorkoutOpen}

@@ -7,7 +7,7 @@ import { BatteryCharging, BatteryLow } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { deloadReasonLine, type DeloadReason } from '@/lib/deload';
+import type { DeloadReason } from '@/lib/deload';
 import { useExerciseName } from '@/components/shared/use-exercise-name';
 
 interface Props {
@@ -104,14 +104,15 @@ export function DeloadBanner({ reasons, deloadUntil }: Props) {
         <ul className="list-disc space-y-1 pl-5">
           {reasons.map((reason) => (
             <li key={reason.kind}>
-              {deloadReasonLine(
-                reason.kind === 'stalled-lifts'
-                  ? {
-                      ...reason,
-                      exerciseNames: reason.exerciseNames.map(exerciseName),
-                    }
-                  : reason,
-              )}
+              {reason.kind === 'stalled-lifts'
+                ? t('stalledReason', {
+                    count: reason.exerciseNames.length,
+                    names: reason.exerciseNames.map(exerciseName).join(', '),
+                  })
+                : t('readinessReason', {
+                    average: reason.averageReadiness,
+                    checkins: reason.checkins,
+                  })}
             </li>
           ))}
         </ul>

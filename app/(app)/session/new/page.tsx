@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { StartWorkoutButton } from '@/components/session/start-workout-button';
 import { ReadinessCheckin } from '@/components/session/readiness-checkin';
+import { getTrainingDisplayName } from '@/i18n/training-names';
 
 const DAY_KEYS = [
   'monday',
@@ -95,7 +96,9 @@ export default async function NewSessionPage() {
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <CardTitle className="text-base">{w.name}</CardTitle>
+                          <CardTitle className="text-base">
+                            {getTrainingDisplayName(w.name, locale)}
+                          </CardTitle>
                           <CardDescription className="text-xs">
                             {common('counts.exercises', { count: w._count.exercises })}
                           </CardDescription>

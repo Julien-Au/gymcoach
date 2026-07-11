@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { getHomeInsight } from '@/lib/home-insight';
+import { getTrainingDisplayName } from '@/i18n/training-names';
 
 const DAY_KEYS = [
   'monday',
@@ -79,7 +80,9 @@ export default async function DashboardPage() {
               <CardTitle className="text-base">{t('activeSession')}</CardTitle>
               <CardDescription>
                 {t('startedOn', {
-                  name: inProgressSession.workout?.name ?? t('sessionFallback'),
+                  name: inProgressSession.workout?.name
+                    ? getTrainingDisplayName(inProgressSession.workout.name, locale)
+                    : t('sessionFallback'),
                   date: format.dateTime(inProgressSession.startedAt, {
                     day: '2-digit',
                     month: '2-digit',
@@ -112,7 +115,9 @@ export default async function DashboardPage() {
             <CardHeader>
               <CardTitle className="text-base">{t('emptyProgram')}</CardTitle>
               <CardDescription>
-                {t('emptyProgramDescription', { name: activeProgram.name })}
+                {t('emptyProgramDescription', {
+                  name: getTrainingDisplayName(activeProgram.name, locale),
+                })}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -127,7 +132,9 @@ export default async function DashboardPage() {
               <CardHeader className="pb-3">
                 <CardTitle className="text-base">{t('startSession')}</CardTitle>
                 <CardDescription>
-                  {t('activeProgram', { name: activeProgram.name })}
+                  {t('activeProgram', {
+                    name: getTrainingDisplayName(activeProgram.name, locale),
+                  })}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -154,7 +161,9 @@ export default async function DashboardPage() {
                       <Card>
                         <CardContent className="flex items-center justify-between gap-3 p-3">
                           <div className="min-w-0">
-                            <p className="truncate text-sm font-medium">{w.name}</p>
+                            <p className="truncate text-sm font-medium">
+                              {getTrainingDisplayName(w.name, locale)}
+                            </p>
                             <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
                               {day && <Badge variant="secondary">{day}</Badge>}
                               <span>

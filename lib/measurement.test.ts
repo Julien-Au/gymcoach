@@ -4,7 +4,6 @@ import {
   formatLength,
   fromDisplayLength,
   MEASUREMENT_SITES,
-  measurementSiteLabel,
   roundLength,
   toDisplayLength,
 } from './measurement';
@@ -13,13 +12,6 @@ describe('MEASUREMENT_SITES', () => {
   it('lists all 13 enum sites with no duplicates', () => {
     expect(MEASUREMENT_SITES).toHaveLength(13);
     expect(new Set(MEASUREMENT_SITES).size).toBe(13);
-  });
-
-  it('has a human label for every site', () => {
-    for (const site of MEASUREMENT_SITES) {
-      expect(measurementSiteLabel(site)).toBeTruthy();
-    }
-    expect(measurementSiteLabel('ARM_LEFT')).toBe('Arm (left)');
   });
 });
 

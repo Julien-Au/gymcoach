@@ -24,6 +24,23 @@ export const progress = {
     noProgress: 'No estimated 1RM progress over the last {count} sessions.',
     noProgressAdvice:
       'No estimated 1RM progress over the last {count} sessions. Consider a deload, rep-range change, or exercise swap.',
+    noExerciseData: 'No data for this exercise.',
+    show: 'Show',
+    hide: 'Hide',
+    loadingDescription:
+      'Percentages of your best estimated 1RM ({value}), rounded to a loadable increment. Planning aid, not a prescription.',
+    oneRmPercent: '% of e1RM',
+    weeklyVolumeDescription: 'Volume = sum of load × reps (working sets only).',
+    noWeeklyData: 'No weekly data.',
+    weekLabel: 'W{week}',
+    landmarksDescription:
+      'Working sets in {week} vs your reference band (MEV-MRV) per muscle group. Defaults to {mev}-{mrv} sets/week; edit a group to set your own. General hypertrophy heuristic, not a prescription.',
+    custom: 'custom',
+    default: 'default',
+    frequency: '{count}x/week',
+    noRecapData: 'No exercise with enough data.',
+    stalledBadge: 'Stalled',
+    deltaLoad: 'Δ load',
   },
   bodyweight: {
     title: 'Bodyweight',
@@ -42,6 +59,27 @@ export const progress = {
     empty: 'No {site} measurement yet. Log one to start the trend.',
     second: 'Log a second {site} measurement to see the trend.',
     onDate: 'on {date}',
+    invalid: 'Enter a positive measurement.',
+    logged: 'Measurement logged.',
+    logError: 'Could not log the measurement.',
+    deleted: 'Measurement deleted.',
+    deleteError: 'Could not delete the measurement.',
+    deleteAria: 'Delete {site} measurement from {date}',
+    sites: {
+      neck: 'Neck',
+      shoulders: 'Shoulders',
+      chest: 'Chest',
+      waist: 'Waist',
+      hips: 'Hips',
+      armLeft: 'Arm (left)',
+      armRight: 'Arm (right)',
+      forearmLeft: 'Forearm (left)',
+      forearmRight: 'Forearm (right)',
+      thighLeft: 'Thigh (left)',
+      thighRight: 'Thigh (right)',
+      calfLeft: 'Calf (left)',
+      calfRight: 'Calf (right)',
+    },
   },
   conditioning: {
     title: 'Conditioning',
@@ -61,6 +99,10 @@ export const progress = {
     ended: 'Deload ended. Suggestions are back to normal progression.',
     startError: 'Could not start the deload week.',
     endError: 'Could not end the deload.',
+    stalledReason:
+      '{count, plural, one {# lift has stalled: {names}.} other {# lifts have stalled: {names}.}}',
+    readinessReason:
+      'Your readiness has averaged {average}/5 over your last {checkins, plural, one {# check-in} other {# check-ins}}.',
   },
   records: {
     title: 'Records',
@@ -90,8 +132,7 @@ export const progress = {
       '{percent}% of the target on the estimated-1RM scale ({best} best vs {target} target).',
     targetLoad: 'Target load ({unit})',
     targetReps: 'Target reps',
-    bodyweightHelp:
-      'Bodyweight exercise: enter total effective load (bodyweight + added load).',
+    bodyweightHelp: 'Bodyweight exercise: enter total effective load (bodyweight + added load).',
     save: 'Save goal',
     invalid: 'Enter a positive target weight and at least 1 rep.',
     saved: 'Goal saved.',
@@ -106,5 +147,10 @@ export const progress = {
     mev: 'MEV (sets/week)',
     mrv: 'MRV (sets/week)',
     reset: 'Reset to default',
+    wholeNumbers: 'Enter whole numbers of sets.',
+    range: 'Values must be between 1 and {max} sets.',
+    order: 'MRV must be greater than MEV.',
+    saveError: 'Could not save the target.',
+    resetError: 'Could not reset the target.',
   },
 };

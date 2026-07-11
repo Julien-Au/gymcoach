@@ -1,14 +1,17 @@
 import { db } from './db';
+import { createTranslator } from 'next-intl';
 import { applyBodyweight, exerciseProgress, isStalled, isoWeekStart } from './stats';
 import { exerciseRecords } from './records';
 import {
   recommendDeload,
-  deloadReasonLine,
   DELOAD_READINESS_MAX_AGE_DAYS,
   DELOAD_READINESS_LOOKBACK,
   type DeloadRecommendation,
 } from './deload';
 import { getExerciseDisplayName } from '@/i18n/exercise-names';
+import { defaultLocale, isLocale, type Locale } from '@/i18n/config';
+import englishMessages from '@/messages/en';
+import russianMessages from '@/messages/ru';
 
 // How far back to look when judging stalled lifts and all-time records for the
 // home insight. Matches the progress page's recent window so the home nudge and
@@ -36,17 +39,65 @@ export interface HomeInsightInput {
   trainingDaysThisWeek: number | null;
 }
 
+type HomeInsightMessageKey =
+  | 'deloadTitle'
+  | 'stalledTitle'
+  | 'stalledDetail'
+  | 'prTitle'
+  | 'prWeightDetail'
+  | 'prOneRmDetail'
+  | 'consistentTitle'
+  | 'consistentDetail'
+  | 'deloadStalledReason'
+  | 'deloadReadinessReason';
+
+export type HomeInsightTranslator = (
+  key: HomeInsightMessageKey,
+  values?: Record<string, string | number>,
+) => string;
+
+const messageCatalogs = {
+  en: englishMessages,
+  ru: russianMessages,
+} satisfies Record<Locale, typeof englishMessages>;
+
+export function createHomeInsightTranslator(locale: string): HomeInsightTranslator {
+  const safeLocale = isLocale(locale) ? locale : defaultLocale;
+  const translate = createTranslator({
+    locale: safeLocale,
+    messages: messageCatalogs[safeLocale],
+  }) as unknown as (key: string, values?: Record<string, string | number>) => string;
+  return (key, values) => translate(`dashboard.insight.${key}`, values);
+}
+
+const englishInsight = createHomeInsightTranslator('en');
+
 // Pure selector: given the already-derived deterministic signals, returns the
 // single highest-priority insight to greet the user with, or null when there is
 // nothing worth surfacing (e.g. a brand-new account with no history). Priority:
 // a recommended deload > a stalled lift > a fresh personal record > an
 // on-track consistency line. Display-only - no LLM, no side effects.
-export function selectHomeInsight(input: HomeInsightInput): HomeInsight | null {
+export function selectHomeInsight(
+  input: HomeInsightInput,
+  translate: HomeInsightTranslator = englishInsight,
+): HomeInsight | null {
   if (input.deload.recommended && input.deload.reasons.length > 0) {
     return {
       kind: 'deload',
-      title: 'Recovery may be due',
-      detail: input.deload.reasons.map(deloadReasonLine).join(' '),
+      title: translate('deloadTitle'),
+      detail: input.deload.reasons
+        .map((reason) =>
+          reason.kind === 'stalled-lifts'
+            ? translate('deloadStalledReason', {
+                count: reason.exerciseNames.length,
+                names: reason.exerciseNames.join(', '),
+              })
+            : translate('deloadReadinessReason', {
+                average: reason.averageReadiness,
+                checkins: reason.checkins,
+              }),
+        )
+        .join(' '),
       href: '/progress',
     };
   }
@@ -55,32 +106,28 @@ export function selectHomeInsight(input: HomeInsightInput): HomeInsight | null {
     const names = input.stalledExerciseNames;
     return {
       kind: 'stall',
-      title: names.length === 1 ? 'A lift has stalled' : `${names.length} lifts have stalled`,
-      detail:
-        names.length === 1
-          ? `${names[0]} has not progressed recently. A small change in load, reps, or technique can get it moving again.`
-          : `${names.join(', ')} have not progressed recently. Check the progress page for what to adjust.`,
+      title: translate('stalledTitle', { count: names.length }),
+      detail: translate('stalledDetail', { count: names.length, names: names.join(', ') }),
       href: '/progress',
     };
   }
 
   if (input.recentPR) {
-    const what =
-      input.recentPR.kind === 'weight' ? 'a new heaviest set' : 'a new best estimated 1RM';
     return {
       kind: 'pr',
-      title: 'New personal record',
-      detail: `Your last session set ${what} on ${input.recentPR.exerciseName}. Nice work.`,
+      title: translate('prTitle'),
+      detail: translate(input.recentPR.kind === 'weight' ? 'prWeightDetail' : 'prOneRmDetail', {
+        name: input.recentPR.exerciseName,
+      }),
       href: '/progress',
     };
   }
 
   if (input.trainingDaysThisWeek != null && input.trainingDaysThisWeek > 0) {
-    const n = input.trainingDaysThisWeek;
     return {
       kind: 'on-track',
-      title: 'You are training consistently',
-      detail: `Trained ${n} day${n > 1 ? 's' : ''} this week. Keep the momentum going.`,
+      title: translate('consistentTitle'),
+      detail: translate('consistentDetail', { count: input.trainingDaysThisWeek }),
       href: '/progress',
     };
   }
@@ -249,10 +296,13 @@ export async function getHomeInsight(
       }
     : null;
 
-  return selectHomeInsight({
-    deload: displayDeload,
-    stalledExerciseNames: displayNames,
-    recentPR: displayRecentPR,
-    trainingDaysThisWeek,
-  });
+  return selectHomeInsight(
+    {
+      deload: displayDeload,
+      stalledExerciseNames: displayNames,
+      recentPR: displayRecentPR,
+      trainingDaysThisWeek,
+    },
+    createHomeInsightTranslator(locale),
+  );
 }

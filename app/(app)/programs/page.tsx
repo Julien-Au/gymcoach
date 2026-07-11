@@ -1,15 +1,17 @@
 import Link from 'next/link';
 import { Plus, Wand2 } from 'lucide-react';
-import { getFormatter, getTranslations } from 'next-intl/server';
+import { getFormatter, getLocale, getTranslations } from 'next-intl/server';
 import { db } from '@/lib/db';
 import { requireSession } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { getTrainingDisplayName } from '@/i18n/training-names';
 
 export default async function ProgramsPage() {
   const t = await getTranslations('programs');
   const format = await getFormatter();
+  const locale = await getLocale();
   const session = await requireSession();
   const programs = await db.program.findMany({
     where: { userId: session.userId },
@@ -49,9 +51,7 @@ export default async function ProgramsPage() {
           <Card>
             <CardHeader>
               <CardTitle>{t('noProgram')}</CardTitle>
-              <CardDescription>
-                {t('noProgramDescription')}
-              </CardDescription>
+              <CardDescription>{t('noProgramDescription')}</CardDescription>
             </CardHeader>
           </Card>
         ) : (
@@ -62,7 +62,9 @@ export default async function ProgramsPage() {
                   <Card className="transition-colors hover:bg-accent">
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between gap-3">
-                        <CardTitle className="text-base">{p.name}</CardTitle>
+                        <CardTitle className="text-base">
+                          {getTrainingDisplayName(p.name, locale)}
+                        </CardTitle>
                         {p.isActive && <Badge>{t('active')}</Badge>}
                       </div>
                       <CardDescription className="text-xs">
