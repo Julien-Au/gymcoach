@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
-import { getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
 import { db } from '@/lib/db';
 import { requireSession } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,7 @@ const DAY_KEYS = [
 export default async function NewSessionPage() {
   const t = await getTranslations('session');
   const common = await getTranslations('common');
+  const locale = await getLocale();
   const session = await requireSession();
   const activeProgram = await db.program.findFirst({
     where: { userId: session.userId, isActive: true },
