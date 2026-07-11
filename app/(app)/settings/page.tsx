@@ -7,12 +7,13 @@ import { SettingsClient } from '@/components/settings/settings-client';
 import { ProfileSection } from '@/components/settings/profile-section';
 import { ImportSection } from '@/components/settings/import-section';
 import { GymProfilesSection } from '@/components/settings/gym-profiles-section';
+import { McpSection } from '@/components/settings/mcp-section';
 
 export default async function SettingsPage() {
   const t = await getTranslations('settings');
   const common = await getTranslations('common');
   const auth = await requireSession();
-  const [user, gyms, exercises] = await Promise.all([
+  const [user, gyms, exercises, mcpTokens] = await Promise.all([
     db.user.findUnique({
       where: { id: auth.userId },
       select: {
@@ -34,6 +35,18 @@ export default async function SettingsPage() {
     db.exercise.findMany({
       where: { userId: auth.userId },
       orderBy: { name: 'asc' },
+    }),
+    db.mcpAccessToken.findMany({
+      where: { userId: auth.userId, revokedAt: null },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        name: true,
+        tokenPrefix: true,
+        canWrite: true,
+        createdAt: true,
+        lastUsedAt: true,
+      },
     }),
   ]);
 
@@ -76,6 +89,14 @@ export default async function SettingsPage() {
         />
 
         <ImportSection />
+
+        <McpSection
+          initialTokens={mcpTokens.map((token) => ({
+            ...token,
+            createdAt: token.createdAt.toISOString(),
+            lastUsedAt: token.lastUsedAt?.toISOString() ?? null,
+          }))}
+        />
 
         <SettingsClient />
       </div>
