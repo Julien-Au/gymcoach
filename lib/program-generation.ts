@@ -22,7 +22,7 @@ export async function generateProgram(userId: string, goal: string): Promise<Gen
     }),
     db.exercise.findMany({
       where: { userId },
-      select: { name: true, muscleGroup: true, category: true },
+      select: { name: true, muscleGroup: true, category: true, equipmentType: true },
       orderBy: { name: 'asc' },
     }),
   ]);
@@ -92,6 +92,7 @@ export async function buildProgramFromGenerated(
             name: ex.name,
             muscleGroup: ex.muscleGroup,
             category: ex.category,
+            equipmentType: ex.equipmentType ?? 'OTHER',
             defaultRestSec: ex.restSec,
           },
         });

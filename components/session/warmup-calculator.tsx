@@ -22,13 +22,14 @@ interface Props {
   // The current working load, stored in kg (the app's storage unit).
   weightKg: number;
   unit: WeightUnit;
+  barWeightsKg?: number[];
 }
 
 // In-workout warm-up ramp calculator (issue #69). Given the working weight, it
 // suggests a short ramp of warm-up sets at ascending percentages with
 // descending reps, in the user's display unit and rounded to loadable plates.
 // Display-only; it never creates or mutates a set (mirrors the plate calculator).
-export function WarmupCalculator({ weightKg, unit }: Props) {
+export function WarmupCalculator({ weightKg, unit, barWeightsKg }: Props) {
   const t = useTranslations('session.calculator');
   const [open, setOpen] = useState(false);
 
@@ -36,10 +37,13 @@ export function WarmupCalculator({ weightKg, unit }: Props) {
   // localStorage on the client, and only when the user wants the calculator.
   const ramp = useMemo(() => {
     if (!open) return null;
-    const { barWeight } = plateConfigForUnit(unit);
+    const fallback = plateConfigForUnit(unit);
+    const barWeight = barWeightsKg?.length
+      ? Math.min(...barWeightsKg.map((weight) => roundWeight(toDisplayWeight(weight, unit), 2)))
+      : fallback.barWeight;
     const working = roundWeight(toDisplayWeight(weightKg, unit), 2);
     return computeWarmupRamp(working, unit, barWeight);
-  }, [open, weightKg, unit]);
+  }, [barWeightsKg, open, weightKg, unit]);
 
   const label = unitLabel(unit);
 
@@ -89,14 +93,10 @@ export function WarmupCalculator({ weightKg, unit }: Props) {
                 ))}
               </ol>
             ) : (
-              <p className="text-sm text-muted-foreground">
-                {t('noWarmup')}
-              </p>
+              <p className="text-sm text-muted-foreground">{t('noWarmup')}</p>
             )}
 
-            <p className="text-xs text-muted-foreground">
-              {t('warmupHelp')}
-            </p>
+            <p className="text-xs text-muted-foreground">{t('warmupHelp')}</p>
           </div>
         )}
       </DialogContent>

@@ -29,11 +29,16 @@ import {
 } from '@/components/ui/select';
 import {
   exerciseCategoryValues,
+  equipmentTypeValues,
   exerciseInputSchema,
   muscleGroupValues,
   type ExerciseInput,
 } from '@/lib/schemas/exercise';
-import { exerciseCategoryMessageKeys, muscleGroupMessageKeys } from '@/i18n/enum-keys';
+import {
+  equipmentTypeMessageKeys,
+  exerciseCategoryMessageKeys,
+  muscleGroupMessageKeys,
+} from '@/i18n/enum-keys';
 
 interface Props {
   open: boolean;
@@ -49,6 +54,7 @@ const DEFAULT_VALUES: ExerciseInput = {
   defaultRestSec: 90,
   notes: '',
   usesBodyweight: false,
+  equipmentType: 'OTHER',
 };
 
 export function ExerciseFormDialog({ open, onOpenChange, mode, exercise }: Props) {
@@ -70,6 +76,7 @@ export function ExerciseFormDialog({ open, onOpenChange, mode, exercise }: Props
           defaultRestSec: exercise.defaultRestSec,
           notes: exercise.notes ?? '',
           usesBodyweight: exercise.usesBodyweight,
+          equipmentType: exercise.equipmentType,
         });
       } else {
         form.reset(DEFAULT_VALUES);
@@ -78,8 +85,7 @@ export function ExerciseFormDialog({ open, onOpenChange, mode, exercise }: Props
   }, [open, mode, exercise, form]);
 
   async function onSubmit(values: ExerciseInput) {
-    const url =
-      mode === 'edit' && exercise ? `/api/exercises/${exercise.id}` : '/api/exercises';
+    const url = mode === 'edit' && exercise ? `/api/exercises/${exercise.id}` : '/api/exercises';
     const method = mode === 'edit' ? 'PUT' : 'POST';
     const res = await fetch(url, {
       method,
@@ -99,12 +105,8 @@ export function ExerciseFormDialog({ open, onOpenChange, mode, exercise }: Props
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>
-            {mode === 'edit' ? t('editTitle') : t('addTitle')}
-          </DialogTitle>
-          <DialogDescription>
-            {t('formDescription')}
-          </DialogDescription>
+          <DialogTitle>{mode === 'edit' ? t('editTitle') : t('addTitle')}</DialogTitle>
+          <DialogDescription>{t('formDescription')}</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
@@ -121,7 +123,9 @@ export function ExerciseFormDialog({ open, onOpenChange, mode, exercise }: Props
               <Label htmlFor="muscleGroup">{t('muscleGroup')}</Label>
               <Select
                 value={form.watch('muscleGroup')}
-                onValueChange={(v) => form.setValue('muscleGroup', v as ExerciseInput['muscleGroup'])}
+                onValueChange={(v) =>
+                  form.setValue('muscleGroup', v as ExerciseInput['muscleGroup'])
+                }
               >
                 <SelectTrigger id="muscleGroup">
                   <SelectValue />
@@ -157,6 +161,27 @@ export function ExerciseFormDialog({ open, onOpenChange, mode, exercise }: Props
           </div>
 
           <div className="space-y-2">
+            <Label htmlFor="equipmentType">{t('equipmentType')}</Label>
+            <Select
+              value={form.watch('equipmentType')}
+              onValueChange={(v) =>
+                form.setValue('equipmentType', v as ExerciseInput['equipmentType'])
+              }
+            >
+              <SelectTrigger id="equipmentType">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {equipmentTypeValues.map((type) => (
+                  <SelectItem key={type} value={type}>
+                    {t(`equipmentTypes.${equipmentTypeMessageKeys[type]}`)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="defaultRestSec">{t('defaultRest')}</Label>
             <Input
               id="defaultRestSec"
@@ -176,9 +201,7 @@ export function ExerciseFormDialog({ open, onOpenChange, mode, exercise }: Props
           <label className="flex cursor-pointer items-start justify-between gap-3 rounded-md border border-border/40 p-3">
             <div className="min-w-0 space-y-0.5">
               <p className="text-sm font-medium">{t('bodyweight')}</p>
-              <p className="text-xs text-muted-foreground">
-                {t('bodyweightDescription')}
-              </p>
+              <p className="text-xs text-muted-foreground">{t('bodyweightDescription')}</p>
             </div>
             <Switch
               checked={form.watch('usesBodyweight')}

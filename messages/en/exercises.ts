@@ -4,8 +4,7 @@ export const exercises = {
     '{count, plural, =0 {No exercises saved.} one {# exercise saved.} other {# exercises saved.}}',
   search: 'Search exercises by name',
   emptyTitle: 'No exercises',
-  emptyDescription:
-    'The catalog is empty. Add your first exercise so you can use it in a program.',
+  emptyDescription: 'The catalog is empty. Add your first exercise so you can use it in a program.',
   noMatchTitle: 'No exercises match',
   noMatchDescription: 'No exercise name matches “{query}”. Try a different search.',
   restSeconds: 'rest {seconds}s',
@@ -14,6 +13,7 @@ export const exercises = {
   formDescription: 'Enter the name, muscle group and category.',
   muscleGroup: 'Muscle group',
   category: 'Category',
+  equipmentType: 'Equipment type',
   defaultRest: 'Default rest (seconds)',
   bodyweight: 'Bodyweight exercise',
   bodyweightDescription:
@@ -50,5 +50,14 @@ export const exercises = {
     compound: 'Compound',
     isolation: 'Isolation',
     cardio: 'Cardio',
+  },
+  equipmentTypes: {
+    dumbbell: 'Dumbbells',
+    barbell: 'Barbell',
+    machine: 'Machine',
+    cable: 'Cable stack',
+    bodyweight: 'Bodyweight',
+    cardio: 'Cardio equipment',
+    other: 'Other / unrestricted',
   },
 };

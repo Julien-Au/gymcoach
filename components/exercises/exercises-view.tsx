@@ -11,7 +11,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { ExerciseFormDialog } from '@/components/exercises/exercise-form-dialog';
 import { DeleteExerciseButton } from '@/components/exercises/delete-exercise-button';
 import { useExerciseName } from '@/components/shared/use-exercise-name';
-import { exerciseCategoryMessageKeys, muscleGroupMessageKeys } from '@/i18n/enum-keys';
+import {
+  equipmentTypeMessageKeys,
+  exerciseCategoryMessageKeys,
+  muscleGroupMessageKeys,
+} from '@/i18n/enum-keys';
 
 interface ExercisesViewProps {
   exercises: Exercise[];
@@ -124,6 +128,9 @@ function ExerciseRow({ exercise, onEdit }: { exercise: Exercise; onEdit: () => v
           <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
             <Badge variant="secondary">
               {t(`categories.${exerciseCategoryMessageKeys[exercise.category]}`)}
+            </Badge>
+            <Badge variant="outline">
+              {t(`equipmentTypes.${equipmentTypeMessageKeys[exercise.equipmentType]}`)}
             </Badge>
             <span>{t('restSeconds', { seconds: exercise.defaultRestSec })}</span>
           </div>

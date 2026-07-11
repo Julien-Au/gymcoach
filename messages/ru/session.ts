@@ -13,6 +13,9 @@ export const session = {
   startThis: 'Начать эту тренировку',
   starting: 'Запуск...',
   startError: 'Не удалось начать тренировку.',
+  trainingGym: 'Зал для этой тренировки',
+  trainingGymDescription:
+    'Выбранный инвентарь закрепится за тренировкой, даже если позже переключить активный зал.',
   noExercises: 'В этой тренировке нет упражнений.',
   exerciseProgress: 'Упражнение {current}/{total} · {name}',
   superset: 'Суперсет {label}',
@@ -149,6 +152,7 @@ export const session = {
     oneRmPrTitle: 'Лучший расчётный 1ПМ относительно прошлой тренировки',
   },
   exerciseCard: {
+    notAvailable: 'Нет в этом зале',
     cardioPrescription:
       '{sets, plural, one {# подход} few {# подхода} many {# подходов} other {# подхода}} · отдых {seconds} с',
     strengthPrescription:

@@ -7,8 +7,7 @@ export const exercises = {
     '{count, plural, =0 {Нет сохранённых упражнений.} one {Сохранено # упражнение.} few {Сохранено # упражнения.} many {Сохранено # упражнений.} other {Сохранено # упражнения.}}',
   search: 'Поиск упражнений по названию',
   emptyTitle: 'Нет упражнений',
-  emptyDescription:
-    'Каталог пуст. Добавьте первое упражнение, чтобы использовать его в программе.',
+  emptyDescription: 'Каталог пуст. Добавьте первое упражнение, чтобы использовать его в программе.',
   noMatchTitle: 'Ничего не найдено',
   noMatchDescription: 'Упражнений по запросу «{query}» нет. Измените запрос.',
   restSeconds: 'отдых {seconds} с',
@@ -17,6 +16,7 @@ export const exercises = {
   formDescription: 'Укажите название, группу мышц и категорию.',
   muscleGroup: 'Группа мышц',
   category: 'Категория',
+  equipmentType: 'Тип оборудования',
   defaultRest: 'Отдых по умолчанию (секунды)',
   bodyweight: 'Упражнение с собственным весом',
   bodyweightDescription:
@@ -53,5 +53,14 @@ export const exercises = {
     compound: 'Базовое',
     isolation: 'Изолирующее',
     cardio: 'Кардио',
+  },
+  equipmentTypes: {
+    dumbbell: 'Гантели',
+    barbell: 'Штанга',
+    machine: 'Тренажёр',
+    cable: 'Блочный тренажёр',
+    bodyweight: 'Собственный вес',
+    cardio: 'Кардиооборудование',
+    other: 'Другое / без ограничений',
   },
 } satisfies MessageShape<typeof english>;

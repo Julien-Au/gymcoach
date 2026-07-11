@@ -18,6 +18,7 @@ const compoundExo: Exercise = {
   defaultRestSec: 120,
   notes: null,
   usesBodyweight: false,
+  equipmentType: 'BARBELL',
   createdAt: new Date(),
 };
 
@@ -30,6 +31,7 @@ const isolationExo: Exercise = {
   defaultRestSec: 60,
   notes: null,
   usesBodyweight: false,
+  equipmentType: 'DUMBBELL',
   createdAt: new Date(),
 };
 

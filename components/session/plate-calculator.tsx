@@ -22,12 +22,14 @@ interface Props {
   // The current target load, stored in kg (the app's storage unit).
   weightKg: number;
   unit: WeightUnit;
+  barWeightsKg?: number[];
+  plateWeightsKg?: number[];
 }
 
 // In-workout plate-loading calculator (issue #39). Reads the user's per-unit
 // bar weight + plate inventory from preferences and shows the plates to load
 // per side for the current target weight. Display-only; never mutates the set.
-export function PlateCalculator({ weightKg, unit }: Props) {
+export function PlateCalculator({ weightKg, unit, barWeightsKg, plateWeightsKg }: Props) {
   const t = useTranslations('session.calculator');
   const [open, setOpen] = useState(false);
 
@@ -35,10 +37,24 @@ export function PlateCalculator({ weightKg, unit }: Props) {
   // client (and only when the user actually wants the calculator).
   const result = useMemo(() => {
     if (!open) return null;
-    const { barWeight, plates } = plateConfigForUnit(unit);
+    const fallback = plateConfigForUnit(unit);
+    const bars = barWeightsKg?.length
+      ? barWeightsKg.map((weight) => roundWeight(toDisplayWeight(weight, unit), 2))
+      : [fallback.barWeight];
+    const plates = plateWeightsKg?.length
+      ? plateWeightsKg.map((weight) => roundWeight(toDisplayWeight(weight, unit), 2))
+      : fallback.plates;
     const target = roundWeight(toDisplayWeight(weightKg, unit), 2);
-    return { target, ...computePlateLoad(target, barWeight, plates) };
-  }, [open, weightKg, unit]);
+    const candidates = bars.map((barWeight) => computePlateLoad(target, barWeight, plates));
+    const result =
+      candidates.sort(
+        (a, b) =>
+          Number(b.exact) - Number(a.exact) ||
+          a.remainder - b.remainder ||
+          b.achievedWeight - a.achievedWeight,
+      )[0] ?? computePlateLoad(target, fallback.barWeight, plates);
+    return { target, ...result };
+  }, [barWeightsKg, open, plateWeightsKg, weightKg, unit]);
 
   const label = unitLabel(unit);
 
@@ -72,19 +88,13 @@ export function PlateCalculator({ weightKg, unit }: Props) {
             {result.perSide.length > 0 ? (
               <div className="flex flex-wrap gap-2" aria-label={t('platesPerSide')}>
                 {result.perSide.map((g) => (
-                  <Badge
-                    key={g.plate}
-                    variant="secondary"
-                    className="text-base font-semibold"
-                  >
+                  <Badge key={g.plate} variant="secondary" className="text-base font-semibold">
                     {g.count} x {g.plate} {label}
                   </Badge>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">
-                {t('barOnly')}
-              </p>
+              <p className="text-sm text-muted-foreground">{t('barOnly')}</p>
             )}
 
             <p className="text-sm text-muted-foreground">

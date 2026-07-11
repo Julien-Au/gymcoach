@@ -1,5 +1,6 @@
 import type { Exercise, ProgramExercise, SetAutoregulationMode } from '@/lib/prisma-client';
 import { weightIncrement } from '@/lib/progression';
+import { constrainGymWeight, type GymLoadConstraints } from '@/lib/gym-loads';
 
 export const MIN_FATIGUE_RATE = 0.25;
 export const MAX_FATIGUE_RATE = 2;
@@ -54,6 +55,7 @@ interface RecommendationInput {
   // Readiness/deload logic may forbid an intra-session increase while still
   // allowing a hold or reduction.
   allowLoadIncrease?: boolean;
+  loadConstraints?: GymLoadConstraints | null;
 }
 
 export function defaultIntraSetConfig(
@@ -109,6 +111,7 @@ export function recommendNextIntraSet({
   recoverySec,
   sameMuscleSuperset = false,
   allowLoadIncrease = true,
+  loadConstraints,
 }: RecommendationInput): IntraSetRecommendation | null {
   if (programExercise.exercise.category === 'CARDIO') return null;
 
@@ -147,7 +150,8 @@ export function recommendNextIntraSet({
 
   const adjustmentPct = clamp(capacityGap * config.loadAdjustmentPct, -5, 10);
   const increment = weightIncrement(programExercise.exercise.category);
-  const adjustedWeight = adjustWeight(lastSet.weight, adjustmentPct, increment);
+  const calculatedWeight = adjustWeight(lastSet.weight, adjustmentPct, increment);
+  const adjustedWeight = constrainGymWeight(calculatedWeight, lastSet.weight, loadConstraints);
 
   let reason: IntraSetRecommendationReason;
   if (lastSet.weight === 0 && capacityGap > 0) {

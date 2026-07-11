@@ -30,9 +30,7 @@ function jsonReq(body: unknown): Request {
 // compared field-for-field.
 function sortDeep(v: unknown): unknown {
   if (Array.isArray(v)) {
-    return v
-      .map(sortDeep)
-      .sort((a, b) => (JSON.stringify(a) < JSON.stringify(b) ? -1 : 1));
+    return v.map(sortDeep).sort((a, b) => (JSON.stringify(a) < JSON.stringify(b) ? -1 : 1));
   }
   if (v && typeof v === 'object') {
     return Object.fromEntries(
@@ -68,7 +66,13 @@ async function seedFullUser(email: string) {
     },
   });
   const bench = await db.exercise.create({
-    data: { userId: user.id, name: 'Bench Press', muscleGroup: 'CHEST', category: 'COMPOUND' },
+    data: {
+      userId: user.id,
+      name: 'Bench Press',
+      muscleGroup: 'CHEST',
+      category: 'COMPOUND',
+      equipmentType: 'BARBELL',
+    },
   });
   const pullup = await db.exercise.create({
     data: {
@@ -77,11 +81,31 @@ async function seedFullUser(email: string) {
       muscleGroup: 'BACK_WIDTH',
       category: 'COMPOUND',
       usesBodyweight: true,
+      equipmentType: 'BODYWEIGHT',
     },
   });
   const running = await db.exercise.create({
-    data: { userId: user.id, name: 'Running', muscleGroup: 'OTHER', category: 'CARDIO' },
+    data: {
+      userId: user.id,
+      name: 'Running',
+      muscleGroup: 'OTHER',
+      category: 'CARDIO',
+      equipmentType: 'CARDIO',
+    },
   });
+  const gym = await db.gym.create({
+    data: {
+      userId: user.id,
+      name: 'Basement',
+      dumbbellWeights: [10, 12, 14, 16, 19],
+      plateWeights: [1.25, 2.5, 5, 10, 20],
+      barWeights: [20],
+      exerciseConfigs: {
+        create: { exerciseId: running.id, isAvailable: false, weightOptions: [] },
+      },
+    },
+  });
+  await db.user.update({ where: { id: user.id }, data: { activeGymId: gym.id } });
   const program = await db.program.create({
     data: {
       userId: user.id,
@@ -133,6 +157,7 @@ async function seedFullUser(email: string) {
       startedAt: new Date('2026-06-01T10:00:00.000Z'),
       finishedAt: new Date('2026-06-01T11:00:00.000Z'),
       notes: 'good session',
+      gymId: gym.id,
       sets: {
         create: [
           {
@@ -238,6 +263,8 @@ async function countsFor(userId: string) {
     readinessCheckins: await db.readinessCheckin.count({ where: { userId } }),
     conversations: await db.conversation.count({ where: { userId } }),
     messages: await db.message.count({ where: { conversation: { userId } } }),
+    gyms: await db.gym.count({ where: { userId } }),
+    gymConfigs: await db.gymExerciseConfig.count({ where: { gym: { userId } } }),
   };
 }
 
@@ -246,7 +273,7 @@ beforeEach(() => {
 });
 
 describe('GET /api/backup - export completeness (issue #168)', () => {
-  it('exports version 2 with the cardio fields, supersetGroup and the v2 models', async () => {
+  it('exports version 3 with saved gyms and all earlier backup fields', async () => {
     const user = await seedFullUser('a@test.dev');
     actAs(user.id);
 
@@ -254,7 +281,7 @@ describe('GET /api/backup - export completeness (issue #168)', () => {
     expect(res.status).toBe(200);
     const dump = await res.json();
 
-    expect(dump.version).toBe(2);
+    expect(dump.version).toBe(3);
     expect(dump.profile).toMatchObject({
       displayName: 'Julien',
       bodyweight: 82.5,
@@ -264,12 +291,22 @@ describe('GET /api/backup - export completeness (issue #168)', () => {
       weeklyFrequency: 4,
       unit: 'LB',
       deloadUntil: '2026-07-05T00:00:00.000Z',
+      activeGymName: 'Basement',
     });
 
-    const pullup = dump.exercises.find(
-      (e: { name: string }) => e.name === 'Pull-up',
-    );
+    const pullup = dump.exercises.find((e: { name: string }) => e.name === 'Pull-up');
     expect(pullup.usesBodyweight).toBe(true);
+    expect(pullup.equipmentType).toBe('BODYWEIGHT');
+    expect(dump.gyms).toEqual([
+      {
+        name: 'Basement',
+        dumbbellWeights: [10, 12, 14, 16, 19],
+        plateWeights: [1.25, 2.5, 5, 10, 20],
+        barWeights: [20],
+        exerciseConfigs: [{ exerciseName: 'Running', isAvailable: false, weightOptions: [] }],
+      },
+    ]);
+    expect(dump.sessions[0].gymName).toBe('Basement');
 
     const sets = dump.sessions[0].sets as Array<Record<string, unknown>>;
     const cardio = sets.find((s) => s.exerciseName === 'Running');
@@ -340,6 +377,8 @@ describe('POST /api/backup - restore round trip (issue #168)', () => {
     expect(profileB?.displayName).toBe('Julien');
     expect(profileB?.unit).toBe('LB');
     expect(profileB?.deloadUntil?.toISOString()).toBe('2026-07-05T00:00:00.000Z');
+    const activeGymB = await db.gym.findFirst({ where: { id: profileB?.activeGymId ?? '' } });
+    expect(activeGymB?.name).toBe('Basement');
     expect(profileB?.email).toBe('b@test.dev');
   });
 

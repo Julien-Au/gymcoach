@@ -1,4 +1,5 @@
 import type { Exercise, MuscleGroup, ProgramExercise, Set } from '@/lib/prisma-client';
+import { constrainGymWeight, type GymLoadConstraints } from '@/lib/gym-loads';
 
 // ============================================================
 // Load suggestion - double progression
@@ -92,6 +93,7 @@ export function suggestNextWeight(
   // resolves User.deloadUntil against the clock (lib/deload.ts isDeloadActive)
   // so this module stays deterministic.
   plannedDeload?: boolean,
+  loadConstraints?: GymLoadConstraints | null,
 ): SuggestionResult {
   if (lastSets.length === 0) {
     return { weight: null, reason: 'no-history' };
@@ -128,37 +130,74 @@ export function suggestNextWeight(
   // reduction (both use READINESS_DELOAD_FRACTION of the working load), so the
   // two never stack - the larger single reduction is applied, never both.
   if (plannedDeload) {
-    return {
-      weight: +(workingWeight * (1 - READINESS_DELOAD_FRACTION)).toFixed(2),
-      reason: 'planned-deload',
+    return constrainSuggestion(
+      {
+        weight: +(workingWeight * (1 - READINESS_DELOAD_FRACTION)).toFixed(2),
+        reason: 'planned-deload',
+        workingWeight,
+        targetRepsMax,
+      },
       workingWeight,
-      targetRepsMax,
-    };
+      programExercise.exercise.category,
+      loadConstraints,
+    );
   }
 
   const recovery = assessRecovery(readiness, programExercise.exercise.muscleGroup);
   if (recovery === 'ok') {
-    return baseline;
+    return constrainSuggestion(
+      baseline,
+      workingWeight,
+      programExercise.exercise.category,
+      loadConstraints,
+    );
   }
 
   // Readiness may only hold or reduce. A step-down goes below the working load;
   // a hold keeps the working load (never above it).
   if (recovery === 'deload') {
     const reduced = +(workingWeight * (1 - READINESS_DELOAD_FRACTION)).toFixed(2);
-    return {
-      weight: reduced,
-      reason: 'readiness-deload',
+    return constrainSuggestion(
+      {
+        weight: reduced,
+        reason: 'readiness-deload',
+        workingWeight,
+        targetRepsMax,
+      },
       workingWeight,
-      targetRepsMax,
-    };
+      programExercise.exercise.category,
+      loadConstraints,
+    );
   }
 
   // hold: keep the working load, drop any progression increment.
-  return {
-    weight: workingWeight,
-    reason: 'readiness-hold',
+  return constrainSuggestion(
+    {
+      weight: workingWeight,
+      reason: 'readiness-hold',
+      workingWeight,
+      targetRepsMax,
+    },
     workingWeight,
-    targetRepsMax,
+    programExercise.exercise.category,
+    loadConstraints,
+  );
+}
+
+function constrainSuggestion(
+  suggestion: SuggestionResult,
+  referenceWeight: number,
+  category: Exercise['category'],
+  constraints?: GymLoadConstraints | null,
+): SuggestionResult {
+  if (suggestion.weight == null) return suggestion;
+  const weight = constrainGymWeight(suggestion.weight, referenceWeight, constraints);
+  return {
+    ...suggestion,
+    weight,
+    ...(suggestion.reason === 'progression'
+      ? { delta: +(weight - referenceWeight).toFixed(2) }
+      : {}),
   };
 }
 
