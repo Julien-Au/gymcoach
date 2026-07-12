@@ -15,6 +15,7 @@ export const session = {
     'The selected inventory stays attached to this workout even if you switch gyms later.',
   noExercises: 'No exercises in this session.',
   exerciseProgress: 'Exercise {current}/{total} · {name}',
+  exerciseStripLabel: 'Exercises in this workout',
   superset: 'Superset {label}',
   deloadWeek: 'Deload week',
   quit: 'Quit without finishing',
@@ -131,6 +132,9 @@ export const session = {
     noWarmup: 'This load is at or below the bar - no warm-up ramp needed.',
     warmupHelp:
       'Suggestions only. Log warm-ups with the Warmup toggle. Weights are rounded down to loadable plates.',
+  },
+  previousSession: {
+    title: 'Previous session · {date}',
   },
   setsList: {
     noneDuringRest: 'No sets yet. After rest you can log set {number}.',

@@ -47,6 +47,8 @@ import { SetsList } from '@/components/session/sets-list';
 import { SetInput } from '@/components/session/set-input';
 import { RestTimer } from '@/components/session/rest-timer';
 import { SessionSummary } from '@/components/session/session-summary';
+import { SessionExerciseStrip } from '@/components/session/session-exercise-strip';
+import { PreviousSessionSets } from '@/components/session/previous-session-sets';
 import { useExerciseName } from '@/components/shared/use-exercise-name';
 import { useTrainingName } from '@/components/shared/use-training-name';
 import type { GymLoadConstraints } from '@/lib/gym-loads';
@@ -248,6 +250,15 @@ export function SessionRunner({
     return count;
   }, [programExercises, setsByExercise]);
 
+  const completedExerciseIds = useMemo(() => {
+    const completed = new Set<string>();
+    for (const pe of programExercises) {
+      const done = setsByExercise.get(pe.exerciseId)?.filter((s) => !s.isWarmup).length ?? 0;
+      if (done >= pe.targetSets) completed.add(pe.exerciseId);
+    }
+    return completed;
+  }, [programExercises, setsByExercise]);
+
   const progressPct =
     programExercises.length === 0
       ? 0
@@ -431,12 +442,8 @@ export function SessionRunner({
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="truncate text-xs text-muted-foreground">{trainingName(workout.name)}</p>
-            <p className="text-sm font-medium">
-              {t('exerciseProgress', {
-                current: currentIdx + 1,
-                total: programExercises.length,
-                name: exerciseName(currentPE.exercise.name),
-              })}
+            <p className="text-sm font-semibold tabular-nums">
+              {currentIdx + 1} / {programExercises.length}
             </p>
             {supersetView.labels.has(currentPE.id) && (
               <Badge variant="secondary" className="mt-1">
@@ -462,6 +469,16 @@ export function SessionRunner({
           </Button>
         </div>
         <Progress value={progressPct} className="mt-2 h-1.5" />
+        <SessionExerciseStrip
+          exercises={programExercises}
+          currentIndex={currentIdx}
+          completedExerciseIds={completedExerciseIds}
+          disabled={mode.kind !== 'input'}
+          onSelect={(index) => {
+            setCurrentIdx(index);
+            setMode({ kind: 'input' });
+          }}
+        />
       </div>
 
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 py-4">
@@ -507,6 +524,8 @@ export function SessionRunner({
             onAdd30={handleAdd30s}
           />
         )}
+
+        <PreviousSessionSets performance={lastPerf} unit={unit} />
 
         {/* In-session coach access (issue #111): opens the chat with this
             session attached so the advice is grounded in the live workout.
