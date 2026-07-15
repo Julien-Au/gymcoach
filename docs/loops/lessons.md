@@ -182,3 +182,26 @@ Format per entry: trigger/evidence, the lesson (actionable), and **Status** = `g
 - **Trigger:** twice now (#259 GPX-track on 2026-06-23, and the TCX-track work on 2026-06-30) I committed and pushed a feature DIRECTLY to `main`. Both times the cause was identical: a prior step ended with `git switch main` (to sync / merge a previous PR), then the next task's edits started without a `git switch -c` - so the work landed on `main`, bypassing the PR + pre-merge review gate (a CLAUDE.md rule).
 - **Lesson:** the dangerous moment is the START of a new unit of work that follows a `main` checkout. Make branching the FIRST action of any task that will edit files - `git switch -c <type>/<slug>` before the first Edit/Write, not after. Recovery when it happens anyway: CI runs on push to `main` (so the change is still gated), but run the independent review POST-HOC and fix any finding forward via a real PR; never force-push to "undo" shared `main`. Both slips ended green + reviewed SHIP, but a gate-skip is exactly what the charter forbids - the fix is the habit, not the recovery.
 - **Status:** standing rule. If a turn begins on `main` and will write code, branch first.
+
+### L15 - Concurrent ticks must not share one working tree: isolate with git worktrees, or serialize
+- **Trigger:** 2026-07-15 batch. Two ticks ran against the SAME checkout at once: the #278
+  ship tick did `git switch main` (to sync the merged PR) while the #270 dev tick still had
+  uncommitted work in that same tree. The switch + a stray commit put an intermediate commit
+  (`a49e21f`) directly on `main` - a breach of hard guardrail 1 (never commit to `main`).
+  This is a DIFFERENT cause than L14: L14 is one writer forgetting to branch; L15 is two
+  writers sharing one tree, where even a correctly-branched tick is unsafe because another
+  tick can move `HEAD`/`main` and capture its uncommitted work. Remediated without
+  force-push: revert `fe25d66` restored `main` to `b2221f5` exactly (CI green), work
+  cherry-picked onto a feature branch and shipped as PR #279.
+- **Lesson:** a git checkout is single-writer state. Two ticks in one working tree race on
+  `HEAD`, the index, and the branch pointer - one tick's `git switch`/commit can strand or
+  mis-attribute the other's work onto `main`. The orchestrator must give each concurrently
+  running dev/ship tick its OWN git worktree (`git worktree add`), so branch checkouts and
+  commits never collide; until worktree isolation is in place, same-checkout ticks must be
+  strictly SERIALIZED (never overlap two ticks in one tree). Extends L7/L11 ("one writer per
+  checkout") from same-file and zombie-writer cases to the general concurrent-tick case, and
+  makes the control structural (separate trees) rather than behavioral (remember to branch).
+- **Status:** graduated -> `06-orchestration.md` ("Concurrent ticks: one worktree each"):
+  concurrent dev/ship ticks get isolated `git worktree`s; without isolation, serialize
+  same-checkout ticks. Recovery when a commit still lands on `main`: revert forward (never
+  force-push shared history), then re-ship via a proper PR.

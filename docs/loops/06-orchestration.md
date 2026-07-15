@@ -95,3 +95,24 @@ dead task explicitly (TaskStop) or confirm it is gone; then `git status` - commi
 survives in branches/PRs (resume from there), but unexpected working-tree changes are a
 stop-and-reground signal. The replacement tick's prompt should state what is already
 merged so it never redoes or fights prior work.
+
+## Concurrent ticks: one worktree each (lesson L15)
+
+A git checkout is single-writer state: `HEAD`, the index, and the branch pointer are shared
+mutable state. If two ticks run in the **same** working tree at once, they race - one tick's
+`git switch main` or commit can strand or mis-attribute the other's uncommitted work, and it
+can land directly on `main` even when both ticks are otherwise behaving. This actually
+happened on 2026-07-15: a ship tick switched to `main` while a dev tick had uncommitted work
+in the same tree, and an intermediate commit briefly hit `main` (hard-guardrail-1 breach;
+reverted forward, re-shipped as PR #279).
+
+- **Give each concurrently running dev/ship tick its own `git worktree`** (`git worktree
+  add ../wt-<task> <branch>`), so branch checkouts and commits in one tick never touch
+  another tick's tree. Worktrees do not share `node_modules` (lesson L4: `npm ci` +
+  `npm rebuild bcrypt` + `prisma migrate deploy` in a fresh worktree before the gate).
+- **Until worktree isolation is in place, serialize same-checkout ticks** - never overlap
+  two ticks in one tree. This is stricter than the same-file serialization of step 4: any
+  two ticks sharing a tree must not overlap, related or not.
+- **If a commit still lands on `main`, revert forward** (a revert commit restoring `main`'s
+  content), never `git push --force` shared history (it is denied anyway), then re-ship the
+  work through a proper PR.
