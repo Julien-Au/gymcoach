@@ -93,16 +93,18 @@ interface FitBatchPreview {
   skipped: number;
 }
 
-type ImportFormat = 'STRONG' | 'HEVY' | 'TCX' | 'GPX' | 'FIT';
+type ImportFormat = 'STRONG' | 'HEVY' | 'GYMCOACH' | 'TCX' | 'GPX' | 'FIT';
 
 // Copy and endpoint per supported source app. Strong keeps its unit toggle
 // (its export follows the app's unit setting); Hevy always exports kg, so the
 // toggle is hidden for it. TCX (issue #152) and GPX (issue #204) are both
 // single-activity cardio files - they share the preview/confirm UI.
+// `source` names where the history comes from in the intro sentence.
 const FORMAT_META: Record<
   ImportFormat,
   {
     label: string;
+    source: string;
     endpoint: string;
     exportHint: string;
     hasUnitToggle: boolean;
@@ -112,6 +114,7 @@ const FORMAT_META: Record<
 > = {
   STRONG: {
     label: 'Strong',
+    source: 'the Strong app',
     endpoint: '/api/import/strong',
     exportHint: 'export it as CSV (Settings, then Export data)',
     hasUnitToggle: true,
@@ -120,14 +123,26 @@ const FORMAT_META: Record<
   },
   HEVY: {
     label: 'Hevy',
+    source: 'the Hevy app',
     endpoint: '/api/import/hevy',
     exportHint: 'export it as CSV (Settings, then Export & Import Data)',
     hasUnitToggle: false,
     accept: '.csv,text/csv',
     fileKind: 'CSV',
   },
+  GYMCOACH: {
+    label: 'GymCoach',
+    source: 'a GymCoach history CSV',
+    endpoint: '/api/import/gymcoach',
+    exportHint:
+      'use the CSV from the History page export, or any spreadsheet with the same columns (session_date, workout, exercise, set_number, external_load_kg, reps, ...)',
+    hasUnitToggle: false,
+    accept: '.csv,text/csv',
+    fileKind: 'CSV',
+  },
   TCX: {
     label: 'TCX file',
+    source: 'a TCX file',
     endpoint: '/api/import/tcx',
     exportHint:
       'export the activity as TCX from your watch platform (Garmin Connect, Polar Flow, ...) and it becomes one cardio session with duration, distance and heart rate',
@@ -137,6 +152,7 @@ const FORMAT_META: Record<
   },
   GPX: {
     label: 'GPX file',
+    source: 'a GPX file',
     endpoint: '/api/import/gpx',
     exportHint:
       'export the route as GPX from Strava, Komoot or Apple Fitness and it becomes one cardio session with duration, distance and heart rate',
@@ -146,6 +162,7 @@ const FORMAT_META: Record<
   },
   FIT: {
     label: 'FIT file',
+    source: 'a FIT file',
     endpoint: '/api/import/fit',
     exportHint:
       'export the activity as a FIT file from your Garmin (or other) watch and it becomes one cardio session with duration, distance and heart rate',
@@ -375,7 +392,7 @@ export function ImportSection() {
         <p className="text-xs text-muted-foreground">
           {isCardioActivity
             ? `Bring a cardio workout: ${meta.exportHint}. Preview it here, then confirm.`
-            : `Bring your training history from the ${meta.label} app: ${meta.exportHint}, preview it here, then confirm.`}
+            : `Bring your training history from ${meta.source}: ${meta.exportHint}, preview it here, then confirm.`}
         </p>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
@@ -392,6 +409,7 @@ export function ImportSection() {
               <SelectContent>
                 <SelectItem value="STRONG">Strong</SelectItem>
                 <SelectItem value="HEVY">Hevy</SelectItem>
+                <SelectItem value="GYMCOACH">GymCoach CSV</SelectItem>
                 <SelectItem value="TCX">TCX file</SelectItem>
                 <SelectItem value="GPX">GPX file</SelectItem>
                 <SelectItem value="FIT">FIT file</SelectItem>

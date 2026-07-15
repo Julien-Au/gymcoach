@@ -27,6 +27,15 @@ export const hevyImportInputSchema = z.object({
 
 export type HevyImportInput = z.infer<typeof hevyImportInputSchema>;
 
+// GymCoach native CSV import request (issue #270): the history CSV export fed
+// back in. Same cap and modes; no unit field - the export stores weight in kg.
+export const gymcoachImportInputSchema = z.object({
+  csv: z.string().min(1).max(STRONG_CSV_MAX_BYTES, 'File too large: the limit is 5 MB.'),
+  mode: z.enum(['preview', 'confirm']),
+});
+
+export type GymcoachImportInput = z.infer<typeof gymcoachImportInputSchema>;
+
 // TCX cardio import request (issue #152). The xml field carries the raw file
 // text (untrusted XML - the parser refuses DTDs/entities by construction and
 // the size cap is enforced here AND on the streamed body read); same

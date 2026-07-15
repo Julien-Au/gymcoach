@@ -28,9 +28,19 @@ export interface NormalizedImportRow {
   // Absent/null on strength rows - their path is unchanged.
   durationSec?: number | null;
   distanceM?: number | null;
+  // Richer per-set data the GymCoach native CSV carries (issue #270). Absent
+  // for Strong/Hevy rows - their path is unchanged.
+  rir?: number | null;
+  notes?: string | null;
+  avgHr?: number | null;
+  maxHr?: number | null;
   // Real session times as ISO strings, when the source export has them.
   startedAtIso?: string | null;
   finishedAtIso?: string | null;
+  // Explicit session grouping key (issue #270): the GymCoach export carries a
+  // session_id, so two same-day sessions with the same workout name stay
+  // separate. Absent falls back to the historical (dateKey, workoutName) key.
+  sessionKey?: string;
 }
 
 export interface PlannedSet {
@@ -42,6 +52,10 @@ export interface PlannedSet {
   isDropSet?: boolean;
   durationSec?: number | null;
   distanceM?: number | null;
+  rir?: number | null;
+  notes?: string | null;
+  avgHr?: number | null;
+  maxHr?: number | null;
 }
 
 export interface PlannedSession {
@@ -129,7 +143,7 @@ export function buildStrongImportPlan(
       newAllCardioByLower.set(lower, false);
     }
 
-    const sessionKey = `${row.dateKey}|${row.workoutName}`;
+    const sessionKey = row.sessionKey ?? `${row.dateKey}|${row.workoutName}`;
     let session = sessionsByKey.get(sessionKey);
     if (!session) {
       session = { dateKey: row.dateKey, workoutName: row.workoutName, sets: [] };
@@ -143,6 +157,10 @@ export function buildStrongImportPlan(
       ...(row.isWarmup !== undefined && { isWarmup: row.isWarmup }),
       ...(row.isDropSet !== undefined && { isDropSet: row.isDropSet }),
       ...(isCardio && { durationSec: row.durationSec, distanceM: row.distanceM ?? null }),
+      ...(row.rir != null && { rir: row.rir }),
+      ...(row.notes != null && { notes: row.notes }),
+      ...(row.avgHr != null && { avgHr: row.avgHr }),
+      ...(row.maxHr != null && { maxHr: row.maxHr }),
     });
     totalSets++;
     if (isCardio) cardioSetCount++;
@@ -283,6 +301,10 @@ export async function executeStrongImport(
           isDropSet: s.isDropSet ?? false,
           durationSec: s.durationSec ?? null,
           distanceM: s.distanceM ?? null,
+          rir: s.rir ?? null,
+          notes: s.notes ?? null,
+          avgHr: s.avgHr ?? null,
+          maxHr: s.maxHr ?? null,
           completedAt: startedAt,
         };
       }),

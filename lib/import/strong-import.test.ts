@@ -3,6 +3,7 @@ import {
   buildStrongImportPlan,
   sessionDateFromKey,
   setDuplicateKey,
+  type NormalizedImportRow,
 } from './strong-import';
 import type { StrongCsvRow } from './strong-csv';
 
@@ -160,5 +161,45 @@ describe('buildStrongImportPlan - cardio sets', () => {
     expect(setDuplicateKey('2026-05-02', 'Bench', 1, 80, 8, null, null)).toBe(
       '2026-05-02|bench|1|80|8',
     );
+  });
+});
+
+describe('buildStrongImportPlan - GymCoach extras (issue #270)', () => {
+  // Rows shaped like the GymCoach CSV parser emits: the shared normalized row
+  // with the issue #270 extras (sessionKey, rir, notes, heart rate).
+  function nrow(over: Partial<NormalizedImportRow> = {}): NormalizedImportRow {
+    return { ...row(), ...over };
+  }
+
+  it('keeps two same-day sessions with the same workout name apart via sessionKey', () => {
+    const plan = buildStrongImportPlan(
+      [nrow({ sessionKey: 'id:a' }), nrow({ sessionKey: 'id:b', setOrder: 2 })],
+      [],
+      new Set(),
+    );
+    expect(plan.sessions).toHaveLength(2);
+  });
+
+  it('falls back to the historical (date, workout name) grouping without a sessionKey', () => {
+    const plan = buildStrongImportPlan([nrow(), nrow({ setOrder: 2 })], [], new Set());
+    expect(plan.sessions).toHaveLength(1);
+  });
+
+  it('carries rir, notes and heart rate onto the planned sets', () => {
+    const plan = buildStrongImportPlan(
+      [
+        nrow({ rir: 2, notes: 'felt strong' }),
+        nrow({ setOrder: 2, durationSec: 1800, distanceM: 5000, avgHr: 150, maxHr: 172 }),
+        nrow({ setOrder: 3 }),
+      ],
+      [],
+      new Set(),
+    );
+    const sets = plan.sessions[0]!.sets;
+    expect(sets[0]).toMatchObject({ rir: 2, notes: 'felt strong' });
+    expect(sets[1]).toMatchObject({ avgHr: 150, maxHr: 172, durationSec: 1800 });
+    // Untouched Strong/Hevy-shaped rows plan without the extra keys.
+    expect(sets[2]).not.toHaveProperty('rir');
+    expect(sets[2]).not.toHaveProperty('notes');
   });
 });
