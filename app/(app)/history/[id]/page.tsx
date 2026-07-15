@@ -12,6 +12,7 @@ import { formatCardioSet, formatDistance, formatDuration, formatPace, formatSpee
 import { formatWeight } from '@/lib/units';
 import { DeleteSessionButton } from '@/components/history/delete-session-button';
 import { ActivityTrackChart } from '@/components/history/activity-track-chart';
+import { TrackDecoupling } from '@/components/history/track-decoupling';
 
 interface Params {
   params: Promise<{ id: string }>;
@@ -287,14 +288,16 @@ export default async function HistorySessionPage(props: Params) {
                         </table>
                       ) : null}
                       {isCardio &&
-                        entry.sets.map((s) =>
-                          Array.isArray(s.track) && s.track.length > 0 ? (
-                            <ActivityTrackChart
-                              key={`track-${s.id}`}
-                              track={s.track as { t: number; d?: number; hr?: number }[]}
-                            />
-                          ) : null,
-                        )}
+                        entry.sets.map((s) => {
+                          if (!Array.isArray(s.track) || s.track.length === 0) return null;
+                          const track = s.track as { t: number; d?: number; hr?: number }[];
+                          return (
+                            <div key={`track-${s.id}`}>
+                              <ActivityTrackChart track={track} />
+                              <TrackDecoupling track={track} />
+                            </div>
+                          );
+                        })}
                       {!isCardio && (
                       <table className="w-full text-sm">
                         <thead>

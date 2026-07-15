@@ -1,4 +1,5 @@
 import type { WeightUnit } from '@/lib/prisma-client';
+import type { TrackPoint } from '@/lib/import/track';
 
 // ============================================================
 // Cardio sets (issue #133) - duration/distance helpers
@@ -165,4 +166,73 @@ export function formatSpeed(
     return `${+mph.toFixed(1)} mph`;
   }
   return `${+kmh.toFixed(1)} km/h`;
+}
+
+// ============================================================
+// Aerobic decoupling (issue #268) - HR drift over an imported track
+// ============================================================
+// How much the pace-per-heartbeat efficiency degrades between the first and
+// the second half of an activity (a.k.a. cardiac drift). Lower is better: a
+// well-developed aerobic base holds the same speed at the same heart rate for
+// the whole effort. Computed purely from the stored TrackPoint[] of an
+// imported cardio set - no schema or API change.
+
+// Below this many usable samples per half the split averages are too noisy to
+// mean anything, so the metric is hidden rather than shown wrong.
+export const MIN_DECOUPLING_POINTS_PER_HALF = 2;
+
+// Efficiency (speed per heartbeat) over one half of a track: distance covered
+// divided by elapsed time, divided by the mean heart rate of the half's
+// samples. Null when the half has no positive time or distance span.
+function halfEfficiency(points: TrackPoint[]): number | null {
+  const first = points[0]!;
+  const last = points[points.length - 1]!;
+  const dt = last.t - first.t;
+  const dd = (last.d as number) - (first.d as number);
+  if (dt <= 0 || dd <= 0) return null;
+  const avgHr = points.reduce((sum, p) => sum + (p.hr as number), 0) / points.length;
+  if (avgHr <= 0) return null;
+  return dd / dt / avgHr;
+}
+
+// Aerobic decoupling in percent from an imported activity track, or null when
+// the track cannot support it (no cumulative distance, no heart rate, too few
+// samples, or a degenerate time/distance span). Splits the track at its time
+// midpoint, computes efficiency = speed / avg HR for each half (the boundary
+// sample closes the first half and opens the second, so no segment is lost)
+// and returns (effFirst - effSecond) / effFirst * 100. Positive = the pace
+// per heartbeat faded; near zero or negative = it held.
+export function trackDecoupling(track: TrackPoint[]): number | null {
+  const points = track
+    .filter(
+      (p) =>
+        Number.isFinite(p.t) &&
+        typeof p.d === 'number' &&
+        Number.isFinite(p.d) &&
+        typeof p.hr === 'number' &&
+        Number.isFinite(p.hr),
+    )
+    .sort((a, b) => a.t - b.t);
+  if (points.length < MIN_DECOUPLING_POINTS_PER_HALF * 2) return null;
+
+  const tMid = (points[0]!.t + points[points.length - 1]!.t) / 2;
+  // Last index still inside the first half; it is shared as the boundary of
+  // both halves so the two spans cover the whole track.
+  let split = 0;
+  for (let i = 0; i < points.length; i++) {
+    if (points[i]!.t <= tMid) split = i;
+  }
+  const firstHalf = points.slice(0, split + 1);
+  const secondHalf = points.slice(split);
+  if (
+    firstHalf.length < MIN_DECOUPLING_POINTS_PER_HALF ||
+    secondHalf.length < MIN_DECOUPLING_POINTS_PER_HALF
+  ) {
+    return null;
+  }
+
+  const effFirst = halfEfficiency(firstHalf);
+  const effSecond = halfEfficiency(secondHalf);
+  if (effFirst == null || effSecond == null) return null;
+  return ((effFirst - effSecond) / effFirst) * 100;
 }
