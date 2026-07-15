@@ -129,9 +129,10 @@ on your own key - all self-hosted.
 
 - **Self-hosted** - your training lives in your own Postgres; the AI runs on your
   own key. No subscription, no rate-limited free tier.
-- **Import and export** - bring history in from a Strong or Hevy CSV (dry-run
-  preview, duplicate-safe, cardio included), and export everything back to CSV or
-  TCX anytime.
+- **Import and export** - bring history in from a Strong or Hevy CSV, or from
+  GymCoach's own history CSV (a spreadsheet with the same columns works too;
+  dry-run preview, duplicate-safe, cardio included), and export everything back
+  to CSV or TCX anytime.
 
 ## Stack
 
