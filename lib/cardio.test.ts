@@ -11,6 +11,7 @@ import {
   parseDurationToSec,
   speedKmh,
   sumCardioWorkingSets,
+  trackDecoupling,
 } from './cardio';
 
 describe('isCardioSet', () => {
@@ -158,5 +159,100 @@ describe('sumCardioWorkingSets (issue #183)', () => {
     expect(
       sumCardioWorkingSets([{ durationSec: 300, distanceM: 800, isWarmup: true }]),
     ).toEqual({ durationSec: 0, distanceM: 0 });
+  });
+});
+
+describe('trackDecoupling (issue #268)', () => {
+  // 5 points at a constant 3 m/s: t 0..400 every 100 s, d = 3 * t.
+  const steadyDistance = [0, 100, 200, 300, 400].map((t) => ({ t, d: t * 3 }));
+
+  it('is ~0% for a steady track (same speed, same HR in both halves)', () => {
+    const track = steadyDistance.map((p) => ({ ...p, hr: 150 }));
+    expect(trackDecoupling(track)).toBeCloseTo(0, 5);
+  });
+
+  it('is positive when HR drifts up at constant speed', () => {
+    // First half at 140 bpm, second half rising to 154 bpm. With the boundary
+    // sample shared, avg HR is 140 vs 149.333 -> exactly 6.25% decoupling.
+    const hrs = [140, 140, 140, 154, 154];
+    const track = steadyDistance.map((p, i) => ({ ...p, hr: hrs[i]! }));
+    expect(trackDecoupling(track)).toBeCloseTo(6.25, 2);
+  });
+
+  it('is positive when the pace fades at constant HR', () => {
+    // 3 m/s for the first half, 2 m/s for the second -> (1 - 2/3) * 100.
+    const ds = [0, 300, 600, 800, 1000];
+    const track = ds.map((d, i) => ({ t: i * 100, d, hr: 150 }));
+    expect(trackDecoupling(track)).toBeCloseTo(33.333, 2);
+  });
+
+  it('is negative for a negative split (faster second half at the same HR)', () => {
+    // 2 m/s then 3 m/s -> (1 - 3/2) * 100 = -50%.
+    const ds = [0, 200, 400, 700, 1000];
+    const track = ds.map((d, i) => ({ t: i * 100, d, hr: 150 }));
+    expect(trackDecoupling(track)).toBeCloseTo(-50, 2);
+  });
+
+  it('splits at the time midpoint, not at the middle sample index', () => {
+    // Samples clustered in the first 30 s plus one late point: the time
+    // midpoint (t=200) puts the first four points in the first half. 3 m/s
+    // for 30 s then 1 m/s for 370 s at constant HR -> (1 - 1/3) * 100.
+    const track = [
+      { t: 0, d: 0, hr: 150 },
+      { t: 10, d: 30, hr: 150 },
+      { t: 20, d: 60, hr: 150 },
+      { t: 30, d: 90, hr: 150 },
+      { t: 400, d: 460, hr: 150 },
+    ];
+    expect(trackDecoupling(track)).toBeCloseTo(66.667, 2);
+  });
+
+  it('sorts by time, so an out-of-order track still computes', () => {
+    const track = steadyDistance.map((p) => ({ ...p, hr: 150 })).reverse();
+    expect(trackDecoupling(track)).toBeCloseTo(0, 5);
+  });
+
+  it('is null when the track lacks distance or heart rate', () => {
+    expect(trackDecoupling(steadyDistance)).toBeNull(); // no HR
+    expect(
+      trackDecoupling([0, 100, 200, 300, 400].map((t) => ({ t, hr: 150 }))),
+    ).toBeNull(); // no distance
+  });
+
+  it('is null with fewer than two usable samples per half', () => {
+    expect(trackDecoupling([])).toBeNull();
+    expect(
+      trackDecoupling([
+        { t: 0, d: 0, hr: 140 },
+        { t: 100, d: 300, hr: 145 },
+        { t: 200, d: 600, hr: 150 },
+      ]),
+    ).toBeNull();
+  });
+
+  it('ignores samples missing either field when counting usable points', () => {
+    // Only 3 of the 5 points carry both d and hr -> below the threshold.
+    const track = [
+      { t: 0, d: 0, hr: 140 },
+      { t: 100, d: 300 },
+      { t: 200, d: 600, hr: 150 },
+      { t: 300, hr: 155 },
+      { t: 400, d: 1200, hr: 160 },
+    ];
+    expect(trackDecoupling(track)).toBeNull();
+  });
+
+  it('is null for a degenerate track (no distance covered or no time elapsed)', () => {
+    expect(
+      trackDecoupling([0, 100, 200, 300, 400].map((t) => ({ t, d: 500, hr: 150 }))),
+    ).toBeNull(); // distance never advances
+    expect(
+      trackDecoupling([
+        { t: 0, d: 0, hr: 150 },
+        { t: 0, d: 100, hr: 150 },
+        { t: 0, d: 200, hr: 150 },
+        { t: 0, d: 300, hr: 150 },
+      ]),
+    ).toBeNull(); // all at the same instant
   });
 });
