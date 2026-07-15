@@ -5,10 +5,8 @@ import { csvEscape, HISTORY_CSV_HEADERS } from '@/lib/csv';
 import { effectiveWeight, estimate1RM, setVolume } from '@/lib/stats';
 
 // GET /api/history/csv?programId=...&month=YYYY-MM
-// Returns a CSV (UTF-8 + BOM for Excel) with one row per set (warmups
-// included, flagged by is_warmup). Same filters as the /history page.
-// The GymCoach CSV import (app/api/import/gymcoach/route.ts, issue #270) is
-// the symmetric inverse of this export.
+// Returns a CSV (UTF-8 + BOM for Excel) with one row per non-warmup set.
+// Same filters as the /history page.
 export async function GET(req: Request) {
   try {
     const userId = await requireApiUserId();
