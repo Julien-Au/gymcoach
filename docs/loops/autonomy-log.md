@@ -1809,3 +1809,70 @@ network / broad-rm / scope creep - unchanged from 2026-06-15.
 **Filed.** No issues - the one gap was closeable in-cycle (a missing test, not a product
 decision). Code markers: none. The residual high npm advisory (serialize-javascript via the
 next-pwa workbox toolchain) stays human-deferred (a next-pwa major downgrade).
+
+---
+
+## 2026-07-15 - Batch: aerobic decoupling (#278/#268) + GymCoach-native CSV import (#279/#270) - and a shared-worktree main breach
+
+**Context.** Two product ideas from the prior deep-research ideate batch were ready to
+implement: #268 (an aerobic-decoupling readout on imported cardio) and #270 (the symmetric
+inverse of the history CSV export - a GymCoach-native CSV import). Both are clear product
+pluses on the established cardio/import wedge, so the loop implemented and shipped them.
+
+**Decided / shipped.**
+- **#278 (merge b2221f5, closes #268) - aerobic decoupling.** New `trackDecoupling()` in
+  `lib/cardio.ts` splits an imported activity track at its time midpoint and returns
+  `(effFirst - effSecond) / effFirst * 100` where efficiency = speed / mean HR per half;
+  null when the track cannot support it (no cumulative distance, no HR, too few samples, or
+  a degenerate span). A `TrackDecoupling` server component renders one percentage plus a
+  plain-language read (held steady <= ~5 percent, else faded), wired into the history detail
+  page. Display-only, no schema or API change. 23 unit + 5 component tests; fast gate + green
+  CI; independent Opus skeptic READY pre-push and a clean pre-merge review.
+- **#279 (merge 5f92ffb, closes #270) - GymCoach-native CSV import.** New
+  `lib/import/gymcoach-csv.ts` parser for the `HISTORY_CSV_HEADERS` contract: BOM-tolerant,
+  5 MB / 50k-row caps, per-line errors on hostile rows, and it un-escapes the export's
+  formula-injection guard for a true round-trip (the inverse of the export sanitizer). The
+  shared import planner/executor was extended additively (sessionKey grouping so same-day
+  sessions stay apart, plus rir/notes/avgHr/maxHr passthrough); the Strong and Hevy paths
+  stay byte-identical, pinned by tests. New `app/api/import/gymcoach/route.ts` mirrors the
+  Hevy route (Zod, rate bucket, streamed body cap, dry-run preview, ownership-scoped), and
+  the Settings import section gained the source. Tests at every layer (parser unit incl.
+  formula injection + hostile rows, planner unit, route integration incl. a real
+  export -> import round-trip, and an E2E). Full local gate (`verify.sh --full`) + green CI;
+  two-lens (correctness + security) reviews READY.
+
+**INCIDENT - hard guardrail 1 breach (committed to `main` directly), remediated.** During
+this run two concurrent ticks shared the single working tree. The #278 ship tick switched
+the checkout back to `main` while the #270 dev tick still had uncommitted work; the
+intermediate commit `a49e21f` ("feat: import training history from a GymCoach (native) CSV")
+briefly landed on `main` directly - bypassing the PR + pre-merge-review gate. This is a
+breach of hard guardrail 1 ("never commit to `main` directly"), and a different root cause
+than the L14 "branch before editing" slips: here two writers shared one checkout, not one
+writer forgetting to branch. Remediated immediately WITHOUT force-push (force-push to shared
+`main` is itself denied): a revert commit `fe25d66` was pushed so `main`'s content was
+restored exactly to `b2221f5` (CI green), and the work was re-applied on the feature branch
+via cherry-pick and shipped the right way through PR #279 (merge `5f92ffb`). Net effect on
+`main`: `b2221f5` -> `a49e21f` (breach) -> `fe25d66` (revert, content == `b2221f5`) ->
+`5f92ffb` (proper PR merge). Root cause: **concurrent ticks must not share one working
+tree.** Codified as lesson L15 (concurrent stage ticks need isolated git worktrees; until
+the orchestrator spawns dev ticks with worktree isolation, same-checkout ticks must be
+strictly serialized).
+
+**Untrusted external input (trust gate held).** A 5-PR fork stack #272-#276 (author
+`SHAREN`, a non-collaborator, 124-347 files each) was identified and scanned for injection
+patterns (none found). Per the trust gate it was NOT auto-merged; a policy comment was left
+on #272 and the stack awaits human maintainer review. No content from it was implemented or
+laundered into a loop-authored issue.
+
+**Challenged.** #278: independent Opus skeptic READY pre-push + a clean independent pre-merge
+review. #279: two independent lenses (correctness + security) both READY, over an
+untrusted-input parser and a new import route.
+
+**One metric.** Accepted-change rate this batch: 2 merged / 0 abandoned (the intermediate
+direct-to-main commit was reverted and re-shipped as #279, not a separate accepted change).
+Implementing-tick token spend: not recorded this run (dev ticks were Fable per the
+model-routing directive).
+
+**Deferred to human.** The #272-#276 fork stack (human vetting + re-file if any idea is
+worth adopting). Nothing else.
+

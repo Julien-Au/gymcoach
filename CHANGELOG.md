@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Aerobic decoupling (HR drift) on an imported cardio session: the history
+  detail page now shows how much your pace-per-heartbeat efficiency faded
+  between the first and second half of a run or ride, with a plain-language
+  read ("held steady" under ~5 percent, "faded" above). Derived purely from
+  the stored activity track (cumulative distance + heart rate); shown only
+  when the track can support it, and it changes no schema or API.
+- Import your training history from a GymCoach-native CSV: the symmetric
+  inverse of the history CSV export brings the same columns back in through
+  the hardened import pipeline (streamed size/row caps, Zod on every value,
+  dry-run preview with per-line errors, exact-duplicate skipping,
+  transactional confirm, ownership-scoped exercises). It un-escapes the
+  export's formula-injection guard for a true round-trip, and the Strong and
+  Hevy import paths are unchanged (pinned byte-identical by tests).
 - Multi-user accounts: registration, profiles, per-user data isolation, and
   rate limiting.
 - Workout logging with sets, reps, RIR, warmups, and drop sets.

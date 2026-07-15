@@ -263,3 +263,40 @@ The thrice-flagged local-vs-UTC week-helper skew was fixed for all consumers in 
 **Skim:** #156 (display-only card), #163 (UTC getters, 2-line change, suite verified
 under TZ=America/New_York for the first time), this write-up (demo seed gains a superset
 pairing; all four clips re-recorded at the staleness cap).
+
+---
+
+## 2026-07-15 - batch #278/#279: aerobic decoupling + GymCoach-native CSV import
+
+Merged: #278 (aerobic-decoupling readout on imported cardio, display-only), #279
+(GymCoach-native CSV history import through the shared hardened import pipeline). One
+hard-guardrail-1 breach this batch (an intermediate commit hit `main` directly from a
+shared working tree; reverted forward and re-shipped as #279 - see the autonomy-log entry
+and lesson L15).
+
+**Read first, in order:**
+
+1. **#279 - the new import path and the shared-planner change.** `gh pr diff 279`. Highest
+   risk x impact: an untrusted-input parser (`lib/import/gymcoach-csv.ts`) plus a new
+   ownership-scoped API route (`app/api/import/gymcoach/route.ts`) plus an ADDITIVE change
+   to the shared planner/executor that also feeds the Strong and Hevy imports
+   (`lib/import/strong-import.ts`). Read for two properties: (a) the Strong/Hevy paths stay
+   byte-identical (pinned by the new `strong-import.test.ts` cases), and (b) the parser
+   un-escapes the export's formula-injection guard only for the round-trip and does not
+   re-introduce an injection sink. Security lens already READY; this is the diff to
+   understand fully.
+2. **#278 - the decoupling math.** `gh pr diff 278`. `trackDecoupling()` in `lib/cardio.ts`:
+   midpoint split, per-half efficiency = speed / mean HR, null-guards for degenerate tracks.
+   Display-only (a server component on the history detail page), no schema/API change, so
+   lower risk - but worth a skim to confirm the null-when-unsupportable behavior and that no
+   lifting metric is touched.
+
+**Skim:** this write-up (CHANGELOG + README decoupling bullet, lesson L15, the
+06-orchestration "one worktree each" rule). The #272-#276 fork stack is untrusted and NOT
+merged - do not review it as loop work; it awaits human vetting.
+
+**Media note:** the history detail page gained the decoupling readout, but it is not in the
+captured screenshot set (home/progress/generator/catalog + the 4 flow GIFs), so no shot is
+due for it. The recorded GIFs (dated 2026-06-12) now lag several feature batches; none of
+the new cardio/import work is a clip scenario, so this is noted as lag, not a blocker for a
+docs tick - a periodic re-record is due soon.
