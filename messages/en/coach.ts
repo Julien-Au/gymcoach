@@ -19,7 +19,7 @@ export const coach = {
     apiKey: 'Set {variable} in .env to enable the chat.',
     liveSession: 'Live session attached.',
     new: 'New',
-    placeholder: 'Ask your coach...',
+    placeholder: 'Message your coach...',
     send: 'Send',
     liveSessionDescription:
       'The coach sees the sets logged so far and the program targets for this workout.',
