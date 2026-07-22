@@ -18,6 +18,7 @@ import { formatCardioSet } from '@/lib/cardio';
 import type { SerializedLastPerformance } from './session-runner';
 import { useExerciseName } from '@/components/shared/use-exercise-name';
 import type { GymLoadConstraints } from '@/lib/gym-loads';
+import { ExerciseMediaDialog } from '@/components/exercises/exercise-media-dialog';
 
 // Last-session reference line for a cardio exercise (issue #176): duration and
 // distance via the shared cardio formatter, with average heart rate appended
@@ -132,6 +133,11 @@ export function ExerciseCard({
             <Badge variant="destructive">{t('notAvailable')}</Badge>
           )}
         </div>
+        <ExerciseMediaDialog
+          exerciseName={exo.name}
+          displayName={exerciseName(exo.name)}
+          equipmentType={exo.equipmentType}
+        />
         {/* Exercise cue (issue #224): when the exercise carries a technique
             note, surface it as an always-visible muted line right under the
             header so the form reminder is there exactly while logging the set.
