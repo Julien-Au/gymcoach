@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
+import { getLocale, getTranslations } from 'next-intl/server';
 import { db } from '@/lib/db';
 import { requireSession } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
@@ -7,9 +8,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { StartWorkoutButton } from '@/components/session/start-workout-button';
 import { ReadinessCheckin } from '@/components/session/readiness-checkin';
-import { DAY_LABELS } from '@/lib/schemas/workout';
+import { getTrainingDisplayName } from '@/i18n/training-names';
+
+const DAY_KEYS = [
+  'monday',
+  'tuesday',
+  'wednesday',
+  'thursday',
+  'friday',
+  'saturday',
+  'sunday',
+] as const;
 
 export default async function NewSessionPage() {
+  const t = await getTranslations('session');
+  const common = await getTranslations('common');
+  const locale = await getLocale();
   const session = await requireSession();
   const activeProgram = await db.program.findFirst({
     where: { userId: session.userId, isActive: true },
@@ -29,15 +43,15 @@ export default async function NewSessionPage() {
         <Button asChild variant="ghost" size="sm" className="self-start">
           <Link href="/">
             <ChevronLeft className="size-4" />
-            <span className="ml-1">Back</span>
+            <span className="ml-1">{common('actions.back')}</span>
           </Link>
         </Button>
 
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Start a session</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t('startTitle')}</h1>
           {activeProgram ? (
             <p className="text-sm text-muted-foreground">
-              Active program: <span className="font-medium">{activeProgram.name}</span>
+              {t('activeProgram', { name: activeProgram.name })}
             </p>
           ) : null}
         </div>
@@ -45,28 +59,28 @@ export default async function NewSessionPage() {
         {!activeProgram ? (
           <Card>
             <CardHeader>
-              <CardTitle>No active program</CardTitle>
+              <CardTitle>{t('noActiveProgram')}</CardTitle>
               <CardDescription>
-                Activate a program so you can start a session.
+                {t('noActiveProgramDescription')}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Button asChild>
-                <Link href="/programs">View programs</Link>
+                <Link href="/programs">{t('viewPrograms')}</Link>
               </Button>
             </CardContent>
           </Card>
         ) : activeProgram.workouts.length === 0 ? (
           <Card>
             <CardHeader>
-              <CardTitle>No session in this program</CardTitle>
+              <CardTitle>{t('noSession')}</CardTitle>
               <CardDescription>
-                Add at least one session with exercises before starting.
+                {t('noSessionDescription')}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Button asChild>
-                <Link href={`/programs/${activeProgram.id}`}>Configure program</Link>
+                <Link href={`/programs/${activeProgram.id}`}>{t('configureProgram')}</Link>
               </Button>
             </CardContent>
           </Card>
@@ -75,16 +89,19 @@ export default async function NewSessionPage() {
             <ReadinessCheckin />
             <ul className="flex flex-col gap-3">
             {activeProgram.workouts.map((w) => {
-              const day = w.dayOfWeek != null ? DAY_LABELS[w.dayOfWeek - 1] : null;
+              const dayKey = w.dayOfWeek != null ? DAY_KEYS[w.dayOfWeek - 1] : null;
+              const day = dayKey ? common(`days.${dayKey}`) : null;
               return (
                 <li key={w.id}>
                   <Card>
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <CardTitle className="text-base">{w.name}</CardTitle>
+                          <CardTitle className="text-base">
+                            {getTrainingDisplayName(w.name, locale)}
+                          </CardTitle>
                           <CardDescription className="text-xs">
-                            {w._count.exercises} exercise{w._count.exercises > 1 ? 's' : ''}
+                            {common('counts.exercises', { count: w._count.exercises })}
                           </CardDescription>
                         </div>
                         {day && <Badge variant="secondary">{day}</Badge>}

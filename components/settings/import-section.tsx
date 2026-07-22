@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import { useFormatter, useTranslations } from 'next-intl';
 import { FileUp, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -15,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useExerciseName } from '@/components/shared/use-exercise-name';
 
 // Client-side mirror of the server cap (the server re-enforces it).
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
@@ -176,6 +178,10 @@ const FORMAT_META: Record<
 // the export file, dry-run preview (counts + per-line errors, nothing
 // written), then explicitly confirm.
 export function ImportSection() {
+  const t = useTranslations('settings.imports');
+  const common = useTranslations('common');
+  const intl = useFormatter();
+  const exerciseName = useExerciseName();
   const fileRef = useRef<HTMLInputElement>(null);
   const [format, setFormat] = useState<ImportFormat>('STRONG');
   const [unit, setUnit] = useState<'KG' | 'LB'>('KG');
@@ -222,14 +228,14 @@ export function ImportSection() {
     e.target.value = '';
     if (files.length === 0) return;
     if (files.some((f) => f.size > MAX_FILE_BYTES)) {
-      toast.error('A file is too large: the limit is 5 MB each.');
+      toast.error(t('fileTooLarge'));
       return;
     }
 
     // FIT (issue #253) is binary AND supports a multi-file batch.
     if (isFit) {
       if (files.length > FIT_MAX_BATCH) {
-        toast.error(`Up to ${FIT_MAX_BATCH} FIT files at once.`);
+        toast.error(t('fitLimit', { count: FIT_MAX_BATCH }));
         return;
       }
       const payloads = await Promise.all(files.map(readFileBase64));
@@ -276,7 +282,7 @@ export function ImportSection() {
       const json = await callFitBatch(payloads, 'preview');
       if (json) setFitBatch(json);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Preview failed.');
+      toast.error(err instanceof Error ? err.message : t('previewFailed'));
       setFitPayloads(null);
       setFileName(null);
     } finally {
@@ -292,14 +298,10 @@ export function ImportSection() {
       const sessions = json?.createdSessions ?? 0;
       const newEx = json?.createdExercises ?? 0;
       const skipped = json?.skipped ?? 0;
-      toast.success(
-        `Imported ${sessions} session${sessions === 1 ? '' : 's'}` +
-          (newEx > 0 ? `, ${newEx} new exercise${newEx === 1 ? '' : 's'}` : '') +
-          (skipped > 0 ? ` (${skipped} file${skipped === 1 ? '' : 's'} skipped).` : '.'),
-      );
+      toast.success(t('fitImportDone', { sessions, exercises: newEx, skipped }));
       resetPreviews();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Import failed.');
+      toast.error(err instanceof Error ? err.message : t('importFailed'));
     } finally {
       setBusy(false);
     }
@@ -345,7 +347,7 @@ export function ImportSection() {
       if (json && (isTcx || isGpx)) setTcxPreview(json);
       else if (json) setPreview(json);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Preview failed.');
+      toast.error(err instanceof Error ? err.message : t('previewFailed'));
       setCsvText(null);
       setFileName(null);
     } finally {
@@ -359,21 +361,18 @@ export function ImportSection() {
     try {
       const json = await callApi(csvText, 'confirm');
       toast.success(
-        `Imported ${json?.createdSessions ?? 0} session${
-          (json?.createdSessions ?? 0) === 1 ? '' : 's'
-        }, ${json?.createdSets ?? 0} set${(json?.createdSets ?? 0) === 1 ? '' : 's'}` +
-          ((json?.createdExercises ?? 0) > 0
-            ? `, ${json?.createdExercises} new exercise${
-                (json?.createdExercises ?? 0) === 1 ? '' : 's'
-              }.`
-            : '.'),
+        t('importDone', {
+          sessions: json?.createdSessions ?? 0,
+          sets: json?.createdSets ?? 0,
+          exercises: json?.createdExercises ?? 0,
+        }),
       );
       setCsvText(null);
       setFileName(null);
       setPreview(null);
       setTcxPreview(null);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Import failed.');
+      toast.error(err instanceof Error ? err.message : t('importFailed'));
     } finally {
       setBusy(false);
     }
@@ -387,22 +386,21 @@ export function ImportSection() {
     <Card>
       <CardHeader className="pb-3">
         <h2 className="text-base font-semibold">
-          {isCardioActivity ? `Import a ${meta.fileKind} activity` : `Import from ${meta.label}`}
+          {isCardioActivity
+            ? t('cardioTitle', { kind: meta.fileKind })
+            : t('appTitle', { app: meta.label })}
         </h2>
         <p className="text-xs text-muted-foreground">
           {isCardioActivity
-            ? `Bring a cardio workout: ${meta.exportHint}. Preview it here, then confirm.`
-            : `Bring your training history from ${meta.source}: ${meta.exportHint}, preview it here, then confirm.`}
+            ? t('cardioDescription', { hint: meta.exportHint })
+            : t('appDescription', { app: meta.label, hint: meta.exportHint })}
         </p>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         <div className="flex items-end gap-2">
           <div className="space-y-1">
-            <Label htmlFor="import-format">Source app</Label>
-            <Select
-              value={format}
-              onValueChange={(v) => switchFormat(v as ImportFormat)}
-            >
+            <Label htmlFor="import-format">{t('source')}</Label>
+            <Select value={format} onValueChange={(v) => switchFormat(v as ImportFormat)}>
               <SelectTrigger id="import-format" className="h-9 w-28">
                 <SelectValue />
               </SelectTrigger>
@@ -418,7 +416,7 @@ export function ImportSection() {
           </div>
           {meta.hasUnitToggle && (
             <div className="space-y-1">
-              <Label htmlFor="strong-unit">Strong weight unit</Label>
+              <Label htmlFor="strong-unit">{t('strongUnit')}</Label>
               <Select value={unit} onValueChange={(v) => setUnit(v as 'KG' | 'LB')}>
                 <SelectTrigger id="strong-unit" className="h-9 w-28">
                   <SelectValue />
@@ -430,23 +428,14 @@ export function ImportSection() {
               </Select>
             </div>
           )}
-          <Button
-            variant="outline"
-            onClick={pickFile}
-            disabled={busy}
-            className="min-h-tap"
-          >
-            {busy ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <FileUp className="size-4" />
-            )}
+          <Button variant="outline" onClick={pickFile} disabled={busy} className="min-h-tap">
+            {busy ? <Loader2 className="size-4 animate-spin" /> : <FileUp className="size-4" />}
             <span className="ml-2">
               {isFit
-                ? 'Choose FIT files'
+                ? t('chooseFitFiles')
                 : isCardioActivity
-                  ? `Choose a ${meta.fileKind} file`
-                  : `Choose a ${meta.label} ${meta.fileKind} file`}
+                  ? t('chooseFile', { kind: meta.fileKind })
+                  : t('chooseFile', { kind: `${meta.label} ${meta.fileKind}` })}
             </span>
           </Button>
         </div>
@@ -463,34 +452,37 @@ export function ImportSection() {
         {fitBatch && (
           <div className="rounded-md border p-3 text-sm" data-testid="import-preview">
             <p className="font-medium">
-              {fitBatch.importable} activit{fitBatch.importable === 1 ? 'y' : 'ies'} to import
-              {fitBatch.skipped > 0 ? ` · ${fitBatch.skipped} skipped` : ''}
+              {t('activitiesSummary', {
+                count: fitBatch.importable,
+                skipped: fitBatch.skipped,
+              })}
             </p>
             <ul className="mt-2 max-h-64 list-disc space-y-1 overflow-y-auto pl-5">
               {fitBatch.activities.map((a) =>
                 a.ok ? (
                   <li key={a.index}>
                     {a.sport} on{' '}
-                    {new Intl.DateTimeFormat('en-US', {
+                    {intl.dateTime(new Date(a.startedAt!), {
                       day: '2-digit',
                       month: 'long',
                       year: 'numeric',
                       hour: '2-digit',
                       minute: '2-digit',
-                    }).format(new Date(a.startedAt!))}{' '}
+                    })}{' '}
                     · {formatCardioSet(a.durationSec!, a.distanceM ?? null)}
                     {a.avgHr != null ? ` · avg HR ${a.avgHr} bpm` : ''}
-                    {a.maxHr != null ? ` · max HR ${a.maxHr} bpm` : ''} logged as {a.exerciseName}
+                    {a.maxHr != null ? ` · max HR ${a.maxHr} bpm` : ''} logged as{' '}
+                    {exerciseName(a.exerciseName ?? '')}
                     {a.duplicateSessions && a.duplicateSessions.length > 0 ? (
                       <span className="text-amber-700 dark:text-amber-400">
                         {' '}
-                        (possible duplicate)
+                        ({t('possibleDuplicate')})
                       </span>
                     ) : null}
                   </li>
                 ) : (
                   <li key={a.index} className="text-amber-700 dark:text-amber-400">
-                    File {a.index + 1} skipped: {a.error}
+                    {t('fileSkipped', { index: a.index + 1, error: a.error ?? '' })}
                   </li>
                 ),
               )}
@@ -504,11 +496,11 @@ export function ImportSection() {
               >
                 {busy ? <Loader2 className="size-4 animate-spin" /> : null}
                 <span className={busy ? 'ml-2' : ''}>
-                  Import {fitBatch.importable} session{fitBatch.importable === 1 ? '' : 's'}
+                  {t('importSessions', { count: fitBatch.importable })}
                 </span>
               </Button>
               <Button size="sm" variant="ghost" onClick={cancel} disabled={busy}>
-                Cancel
+                {common('actions.cancel')}
               </Button>
             </div>
           </div>
@@ -516,40 +508,37 @@ export function ImportSection() {
 
         {tcxPreview && (
           <div className="rounded-md border p-3 text-sm" data-testid="import-preview">
-            <p className="font-medium">
-              Preview of <code>{fileName}</code>
-            </p>
+            <p className="font-medium">{t('previewOf', { file: fileName ?? '' })}</p>
             <ul className="mt-2 list-disc space-y-1 pl-5">
               <li>
-                1 cardio session ({tcxPreview.sport}) on{' '}
-                {new Intl.DateTimeFormat('en-US', {
-                  day: '2-digit',
-                  month: 'long',
-                  year: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                }).format(new Date(tcxPreview.startedAt))}
+                {t('cardioSession', {
+                  sport: tcxPreview.sport,
+                  date: intl.dateTime(new Date(tcxPreview.startedAt), {
+                    day: '2-digit',
+                    month: 'long',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  }),
+                })}
               </li>
               <li>
                 {formatCardioSet(tcxPreview.durationSec, tcxPreview.distanceM)}
                 {tcxPreview.avgHr != null ? ` · avg HR ${tcxPreview.avgHr} bpm` : ''}
                 {tcxPreview.maxHr != null ? ` · max HR ${tcxPreview.maxHr} bpm` : ''}{' '}
-                logged as {tcxPreview.exerciseName}
+                {t('loggedAs', { name: exerciseName(tcxPreview.exerciseName) })}
               </li>
               {tcxPreview.duplicateSessions.length > 0 && (
-                <li className="text-amber-700 dark:text-amber-400">
-                  Possible duplicate: you already have a session starting within 2
-                  minutes of this activity.
-                </li>
+                <li className="text-amber-700 dark:text-amber-400">{t('duplicateWarning')}</li>
               )}
             </ul>
             <div className="mt-3 flex gap-2">
               <Button size="sm" onClick={confirmImport} disabled={busy} className="min-h-tap">
                 {busy ? <Loader2 className="size-4 animate-spin" /> : null}
-                <span className={busy ? 'ml-2' : ''}>Confirm import</span>
+                <span className={busy ? 'ml-2' : ''}>{t('confirm')}</span>
               </Button>
               <Button size="sm" variant="ghost" onClick={cancel} disabled={busy}>
-                Cancel
+                {common('actions.cancel')}
               </Button>
             </div>
           </div>
@@ -557,41 +546,29 @@ export function ImportSection() {
 
         {preview && (
           <div className="rounded-md border p-3 text-sm" data-testid="import-preview">
-            <p className="font-medium">
-              Preview of <code>{fileName}</code>
-            </p>
+            <p className="font-medium">{t('previewOf', { file: fileName ?? '' })}</p>
             <ul className="mt-2 list-disc space-y-1 pl-5">
-              <li>
-                {preview.sessions} session{preview.sessions === 1 ? '' : 's'},{' '}
-                {preview.sets} set{preview.sets === 1 ? '' : 's'} to import
-              </li>
+              <li>{t('strengthSummary', { sessions: preview.sessions, sets: preview.sets })}</li>
               {preview.newExercises.length > 0 && (
                 <li>
-                  {preview.newExercises.length} new exercise
-                  {preview.newExercises.length === 1 ? '' : 's'} will be created:{' '}
-                  {preview.newExercises.join(', ')}
+                  {t('newExercises', {
+                    count: preview.newExercises.length,
+                    names: preview.newExercises.map(exerciseName).join(', '),
+                  })}
                 </li>
               )}
               {preview.duplicatesSkipped > 0 && (
-                <li>{preview.duplicatesSkipped} exact duplicates will be skipped</li>
+                <li>{t('duplicatesSkipped', { count: preview.duplicatesSkipped })}</li>
               )}
               {preview.cardioSets > 0 && (
-                <li>
-                  {preview.cardioSets} cardio set{preview.cardioSets === 1 ? '' : 's'}{' '}
-                  (duration/distance) included
-                </li>
+                <li>{t('cardioIncluded', { count: preview.cardioSets })}</li>
               )}
               {preview.cardioSkipped > 0 && (
-                <li>
-                  {preview.cardioSkipped} cardio row
-                  {preview.cardioSkipped === 1 ? '' : 's'} without a usable duration will
-                  be skipped
-                </li>
+                <li>{t('cardioSkipped', { count: preview.cardioSkipped })}</li>
               )}
               {preview.existingSessionDates.length > 0 && (
                 <li className="text-amber-700 dark:text-amber-400">
-                  You already have sessions on:{' '}
-                  {preview.existingSessionDates.join(', ')}
+                  {t('existingDates', { dates: preview.existingSessionDates.join(', ') })}
                 </li>
               )}
             </ul>
@@ -599,17 +576,18 @@ export function ImportSection() {
             {preview.errorCount > 0 && (
               <div className="mt-2">
                 <p className="font-medium text-rose-600">
-                  {preview.errorCount} line{preview.errorCount === 1 ? '' : 's'}{' '}
-                  could not be read and will be skipped:
+                  {t('unreadable', { count: preview.errorCount })}
                 </p>
                 <ul className="mt-1 max-h-40 list-disc overflow-y-auto pl-5 text-xs text-muted-foreground">
                   {preview.errors.map((e) => (
                     <li key={`${e.line}-${e.reason}`}>
-                      Line {e.line}: {e.reason}
+                      {t('lineError', { line: e.line, reason: e.reason })}
                     </li>
                   ))}
                   {preview.errorCount > preview.errors.length && (
-                    <li>... and {preview.errorCount - preview.errors.length} more</li>
+                    <li>
+                      {t('moreErrors', { count: preview.errorCount - preview.errors.length })}
+                    </li>
                   )}
                 </ul>
               </div>
@@ -623,10 +601,10 @@ export function ImportSection() {
                 className="min-h-tap"
               >
                 {busy ? <Loader2 className="size-4 animate-spin" /> : null}
-                <span className={busy ? 'ml-2' : ''}>Confirm import</span>
+                <span className={busy ? 'ml-2' : ''}>{t('confirm')}</span>
               </Button>
               <Button size="sm" variant="ghost" onClick={cancel} disabled={busy}>
-                Cancel
+                {common('actions.cancel')}
               </Button>
             </div>
           </div>

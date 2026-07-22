@@ -34,6 +34,9 @@ const ENV_KEYS = [
   'OPENROUTER_MODEL',
   'OPENROUTER_APP_NAME',
   'OPENROUTER_APP_URL',
+  'CODEX_LB_API_KEY',
+  'CODEX_LB_BASE_URL',
+  'CODEX_LB_MODEL',
 ] as const;
 
 const savedEnv: Record<string, string | undefined> = {};
@@ -62,6 +65,12 @@ describe('provider selection', () => {
     process.env.LLM_PROVIDER = 'OpenRouter';
     expect(resolveProviderId()).toBe('openrouter');
     expect(getLlmProvider().id).toBe('openrouter');
+  });
+
+  it('selects codex-lb using its supported aliases', () => {
+    process.env.LLM_PROVIDER = 'CODEX_LB';
+    expect(resolveProviderId()).toBe('codex-lb');
+    expect(getLlmProvider().id).toBe('codex-lb');
   });
 
   it('falls back to anthropic for an unknown value', () => {
@@ -145,7 +154,9 @@ describe('AnthropicProvider', () => {
 });
 
 describe('OpenRouterProvider', () => {
-  function mockFetch(impl: () => Partial<Response> & { json?: () => unknown; text?: () => unknown }) {
+  function mockFetch(
+    impl: () => Partial<Response> & { json?: () => unknown; text?: () => unknown },
+  ) {
     const fn = vi.fn(async (_url: string, _init: RequestInit) => impl() as unknown as Response);
     vi.stubGlobal('fetch', fn);
     return fn;

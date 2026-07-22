@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
@@ -12,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { programInputSchema, type ProgramInput } from '@/lib/schemas/program';
 
 export function ProgramCreateForm() {
+  const t = useTranslations('programs');
   const router = useRouter();
   const form = useForm<ProgramInput>({
     resolver: zodResolver(programInputSchema),
@@ -25,12 +27,11 @@ export function ProgramCreateForm() {
       body: JSON.stringify({ ...values, description: values.description || null }),
     });
     if (!res.ok) {
-      const data = (await res.json().catch(() => null)) as { error?: string } | null;
-      toast.error(data?.error ?? 'Error');
+      toast.error(t('createError'));
       return;
     }
     const created = (await res.json()) as { id: string };
-    toast.success('Program created.');
+    toast.success(t('created'));
     router.push(`/programs/${created.id}`);
     router.refresh();
   }
@@ -40,10 +41,10 @@ export function ProgramCreateForm() {
       <CardContent className="pt-6">
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
           <div className="space-y-2">
-            <Label htmlFor="name">Program name</Label>
+            <Label htmlFor="name">{t('programName')}</Label>
             <Input
               id="name"
-              placeholder="e.g. Hypertrophy 2026 - Phase 1"
+              placeholder={t('programNamePlaceholder')}
               {...form.register('name')}
             />
             {form.formState.errors.name && (
@@ -52,10 +53,10 @@ export function ProgramCreateForm() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="phase">Phase</Label>
+            <Label htmlFor="phase">{t('phase')}</Label>
             <Input
               id="phase"
-              placeholder="e.g. Hypertrophy, Strength, Metabolic stress"
+              placeholder={t('phasePlaceholder')}
               {...form.register('phase')}
             />
             {form.formState.errors.phase && (
@@ -64,13 +65,13 @@ export function ProgramCreateForm() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Description (optional)</Label>
+            <Label htmlFor="description">{t('descriptionOptional')}</Label>
             <Textarea id="description" rows={3} {...form.register('description')} />
           </div>
 
           <div className="flex justify-end">
             <Button type="submit" className="min-h-tap" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? 'Creating...' : 'Create program'}
+              {form.formState.isSubmitting ? t('creating') : t('createProgram')}
             </Button>
           </div>
         </form>

@@ -1,9 +1,9 @@
 // ============================================================
 // LLM provider abstraction
 // ============================================================
-// A minimal, provider-agnostic surface so the app can target either the
-// Anthropic SDK or any OpenRouter model behind the same interface. The active
-// provider is selected at runtime from the LLM_PROVIDER env var (see ./index).
+// A minimal, provider-agnostic surface for Anthropic, OpenRouter, codex-lb,
+// and the local demo provider. The active provider is selected at runtime
+// from the LLM_PROVIDER env var (see ./index).
 
 export interface LlmMessage {
   role: 'user' | 'assistant';
@@ -38,7 +38,7 @@ export class LlmError extends Error {
 }
 
 export interface LlmProvider {
-  readonly id: 'anthropic' | 'openrouter' | 'demo';
+  readonly id: 'anthropic' | 'openrouter' | 'codex-lb' | 'demo';
   // Human-friendly name and the env var holding the key, used by the UI to
   // tell the user what to configure when no key is present.
   readonly label: string;

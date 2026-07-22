@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
-import type { Exercise, ProgramExercise } from '@/lib/prisma-client';
+import type { Exercise, MuscleGroup, ProgramExercise } from '@/lib/prisma-client';
 import {
   Dialog,
   DialogContent,
@@ -30,7 +31,8 @@ import {
   programExerciseInputSchema,
   type ProgramExerciseInput,
 } from '@/lib/schemas/program-exercise';
-import { MUSCLE_GROUP_LABELS } from '@/lib/schemas/exercise';
+import { muscleGroupMessageKeys } from '@/i18n/enum-keys';
+import { useExerciseName } from '@/components/shared/use-exercise-name';
 
 interface CreateProps {
   open: boolean;
@@ -62,6 +64,10 @@ const DEFAULT_VALUES: ProgramExerciseInput = {
 };
 
 export function ProgramExerciseFormDialog(props: Props) {
+  const t = useTranslations('programs.exercise');
+  const exerciseT = useTranslations('exercises');
+  const common = useTranslations('common');
+  const exerciseName = useExerciseName();
   const router = useRouter();
 
   const initial: ProgramExerciseInput = useMemo(() => {
@@ -118,11 +124,10 @@ export function ProgramExerciseFormDialog(props: Props) {
       }),
     });
     if (!res.ok) {
-      const data = (await res.json().catch(() => null)) as { error?: string } | null;
-      toast.error(data?.error ?? 'Error');
+      toast.error(t('saveError'));
       return;
     }
-    toast.success(props.mode === 'edit' ? 'Exercise updated.' : 'Exercise added.');
+    toast.success(props.mode === 'edit' ? t('updated') : t('added'));
     props.onOpenChange(false);
     router.refresh();
   }
@@ -142,27 +147,25 @@ export function ProgramExerciseFormDialog(props: Props) {
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>
-            {props.mode === 'edit' ? 'Edit programmed exercise' : 'Add an exercise'}
-          </DialogTitle>
+          <DialogTitle>{props.mode === 'edit' ? t('edit') : t('add')}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
           <div className="space-y-2">
-            <Label htmlFor="exerciseId">Exercise</Label>
+            <Label htmlFor="exerciseId">{t('add')}</Label>
             <Select value={form.watch('exerciseId')} onValueChange={handleExerciseChange}>
               <SelectTrigger id="exerciseId">
-                <SelectValue placeholder="Choose from the catalog" />
+                <SelectValue placeholder={t('choose')} />
               </SelectTrigger>
               <SelectContent>
                 {grouped.map(([group, list]) => (
                   <SelectGroup key={group}>
                     <SelectLabel>
-                      {MUSCLE_GROUP_LABELS[group as keyof typeof MUSCLE_GROUP_LABELS]}
+                      {exerciseT(`muscleGroups.${muscleGroupMessageKeys[group as MuscleGroup]}`)}
                     </SelectLabel>
                     {list.map((ex) => (
                       <SelectItem key={ex.id} value={ex.id}>
-                        {ex.name}
+                        {exerciseName(ex.name)}
                       </SelectItem>
                     ))}
                   </SelectGroup>
@@ -170,15 +173,13 @@ export function ProgramExerciseFormDialog(props: Props) {
               </SelectContent>
             </Select>
             {form.formState.errors.exerciseId && (
-              <p className="text-sm text-destructive">
-                {form.formState.errors.exerciseId.message}
-              </p>
+              <p className="text-sm text-destructive">{form.formState.errors.exerciseId.message}</p>
             )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label htmlFor="targetSets">Sets</Label>
+              <Label htmlFor="targetSets">{t('sets')}</Label>
               <Input
                 id="targetSets"
                 type="number"
@@ -203,7 +204,7 @@ export function ProgramExerciseFormDialog(props: Props) {
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label htmlFor="targetRepsMin">Reps min</Label>
+              <Label htmlFor="targetRepsMin">{t('repsMin')}</Label>
               <Input
                 id="targetRepsMin"
                 type="number"
@@ -214,7 +215,7 @@ export function ProgramExerciseFormDialog(props: Props) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="targetRepsMax">Reps max</Label>
+              <Label htmlFor="targetRepsMax">{t('repsMax')}</Label>
               <Input
                 id="targetRepsMax"
                 type="number"
@@ -233,7 +234,7 @@ export function ProgramExerciseFormDialog(props: Props) {
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label htmlFor="restSec">Rest (s)</Label>
+              <Label htmlFor="restSec">{t('rest')}</Label>
               <Input
                 id="restSec"
                 type="number"
@@ -244,13 +245,13 @@ export function ProgramExerciseFormDialog(props: Props) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="tempo">Tempo (optional)</Label>
+              <Label htmlFor="tempo">{t('tempo')}</Label>
               <Input id="tempo" placeholder="3-1-1-0" {...form.register('tempo')} />
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="notes">Notes (optional)</Label>
+            <Label htmlFor="notes">{t('notes')}</Label>
             <Textarea id="notes" rows={2} {...form.register('notes')} />
           </div>
 
@@ -261,14 +262,14 @@ export function ProgramExerciseFormDialog(props: Props) {
               onClick={() => props.onOpenChange(false)}
               disabled={form.formState.isSubmitting}
             >
-              Cancel
+              {common('actions.cancel')}
             </Button>
             <Button type="submit" disabled={form.formState.isSubmitting}>
               {form.formState.isSubmitting
-                ? 'Saving...'
+                ? common('actions.saving')
                 : props.mode === 'edit'
-                  ? 'Save'
-                  : 'Add'}
+                  ? common('actions.save')
+                  : common('actions.add')}
             </Button>
           </DialogFooter>
         </form>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { CloudOff, RotateCw, Wifi } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { getDB } from '@/lib/indexeddb';
@@ -17,6 +18,7 @@ import { Button } from '@/components/ui/button';
 // opened) to avoid a "0 pending" flash.
 
 export function OfflineIndicator() {
+  const t = useTranslations('common.offline');
   const [online, setOnline] = useState<boolean | null>(null);
   const [flushing, setFlushing] = useState(false);
 
@@ -63,9 +65,7 @@ export function OfflineIndicator() {
     return (
       <div className="flex items-center gap-1.5 rounded-md bg-amber-500/15 px-2 py-1 text-xs font-medium text-amber-600 dark:text-amber-400">
         <CloudOff className="size-3.5" />
-        <span>
-          Offline{pendingCount > 0 ? ` · ${pendingCount} pending` : ''}
-        </span>
+        <span>{pendingCount > 0 ? t('pending', { count: pendingCount }) : t('offline')}</span>
       </div>
     );
   }
@@ -78,14 +78,14 @@ export function OfflineIndicator() {
       onClick={handleManualSync}
       disabled={flushing}
       className="h-7 gap-1.5 px-2 text-xs"
-      aria-label="Sync now"
+      aria-label={t('syncNow')}
     >
       {flushing ? (
         <RotateCw className="size-3.5 animate-spin" />
       ) : (
         <Wifi className="size-3.5" />
       )}
-      <span>Syncing {pendingCount}...</span>
+      <span>{t('syncing', { count: pendingCount })}</span>
     </Button>
   );
 }

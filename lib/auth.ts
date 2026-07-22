@@ -68,10 +68,18 @@ export async function getCurrentUserId(): Promise<string | null> {
   return session?.userId ?? null;
 }
 
+// Secure by default in production. Self-hosters serving plain HTTP on a
+// trusted LAN must opt out explicitly with SESSION_COOKIE_SECURE=false;
+// deriving the default from NEXTAUTH_URL would silently drop the flag when
+// that variable is left at its example value.
+const sessionCookieSecure = process.env.SESSION_COOKIE_SECURE
+  ? process.env.SESSION_COOKIE_SECURE === 'true'
+  : process.env.NODE_ENV === 'production';
+
 export const SESSION_COOKIE_OPTIONS = {
   httpOnly: true,
   sameSite: 'lax' as const,
   path: '/',
   maxAge: SESSION_TTL_SECONDS,
-  secure: process.env.NODE_ENV === 'production',
+  secure: sessionCookieSecure,
 };

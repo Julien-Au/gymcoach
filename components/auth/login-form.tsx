@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -17,12 +18,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 
-const schema = z.object({
-  email: z.string().email('Invalid email'),
-  password: z.string().min(1, 'Password required'),
-});
-
-type FormValues = z.infer<typeof schema>;
+type FormValues = { email: string; password: string };
 
 // Public demo flag and credentials, inlined at build time. When the flag is on
 // (e.g. on a public demo instance) the login page surfaces a one-click sign in.
@@ -32,8 +28,18 @@ const demoPassword = process.env.NEXT_PUBLIC_DEMO_PASSWORD ?? '';
 const showDemo = demoMode && demoEmail !== '' && demoPassword !== '';
 
 export function LoginForm() {
+  const t = useTranslations('auth');
+  const common = useTranslations('common');
   const router = useRouter();
   const [serverError, setServerError] = useState<string | null>(null);
+  const schema = useMemo(
+    () =>
+      z.object({
+        email: z.string().email(t('validation.invalidEmail')),
+        password: z.string().min(1, t('validation.passwordRequired')),
+      }),
+    [t],
+  );
 
   const {
     register,
@@ -66,20 +72,19 @@ export function LoginForm() {
       return;
     }
 
-    const data = (await res.json().catch(() => null)) as { error?: string } | null;
-    setServerError(data?.error ?? 'Login error.');
+    setServerError(t('login.error'));
   }
 
   return (
     <Card className="w-full max-w-sm">
       <CardHeader>
-        <CardTitle>Sign in</CardTitle>
-        <CardDescription>Access your training log.</CardDescription>
+        <CardTitle>{t('login.title')}</CardTitle>
+        <CardDescription>{t('login.description')}</CardDescription>
       </CardHeader>
       <CardContent>
         {showDemo && (
           <div className="mb-4 space-y-2 rounded-md border border-dashed bg-muted/50 p-3">
-            <p className="text-sm font-medium">Demo account</p>
+            <p className="text-sm font-medium">{t('login.demoTitle')}</p>
             <p className="text-sm text-muted-foreground">
               {demoEmail} / {demoPassword}
             </p>
@@ -90,13 +95,13 @@ export function LoginForm() {
               onClick={loginAsDemo}
               disabled={isSubmitting}
             >
-              {isSubmitting ? 'Signing in...' : 'Log in as demo'}
+              {isSubmitting ? t('login.submitting') : t('login.demoSubmit')}
             </Button>
           </div>
         )}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{common('fields.email')}</Label>
             <Input
               id="email"
               type="email"
@@ -113,7 +118,7 @@ export function LoginForm() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">{common('fields.password')}</Label>
             <Input
               id="password"
               type="password"
@@ -137,16 +142,16 @@ export function LoginForm() {
             className="min-h-tap w-full text-base"
             disabled={isSubmitting}
           >
-            {isSubmitting ? 'Signing in...' : 'Sign in'}
+            {isSubmitting ? t('login.submitting') : t('login.submit')}
           </Button>
 
           <p className="text-center text-sm text-muted-foreground">
-            No account yet?{' '}
+            {t('login.noAccount')}{' '}
             <Link
               href="/signup"
               className="font-medium text-foreground underline-offset-4 hover:underline"
             >
-              Create one
+              {t('login.createAccount')}
             </Link>
           </p>
         </form>

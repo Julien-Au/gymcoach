@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTransition, useMemo } from 'react';
+import { useFormatter, useTranslations } from 'next-intl';
 import {
   Bar,
   BarChart,
@@ -16,7 +17,7 @@ import {
 } from 'recharts';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { MUSCLE_GROUP_LABELS } from '@/lib/schemas/exercise';
+import { muscleGroupMessageKeys } from '@/i18n/enum-keys';
 import {
   Select,
   SelectContent,
@@ -34,6 +35,7 @@ import { roundWeight, toDisplayWeight, unitLabel } from '@/lib/units';
 import { computeLoadingTable } from '@/lib/loading-table';
 import { ExerciseGoalCard, type GoalView } from '@/components/progress/exercise-goal-card';
 import { VolumeTargetEditor } from '@/components/progress/volume-target-editor';
+import { useExerciseName } from '@/components/shared/use-exercise-name';
 
 interface RecapRow {
   exerciseId: string;
@@ -103,16 +105,12 @@ interface Props {
 // "off-target" (secondary/destructive); within the band reads as on-target.
 const ZONE_META: Record<
   VolumeLandmarkZone,
-  { label: string; variant: 'default' | 'secondary' | 'destructive' }
+  { key: 'belowMev' | 'inRange' | 'aboveMrv'; variant: 'default' | 'secondary' | 'destructive' }
 > = {
-  BELOW_MEV: { label: 'Below MEV', variant: 'secondary' },
-  WITHIN: { label: 'In range', variant: 'default' },
-  ABOVE_MRV: { label: 'Above MRV', variant: 'destructive' },
+  BELOW_MEV: { key: 'belowMev', variant: 'secondary' },
+  WITHIN: { key: 'inRange', variant: 'default' },
+  ABOVE_MRV: { key: 'aboveMrv', variant: 'destructive' },
 };
-
-function muscleGroupLabel(group: string) {
-  return MUSCLE_GROUP_LABELS[group as MuscleGroup] ?? group;
-}
 
 // Stable palette for muscle groups (distinct HSL, accessible LCH).
 const MUSCLE_COLORS: Record<string, string> = {
@@ -133,14 +131,6 @@ const MUSCLE_COLORS: Record<string, string> = {
   LOWER_BACK: '#475569',
 };
 
-function shortDate(iso: string) {
-  const d = new Date(iso);
-  return new Intl.DateTimeFormat('en-US', {
-    day: '2-digit',
-    month: '2-digit',
-  }).format(d);
-}
-
 export function ProgressDashboard({
   exercises,
   selectedExerciseId,
@@ -154,9 +144,24 @@ export function ProgressDashboard({
   selectedBestE1RM,
   selectedUsesBodyweight,
 }: Props) {
+  const t = useTranslations('progress.dashboard');
+  const common = useTranslations('common');
+  const exerciseT = useTranslations('exercises');
+  const format = useFormatter();
+  const exerciseName = useExerciseName();
   const router = useRouter();
   const search = useSearchParams();
   const [isPending, startTransition] = useTransition();
+  const shortDate = (iso: string) =>
+    format.dateTime(new Date(iso), { day: '2-digit', month: '2-digit' });
+  const muscleGroupLabel = (group: string) => {
+    const key = muscleGroupMessageKeys[group as MuscleGroup];
+    return key ? exerciseT(`muscleGroups.${key}`) : group;
+  };
+  const weekLabel = (weekKey: string) => {
+    const week = weekNumberFromKey(weekKey);
+    return week ? t('weekLabel', { week }) : weekKey;
+  };
 
   // Convert a kg value to the display unit. KG returns the raw value unchanged
   // (so kg output stays byte-identical); LB rounds the conversion for clean
@@ -209,12 +214,12 @@ export function ProgressDashboard({
       }
       return {
         weekKey: p.weekKey,
-        label: shortLabelFromWeekKey(p.weekKey),
+        label: weekLabel(p.weekKey),
         ...converted,
       };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [weeklyPoints, unit]);
+  }, [weeklyPoints, unit, t]);
 
   // Sort the landmark rows by descending set count for a readable list.
   const landmarkRows = useMemo(() => {
@@ -237,19 +242,19 @@ export function ProgressDashboard({
       <Card>
         <CardHeader className="pb-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-base font-semibold">Max load and estimated 1RM</h2>
+            <h2 className="text-base font-semibold">{t('maxLoad')}</h2>
             <Select
               value={selectedExerciseId ?? ''}
               onValueChange={selectExercise}
               disabled={isPending}
             >
               <SelectTrigger className="h-9 w-auto min-w-[12rem]">
-                <SelectValue placeholder="Choose an exercise" />
+                <SelectValue placeholder={t('chooseExercise')} />
               </SelectTrigger>
               <SelectContent>
                 {exercises.map((e) => (
                   <SelectItem key={e.id} value={e.id}>
-                    {e.name}
+                    {exerciseName(e.name)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -257,19 +262,20 @@ export function ProgressDashboard({
           </div>
           {selectedExo && (
             <p className="text-xs text-muted-foreground">
-              {selectedExo.muscleGroup}
+              {muscleGroupLabel(selectedExo.muscleGroup)}
             </p>
           )}
         </CardHeader>
         <CardContent>
           {exerciseChartData.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              No data for this exercise.
-            </p>
+            <p className="py-8 text-center text-sm text-muted-foreground">{t('noExerciseData')}</p>
           ) : (
             <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={exerciseChartData} margin={{ top: 5, right: 10, bottom: 0, left: -10 }}>
+                <LineChart
+                  data={exerciseChartData}
+                  margin={{ top: 5, right: 10, bottom: 0, left: -10 }}
+                >
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 11 }} />
@@ -285,7 +291,7 @@ export function ProgressDashboard({
                   <Line
                     type="monotone"
                     dataKey="maxWeight"
-                    name={`Max load (${unitSuffix})`}
+                    name={t('maxLoadSeries', { unit: unitSuffix })}
                     stroke="hsl(var(--primary))"
                     strokeWidth={2}
                     dot={{ r: 3 }}
@@ -293,7 +299,7 @@ export function ProgressDashboard({
                   <Line
                     type="monotone"
                     dataKey="estimated1RM"
-                    name={`Estimated 1RM (${unitSuffix})`}
+                    name={t('oneRmSeries', { unit: unitSuffix })}
                     stroke="#a855f7"
                     strokeDasharray="4 4"
                     strokeWidth={2}
@@ -315,24 +321,22 @@ export function ProgressDashboard({
           <CardContent className="pt-6">
             <details className="group">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-2">
-                <span className="text-base font-semibold">Training loads</span>
-                <span className="text-xs text-muted-foreground group-open:hidden">
-                  Show
-                </span>
+                <span className="text-base font-semibold">{t('trainingLoads')}</span>
+                <span className="text-xs text-muted-foreground group-open:hidden">{t('show')}</span>
                 <span className="hidden text-xs text-muted-foreground group-open:inline">
-                  Hide
+                  {t('hide')}
                 </span>
               </summary>
               <p className="mt-1 text-xs text-muted-foreground">
-                Percentages of your best estimated 1RM ({toDisplay(selectedBestE1RM)}{' '}
-                {unitSuffix}), rounded to a loadable increment. Planning aid, not a
-                prescription.
+                {t('loadingDescription', {
+                  value: `${toDisplay(selectedBestE1RM)} ${unitSuffix}`,
+                })}
               </p>
               <table className="mt-3 w-full text-sm">
                 <thead>
                   <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
-                    <th className="py-2 font-medium">% of e1RM</th>
-                    <th className="py-2 text-right font-medium">Load</th>
+                    <th className="py-2 font-medium">{t('oneRmPercent')}</th>
+                    <th className="py-2 text-right font-medium">{t('load')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -355,7 +359,7 @@ export function ProgressDashboard({
       {selectedExerciseId && selectedExo && (
         <ExerciseGoalCard
           exerciseId={selectedExerciseId}
-          exerciseName={selectedExo.name}
+          exerciseName={exerciseName(selectedExo.name)}
           usesBodyweight={selectedUsesBodyweight}
           goal={selectedGoal}
           bestE1RM={selectedBestE1RM}
@@ -366,20 +370,19 @@ export function ProgressDashboard({
       {/* Stacked weekly volume per muscle group */}
       <Card>
         <CardHeader className="pb-3">
-          <h2 className="text-base font-semibold">Weekly volume per muscle group</h2>
-          <p className="text-xs text-muted-foreground">
-            Volume = sum of load × reps (working sets only).
-          </p>
+          <h2 className="text-base font-semibold">{t('weeklyVolume')}</h2>
+          <p className="text-xs text-muted-foreground">{t('weeklyVolumeDescription')}</p>
         </CardHeader>
         <CardContent>
           {weeklyChartData.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              No weekly data.
-            </p>
+            <p className="py-8 text-center text-sm text-muted-foreground">{t('noWeeklyData')}</p>
           ) : (
             <div className="h-72 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={weeklyChartData} margin={{ top: 5, right: 10, bottom: 0, left: -10 }}>
+                <BarChart
+                  data={weeklyChartData}
+                  margin={{ top: 5, right: 10, bottom: 0, left: -10 }}
+                >
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 11 }} />
@@ -398,7 +401,7 @@ export function ProgressDashboard({
                       dataKey={group}
                       stackId="vol"
                       fill={MUSCLE_COLORS[group] ?? '#94a3b8'}
-                      name={group}
+                      name={muscleGroupLabel(group)}
                     />
                   ))}
                 </BarChart>
@@ -412,22 +415,17 @@ export function ProgressDashboard({
       {stalledLifts.length > 0 && (
         <Card>
           <CardHeader className="pb-3">
-            <h2 className="text-base font-semibold">Stalled lifts</h2>
+            <h2 className="text-base font-semibold">{t('stalled')}</h2>
             <p className="text-xs text-muted-foreground">
-              No estimated 1RM progress over the last {STALL_LOOKBACK_SESSIONS}{' '}
-              sessions. Consider a deload, a rep-range change, or swapping the
-              exercise.
+              {t('noProgressAdvice', { count: STALL_LOOKBACK_SESSIONS })}
             </p>
           </CardHeader>
           <CardContent>
             <ul className="flex flex-wrap gap-2">
               {stalledLifts.map((r) => (
                 <li key={r.exerciseId}>
-                  <Badge
-                    variant="secondary"
-                    className="text-amber-700 dark:text-amber-400"
-                  >
-                    {r.exerciseName}
+                  <Badge variant="secondary" className="text-amber-700 dark:text-amber-400">
+                    {exerciseName(r.exerciseName)}
                   </Badge>
                 </li>
               ))}
@@ -440,12 +438,13 @@ export function ProgressDashboard({
       {volumeLandmarks && landmarkRows.length > 0 && (
         <Card>
           <CardHeader className="pb-3">
-            <h2 className="text-base font-semibold">Volume landmarks</h2>
+            <h2 className="text-base font-semibold">{t('landmarks')}</h2>
             <p className="text-xs text-muted-foreground">
-              Working sets in {shortLabelFromWeekKey(volumeLandmarks.weekKey)}{' '}
-              vs your reference band (MEV-MRV) per muscle group. Defaults to{' '}
-              {defaultBand.mev}-{defaultBand.mrv} sets/week; edit a group to set
-              your own. General hypertrophy heuristic, not a prescription.
+              {t('landmarksDescription', {
+                week: weekLabel(volumeLandmarks.weekKey),
+                mev: defaultBand.mev,
+                mrv: defaultBand.mrv,
+              })}
             </p>
           </CardHeader>
           <CardContent>
@@ -455,27 +454,25 @@ export function ProgressDashboard({
                 return (
                   <li
                     key={row.group}
-                    className="flex items-center justify-between gap-3 text-sm"
+                    className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 text-sm"
                   >
-                    <span className="flex items-center gap-2">
-                      <span className="font-medium">
-                        {muscleGroupLabel(row.group)}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
+                    <span className="min-w-0">
+                      <span className="block font-medium">{muscleGroupLabel(row.group)}</span>
+                      <span className="block text-xs text-muted-foreground">
                         {row.mev}-{row.mrv}
-                        {row.custom ? ' (custom)' : ' (default)'}
+                        {` (${t(row.custom ? 'custom' : 'default')})`}
                       </span>
                     </span>
-                    <span className="flex items-center gap-2">
+                    <span className="flex max-w-[11rem] flex-wrap items-center justify-end gap-2 sm:max-w-none">
                       <span className="text-muted-foreground">
-                        {row.sets} {row.sets === 1 ? 'set' : 'sets'}
+                        {common('counts.sets', { count: row.sets })}
                       </span>
                       {/* Weekly training frequency (issue #225): distinct
                           training days for this muscle in the same week. */}
                       <span className="text-xs text-muted-foreground">
-                        {row.frequency}x/week
+                        {t('frequency', { count: row.frequency })}
                       </span>
-                      <Badge variant={meta.variant}>{meta.label}</Badge>
+                      <Badge variant={meta.variant}>{t(meta.key)}</Badge>
                       <VolumeTargetEditor
                         muscleGroup={row.group}
                         label={muscleGroupLabel(row.group)}
@@ -497,22 +494,20 @@ export function ProgressDashboard({
       {/* Progress recap table */}
       <Card>
         <CardHeader className="pb-3">
-          <h2 className="text-base font-semibold">Last 12 weeks recap</h2>
+          <h2 className="text-base font-semibold">{t('recap')}</h2>
         </CardHeader>
         <CardContent>
           {recap.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              No exercise with enough data.
-            </p>
+            <p className="py-8 text-center text-sm text-muted-foreground">{t('noRecapData')}</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
-                    <th className="py-2 font-medium">Exercise</th>
-                    <th className="py-2 font-medium">Sessions</th>
-                    <th className="py-2 font-medium">Load start → end</th>
-                    <th className="py-2 font-medium">Δ load</th>
+                    <th className="py-2 font-medium">{t('exercise')}</th>
+                    <th className="py-2 font-medium">{t('sessions')}</th>
+                    <th className="py-2 font-medium">{t('loadRange')}</th>
+                    <th className="py-2 font-medium">{t('deltaLoad')}</th>
                     <th className="py-2 font-medium">Δ 1RM</th>
                   </tr>
                 </thead>
@@ -521,19 +516,19 @@ export function ProgressDashboard({
                     <tr key={r.exerciseId} className="border-b border-border/40">
                       <td className="py-2">
                         <div className="flex items-center gap-2">
-                          <span className="font-medium">{r.exerciseName}</span>
+                          <span className="font-medium">{exerciseName(r.exerciseName)}</span>
                           {r.stalled && (
                             <Badge
                               variant="secondary"
                               className="text-[10px] font-medium uppercase tracking-wide text-amber-700 dark:text-amber-400"
-                              title={`No estimated 1RM progress over the last ${STALL_LOOKBACK_SESSIONS} sessions.`}
+                              title={t('noProgress', { count: STALL_LOOKBACK_SESSIONS })}
                             >
-                              Stalled
+                              {t('stalledBadge')}
                             </Badge>
                           )}
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          {r.muscleGroup}
+                          {muscleGroupLabel(r.muscleGroup)}
                         </div>
                       </td>
                       <td className="py-2">{r.sessions}</td>
@@ -558,10 +553,10 @@ export function ProgressDashboard({
   );
 }
 
-function shortLabelFromWeekKey(weekKey: string) {
-  // "2026-W18" -> "W18"
+function weekNumberFromKey(weekKey: string) {
+  // "2026-W18" -> "18"
   const parts = weekKey.split('-W');
-  return parts[1] ? `W${parts[1]}` : weekKey;
+  return parts[1] ?? null;
 }
 
 function formatDelta(n: number) {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { HeartPulse } from 'lucide-react';
 import { toast } from 'sonner';
 import type { MuscleGroup } from '@/lib/prisma-client';
@@ -9,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { readinessCheckinInputSchema } from '@/lib/schemas/readiness';
-import { MUSCLE_GROUP_LABELS } from '@/lib/schemas/exercise';
+import { muscleGroupMessageKeys } from '@/i18n/enum-keys';
 
 // Optional, skippable pre-session readiness check-in (issue #38). Adds no
 // friction: it is collapsed by default behind a single tap and never blocks
@@ -23,9 +24,12 @@ import { MUSCLE_GROUP_LABELS } from '@/lib/schemas/exercise';
 
 const SCALE = [1, 2, 3, 4, 5];
 
-const MUSCLE_GROUPS = Object.keys(MUSCLE_GROUP_LABELS) as MuscleGroup[];
+const MUSCLE_GROUPS = Object.keys(muscleGroupMessageKeys) as MuscleGroup[];
 
 export function ReadinessCheckin() {
+  const t = useTranslations('session.readiness');
+  const exerciseT = useTranslations('exercises');
+  const common = useTranslations('common');
   const [open, setOpen] = useState(false);
   const [readiness, setReadiness] = useState<number | null>(null);
   const [sleepQuality, setSleepQuality] = useState<number | null>(null);
@@ -49,7 +53,7 @@ export function ReadinessCheckin() {
 
   async function submit() {
     if (readiness === null || sleepQuality === null) {
-      toast.error('Rate both readiness and sleep first.');
+      toast.error(t('rateBoth'));
       return;
     }
     // Only send a soreness map / note when the user actually filled them in, so
@@ -66,7 +70,7 @@ export function ReadinessCheckin() {
     // length (etc.) is caught before the round-trip.
     const parsed = readinessCheckinInputSchema.safeParse(payload);
     if (!parsed.success) {
-      toast.error(parsed.error.issues[0]?.message ?? 'Check-in input is invalid.');
+      toast.error(t('invalid'));
       return;
     }
 
@@ -81,11 +85,11 @@ export function ReadinessCheckin() {
         const j = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(j.error ?? `Error ${res.status}`);
       }
-      toast.success('Check-in saved. The coach will factor it in.');
+      toast.success(t('saved'));
       setSaved(true);
       setOpen(false);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Could not save the check-in.');
+      toast.error(e instanceof Error ? e.message : t('saveError'));
     } finally {
       setSaving(false);
     }
@@ -102,7 +106,7 @@ export function ReadinessCheckin() {
       >
         <HeartPulse className="size-4" />
         <span className="ml-2">
-          {saved ? 'Update readiness check-in' : 'Readiness check-in (optional)'}
+          {saved ? t('update') : t('open')}
         </span>
       </Button>
     );
@@ -111,14 +115,14 @@ export function ReadinessCheckin() {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <h2 className="text-base font-semibold">How recovered do you feel?</h2>
+        <h2 className="text-base font-semibold">{t('title')}</h2>
         <p className="text-xs text-muted-foreground">
-          Optional. Rate 1 (low) to 5 (high); the coach uses it to auto-regulate.
+          {t('description')}
         </p>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        <ScaleRow label="Overall readiness" value={readiness} onChange={setReadiness} />
-        <ScaleRow label="Sleep quality" value={sleepQuality} onChange={setSleepQuality} />
+        <ScaleRow label={t('overall')} value={readiness} onChange={setReadiness} />
+        <ScaleRow label={t('sleep')} value={sleepQuality} onChange={setSleepQuality} />
 
         {!detailsOpen ? (
           <Button
@@ -128,23 +132,22 @@ export function ReadinessCheckin() {
             className="self-start"
             onClick={() => setDetailsOpen(true)}
           >
-            Add soreness / note (optional)
+            {t('details')}
           </Button>
         ) : (
           <div className="flex flex-col gap-4 border-t pt-4">
             <div className="space-y-2">
               <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-                Per-muscle soreness
+                {t('soreness')}
               </Label>
               <p className="text-xs text-muted-foreground">
-                Rate only the groups that feel sore (1 fresh, 5 very sore). Tap a
-                rating again to clear it.
+                {t('sorenessDescription')}
               </p>
               <div className="flex flex-col gap-3">
                 {MUSCLE_GROUPS.map((group) => (
                   <SorenessRow
                     key={group}
-                    label={MUSCLE_GROUP_LABELS[group]}
+                    label={exerciseT(`muscleGroups.${muscleGroupMessageKeys[group]}`)}
                     value={soreness[group] ?? null}
                     onChange={(v) => setSorenessFor(group, v)}
                   />
@@ -156,7 +159,7 @@ export function ReadinessCheckin() {
                 htmlFor="readiness-note"
                 className="text-xs uppercase tracking-wide text-muted-foreground"
               >
-                Note
+                {t('note')}
               </Label>
               <Textarea
                 id="readiness-note"
@@ -164,7 +167,7 @@ export function ReadinessCheckin() {
                 onChange={(e) => setNote(e.target.value)}
                 maxLength={500}
                 rows={3}
-                placeholder="Anything the coach should know (optional)."
+                placeholder={t('notePlaceholder')}
               />
             </div>
           </div>
@@ -177,10 +180,10 @@ export function ReadinessCheckin() {
             onClick={() => setOpen(false)}
             disabled={saving}
           >
-            Skip
+            {t('skip')}
           </Button>
           <Button type="button" onClick={submit} disabled={saving}>
-            {saving ? 'Saving...' : 'Save check-in'}
+            {saving ? common('actions.saving') : t('save')}
           </Button>
         </div>
       </CardContent>
@@ -230,6 +233,8 @@ function SorenessRow({
   value: number | null;
   onChange: (v: number) => void;
 }) {
+  const t = useTranslations('session.readiness');
+
   return (
     <div className="flex items-center justify-between gap-3">
       <span className="text-sm">{label}</span>
@@ -242,7 +247,7 @@ function SorenessRow({
             variant={value === n ? 'default' : 'outline'}
             onClick={() => onChange(n)}
             className="min-h-tap w-9 px-0 text-sm font-semibold"
-            aria-label={`${label} soreness: ${n}`}
+            aria-label={t('sorenessAria', { name: label, value: n })}
             aria-pressed={value === n}
           >
             {n}

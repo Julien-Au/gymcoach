@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useFormatter, useTranslations } from 'next-intl';
 import { AlertTriangle, Loader2, MessageCircle, Sparkles } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { Button } from '@/components/ui/button';
@@ -41,6 +42,10 @@ export function CoachClient({
   apiKeyEnvVar,
   programDefaults,
 }: Props) {
+  const t = useTranslations('coach');
+  const format = useFormatter();
+  const formatDate = (iso: string) =>
+    format.dateTime(new Date(iso), { day: '2-digit', month: 'long', year: 'numeric' });
   const [history, setHistory] = useState(initialHistory);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -69,7 +74,7 @@ export function CoachClient({
       setHistory((h) => [newItem, ...h]);
       setActiveId(newItem.id);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Unknown error');
+      setError(e instanceof Error ? e.message : t('client.unknownError'));
     } finally {
       setPending(false);
     }
@@ -85,11 +90,10 @@ export function CoachClient({
             <AlertTriangle className="size-5 shrink-0 text-amber-600" />
             <div>
               <p className="font-medium text-amber-900 dark:text-amber-100">
-                {providerLabel} key missing
+                {t('client.keyMissing', { provider: providerLabel })}
               </p>
               <p className="text-xs text-muted-foreground">
-                Set <code>{apiKeyEnvVar}</code> in <code>.env</code>{' '}
-                to enable the coach.
+                {t('client.keySetup', { variable: apiKeyEnvVar })}
               </p>
             </div>
           </CardContent>
@@ -106,12 +110,12 @@ export function CoachClient({
             {pending ? (
               <>
                 <Loader2 className="size-5 animate-spin" />
-                <span className="ml-2">Generating (10-20s)...</span>
+                <span className="ml-2">{t('client.generating')}</span>
               </>
             ) : (
               <>
                 <Sparkles className="size-5" />
-                <span className="ml-2">Request a weekly debrief</span>
+                <span className="ml-2">{t('client.request')}</span>
               </>
             )}
           </Button>
@@ -135,7 +139,7 @@ export function CoachClient({
         <Card>
           <CardContent className="flex items-center gap-3 py-8 text-sm text-muted-foreground">
             <MessageCircle className="size-5" />
-            <span>No debrief yet. Start your first one above.</span>
+            <span>{t('client.empty')}</span>
           </CardContent>
         </Card>
       )}
@@ -143,7 +147,7 @@ export function CoachClient({
       {history.length > 1 && (
         <div>
           <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            History
+            {t('context.history')}
           </h3>
           <ul className="flex flex-col gap-2">
             {history.map((h) => {
@@ -165,7 +169,7 @@ export function CoachClient({
                       </span>
                       {h.appliedAt && (
                         <Badge variant="secondary" className="text-xs">
-                          Applied
+                          {t('client.applied')}
                         </Badge>
                       )}
                     </div>
@@ -192,6 +196,10 @@ function ActiveDebrief({
   programDefaults: Record<string, ProgramExerciseDefaults>;
   onApplied: (appliedAt: string) => void;
 }) {
+  const t = useTranslations('coach');
+  const format = useFormatter();
+  const formatDate = (iso: string) =>
+    format.dateTime(new Date(iso), { day: '2-digit', month: 'long', year: 'numeric' });
   const { cleaned, adjustments, parseErrors } = extractAdjustments(active.response);
   return (
     <div className="flex flex-col gap-4">
@@ -200,15 +208,15 @@ function ActiveDebrief({
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <h2 className="text-base font-semibold">
-                Debrief from {formatDate(active.createdAt)}
+                {t('client.debriefFrom', { date: formatDate(active.createdAt) })}
               </h2>
               <p className="text-xs text-muted-foreground">
-                Week of {formatDate(active.weekStart)}
+                {t('client.weekOf', { date: formatDate(active.weekStart) })}
               </p>
             </div>
             {active.appliedAt && (
               <Badge variant="secondary" className="shrink-0">
-                Applied
+                {t('client.applied')}
               </Badge>
             )}
           </div>
@@ -236,14 +244,6 @@ function ActiveDebrief({
       )}
     </div>
   );
-}
-
-function formatDate(iso: string) {
-  return new Intl.DateTimeFormat('en-US', {
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric',
-  }).format(new Date(iso));
 }
 
 function firstNonEmptyLine(text: string): string {

@@ -2,15 +2,11 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { MoreHorizontal, Plus, Pencil, Trash2 } from 'lucide-react';
 import type { Exercise, ProgramExercise, Workout } from '@/lib/prisma-client';
 import { toast } from 'sonner';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -23,8 +19,18 @@ import {
 import { ProgramExerciseRow } from '@/components/programs/program-exercise-row';
 import { WorkoutFormDialog } from '@/components/programs/workout-form-dialog';
 import { ProgramExerciseFormDialog } from '@/components/programs/program-exercise-form-dialog';
-import { DAY_LABELS } from '@/lib/schemas/workout';
 import { buildSupersetView, smallestFreeGroup } from '@/lib/supersets';
+import { useTrainingName } from '@/components/shared/use-training-name';
+
+const DAY_KEYS = [
+  'monday',
+  'tuesday',
+  'wednesday',
+  'thursday',
+  'friday',
+  'saturday',
+  'sunday',
+] as const;
 
 type ProgramExerciseWithExercise = ProgramExercise & { exercise: Exercise };
 type WorkoutWithExercises = Workout & { exercises: ProgramExerciseWithExercise[] };
@@ -35,30 +41,33 @@ interface Props {
 }
 
 export function WorkoutCard({ workout, catalog }: Props) {
+  const t = useTranslations('programs.workout');
+  const exerciseT = useTranslations('programs.exercise');
+  const common = useTranslations('common');
+  const trainingName = useTrainingName();
   const router = useRouter();
   const [editOpen, setEditOpen] = useState(false);
   const [addExoOpen, setAddExoOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   async function handleDelete() {
-    if (!confirm(`Delete the session "${workout.name}" and all its exercises?`)) return;
+    if (!confirm(t('deleteConfirm', { name: trainingName(workout.name) }))) return;
     setDeleting(true);
     try {
       const res = await fetch(`/api/workouts/${workout.id}`, { method: 'DELETE' });
       if (!res.ok) {
-        const data = (await res.json().catch(() => null)) as { error?: string } | null;
-        toast.error(data?.error ?? 'Could not delete.');
+        toast.error(t('deleteError'));
         return;
       }
-      toast.success('Session deleted.');
+      toast.success(t('deleted'));
       router.refresh();
     } finally {
       setDeleting(false);
     }
   }
 
-  const dayLabel =
-    workout.dayOfWeek != null ? DAY_LABELS[workout.dayOfWeek - 1] ?? null : null;
+  const dayKey = workout.dayOfWeek != null ? DAY_KEYS[workout.dayOfWeek - 1] : null;
+  const dayLabel = dayKey ? common(`days.${dayKey}`) : null;
 
   // Superset pairing (issue #146, slice 1): rows render in presentation order
   // (group members together) with A1/A2 labels derived on read.
@@ -85,7 +94,7 @@ export function WorkoutCard({ workout, catalog }: Props) {
     });
     if (!res.ok) {
       const data = (await res.json().catch(() => null)) as { error?: string } | null;
-      toast.error(data?.error ?? 'Could not update the superset.');
+      toast.error(data?.error ?? t('supersetUpdateError'));
       return false;
     }
     return true;
@@ -102,19 +111,19 @@ export function WorkoutCard({ workout, catalog }: Props) {
     if (group == null) {
       group = smallestFreeGroup(workout.exercises);
       if (group == null) {
-        toast.error('Superset limit reached for this session.');
+        toast.error(t('supersetLimit'));
         return;
       }
       if (!(await updateSupersetGroup(previous, group))) return;
     }
     if (!(await updateSupersetGroup(pe, group))) return;
-    toast.success('Exercises paired as a superset.');
+    toast.success(t('supersetPaired'));
     router.refresh();
   }
 
   async function handleUnpair(pe: ProgramExerciseWithExercise) {
     if (!(await updateSupersetGroup(pe, null))) return;
-    toast.success('Superset removed.');
+    toast.success(t('supersetRemoved'));
     router.refresh();
   }
 
@@ -123,12 +132,10 @@ export function WorkoutCard({ workout, catalog }: Props) {
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <CardTitle className="text-base">{workout.name}</CardTitle>
+            <CardTitle className="text-base">{trainingName(workout.name)}</CardTitle>
             <div className="mt-1 flex flex-wrap gap-1.5 text-xs text-muted-foreground">
               {dayLabel && <Badge variant="secondary">{dayLabel}</Badge>}
-              <span>
-                {workout.exercises.length} exercise{workout.exercises.length > 1 ? 's' : ''}
-              </span>
+              <span>{common('counts.exercises', { count: workout.exercises.length })}</span>
             </div>
           </div>
           <DropdownMenu>
@@ -137,7 +144,7 @@ export function WorkoutCard({ workout, catalog }: Props) {
                 variant="ghost"
                 size="icon"
                 className="min-h-tap min-w-tap"
-                aria-label="Session actions"
+                aria-label={t('actions')}
               >
                 <MoreHorizontal className="size-4" />
               </Button>
@@ -145,7 +152,7 @@ export function WorkoutCard({ workout, catalog }: Props) {
             <DropdownMenuContent align="end">
               <DropdownMenuItem onSelect={() => setEditOpen(true)}>
                 <Pencil className="mr-2 size-4" />
-                Edit
+                {common('actions.edit')}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
@@ -154,7 +161,7 @@ export function WorkoutCard({ workout, catalog }: Props) {
                 className="text-destructive focus:text-destructive"
               >
                 <Trash2 className="mr-2 size-4" />
-                Delete
+                {common('actions.delete')}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -163,9 +170,7 @@ export function WorkoutCard({ workout, catalog }: Props) {
 
       <CardContent className="flex flex-col gap-2 pt-0">
         {workout.exercises.length === 0 ? (
-          <p className="text-xs text-muted-foreground">
-            No programmed exercises. Use the button below to add some.
-          </p>
+          <p className="text-xs text-muted-foreground">{t('empty')}</p>
         ) : (
           <ul className="flex flex-col gap-2">
             {supersetView.ordered.map((pe, index) => {
@@ -201,21 +206,14 @@ export function WorkoutCard({ workout, catalog }: Props) {
           disabled={catalog.length === 0}
         >
           <Plus className="size-4" />
-          <span className="ml-2">Add an exercise</span>
+          <span className="ml-2">{exerciseT('add')}</span>
         </Button>
         {catalog.length === 0 && (
-          <p className="text-xs text-muted-foreground">
-            The catalog is empty. Add an exercise in Catalog first.
-          </p>
+          <p className="text-xs text-muted-foreground">{t('catalogEmpty')}</p>
         )}
       </CardContent>
 
-      <WorkoutFormDialog
-        open={editOpen}
-        onOpenChange={setEditOpen}
-        mode="edit"
-        workout={workout}
-      />
+      <WorkoutFormDialog open={editOpen} onOpenChange={setEditOpen} mode="edit" workout={workout} />
       <ProgramExerciseFormDialog
         open={addExoOpen}
         onOpenChange={setAddExoOpen}

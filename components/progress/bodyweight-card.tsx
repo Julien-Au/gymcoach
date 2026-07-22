@@ -1,7 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useFormatter, useLocale, useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { Scale, Trash2 } from 'lucide-react';
 import {
@@ -41,22 +42,24 @@ interface Props {
   listLimit?: number;
 }
 
-function shortDate(iso: string) {
-  return new Intl.DateTimeFormat('en-US', {
-    day: '2-digit',
-    month: '2-digit',
-  }).format(new Date(iso));
-}
-
 // Bodyweight trend card (issue #99): quick-add a measurement in the display
 // unit, see the trend over the window, delete bad entries. The profile field
 // in settings keeps working separately (corrections, not measurements).
 export function BodyweightCard({ entries, unit, listLimit = 5 }: Props) {
+  const t = useTranslations('progress.bodyweight');
+  const common = useTranslations('common');
+  const locale = useLocale();
+  const format = useFormatter();
   const router = useRouter();
   const [weightField, setWeightField] = useState('');
   const [busy, setBusy] = useState(false);
 
   const unitSuffix = unitLabel(unit);
+  const shortDate = useCallback(
+    (iso: string) =>
+      format.dateTime(new Date(iso), { day: '2-digit', month: '2-digit' }),
+    [format],
+  );
 
   // Chart data, oldest to newest, in the display unit.
   const chartData = useMemo(
@@ -67,7 +70,7 @@ export function BodyweightCard({ entries, unit, listLimit = 5 }: Props) {
           label: shortDate(e.measuredAt),
           weight: roundWeight(toDisplayWeight(e.weightKg, unit), 1),
         })),
-    [entries, unit],
+    [entries, unit, shortDate],
   );
 
   const latest = entries[0];
@@ -120,11 +123,11 @@ export function BodyweightCard({ entries, unit, listLimit = 5 }: Props) {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="flex items-center gap-2 text-base font-semibold">
             <Scale className="size-4" />
-            Bodyweight
+            {t('title')}
           </h2>
           {latest && (
             <span className="text-sm text-muted-foreground">
-              Current: {formatWeight(latest.weightKg, unit)}
+              {t('current', { weight: formatWeight(latest.weightKg, unit, { locale }) })}
             </span>
           )}
         </div>
@@ -139,7 +142,7 @@ export function BodyweightCard({ entries, unit, listLimit = 5 }: Props) {
           }}
         >
           <div className="flex-1 space-y-1">
-            <Label htmlFor="bodyweight-input">Bodyweight ({unitSuffix})</Label>
+            <Label htmlFor="bodyweight-input">{t('label', { unit: unitSuffix })}</Label>
             <Input
               id="bodyweight-input"
               type="number"
@@ -156,7 +159,7 @@ export function BodyweightCard({ entries, unit, listLimit = 5 }: Props) {
             />
           </div>
           <Button type="submit" disabled={busy}>
-            {busy ? 'Saving...' : 'Log'}
+            {busy ? common('actions.saving') : t('log')}
           </Button>
         </form>
 
@@ -164,8 +167,8 @@ export function BodyweightCard({ entries, unit, listLimit = 5 }: Props) {
         {chartData.length < 2 ? (
           <p className="text-sm text-muted-foreground">
             {chartData.length === 0
-              ? 'No bodyweight logged yet. Log a first measurement to start the trend.'
-              : 'Log a second measurement to see the trend.'}
+              ? t('empty')
+              : t('second')}
           </p>
         ) : (
           <div className="h-48 w-full">
@@ -208,8 +211,12 @@ export function BodyweightCard({ entries, unit, listLimit = 5 }: Props) {
                 className="flex items-center justify-between gap-3 text-sm"
               >
                 <span>
-                  <span className="font-medium">{formatWeight(e.weightKg, unit)}</span>{' '}
-                  <span className="text-muted-foreground">on {shortDate(e.measuredAt)}</span>
+                  <span className="font-medium">
+                    {formatWeight(e.weightKg, unit, { locale })}
+                  </span>{' '}
+                  <span className="text-muted-foreground">
+                    {t('onDate', { date: shortDate(e.measuredAt) })}
+                  </span>
                 </span>
                 <Button
                   type="button"

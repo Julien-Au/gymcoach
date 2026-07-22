@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Check, Minus, Plus } from 'lucide-react';
 import type { Exercise, ProgramExercise, WeightUnit } from '@/lib/prisma-client';
 import {
@@ -73,6 +74,8 @@ export function SetInput({
   unit,
   onSubmit,
 }: Props) {
+  const t = useTranslations('session.input');
+  const common = useTranslations('common');
   // Pre-fill: last set of this exercise in the current session,
   // otherwise the last performance, otherwise defaults.
   const initial = computeInitial(
@@ -155,18 +158,18 @@ export function SetInput({
         body: JSON.stringify({ exerciseId: programExercise.exercise.id, text }),
       });
       if (!res.ok) {
-        setAiHint('Could not parse that. Try the shorthand (e.g. 100x8@9).');
+        setAiHint(t('parseError'));
         return;
       }
       const data = (await res.json()) as { parsed: ParsedSetFill | null };
       const parsed = data.parsed;
       if (!parsed) {
-        setAiHint('Could not parse that. Try the shorthand (e.g. 100x8@9).');
+        setAiHint(t('parseError'));
         return;
       }
       if (parsed.kind === 'cardio') {
         if (!isCardio) {
-          setAiHint('Could not parse that. Try the shorthand (e.g. 100x8@9).');
+          setAiHint(t('parseError'));
           return;
         }
         setForm((f) => ({
@@ -179,7 +182,7 @@ export function SetInput({
         }));
       } else {
         if (isCardio) {
-          setAiHint('Could not parse that. Try the shorthand (e.g. 100x8@9).');
+          setAiHint(t('parseError'));
           return;
         }
         setForm((f) => ({
@@ -198,7 +201,7 @@ export function SetInput({
         }));
       }
     } catch {
-      setAiHint('Could not parse that. Try the shorthand (e.g. 100x8@9).');
+      setAiHint(t('parseError'));
     } finally {
       setAiParsing(false);
     }
@@ -261,7 +264,7 @@ export function SetInput({
             htmlFor="ai-parse"
             className="text-xs uppercase tracking-wide text-muted-foreground"
           >
-            Describe the set (AI)
+            {t('describe')}
           </Label>
           <div className="flex items-center gap-2">
             <Input
@@ -276,8 +279,8 @@ export function SetInput({
               }}
               placeholder={
                 isCardio
-                  ? 'e.g. ran 5k in 25 minutes'
-                  : 'e.g. 100 kg for 5, 2 in the tank'
+                  ? t('cardioExample')
+                  : t('strengthExample')
               }
             />
             <Button
@@ -287,14 +290,14 @@ export function SetInput({
               disabled={aiParsing || aiText.trim() === ''}
               className="shrink-0"
             >
-              {aiParsing ? 'Parsing...' : 'Parse with AI'}
+              {aiParsing ? t('parsing') : t('parse')}
             </Button>
           </div>
           {aiHint ? (
             <p className="text-xs text-muted-foreground">{aiHint}</p>
           ) : (
             <p className="text-xs text-muted-foreground">
-              Fills the fields below for you to review - it never logs on its own.
+              {t('parseHelp')}
             </p>
           )}
         </div>
@@ -307,7 +310,7 @@ export function SetInput({
                 htmlFor="cardio-duration"
                 className="text-xs uppercase tracking-wide text-muted-foreground"
               >
-                Duration (mm:ss)
+                {t('duration')}
               </Label>
               <Input
                 id="cardio-duration"
@@ -316,13 +319,13 @@ export function SetInput({
                 autoComplete="off"
                 value={form.durationInput}
                 onChange={(e) => setForm((f) => ({ ...f, durationInput: e.target.value }))}
-                placeholder="e.g. 12:30"
+                placeholder={t('durationExample')}
                 aria-invalid={durationInvalid}
                 className="h-14 text-center text-2xl font-semibold"
               />
               {durationInvalid && (
                 <p className="text-xs text-muted-foreground">
-                  Expected format: mm:ss (e.g. 12:30), h:mm:ss, or plain minutes.
+                  {t('durationError')}
                 </p>
               )}
             </div>
@@ -333,7 +336,7 @@ export function SetInput({
                 htmlFor="cardio-distance"
                 className="text-xs uppercase tracking-wide text-muted-foreground"
               >
-                Distance (km, optional)
+                {t('distance')}
               </Label>
               <Input
                 id="cardio-distance"
@@ -343,13 +346,13 @@ export function SetInput({
                 min="0"
                 value={form.distanceInput}
                 onChange={(e) => setForm((f) => ({ ...f, distanceInput: e.target.value }))}
-                placeholder="e.g. 2.5"
+                placeholder={t('distanceExample')}
                 aria-invalid={distanceInvalid}
                 className="h-14 text-center text-2xl font-semibold"
               />
               {distanceInvalid && (
                 <p className="text-xs text-muted-foreground">
-                  Enter a distance between 0 and 1000 km.
+                  {t('distanceError')}
                 </p>
               )}
             </div>
@@ -362,7 +365,7 @@ export function SetInput({
             htmlFor="quick-entry"
             className="text-xs uppercase tracking-wide text-muted-foreground"
           >
-            Quick entry
+            {t('quickEntry')}
           </Label>
           <Input
             id="quick-entry"
@@ -371,12 +374,12 @@ export function SetInput({
             autoComplete="off"
             value={quickEntry}
             onChange={(e) => handleQuickEntry(e.target.value)}
-            placeholder={`e.g. 100x8@9 (${unitLabel(unit)} x reps @ RPE)`}
+            placeholder={t('quickEntryExample', { unit: unitLabel(unit) })}
             aria-invalid={quickEntryInvalid}
           />
           {quickEntryInvalid && (
             <p className="text-xs text-muted-foreground">
-              Expected format: weight x reps, optionally @ RPE - e.g. 100x8 or 62.5x8@8.5
+              {t('quickEntryError')}
             </p>
           )}
         </div>
@@ -385,7 +388,7 @@ export function SetInput({
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-              Load ({unitLabel(unit)})
+              {t('load', { unit: unitLabel(unit) })}
             </Label>
             <div className="flex items-center gap-1">
               <WarmupCalculator weightKg={form.weight} unit={unit} />
@@ -432,7 +435,7 @@ export function SetInput({
         {/* Reps */}
         <div className="space-y-2">
           <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-            Reps
+            {t('reps')}
           </Label>
           <div className="flex items-center gap-2">
             <Button
@@ -470,7 +473,7 @@ export function SetInput({
         {/* RIR */}
         <div className="space-y-2">
           <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-            RIR (reps in reserve)
+            {t('repsInReserve')}
           </Label>
           <div className="grid grid-cols-4 gap-2">
             {RIR_OPTIONS.map((opt) => (
@@ -494,14 +497,14 @@ export function SetInput({
               checked={form.isDropSet}
               onCheckedChange={(v) => setForm((f) => ({ ...f, isDropSet: v }))}
             />
-            <span>Drop set</span>
+            <span>{t('dropSet')}</span>
           </label>
           <label className="flex cursor-pointer items-center gap-2">
             <Switch
               checked={form.isWarmup}
               onCheckedChange={(v) => setForm((f) => ({ ...f, isWarmup: v }))}
             />
-            <span>Warmup</span>
+            <span>{t('warmup')}</span>
           </label>
         </div>
           </>
@@ -510,14 +513,14 @@ export function SetInput({
         {/* Notes */}
         <div className="space-y-2">
           <Label htmlFor="set-notes" className="text-xs uppercase tracking-wide text-muted-foreground">
-            Quick note (optional)
+            {t('note')}
           </Label>
           <Textarea
             id="set-notes"
             rows={2}
             value={form.notes}
             onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-            placeholder="e.g. wrist pain, dropped the weight mid-set, felt easy, etc."
+            placeholder={t('notePlaceholder')}
           />
         </div>
 
@@ -528,7 +531,9 @@ export function SetInput({
           className="h-20 w-full text-lg font-semibold"
         >
           <Check className="size-6" />
-          <span className="ml-2">{submitting ? 'Saving...' : 'Log the set'}</span>
+          <span className="ml-2">
+            {submitting ? common('actions.saving') : t('logSet')}
+          </span>
         </Button>
       </CardContent>
     </Card>
