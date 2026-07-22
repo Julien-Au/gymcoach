@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ExerciseFormDialog } from '@/components/exercises/exercise-form-dialog';
+import { ExerciseMediaDialog } from '@/components/exercises/exercise-media-dialog';
 import { DeleteExerciseButton } from '@/components/exercises/delete-exercise-button';
 import { useExerciseName } from '@/components/shared/use-exercise-name';
 import {
@@ -139,6 +140,12 @@ function ExerciseRow({ exercise, onEdit }: { exercise: Exercise; onEdit: () => v
           )}
         </div>
         <div className="flex flex-shrink-0 items-center gap-1">
+          <ExerciseMediaDialog
+            exerciseName={exercise.name}
+            displayName={displayName}
+            equipmentType={exercise.equipmentType}
+            compact
+          />
           <Button
             variant="ghost"
             size="icon"
