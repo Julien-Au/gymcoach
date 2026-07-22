@@ -300,3 +300,38 @@ captured screenshot set (home/progress/generator/catalog + the 4 flow GIFs), so 
 due for it. The recorded GIFs (dated 2026-06-12) now lag several feature batches; none of
 the new cardio/import work is a clip scenario, so this is noted as lag, not a blocker for a
 docs tick - a periodic re-record is due soon.
+
+---
+
+## 2026-07-22 - progress photos (#281) + a human-directed fork adoption (#272)
+
+Merged since the last digest: **#281** (progress photos, loop-authored) and **#272**
+(localization + a security hardening, a concurrent session's fork adoption confirmed by the
+operator). Read these first, highest risk x impact:
+
+1. **#272 - the security-relevant slice of the fork adoption.** `gh pr diff 272`. This is
+   EXTERNAL code (author `SHAREN`, a fork) merged by a concurrent session and kept by operator
+   decision - so it deserves your eyes more than loop-authored work, not less. Focus on the two
+   files that are not translation strings: `lib/auth.ts` (session cookies now `Secure` by
+   default in production, with a `SESSION_COOKIE_SECURE=false` opt-out - confirm the opt-out is
+   the only escape hatch and that HTTP self-hosters get a clear default) and
+   `app/api/programs/from-template/route.ts` (rerouted through `buildProgramFromGenerated` so
+   instantiating a template can no longer overwrite user-authored exercise metadata - confirm
+   that reuse is faithful). The `messages/en|ru/*` catalogs are low-risk string data.
+2. **#281 - the file-upload surface.** `gh pr diff 281`. Highest intrinsic risk of the two by
+   design (a new upload endpoint + local file storage + an additive migration). Two independent
+   skeptics (correctness + security) already returned READY, but if you read one loop diff this
+   batch, read this: the sniffer (`lib/progress-photo.ts`, magic-byte allowlist as sole type
+   authority + `resolveInsideStorageDir` containment), the capped streamed read and 404-no-oracle
+   ownership routes (`app/api/progress-photos/**`), and the additive migration. Non-blocking
+   hardening is tracked in #282.
+
+**Skim:** this write-up (CHANGELOG Added: progress photos + localization, Security: cookie
+default; README features/roadmap; lesson L16; autonomy-log). The remaining SHAREN PRs
+#273-#276 are untrusted and NOT merged - do not review them as loop work; they await human
+vetting.
+
+**Media note:** the Progress page gained a photos card, but it renders an empty state until
+demo photos are seeded (`scripts/seed-demo-history.ts` has none yet), so no screenshot re-shoot
+is worthwhile until the demo seed carries a couple of photos - noted as a small demo-media
+follow-up, within the staleness cap.

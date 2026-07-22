@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Progress photos alongside your body metrics: upload a photo (JPEG, PNG or
+  WebP) and compare any two side by side to see change over time, on the
+  Progress page. Storage is local-only - files live under a configurable,
+  gitignored `UPLOADS_DIR` on the server and are served solely through an
+  ownership-scoped route, never a public static path. Every upload is validated
+  by its magic bytes (not the client's declared content-type), capped in size
+  during a streamed read, and written non-executable. No cloud, no third party.
+- Interface localization: an extensible message-catalog system
+  (`messages/<locale>`) with English and Russian across the app's screens; an
+  unknown locale falls back to English.
 - Aerobic decoupling (HR drift) on an imported cardio session: the history
   detail page now shows how much your pace-per-heartbeat efficiency faded
   between the first and second half of a run or ride, with a plain-language
@@ -293,5 +303,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Mapped the popover color token so dropdown menus render opaque instead of
   transparent.
 - Used a literal `DATABASE_URL` in the E2E CI job environment.
+
+### Security
+
+- Session cookies are now `Secure` by default in production; self-hosting over
+  plain HTTP requires an explicit `SESSION_COOKIE_SECURE=false` opt-out.
 
 [Unreleased]: https://github.com/Julien-Au/gymcoach/commits/main

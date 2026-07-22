@@ -74,8 +74,9 @@ on your own key - all self-hosted.
   navigation and superset-aware rest.
 - **Readiness check-in** - an optional pre-session soreness/readiness prompt that
   auto-regulates the suggested load and says why it held or dropped.
-- **Quality-of-life** - kilograms or pounds per user, multi-user with strict
-  per-user data isolation, and an installable PWA with offline logging.
+- **Quality-of-life** - kilograms or pounds per user, an interface in English or
+  Russian (extensible message catalogs), multi-user with strict per-user data
+  isolation, and an installable PWA with offline logging.
 
 ### Track progress
 
@@ -338,6 +339,8 @@ than CI reaching in to a small VPS.
       session attached)
 - [x] Free-text (AI-parsed) set logging (opt-in "Parse with AI" fills the set
       form from plain language; you confirm before it logs)
+- [x] Progress photos (local-only upload with side-by-side compare)
+- [x] Interface localization (English and Russian, extensible message catalogs)
 
 ## Contributing
 
