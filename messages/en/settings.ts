@@ -143,4 +143,29 @@ export const settings = {
     fitImportDone:
       'Imported {sessions, plural, one {# session} other {# sessions}}{exercises, plural, =0 {} one {, # new exercise} other {, # new exercises}}{skipped, plural, =0 {.} one { (# file skipped).} other { (# files skipped).}}',
   },
+  mcp: {
+    title: 'ChatGPT and MCP',
+    description:
+      'Connect an external AI agent to your GymCoach data. Tokens can be revoked at any time.',
+    keyName: 'Connection name',
+    create: 'Create connection',
+    created: 'MCP connection created.',
+    createError: 'Could not create the MCP connection.',
+    writeAccess: 'Allow program changes',
+    writeAccessDescription:
+      'ChatGPT may create programs and edit exercise targets after showing the action for confirmation.',
+    readyTitle: 'ChatGPT connector URL is ready',
+    readyDescription:
+      'Copy it now. The secret part is shown only once. In ChatGPT choose no authentication because the URL already contains a private token.',
+    copied: 'Connector URL copied.',
+    copy: 'Copy connector URL',
+    activeKeys: 'Active connections',
+    noKeys: 'No MCP connections yet.',
+    readWrite: 'Read and write',
+    readOnly: 'Read only',
+    lastUsed: 'used {date}',
+    revoke: 'Revoke connection',
+    revoked: 'MCP connection revoked.',
+    revokeError: 'Could not revoke the MCP connection.',
+  },
 };

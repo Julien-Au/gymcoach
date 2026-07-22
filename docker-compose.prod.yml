@@ -53,6 +53,7 @@ services:
       CODEX_LB_API_KEY: ${CODEX_LB_API_KEY:-}
       CODEX_LB_MODEL: ${CODEX_LB_MODEL:-gpt-5.6-sol}
       NEXTAUTH_URL: ${NEXTAUTH_URL}
+      MCP_PUBLIC_URL: ${MCP_PUBLIC_URL:-}
       NODE_ENV: production
       # Progress-photo files (issue #269): kept on the named volume below so
       # they survive container rebuilds. Back it up alongside the database.
