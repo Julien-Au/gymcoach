@@ -350,6 +350,17 @@ Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup,
 conventions and the test commands. Notable changes are tracked in the
 [CHANGELOG](CHANGELOG.md).
 
+### Thanks
+
+- [@SHAREN](https://github.com/SHAREN) - first external contributor, and a
+  big one: interface localization with Russian (#272), per-set workout
+  autoregulation (#273), saved gyms with equipment-aware load selection
+  (#274), exercise technique media (#275), and the ChatGPT / MCP connector
+  (#276). Along the way they also found and fixed a latent `.gitignore` bug
+  that shadowed an API route in fresh clones.
+- Exercise technique photos come from
+  [free-exercise-db](https://github.com/yuhonas/free-exercise-db) (Unlicense).
+
 ## License
 
 MIT, see [LICENSE](LICENSE).

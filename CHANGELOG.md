@@ -9,6 +9,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- ChatGPT / external-agent MCP connector: an authenticated Streamable HTTP
+  MCP endpoint exposes your training context and program editing to any
+  MCP-compatible agent. Access uses per-user bearer tokens created in
+  Settings - stored as SHA-256 hashes, read-only by default, write-scoped
+  only on explicit opt-in, revocable anytime; every tool is bound to the
+  token owner's data and write tools require an explicit confirmation
+  argument. Community contribution by @SHAREN (#276).
+- Exercise technique media: about 80 catalog exercises now show start/end
+  position photos in the logger and the catalog, vendored from the Unlicense
+  free-exercise-db project - served locally, no hotlinking, no tracking.
+  Community contribution by @SHAREN (#275).
+- Saved gyms and equipment-aware load selection: describe each gym you train
+  in (dumbbells, plates, bars, machines) and load suggestions round to what
+  is actually loadable there, including plate-math reachability for barbells.
+  The backup export/import round-trips gym profiles (v3). Community
+  contribution by @SHAREN (#274).
+- Per-set workout autoregulation: during a session, the suggested next set
+  adapts to how the previous one actually went, in two modes (keep effort
+  stable and let reps drift, or adjust load to keep reps stable). Changes are
+  conservative by design - clamped per set, increases gated behind readiness
+  and deload state, and always just a prefill you can override. Community
+  contribution by @SHAREN (#273).
 - Progress photos alongside your body metrics: upload a photo (JPEG, PNG or
   WebP) and compare any two side by side to see change over time, on the
   Progress page. Storage is local-only - files live under a configurable,
@@ -18,7 +40,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   during a streamed read, and written non-executable. No cloud, no third party.
 - Interface localization: an extensible message-catalog system
   (`messages/<locale>`) with English and Russian across the app's screens; an
-  unknown locale falls back to English.
+  unknown locale falls back to English. Community contribution by @SHAREN
+  (#272), which also added the OpenAI-Responses-compatible `codex-lb` LLM
+  provider option.
 - Aerobic decoupling (HR drift) on an imported cardio session: the history
   detail page now shows how much your pace-per-heartbeat efficiency faded
   between the first and second half of a run or ride, with a plain-language
