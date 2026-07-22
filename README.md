@@ -132,6 +132,8 @@ on your own key - all self-hosted.
 
 - **Self-hosted** - your training lives in your own Postgres; the AI runs on your
   own key. No subscription, no rate-limited free tier.
+- **ChatGPT / MCP connector** - external agents can analyse your training data
+  and, with explicit permission, create or edit programs.
 - **Import and export** - bring history in from a Strong or Hevy CSV, or from
   GymCoach's own history CSV (a spreadsheet with the same columns works too;
   dry-run preview, duplicate-safe, cardio included), and export everything back

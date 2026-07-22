@@ -7,6 +7,8 @@ import { verifySession, SESSION_COOKIE } from '@/lib/auth';
 const PUBLIC_PATHS = new Set([
   '/login',
   '/signup',
+  '/mcp',
+  '/mcp/health',
   '/api/auth/login',
   '/api/auth/register',
   '/api/auth/logout',

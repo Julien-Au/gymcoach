@@ -23,6 +23,7 @@ dist/
 # Environment
 .env
 .env*.local
+/secrets/
 
 # Logs
 npm-debug.log*

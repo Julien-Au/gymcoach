@@ -51,8 +51,26 @@ model User {
   volumeTargets     VolumeTarget[]
   progressPhotos    ProgressPhoto[]
   gyms              Gym[]              @relation("GymOwner")
+  mcpAccessTokens   McpAccessToken[]
   activeGymId       String?
   activeGym         Gym?               @relation("ActiveGym", fields: [activeGymId], references: [id], onDelete: SetNull)
+}
+
+// Personal access tokens for remote MCP clients such as ChatGPT. Only a
+// SHA-256 hash is stored; the raw token is shown once when it is created.
+model McpAccessToken {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  tokenHash   String    @unique
+  tokenPrefix String
+  canWrite    Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  lastUsedAt  DateTime?
+  revokedAt   DateTime?
+
+  @@index([userId, createdAt])
 }
 
 enum Sex {
@@ -104,22 +122,22 @@ model Message {
 }
 
 model Exercise {
-  id               String            @id @default(cuid())
+  id               String              @id @default(cuid())
   userId           String
-  user             User              @relation(fields: [userId], references: [id])
+  user             User                @relation(fields: [userId], references: [id])
   name             String
   muscleGroup      MuscleGroup
   category         ExerciseCategory
-  defaultRestSec   Int               @default(90)
+  defaultRestSec   Int                 @default(90)
   notes            String?
   // For bodyweight exercises (pull-ups, dips, push-ups...): the effective
   // tonnage includes User.bodyweight. Set.weight remains the added load (0 by
   // default, always >= 0 - the input schemas clamp it; negative loads for
   // assistance machines are deliberately not supported, see issue #118).
-  usesBodyweight   Boolean           @default(false)
+  usesBodyweight   Boolean             @default(false)
   // Determines which saved-gym inventory constrains suggested loads.
-  equipmentType   EquipmentType     @default(OTHER)
-  createdAt        DateTime          @default(now())
+  equipmentType    EquipmentType       @default(OTHER)
+  createdAt        DateTime            @default(now())
   programExercises ProgramExercise[]
   sets             Set[]
   goals            ExerciseGoal[]
@@ -249,19 +267,19 @@ model Session {
 }
 
 model Gym {
-  id               String              @id @default(cuid())
-  userId           String
-  user             User                @relation("GymOwner", fields: [userId], references: [id], onDelete: Cascade)
-  name             String
+  id              String              @id @default(cuid())
+  userId          String
+  user            User                @relation("GymOwner", fields: [userId], references: [id], onDelete: Cascade)
+  name            String
   // All inventory values are stored in kg, matching Set.weight.
-  dumbbellWeights  Float[]             @default([])
-  plateWeights     Float[]             @default([])
-  barWeights       Float[]             @default([])
-  createdAt        DateTime            @default(now())
-  updatedAt        DateTime            @updatedAt
-  activeForUsers   User[]              @relation("ActiveGym")
-  sessions         Session[]
-  exerciseConfigs  GymExerciseConfig[]
+  dumbbellWeights Float[]             @default([])
+  plateWeights    Float[]             @default([])
+  barWeights      Float[]             @default([])
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  activeForUsers  User[]              @relation("ActiveGym")
+  sessions        Session[]
+  exerciseConfigs GymExerciseConfig[]
 
   @@unique([userId, name])
   @@index([userId, updatedAt])
