@@ -71,7 +71,9 @@ jobs:
   docker-smoke:
     name: Docker smoke test (production image)
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # The image build alone can take 6-8 minutes on a cold GHA cache since the
+    # exercise-media and MCP/i18n dependencies landed; 10 was hit twice.
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
       - uses: docker/setup-buildx-action@v3
@@ -128,7 +130,7 @@ jobs:
           # Wait for migrations + server startup, then require GET /login = 200.
           code=000
           for i in $(seq 1 45); do
-            code=$(curl -s -o /dev/null -w '%{http_code}' "$base/login" || true)
+            code=$(curl -s --max-time 10 -o /dev/null -w '%{http_code}' "$base/login" || true)
             if [ "$code" = "200" ]; then break; fi
             sleep 2
           done
@@ -141,7 +143,7 @@ jobs:
           # Create the probe account through the image itself: exercises the
           # bcrypt native binding (hash), Prisma writes, and the JWT signing
           # that issue #127 showed can break only inside the standalone image.
-          code=$(curl -s -o /tmp/register.json -w '%{http_code}' -X POST "$base/api/auth/register" \
+          code=$(curl -s --max-time 30 -o /tmp/register.json -w '%{http_code}' -X POST "$base/api/auth/register" \
             -H 'Content-Type: application/json' \
             --data '{"email":"smoke@example.com","password":"smoke-test-password","displayName":"Smoke"}')
           if [ "$code" != "200" ]; then
@@ -152,7 +154,7 @@ jobs:
           echo "POST /api/auth/register -> 200"
 
           # The login probe proper: bcrypt.compare + JWT + DB (the #127 class).
-          code=$(curl -s -o /tmp/login.json -w '%{http_code}' -X POST "$base/api/auth/login" \
+          code=$(curl -s --max-time 30 -o /tmp/login.json -w '%{http_code}' -X POST "$base/api/auth/login" \
             -H 'Content-Type: application/json' \
             --data '{"email":"smoke@example.com","password":"smoke-test-password"}')
           if [ "$code" != "200" ]; then
