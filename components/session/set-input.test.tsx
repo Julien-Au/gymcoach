@@ -29,6 +29,9 @@ const pe: ProgramExercise & { exercise: Exercise } = {
   tempo: null,
   notes: null,
   supersetGroup: null,
+  autoregulationMode: 'PRESERVE_RIR',
+  fatigueRate: null,
+  loadAdjustmentPct: null,
   exercise: exo,
 };
 
@@ -49,6 +52,57 @@ function renderSetInput(unit: 'KG' | 'LB' = 'KG') {
 }
 
 describe('SetInput quick entry', () => {
+  it('prefills the deterministic next-set recommendation after a completed set', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    const previousSet = {
+      localId: 'l1',
+      sessionId: 's1',
+      exerciseId: 'e1',
+      setNumber: 1,
+      weight: 100,
+      reps: 12,
+      rir: 2,
+      notes: null,
+      isWarmup: false,
+      isDropSet: false,
+      createdAt: Date.now() - 120_000,
+      status: 'synced' as const,
+      serverId: 'set1',
+      syncedAt: Date.now(),
+      attempts: 0,
+      lastError: null,
+    };
+
+    render(
+      <SetInput
+        programExercise={pe}
+        existingSets={[previousSet]}
+        lastPerformance={undefined}
+        readiness={null}
+        deloadActive={false}
+        unit="KG"
+        recommendation={{
+          mode: 'PRESERVE_RIR',
+          weight: 100,
+          reps: 11,
+          rir: 2,
+          reason: 'adjust-reps',
+          predictedRepsAtSameLoad: 11,
+          fatigueLoss: 1,
+          confidence: 'medium',
+        }}
+        onSubmit={onSubmit}
+      />,
+    );
+
+    expect(screen.getByText(/100 KG × 11 · RIR 2/i)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /log the set/i }));
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ weight: 100, reps: 11, rir: 2 }),
+    );
+  });
+
   it('fills weight, reps, and RIR from a valid shorthand', async () => {
     const user = userEvent.setup();
     const { onSubmit } = renderSetInput('KG');
@@ -103,9 +157,7 @@ describe('SetInput quick entry', () => {
     await user.click(screen.getByRole('button', { name: /log the set/i }));
 
     // Defaults still submit: mid rep range (8), target RIR (2), weight 0.
-    expect(onSubmit).toHaveBeenCalledWith(
-      expect.objectContaining({ weight: 0, reps: 8, rir: 2 }),
-    );
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ weight: 0, reps: 8, rir: 2 }));
   });
 });
 
@@ -267,9 +319,7 @@ describe('SetInput AI parse', () => {
 
     // The defaults survive untouched: nothing was filled from the bad parse.
     await user.click(screen.getByRole('button', { name: /log the set/i }));
-    expect(onSubmit).toHaveBeenCalledWith(
-      expect.objectContaining({ weight: 0, reps: 8, rir: 2 }),
-    );
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ weight: 0, reps: 8, rir: 2 }));
   });
 
   it('ignores a cardio parse on a strength exercise (wrong shape)', async () => {
@@ -282,8 +332,6 @@ describe('SetInput AI parse', () => {
 
     expect(screen.getByText(/could not parse that/i)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /log the set/i }));
-    expect(onSubmit).toHaveBeenCalledWith(
-      expect.objectContaining({ weight: 0, reps: 8 }),
-    );
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ weight: 0, reps: 8 }));
   });
 });

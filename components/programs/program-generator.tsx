@@ -12,6 +12,13 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { muscleGroupMessageKeys } from '@/i18n/enum-keys';
 
 type Draft = GeneratedProgram;
@@ -79,9 +86,7 @@ export function ProgramGenerator() {
 
   function patchWorkout(wi: number, patch: Partial<Draft['workouts'][number]>) {
     setDraft((d) =>
-      d
-        ? { ...d, workouts: d.workouts.map((w, i) => (i === wi ? { ...w, ...patch } : w)) }
-        : d,
+      d ? { ...d, workouts: d.workouts.map((w, i) => (i === wi ? { ...w, ...patch } : w)) } : d,
     );
   }
 
@@ -128,9 +133,7 @@ export function ProgramGenerator() {
             <Wand2 className="size-5" />
             <h2 className="text-base font-semibold">{t('generator.title')}</h2>
           </div>
-          <p className="text-xs text-muted-foreground">
-            {t('generator.description')}
-          </p>
+          <p className="text-xs text-muted-foreground">{t('generator.description')}</p>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           <Textarea
@@ -167,9 +170,7 @@ export function ProgramGenerator() {
         <Card>
           <CardHeader className="pb-3">
             <h2 className="text-base font-semibold">{t('generator.review')}</h2>
-            <p className="text-xs text-muted-foreground">
-              {t('generator.reviewDescription')}
-            </p>
+            <p className="text-xs text-muted-foreground">{t('generator.reviewDescription')}</p>
           </CardHeader>
           <CardContent className="flex flex-col gap-5">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -265,6 +266,43 @@ export function ProgramGenerator() {
                           onChange={(v) => patchExercise(wi, ei, { restSec: num(v) })}
                         />
                       </div>
+                      <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                        <div className="space-y-1">
+                          <Label className="text-[11px] text-muted-foreground">
+                            {t('exercise.autoregulationMode')}
+                          </Label>
+                          <Select
+                            value={ex.autoregulationMode ?? 'PRESERVE_RIR'}
+                            onValueChange={(value) =>
+                              patchExercise(wi, ei, {
+                                autoregulationMode: value as 'PRESERVE_RIR' | 'PRESERVE_REPS',
+                              })
+                            }
+                          >
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="PRESERVE_RIR">
+                                {t('exercise.preserveRir')}
+                              </SelectItem>
+                              <SelectItem value="PRESERVE_REPS">
+                                {t('exercise.preserveReps')}
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <OptionalNumField
+                          label={t('exercise.fatigueRate')}
+                          value={ex.fatigueRate}
+                          onChange={(value) => patchExercise(wi, ei, { fatigueRate: value })}
+                        />
+                        <OptionalNumField
+                          label={t('exercise.loadAdjustment')}
+                          value={ex.loadAdjustmentPct}
+                          onChange={(value) => patchExercise(wi, ei, { loadAdjustmentPct: value })}
+                        />
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -310,6 +348,32 @@ function NumField({
         inputMode="numeric"
         value={String(value)}
         onChange={(e) => onChange(e.target.value)}
+        className="h-8 text-sm"
+      />
+    </div>
+  );
+}
+
+function OptionalNumField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number | undefined;
+  onChange: (value: number | undefined) => void;
+}) {
+  return (
+    <div className="space-y-1">
+      <Label className="text-[11px] text-muted-foreground">{label}</Label>
+      <Input
+        type="number"
+        inputMode="decimal"
+        value={value ?? ''}
+        onChange={(event) => {
+          const next = event.target.value;
+          onChange(next === '' ? undefined : Number(next));
+        }}
         className="h-8 text-sm"
       />
     </div>

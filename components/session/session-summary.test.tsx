@@ -29,6 +29,9 @@ const pe: ProgramExercise & { exercise: Exercise } = {
   tempo: null,
   notes: null,
   supersetGroup: null,
+  autoregulationMode: 'PRESERVE_RIR',
+  fatigueRate: null,
+  loadAdjustmentPct: null,
   exercise: exo,
 };
 
@@ -58,11 +61,9 @@ const session = { id: 's1', startedAt: new Date(), notes: null } as unknown as S
 
 describe('computeSessionPRs', () => {
   it('flags a weight PR when a working set beats the prior heaviest load', () => {
-    const prs = computeSessionPRs(
-      [pendingSet({ weight: 110, reps: 5 })],
-      [pe],
-      { e1: [{ weight: 100, reps: 5 }] },
-    );
+    const prs = computeSessionPRs([pendingSet({ weight: 110, reps: 5 })], [pe], {
+      e1: [{ weight: 100, reps: 5 }],
+    });
     expect(prs).toHaveLength(1);
     const [first] = prs;
     expect(first?.exerciseName).toBe('Squat');
@@ -71,21 +72,17 @@ describe('computeSessionPRs', () => {
 
   it('flags an e1RM-only PR when more reps at the same load beat the best estimated 1RM', () => {
     // Same load (no weight PR) but more reps -> higher Epley e1RM.
-    const prs = computeSessionPRs(
-      [pendingSet({ weight: 100, reps: 8 })],
-      [pe],
-      { e1: [{ weight: 100, reps: 5 }] },
-    );
+    const prs = computeSessionPRs([pendingSet({ weight: 100, reps: 8 })], [pe], {
+      e1: [{ weight: 100, reps: 5 }],
+    });
     expect(prs).toHaveLength(1);
     expect(prs[0]?.types).toEqual(['e1rm']);
   });
 
   it('returns nothing when no set beats the prior session', () => {
-    const prs = computeSessionPRs(
-      [pendingSet({ weight: 100, reps: 5 })],
-      [pe],
-      { e1: [{ weight: 100, reps: 5 }] },
-    );
+    const prs = computeSessionPRs([pendingSet({ weight: 100, reps: 5 })], [pe], {
+      e1: [{ weight: 100, reps: 5 }],
+    });
     expect(prs).toHaveLength(0);
   });
 

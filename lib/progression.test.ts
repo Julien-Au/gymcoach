@@ -50,6 +50,9 @@ function makePe(
     tempo: null,
     notes: null,
     supersetGroup: null,
+    autoregulationMode: 'PRESERVE_RIR',
+    fatigueRate: null,
+    loadAdjustmentPct: null,
     ...overrides,
     exercise,
   };
@@ -99,14 +102,11 @@ describe('suggestNextWeight', () => {
   });
 
   it('progresses an isolation by +1 kg at the top of the range', () => {
-    const res = suggestNextWeight(
-      makePe(isolationExo, { targetRepsMin: 8, targetRepsMax: 12 }),
-      [
-        { weight: 14, reps: 12, rir: 1 },
-        { weight: 14, reps: 12, rir: 1 },
-        { weight: 14, reps: 12, rir: 1 },
-      ],
-    );
+    const res = suggestNextWeight(makePe(isolationExo, { targetRepsMin: 8, targetRepsMax: 12 }), [
+      { weight: 14, reps: 12, rir: 1 },
+      { weight: 14, reps: 12, rir: 1 },
+      { weight: 14, reps: 12, rir: 1 },
+    ]);
     expect(res).toMatchObject({ weight: 15, reason: 'progression', delta: 1 });
   });
 
@@ -130,14 +130,11 @@ describe('suggestNextWeight', () => {
   });
 
   it('handles bodyweight (0 kg) as a normal working weight', () => {
-    const res = suggestNextWeight(
-      makePe(isolationExo, { targetRepsMin: 8, targetRepsMax: 12 }),
-      [
-        { weight: 0, reps: 12, rir: 0 },
-        { weight: 0, reps: 12, rir: 0 },
-        { weight: 0, reps: 12, rir: 0 },
-      ],
-    );
+    const res = suggestNextWeight(makePe(isolationExo, { targetRepsMin: 8, targetRepsMax: 12 }), [
+      { weight: 0, reps: 12, rir: 0 },
+      { weight: 0, reps: 12, rir: 0 },
+      { weight: 0, reps: 12, rir: 0 },
+    ]);
     expect(res).toMatchObject({ weight: 1, reason: 'progression', delta: 1 });
   });
 });

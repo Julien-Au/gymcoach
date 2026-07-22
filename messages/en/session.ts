@@ -30,6 +30,16 @@ export const session = {
     addThirty: '30s',
     skip: 'Skip',
   },
+  autoregulation: {
+    nextSet: 'Automatic next set',
+    reasons: {
+      'hold-load': 'The previous set matched the target; keep the same load.',
+      'adjust-reps': 'Keep the load and adjust reps to preserve the target RIR.',
+      'reduce-load': 'Reduce the load to preserve the programmed target.',
+      'increase-load': 'The previous set was easier than planned; add one load step.',
+      'bodyweight-adjust-reps': 'Load cannot be reduced below bodyweight; adjust reps instead.',
+    },
+  },
   readiness: {
     open: 'Readiness check-in (optional)',
     update: 'Update readiness check-in',
@@ -67,8 +77,7 @@ export const session = {
     distanceError: 'Enter a distance between 0 and 1000 km.',
     quickEntry: 'Quick entry',
     quickEntryExample: 'e.g. 100x8@9 ({unit} x reps @ RPE)',
-    quickEntryError:
-      'Expected format: weight x reps, optionally @ RPE - e.g. 100x8 or 62.5x8@8.5',
+    quickEntryError: 'Expected format: weight x reps, optionally @ RPE - e.g. 100x8 or 62.5x8@8.5',
     load: 'Load ({unit})',
     reps: 'Reps',
     repsInReserve: 'RIR (reps in reserve)',

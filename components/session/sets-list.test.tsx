@@ -29,6 +29,9 @@ const pe: ProgramExercise & { exercise: Exercise } = {
   tempo: null,
   notes: null,
   supersetGroup: null,
+  autoregulationMode: 'PRESERVE_RIR',
+  fatigueRate: null,
+  loadAdjustmentPct: null,
   exercise: exo,
 };
 
