@@ -49,6 +49,7 @@ model User {
   bodyweightEntries BodyweightEntry[]
   bodyMeasurements  BodyMeasurement[]
   volumeTargets     VolumeTarget[]
+  progressPhotos    ProgressPhoto[]
 }
 
 enum Sex {
@@ -357,6 +358,28 @@ enum BodyMeasurementSite {
   THIGH_RIGHT
   CALF_LEFT
   CALF_RIGHT
+}
+
+// Progress photo metadata (issue #269, additive): the visual companion to
+// bodyweight and tape-measure tracking. The image bytes live on the LOCAL
+// filesystem (under UPLOADS_DIR, gitignored, never a public static path) and
+// only this row's storagePath points at them; every read goes through an
+// ownership-scoped API route. mimeType is the SNIFFED type (magic bytes, an
+// allowlist of jpeg/png/webp), never the client-declared one.
+model ProgressPhoto {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  takenAt     DateTime @default(now())
+  // Path of the image file RELATIVE to the progress-photo storage dir
+  // (<userId>/<photoId>.<ext>), so a relocated UPLOADS_DIR keeps working.
+  storagePath String
+  mimeType    String
+  byteSize    Int
+  note        String?
+  createdAt   DateTime @default(now())
+
+  @@index([userId, takenAt])
 }
 
 model CoachSession {

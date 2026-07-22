@@ -54,6 +54,11 @@ services:
       CODEX_LB_MODEL: ${CODEX_LB_MODEL:-gpt-5.6-sol}
       NEXTAUTH_URL: ${NEXTAUTH_URL}
       NODE_ENV: production
+      # Progress-photo files (issue #269): kept on the named volume below so
+      # they survive container rebuilds. Back it up alongside the database.
+      UPLOADS_DIR: /app/uploads
+    volumes:
+      - uploads:/app/uploads
     # Applique les migrations Prisma puis lance Next.js standalone.
     # `migrate deploy` est idempotent : sans nouvelle migration, c'est un no-op.
     # On invoque le bundle Prisma directement (le shim .bin perd ses .wasm
@@ -89,3 +94,4 @@ services:
 
 volumes:
   postgres-data:
+  uploads:
