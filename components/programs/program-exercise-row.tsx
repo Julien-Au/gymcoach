@@ -90,6 +90,11 @@ export function ProgramExerciseRow({
                   `categories.${exerciseCategoryMessageKeys[programExercise.exercise.category]}`,
                 )}
               </Badge>
+              <Badge variant="outline">
+                {programExercise.autoregulationMode === 'PRESERVE_REPS'
+                  ? t('preserveRepsShort')
+                  : t('preserveRirShort')}
+              </Badge>
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
               {t('prescription', {

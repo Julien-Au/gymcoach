@@ -1,5 +1,12 @@
 import { z } from 'zod';
-import { MuscleGroup, ExerciseCategory } from '@/lib/prisma-client';
+import { MuscleGroup, ExerciseCategory, SetAutoregulationMode } from '@/lib/prisma-client';
+import {
+  MAX_FATIGUE_RATE,
+  MAX_LOAD_ADJUSTMENT_PCT,
+  MIN_FATIGUE_RATE,
+  MIN_LOAD_ADJUSTMENT_PCT,
+} from '@/lib/intra-set-autoregulation';
+import { MAX_SUPERSET_GROUP, MIN_SUPERSET_GROUP } from '@/lib/supersets';
 
 // ============================================================
 // Structured output for AI-generated programs (LOT: program generation)
@@ -18,6 +25,14 @@ export const generatedExerciseSchema = z
     targetRepsMax: z.number().int().min(1).max(50),
     targetRIR: z.number().int().min(0).max(5),
     restSec: z.number().int().min(15).max(600),
+    autoregulationMode: z.nativeEnum(SetAutoregulationMode).optional(),
+    fatigueRate: z.number().min(MIN_FATIGUE_RATE).max(MAX_FATIGUE_RATE).optional(),
+    loadAdjustmentPct: z
+      .number()
+      .min(MIN_LOAD_ADJUSTMENT_PCT)
+      .max(MAX_LOAD_ADJUSTMENT_PCT)
+      .optional(),
+    supersetGroup: z.number().int().min(MIN_SUPERSET_GROUP).max(MAX_SUPERSET_GROUP).nullish(),
     tempo: z.string().trim().max(20).nullish(),
     notes: z.string().trim().max(500).nullish(),
   })
@@ -54,9 +69,7 @@ export function extractJsonObject(text: string): string | null {
   return body.slice(start, end + 1);
 }
 
-export type ParseResult =
-  | { ok: true; program: GeneratedProgram }
-  | { ok: false; error: string };
+export type ParseResult = { ok: true; program: GeneratedProgram } | { ok: false; error: string };
 
 // Extracts, parses and validates a generated program from raw model text.
 export function parseGeneratedProgram(text: string): ParseResult {
@@ -77,9 +90,7 @@ export function parseGeneratedProgram(text: string): ParseResult {
   if (!result.success) {
     return {
       ok: false,
-      error: result.error.issues
-        .map((i) => `${i.path.join('.')}: ${i.message}`)
-        .join('; '),
+      error: result.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; '),
     };
   }
   return { ok: true, program: result.data };

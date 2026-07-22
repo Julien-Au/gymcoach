@@ -177,6 +177,9 @@ export async function GET() {
             targetRepsMax: pe.targetRepsMax,
             targetRIR: pe.targetRIR,
             restSec: pe.restSec,
+            autoregulationMode: pe.autoregulationMode,
+            fatigueRate: pe.fatigueRate,
+            loadAdjustmentPct: pe.loadAdjustmentPct,
             tempo: pe.tempo,
             notes: pe.notes,
             supersetGroup: pe.supersetGroup,
@@ -185,9 +188,8 @@ export async function GET() {
       })),
       sessions: sessions.map((s) => ({
         programName: programs.find((p) => p.id === s.programId)?.name ?? null,
-        workoutName: programs
-          .flatMap((p) => p.workouts)
-          .find((w) => w.id === s.workoutId)?.name ?? null,
+        workoutName:
+          programs.flatMap((p) => p.workouts).find((w) => w.id === s.workoutId)?.name ?? null,
         startedAt: s.startedAt.toISOString(),
         finishedAt: s.finishedAt?.toISOString() ?? null,
         notes: s.notes,
@@ -329,6 +331,9 @@ const importSchema = z.object({
                     targetRepsMax: z.number().int().min(1).max(50),
                     targetRIR: z.number().int().min(0).max(5),
                     restSec: z.number().int().min(15).max(600),
+                    autoregulationMode: z.enum(['PRESERVE_RIR', 'PRESERVE_REPS']).optional(),
+                    fatigueRate: z.number().min(0.25).max(2).nullable().optional(),
+                    loadAdjustmentPct: z.number().min(1).max(5).nullable().optional(),
                     tempo: z.string().max(20).nullable().optional(),
                     notes: z.string().max(2000).nullable().optional(),
                     // v2; absent in v1 backups.
@@ -365,13 +370,7 @@ const importSchema = z.object({
               reps: z.number().int().min(0).max(1000),
               rir: z.number().int().min(0).max(10).nullable().optional(),
               // v2 cardio fields; absent in v1 backups.
-              durationSec: z
-                .number()
-                .int()
-                .min(1)
-                .max(MAX_DURATION_SEC)
-                .nullable()
-                .optional(),
+              durationSec: z.number().int().min(1).max(MAX_DURATION_SEC).nullable().optional(),
               distanceM: z.number().min(0).max(MAX_DISTANCE_M).nullable().optional(),
               avgHr: z.number().int().min(AVG_HR_MIN).max(AVG_HR_MAX).nullable().optional(),
               maxHr: z.number().int().min(MAX_HR_MIN).max(MAX_HR_MAX).nullable().optional(),
@@ -511,9 +510,7 @@ export async function POST(req: Request) {
               ...(p.sex !== undefined ? { sex: p.sex } : {}),
               ...(p.heightCm !== undefined ? { heightCm: p.heightCm } : {}),
               ...(p.goal !== undefined ? { goal: p.goal } : {}),
-              ...(p.weeklyFrequency !== undefined
-                ? { weeklyFrequency: p.weeklyFrequency }
-                : {}),
+              ...(p.weeklyFrequency !== undefined ? { weeklyFrequency: p.weeklyFrequency } : {}),
               ...(p.unit !== undefined ? { unit: p.unit } : {}),
               ...(p.deloadUntil !== undefined
                 ? { deloadUntil: p.deloadUntil ? new Date(p.deloadUntil) : null }
@@ -574,6 +571,9 @@ export async function POST(req: Request) {
                   targetRepsMax: pe.targetRepsMax,
                   targetRIR: pe.targetRIR,
                   restSec: pe.restSec,
+                  autoregulationMode: pe.autoregulationMode ?? 'PRESERVE_RIR',
+                  fatigueRate: pe.fatigueRate ?? null,
+                  loadAdjustmentPct: pe.loadAdjustmentPct ?? null,
                   tempo: pe.tempo ?? null,
                   notes: pe.notes ?? null,
                   supersetGroup: pe.supersetGroup ?? null,
@@ -607,9 +607,7 @@ export async function POST(req: Request) {
             },
           });
           const setRows = s.sets.flatMap((set) => {
-            const exId = set.exerciseName
-              ? exerciseIdByName.get(set.exerciseName)
-              : undefined;
+            const exId = set.exerciseName ? exerciseIdByName.get(set.exerciseName) : undefined;
             if (!exId) return [];
             return [
               {

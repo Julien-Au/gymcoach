@@ -1,23 +1,39 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { FastForward, Plus } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { playRestEndBeep } from '@/lib/sound';
+import { formatWeight } from '@/lib/units';
+import type { WeightUnit } from '@/lib/prisma-client';
+import type { IntraSetRecommendation } from '@/lib/intra-set-autoregulation';
 
 interface Props {
   endsAt: number;
   totalSec: number;
   nextLabel: string | null | undefined;
+  recommendation?: IntraSetRecommendation | null;
+  unit: WeightUnit;
   onEnd: () => void;
   onSkip: () => void;
   onAdd30: () => void;
 }
 
-export function RestTimer({ endsAt, totalSec, nextLabel, onEnd, onSkip, onAdd30 }: Props) {
+export function RestTimer({
+  endsAt,
+  totalSec,
+  nextLabel,
+  recommendation = null,
+  unit,
+  onEnd,
+  onSkip,
+  onAdd30,
+}: Props) {
   const t = useTranslations('session.rest');
+  const autoT = useTranslations('session.autoregulation');
+  const locale = useLocale();
   const [now, setNow] = useState(() => Date.now());
   const endedRef = useRef(false);
 
@@ -64,6 +80,25 @@ export function RestTimer({ endsAt, totalSec, nextLabel, onEnd, onSkip, onAdd30 
           <p className="text-center text-sm text-muted-foreground">
             {t('next', { name: nextLabel })}
           </p>
+        )}
+
+        {recommendation && (
+          <div className="w-full max-w-sm rounded-md border border-primary/30 bg-primary/5 p-3 text-center">
+            <p className="text-xs font-medium uppercase text-muted-foreground">
+              {autoT('nextSet')}
+            </p>
+            <p className="mt-1 text-xl font-semibold">
+              {formatWeight(recommendation.weight, unit, {
+                decimals: 2,
+                group: false,
+                locale,
+              })}{' '}
+              × {recommendation.reps} · RIR {recommendation.rir}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {autoT(`reasons.${recommendation.reason}`)}
+            </p>
+          </div>
         )}
 
         <div className="flex w-full max-w-sm gap-2">

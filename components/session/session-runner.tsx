@@ -22,7 +22,14 @@ import { Progress } from '@/components/ui/progress';
 import { acquireWakeLock, bindWakeLockToVisibility, releaseWakeLock } from '@/lib/wake-lock';
 import { vibrate, VIBRATION_PATTERNS } from '@/lib/vibrate';
 import { generateLocalId, getDB, type PendingSet } from '@/lib/indexeddb';
-import { readinessForSuggestion, type ReadinessSignal } from '@/lib/progression';
+import {
+  READINESS_HOLD_AT_OR_BELOW,
+  READINESS_RECENCY_HOURS,
+  SORENESS_HOLD_AT_OR_ABOVE,
+  readinessForSuggestion,
+  type ReadinessSignal,
+} from '@/lib/progression';
+import { recommendNextIntraSet, type IntraSetRecommendation } from '@/lib/intra-set-autoregulation';
 import {
   buildSupersetView,
   isSupersetTransitionRest,
@@ -153,6 +160,56 @@ export function SessionRunner({
     }
     return out;
   }, [liveSets]);
+
+  const programExerciseByExerciseId = useMemo(
+    () => new Map(programExercises.map((pe) => [pe.exerciseId, pe])),
+    [programExercises],
+  );
+
+  function recommendationFor(
+    pe: ProgramExerciseWithExercise,
+    atMs: number,
+  ): IntraSetRecommendation | null {
+    const completedSets = setsByExercise.get(pe.exerciseId) ?? [];
+    const lastWorkingSet = completedSets.filter((set) => !set.isWarmup && !set.isDropSet).at(-1);
+    if (!lastWorkingSet) return null;
+
+    const interveningSet = liveSets
+      .filter(
+        (set) =>
+          !set.isWarmup &&
+          !set.isDropSet &&
+          set.exerciseId !== pe.exerciseId &&
+          set.createdAt > lastWorkingSet.createdAt,
+      )
+      .sort((a, b) => b.createdAt - a.createdAt)[0];
+    const interveningPe = interveningSet
+      ? programExerciseByExerciseId.get(interveningSet.exerciseId)
+      : undefined;
+    const sameMuscleSuperset = Boolean(
+      interveningPe &&
+      pe.supersetGroup != null &&
+      interveningPe.supersetGroup === pe.supersetGroup &&
+      interveningPe.exercise.muscleGroup === pe.exercise.muscleGroup,
+    );
+
+    const freshReadiness =
+      effectiveReadiness != null && effectiveReadiness.ageHours <= READINESS_RECENCY_HOURS;
+    const groupSoreness = effectiveReadiness?.soreness?.[pe.exercise.muscleGroup];
+    const recoveryBlocksIncrease =
+      freshReadiness &&
+      (effectiveReadiness.readiness <= READINESS_HOLD_AT_OR_BELOW ||
+        (typeof groupSoreness === 'number' && groupSoreness >= SORENESS_HOLD_AT_OR_ABOVE));
+    const allowLoadIncrease = !deloadActive && !recoveryBlocksIncrease;
+
+    return recommendNextIntraSet({
+      programExercise: pe,
+      completedSets,
+      recoverySec: Math.max(0, (atMs - lastWorkingSet.createdAt) / 1000),
+      sameMuscleSuperset,
+      allowLoadIncrease,
+    });
+  }
 
   // Prior-session sets per exercise, the PR baseline for the post-session
   // summary (same source as the in-session badge: getLastPerformances).
@@ -337,6 +394,17 @@ export function SessionRunner({
 
   const lastPerf = lastPerformances[currentPE.exerciseId];
   const currentSets = setsByExercise.get(currentPE.exerciseId) ?? [];
+  const currentRecommendation = recommendationFor(currentPE, Date.now());
+  const restNextPe =
+    mode.kind === 'rest'
+      ? mode.nextExerciseIdx != null
+        ? (programExercises[mode.nextExerciseIdx] ?? null)
+        : currentSets.filter((set) => !set.isWarmup).length < currentPE.targetSets
+          ? currentPE
+          : null
+      : null;
+  const restRecommendation =
+    mode.kind === 'rest' && restNextPe ? recommendationFor(restNextPe, mode.endsAt) : null;
 
   return (
     <main className="flex flex-1 flex-col">
@@ -403,17 +471,16 @@ export function SessionRunner({
             readiness={effectiveReadiness}
             deloadActive={deloadActive}
             unit={unit}
+            recommendation={currentRecommendation}
             onSubmit={handleValidate}
           />
         ) : (
           <RestTimer
             endsAt={mode.endsAt}
             totalSec={mode.totalSec}
-            nextLabel={
-              mode.nextExerciseIdx != null
-                ? exerciseName(programExercises[mode.nextExerciseIdx]?.exercise.name ?? '')
-                : null
-            }
+            nextLabel={restNextPe ? exerciseName(restNextPe.exercise.name) : null}
+            recommendation={restRecommendation}
+            unit={unit}
             onEnd={handleRestEnd}
             onSkip={handleSkipRest}
             onAdd30={handleAdd30s}

@@ -19,6 +19,9 @@ const validProgram = {
           targetRepsMax: 10,
           targetRIR: 2,
           restSec: 120,
+          autoregulationMode: 'PRESERVE_RIR',
+          fatigueRate: 0.75,
+          loadAdjustmentPct: 2.5,
           tempo: '3-0-1-0',
         },
       ],
@@ -51,6 +54,7 @@ describe('parseGeneratedProgram', () => {
     if (r.ok) {
       expect(r.program.name).toBe('Upper / Lower');
       expect(r.program.workouts[0]!.exercises[0]!.muscleGroup).toBe('CHEST');
+      expect(r.program.workouts[0]!.exercises[0]!.autoregulationMode).toBe('PRESERVE_RIR');
     }
   });
 
@@ -79,6 +83,12 @@ describe('parseGeneratedProgram', () => {
 
   it('rejects an empty workouts array', () => {
     const bad = { ...validProgram, workouts: [] };
+    expect(parseGeneratedProgram(JSON.stringify(bad)).ok).toBe(false);
+  });
+
+  it('rejects autoregulation coefficients outside their safe bounds', () => {
+    const bad = structuredClone(validProgram);
+    bad.workouts[0]!.exercises[0]!.fatigueRate = 3;
     expect(parseGeneratedProgram(JSON.stringify(bad)).ok).toBe(false);
   });
 });
