@@ -90,6 +90,8 @@ on your own key - all self-hosted.
   10% until it expires.
 - **Goals and body comp** - per-exercise goals (weight x reps) with a progress
   bar, bodyweight tracking, and body measurements - each with a trend.
+- **Progress photos** - upload photos alongside your body metrics and compare
+  any two side by side. Stored locally on your server, visible only to you.
 - **Home dashboard** - a coach-insight card surfaces the single most important
   signal right now (due deload, stalled lift, fresh PR, or your weekly streak),
   with no AI call.
@@ -226,6 +228,14 @@ The demo account credentials come from `.env` (`USER_EMAIL` and `USER_PASSWORD`)
 ## Configuration
 
 All configuration is done through environment variables. See `.env.example` for the full list (database, JWT secret, demo account, and the AI provider keys).
+
+### Progress photos / uploads
+
+Progress photos are stored as plain files on the server's local filesystem,
+under `UPLOADS_DIR` (default `./uploads`, gitignored) - no cloud, no third
+party. Images are served only through an ownership-scoped API route, never as
+a public static path. If you self-host with Docker, mount that directory as a
+volume and include it in your backups alongside the database.
 
 ## Testing
 
