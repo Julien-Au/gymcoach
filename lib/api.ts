@@ -49,17 +49,17 @@ export async function parseJsonBody<T extends z.ZodTypeAny>(
   return parsed.data;
 }
 
-// Reads the request body as text while enforcing a hard byte cap DURING the
-// read. The Content-Length header is attacker-controlled (absent on chunked
-// bodies, or malformed), and App Router route handlers have no built-in body
-// size limit, so `req.json()` would buffer an arbitrarily large body into
-// memory before any schema check runs. Aborts with 413 as soon as the
-// cumulative byte count exceeds the cap.
-export async function readBodyWithCap(
+// Reads the request body as raw bytes while enforcing a hard byte cap DURING
+// the read. The Content-Length header is attacker-controlled (absent on
+// chunked bodies, or malformed), and App Router route handlers have no
+// built-in body size limit, so `req.json()` / `req.arrayBuffer()` would
+// buffer an arbitrarily large body into memory before any check runs. Aborts
+// with 413 as soon as the cumulative byte count exceeds the cap.
+export async function readBodyBytesWithCap(
   req: Request,
   maxBytes: number,
-): Promise<string> {
-  if (!req.body) return '';
+): Promise<Uint8Array> {
+  if (!req.body) return new Uint8Array(0);
   const reader = req.body.getReader();
   const chunks: Uint8Array[] = [];
   let received = 0;
@@ -86,7 +86,15 @@ export async function readBodyWithCap(
     merged.set(chunk, offset);
     offset += chunk.byteLength;
   }
-  return new TextDecoder().decode(merged);
+  return merged;
+}
+
+// Text variant of readBodyBytesWithCap, for JSON/CSV/XML bodies.
+export async function readBodyWithCap(
+  req: Request,
+  maxBytes: number,
+): Promise<string> {
+  return new TextDecoder().decode(await readBodyBytesWithCap(req, maxBytes));
 }
 
 export function handleApiError(err: unknown): NextResponse {

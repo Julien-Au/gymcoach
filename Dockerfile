@@ -79,6 +79,11 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/prisma.config.ts ./prisma.config.ts
 
+# Uploads dir (progress photos, issue #269): pre-created and owned by the app
+# user so a named volume mounted here inherits writable ownership.
+RUN mkdir -p /app/uploads && chown nextjs:nodejs /app/uploads
+ENV UPLOADS_DIR=/app/uploads
+
 USER nextjs
 EXPOSE 3000
 ENV PORT=3000

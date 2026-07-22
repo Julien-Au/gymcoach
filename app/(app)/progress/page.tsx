@@ -32,6 +32,7 @@ import { ConsistencyCard } from '@/components/progress/consistency-card';
 import { DeloadBanner } from '@/components/progress/deload-banner';
 import { BodyweightCard } from '@/components/progress/bodyweight-card';
 import { MeasurementsCard } from '@/components/progress/measurements-card';
+import { PhotosCard } from '@/components/progress/photos-card';
 import { ConditioningCard } from '@/components/progress/conditioning-card';
 import { RecordsCard } from '@/components/progress/records-card';
 
@@ -361,6 +362,16 @@ export default async function ProgressPage(
     select: { id: true, site: true, valueCm: true, measuredAt: true },
   });
 
+  // Progress photos (issue #269): ALL of the user's photos (not just the
+  // 12-week window - a before/after compare wants the full timeline), newest
+  // first. Only metadata crosses the boundary; the bytes stay behind the
+  // ownership-scoped image route.
+  const progressPhotos = await db.progressPhoto.findMany({
+    where: { userId: auth.userId },
+    orderBy: { takenAt: 'desc' },
+    select: { id: true, takenAt: true, note: true },
+  });
+
   // Conditioning card (issue #135, display-only): weekly cardio minutes /
   // distance / sessions over the last 8 weeks, derived from the cardio sets
   // already fetched for the window. The card stays hidden until the user has
@@ -459,6 +470,14 @@ export default async function ProgressPage(
             measuredAt: e.measuredAt.toISOString(),
           }))}
           unit={unit}
+        />
+
+        <PhotosCard
+          photos={progressPhotos.map((p) => ({
+            id: p.id,
+            takenAt: p.takenAt.toISOString(),
+            note: p.note,
+          }))}
         />
 
         {conditioningWeeks && (

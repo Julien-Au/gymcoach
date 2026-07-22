@@ -49,6 +49,9 @@ playwright/.cache/
 # Media: intermediate recordings (the committed GIFs/MP4s live in docs/)
 docs/media/raw/
 
+# User uploads (progress photos): local files, never committed
+/uploads/
+
 # Turbo / Vercel
 .turbo/
 .vercel/
