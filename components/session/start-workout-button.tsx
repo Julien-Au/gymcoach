@@ -9,9 +9,11 @@ import { Button } from '@/components/ui/button';
 
 export function StartWorkoutButton({
   workoutId,
+  gymId,
   disabled,
 }: {
   workoutId: string;
+  gymId?: string | null;
   disabled?: boolean;
 }) {
   const t = useTranslations('session');
@@ -23,7 +25,7 @@ export function StartWorkoutButton({
       const res = await fetch('/api/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workoutId }),
+        body: JSON.stringify({ workoutId, gymId }),
       });
       if (!res.ok) {
         toast.error(t('startError'));

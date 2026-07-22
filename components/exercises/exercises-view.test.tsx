@@ -20,6 +20,7 @@ function exercise(over: Partial<Exercise>): Exercise {
     defaultRestSec: 120,
     notes: null,
     usesBodyweight: false,
+    equipmentType: over.equipmentType ?? 'OTHER',
     createdAt: new Date('2026-01-01T00:00:00Z'),
     ...over,
   };

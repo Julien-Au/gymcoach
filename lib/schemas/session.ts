@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 export const sessionStartSchema = z.object({
   workoutId: z.string().min(1),
+  gymId: z.string().min(1).optional().nullable(),
 });
 
 export const sessionUpdateSchema = z.object({

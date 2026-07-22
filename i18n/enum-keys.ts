@@ -1,5 +1,6 @@
 import type {
   BodyMeasurementSite,
+  EquipmentType,
   ExerciseCategory,
   MuscleGroup,
 } from '@/lib/prisma-client';
@@ -28,6 +29,16 @@ export const exerciseCategoryMessageKeys = {
   ISOLATION: 'isolation',
   CARDIO: 'cardio',
 } as const satisfies Record<ExerciseCategory, string>;
+
+export const equipmentTypeMessageKeys = {
+  DUMBBELL: 'dumbbell',
+  BARBELL: 'barbell',
+  MACHINE: 'machine',
+  CABLE: 'cable',
+  BODYWEIGHT: 'bodyweight',
+  CARDIO: 'cardio',
+  OTHER: 'other',
+} as const satisfies Record<EquipmentType, string>;
 
 export const measurementSiteMessageKeys = {
   NECK: 'neck',

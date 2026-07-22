@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { MuscleGroup, ExerciseCategory, SetAutoregulationMode } from '@/lib/prisma-client';
+import {
+  EquipmentType,
+  MuscleGroup,
+  ExerciseCategory,
+  SetAutoregulationMode,
+} from '@/lib/prisma-client';
 import {
   MAX_FATIGUE_RATE,
   MAX_LOAD_ADJUSTMENT_PCT,
@@ -20,6 +25,7 @@ export const generatedExerciseSchema = z
     name: z.string().trim().min(1).max(120),
     muscleGroup: z.nativeEnum(MuscleGroup),
     category: z.nativeEnum(ExerciseCategory),
+    equipmentType: z.nativeEnum(EquipmentType).optional(),
     targetSets: z.number().int().min(1).max(20),
     targetRepsMin: z.number().int().min(1).max(50),
     targetRepsMax: z.number().int().min(1).max(50),

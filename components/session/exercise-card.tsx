@@ -17,6 +17,7 @@ import { formatWeight } from '@/lib/units';
 import { formatCardioSet } from '@/lib/cardio';
 import type { SerializedLastPerformance } from './session-runner';
 import { useExerciseName } from '@/components/shared/use-exercise-name';
+import type { GymLoadConstraints } from '@/lib/gym-loads';
 
 // Last-session reference line for a cardio exercise (issue #176): duration and
 // distance via the shared cardio formatter, with average heart rate appended
@@ -34,6 +35,8 @@ interface Props {
   // True while a planned deload week is active (issue #112).
   deloadActive: boolean;
   unit: WeightUnit;
+  gymName?: string | null;
+  loadConstraints?: GymLoadConstraints | null;
 }
 
 export function ExerciseCard({
@@ -42,6 +45,8 @@ export function ExerciseCard({
   readiness,
   deloadActive,
   unit,
+  gymName = null,
+  loadConstraints = null,
 }: Props) {
   const t = useTranslations('session.exerciseCard');
   const exerciseT = useTranslations('exercises');
@@ -66,6 +71,7 @@ export function ExerciseCard({
     lastPerformance?.sets ?? [],
     readiness,
     deloadActive,
+    loadConstraints,
   );
   const groupSoreness = readiness?.soreness?.[exo.muscleGroup];
   const sorenessHigh =
@@ -121,6 +127,10 @@ export function ExerciseCard({
           <Badge variant="outline">
             {exerciseT(`categories.${exerciseCategoryMessageKeys[exo.category]}`)}
           </Badge>
+          {gymName && <Badge variant="outline">{gymName}</Badge>}
+          {loadConstraints?.isAvailable === false && (
+            <Badge variant="destructive">{t('notAvailable')}</Badge>
+          )}
         </div>
         {/* Exercise cue (issue #224): when the exercise carries a technique
             note, surface it as an always-visible muted line right under the

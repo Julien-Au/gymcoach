@@ -13,6 +13,8 @@ import type {
   Set as PrismaSet,
   WeightUnit,
   Workout,
+  Gym,
+  GymExerciseConfig,
 } from '@/lib/prisma-client';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { toast } from 'sonner';
@@ -47,6 +49,7 @@ import { RestTimer } from '@/components/session/rest-timer';
 import { SessionSummary } from '@/components/session/session-summary';
 import { useExerciseName } from '@/components/shared/use-exercise-name';
 import { useTrainingName } from '@/components/shared/use-training-name';
+import type { GymLoadConstraints } from '@/lib/gym-loads';
 
 export interface SerializedLastPerformance {
   sessionStartedAt: string;
@@ -70,6 +73,7 @@ type SessionRunnerProps = {
         })
       | null;
     sets: PrismaSet[];
+    gym: (Gym & { exerciseConfigs: GymExerciseConfig[] }) | null;
   };
   lastPerformances: Record<string, SerializedLastPerformance>;
   // Latest in-window readiness check-in (or null). Drives whether the load
@@ -208,7 +212,21 @@ export function SessionRunner({
       recoverySec: Math.max(0, (atMs - lastWorkingSet.createdAt) / 1000),
       sameMuscleSuperset,
       allowLoadIncrease,
+      loadConstraints: loadConstraintsFor(pe),
     });
+  }
+
+  function loadConstraintsFor(pe: ProgramExerciseWithExercise): GymLoadConstraints | null {
+    if (!session.gym) return null;
+    const config = session.gym.exerciseConfigs.find((item) => item.exerciseId === pe.exerciseId);
+    return {
+      equipmentType: pe.exercise.equipmentType,
+      isAvailable: config?.isAvailable ?? true,
+      dumbbellWeights: session.gym.dumbbellWeights,
+      plateWeights: session.gym.plateWeights,
+      barWeights: session.gym.barWeights,
+      weightOptions: config?.weightOptions ?? [],
+    };
   }
 
   // Prior-session sets per exercise, the PR baseline for the post-session
@@ -453,6 +471,8 @@ export function SessionRunner({
           readiness={effectiveReadiness}
           deloadActive={deloadActive}
           unit={unit}
+          gymName={session.gym?.name ?? null}
+          loadConstraints={loadConstraintsFor(currentPE)}
         />
 
         <SetsList
@@ -472,6 +492,7 @@ export function SessionRunner({
             deloadActive={deloadActive}
             unit={unit}
             recommendation={currentRecommendation}
+            loadConstraints={loadConstraintsFor(currentPE)}
             onSubmit={handleValidate}
           />
         ) : (

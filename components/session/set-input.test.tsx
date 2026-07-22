@@ -13,6 +13,7 @@ const exo: Exercise = {
   defaultRestSec: 120,
   notes: null,
   usesBodyweight: false,
+  equipmentType: 'BARBELL',
   createdAt: new Date(),
 };
 

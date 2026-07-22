@@ -10,6 +10,9 @@ export const session = {
   startThis: 'Start this session',
   starting: 'Starting...',
   startError: 'Could not start the session.',
+  trainingGym: 'Gym for this session',
+  trainingGymDescription:
+    'The selected inventory stays attached to this workout even if you switch gyms later.',
   noExercises: 'No exercises in this session.',
   exerciseProgress: 'Exercise {current}/{total} · {name}',
   superset: 'Superset {label}',
@@ -145,6 +148,7 @@ export const session = {
     oneRmPrTitle: 'Best estimated 1RM since your last session',
   },
   exerciseCard: {
+    notAvailable: 'Not available in this gym',
     cardioPrescription: '{sets, plural, one {# set} other {# sets}} · Rest {seconds}s',
     strengthPrescription:
       '{sets} sets × {reps} reps · RIR {rir} · Rest {seconds}s{tempo, select, none {} other { · Tempo {tempo}}}',

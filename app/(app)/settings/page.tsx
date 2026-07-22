@@ -6,23 +6,36 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { SettingsClient } from '@/components/settings/settings-client';
 import { ProfileSection } from '@/components/settings/profile-section';
 import { ImportSection } from '@/components/settings/import-section';
+import { GymProfilesSection } from '@/components/settings/gym-profiles-section';
 
 export default async function SettingsPage() {
   const t = await getTranslations('settings');
   const common = await getTranslations('common');
   const auth = await requireSession();
-  const user = await db.user.findUnique({
-    where: { id: auth.userId },
-    select: {
-      displayName: true,
-      bodyweight: true,
-      sex: true,
-      heightCm: true,
-      goal: true,
-      weeklyFrequency: true,
-      unit: true,
-    },
-  });
+  const [user, gyms, exercises] = await Promise.all([
+    db.user.findUnique({
+      where: { id: auth.userId },
+      select: {
+        displayName: true,
+        bodyweight: true,
+        sex: true,
+        heightCm: true,
+        goal: true,
+        weeklyFrequency: true,
+        unit: true,
+        activeGymId: true,
+      },
+    }),
+    db.gym.findMany({
+      where: { userId: auth.userId },
+      orderBy: { name: 'asc' },
+      include: { exerciseConfigs: true },
+    }),
+    db.exercise.findMany({
+      where: { userId: auth.userId },
+      orderBy: { name: 'asc' },
+    }),
+  ]);
 
   return (
     <main className="flex-1 px-4 py-6">
@@ -54,6 +67,12 @@ export default async function SettingsPage() {
             weeklyFrequency: user?.weeklyFrequency ?? null,
             unit: user?.unit ?? 'KG',
           }}
+        />
+
+        <GymProfilesSection
+          initialGyms={gyms}
+          activeGymId={user?.activeGymId ?? null}
+          exercises={exercises}
         />
 
         <ImportSection />
