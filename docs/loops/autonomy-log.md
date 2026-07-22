@@ -1876,3 +1876,55 @@ model-routing directive).
 **Deferred to human.** The #272-#276 fork stack (human vetting + re-file if any idea is
 worth adopting). Nothing else.
 
+---
+
+## 2026-07-22 - Progress photos, local-only (#269 -> #281), and a human-directed fork adoption (#272)
+
+**Context.** Maintainer tick. Backlog held one actionable, trust-gated issue: #269
+(author JulienAu) - "Progress photos alongside body metrics, local storage, no cloud."
+The five open PRs (#272-#276) were all authored by `SHAREN`, a non-collaborator outside the
+allowlist, so under the ship trust gate none was auto-shipped by the loop.
+
+**Decided + shipped.** #269 implemented and merged as **#281** (squash `53ff6e2`). It is a
+file-upload SECURITY SURFACE, so the reinforced controls were applied end to end: additive
+`ProgressPhoto` model + additive migration (`20260722100000_add_progress_photo`); a raw-body
+upload route that enforces an 8 MiB cap DURING a streamed read (new `readBodyBytesWithCap` in
+`lib/api.ts`, with `readBodyWithCap` refactored to delegate, behavior-identical); a magic-byte
+image sniffer as the SOLE type authority (JPEG/PNG/WebP only - client content-type is never
+trusted); ownership-scoped list/serve/delete routes returning an identical 404 for
+not-found and not-owned (no existence oracle); files written `0o600` under a gitignored,
+configurable `UPLOADS_DIR`, served only through the ownership route (never a static path);
+path containment (`resolveInsideStorageDir`) on every read/write/delete. Tests at every layer
+(sniffer unit + hostile buffers; integration for oversize/415/400/ownership/on-disk state;
+an E2E upload-and-see-it flow). Full local gate `verify.sh --full` green; five green CI checks.
+A fresh rollback baseline `autonomy-baseline-2026-07-22` was tagged before the migration merge.
+
+**Challenged.** Two INDEPENDENT Opus lenses (author was a Fable dev tick, so neither reviewer
+graded its own homework): a correctness/does-it-work lens and a security lens. Both returned
+READY with zero blocking findings; each independently raised the same non-blocking nit (DELETE
+removes the row before the file, so a non-ENOENT `rm` failure would orphan the file) plus minor
+hardening (realpath containment, dir mode `0o700`). Folded into follow-up **#282**, not blocked.
+
+**Human-directed fork adoption (#272).** During this run a CONCURRENT loop session (separate
+checkout) hardened and merged fork PR **#272** (`SHAREN`, `isCrossRepository`, non-collaborator)
+into `main` - "extensible localization + Russian," plus a `Secure`-by-default session-cookie
+hardening (`SESSION_COOKIE_SECURE=false` opt-out) and a from-template route reuse fix. The
+autonomous ship gate FORBIDS the loop merging a fork / non-allowlisted author's PR even on green
+CI, so this tick stopped and surfaced it to the operator rather than acting on it. The operator
+confirmed in-session that the localization adoption was INTENDED (a human-in-the-loop decision),
+so #272 is kept and documented as an authorized exception, not a breach. Recorded so the
+allowlist gate's meaning stays clear: the loop still may not self-merge forks; a human may.
+
+**Infra observation -> #283.** The two concurrent `verify.sh --full` runs contended on the
+SHARED test Postgres (:5434) and dev port (:3031): one run's `TRUNCATE ... CASCADE` reset the
+DB mid-run, producing a spurious E2E failure that was green on an isolated re-run. This is the
+infra twin of L15 (isolated worktrees, but shared test DB/port). Filed #283 (serialize or
+isolate the shared infra); interim rule recorded as lesson L16.
+
+**One metric.** Accepted-change rate this batch (loop-authored): 1 merged / 0 abandoned (#281).
+Docs PR for this write-up separate. Implementing-tick token spend: not recorded (dev tick was
+Fable per the model-routing directive). #272 is a concurrent session's work, not counted here.
+
+**Deferred to human.** #282 (photo-storage hardening) and #283 (shared-infra serialization) are
+filed for a later tick. The remaining SHAREN PRs #273-#276 still await human vetting.
+

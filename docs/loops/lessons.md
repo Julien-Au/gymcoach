@@ -205,3 +205,21 @@ Format per entry: trigger/evidence, the lesson (actionable), and **Status** = `g
   concurrent dev/ship ticks get isolated `git worktree`s; without isolation, serialize
   same-checkout ticks. Recovery when a commit still lands on `main`: revert forward (never
   force-push shared history), then re-ship via a proper PR.
+
+### L16 - Isolated worktrees are not enough: the shared test Postgres (:5434) and dev port (:3031) also need a lock
+- **Trigger:** 2026-07-22 batch. Two loop sessions ran `bash scripts/verify.sh --full` at the
+  same time from SEPARATE git worktrees (so L15 was satisfied - no shared checkout). They still
+  collided on shared INFRA: both point at the one test Postgres on host port 5434 and both bind
+  the dev/E2E server on 3031. One run's `TRUNCATE ... CASCADE` reset the DB while the other was
+  mid-suite, and the port was contended, yielding a spurious E2E failure that was green on an
+  isolated re-run.
+- **Lesson:** worktree isolation fixes the git-state race (L15) but not the runtime-infra race.
+  The integration/E2E tiers assume single-tenant ownership of :5434 and :3031; two concurrent
+  `--full` runs violate that assumption and corrupt each other non-deterministically. The fix is
+  structural (a lock around those tiers, or a per-run unique DB name + free port), not "remember
+  not to overlap."
+- **Status:** graduated -> filed **#283** to serialize-or-isolate the shared test infra. INTERIM
+  rule until #283 lands: the orchestrator must not run two `verify.sh --full` invocations against
+  :5434/:3031 concurrently - serialize them (a green isolated re-run of the failed tier is the
+  tell that a red was this contention, not a regression; acknowledge the actual failing step
+  before re-planning, per L2).
