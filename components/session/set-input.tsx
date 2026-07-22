@@ -26,6 +26,7 @@ import { WarmupCalculator } from '@/components/session/warmup-calculator';
 import type { PendingSet } from '@/lib/indexeddb';
 import type { SerializedLastPerformance } from './session-runner';
 import type { IntraSetRecommendation } from '@/lib/intra-set-autoregulation';
+import { constrainGymWeight, type GymLoadConstraints } from '@/lib/gym-loads';
 
 interface Props {
   programExercise: ProgramExercise & { exercise: Exercise };
@@ -36,6 +37,7 @@ interface Props {
   deloadActive: boolean;
   unit: WeightUnit;
   recommendation?: IntraSetRecommendation | null;
+  loadConstraints?: GymLoadConstraints | null;
   onSubmit: (values: {
     weight: number;
     reps: number;
@@ -75,6 +77,7 @@ export function SetInput({
   deloadActive,
   unit,
   recommendation = null,
+  loadConstraints = null,
   onSubmit,
 }: Props) {
   const t = useTranslations('session.input');
@@ -89,6 +92,7 @@ export function SetInput({
     readiness,
     deloadActive,
     recommendation,
+    loadConstraints,
   );
   const [form, setForm] = useState<FormState>(initial);
   const [submitting, setSubmitting] = useState(false);
@@ -110,6 +114,7 @@ export function SetInput({
         readiness,
         deloadActive,
         recommendation,
+        loadConstraints,
       ),
     );
     setQuickEntry('');
@@ -129,7 +134,13 @@ export function SetInput({
     unit === 'LB' ? roundWeight(toDisplayWeight(form.weight, unit), 1) : form.weight;
 
   function adjustWeight(delta: number) {
-    setForm((f) => ({ ...f, weight: Math.max(0, +(f.weight + delta).toFixed(2)) }));
+    setForm((f) => ({
+      ...f,
+      weight: Math.max(
+        0,
+        constrainGymWeight(+(f.weight + delta).toFixed(2), f.weight, loadConstraints),
+      ),
+    }));
   }
   function adjustReps(delta: number) {
     setForm((f) => ({ ...f, reps: Math.max(0, f.reps + delta) }));
@@ -405,8 +416,17 @@ export function SetInput({
                   {t('load', { unit: unitLabel(unit) })}
                 </Label>
                 <div className="flex items-center gap-1">
-                  <WarmupCalculator weightKg={form.weight} unit={unit} />
-                  <PlateCalculator weightKg={form.weight} unit={unit} />
+                  <WarmupCalculator
+                    weightKg={form.weight}
+                    unit={unit}
+                    barWeightsKg={loadConstraints?.barWeights}
+                  />
+                  <PlateCalculator
+                    weightKg={form.weight}
+                    unit={unit}
+                    barWeightsKg={loadConstraints?.barWeights}
+                    plateWeightsKg={loadConstraints?.plateWeights}
+                  />
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -562,6 +582,7 @@ function computeInitial(
   readiness: ReadinessSignal | null,
   deloadActive: boolean,
   recommendation: IntraSetRecommendation | null = null,
+  loadConstraints: GymLoadConstraints | null = null,
 ): FormState {
   // Cardio exercises (issue #133): prefill the duration/distance from the
   // last cardio set of this session, otherwise leave the inputs empty. The
@@ -602,7 +623,13 @@ function computeInitial(
   //    progressing, aim for the bottom of the rep range with the heavier
   //    load; otherwise try to beat the previous reps (at least match them).
   if (lastPerf) {
-    const suggestion = suggestNextWeight(pe, lastPerf.sets, readiness, deloadActive);
+    const suggestion = suggestNextWeight(
+      pe,
+      lastPerf.sets,
+      readiness,
+      deloadActive,
+      loadConstraints,
+    );
     const initialReps =
       suggestion.reason === 'progression' ? pe.targetRepsMin : lastPerf.repsAtMaxWeight;
     return {

@@ -11,6 +11,7 @@ const squat: Exercise = {
   defaultRestSec: 180,
   notes: null,
   usesBodyweight: false,
+  equipmentType: 'BARBELL',
   createdAt: new Date(),
 };
 

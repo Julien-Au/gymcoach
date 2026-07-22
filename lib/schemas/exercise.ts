@@ -1,10 +1,14 @@
 import { z } from 'zod';
-import { MuscleGroup, ExerciseCategory } from '@/lib/prisma-client';
+import { MuscleGroup, ExerciseCategory, EquipmentType } from '@/lib/prisma-client';
 
 export const muscleGroupValues = Object.values(MuscleGroup) as [MuscleGroup, ...MuscleGroup[]];
 export const exerciseCategoryValues = Object.values(ExerciseCategory) as [
   ExerciseCategory,
   ...ExerciseCategory[],
+];
+export const equipmentTypeValues = Object.values(EquipmentType) as [
+  EquipmentType,
+  ...EquipmentType[],
 ];
 
 export const exerciseInputSchema = z.object({
@@ -16,6 +20,7 @@ export const exerciseInputSchema = z.object({
   // For bodyweight exercises (pull-ups, dips...): the effective
   // tonnage includes User.bodyweight.
   usesBodyweight: z.coerce.boolean().default(false),
+  equipmentType: z.enum(equipmentTypeValues).default('OTHER'),
 });
 
 export type ExerciseInput = z.infer<typeof exerciseInputSchema>;

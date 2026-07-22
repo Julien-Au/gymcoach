@@ -5,9 +5,8 @@ import { db } from '@/lib/db';
 import { requireSession } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { StartWorkoutButton } from '@/components/session/start-workout-button';
 import { ReadinessCheckin } from '@/components/session/readiness-checkin';
+import { WorkoutStartList } from '@/components/session/workout-start-list';
 import { getTrainingDisplayName } from '@/i18n/training-names';
 
 const DAY_KEYS = [
@@ -25,17 +24,25 @@ export default async function NewSessionPage() {
   const common = await getTranslations('common');
   const locale = await getLocale();
   const session = await requireSession();
-  const activeProgram = await db.program.findFirst({
-    where: { userId: session.userId, isActive: true },
-    include: {
-      workouts: {
-        orderBy: { order: 'asc' },
-        include: {
-          _count: { select: { exercises: true } },
+  const [activeProgram, user, gyms] = await Promise.all([
+    db.program.findFirst({
+      where: { userId: session.userId, isActive: true },
+      include: {
+        workouts: {
+          orderBy: { order: 'asc' },
+          include: {
+            _count: { select: { exercises: true } },
+          },
         },
       },
-    },
-  });
+    }),
+    db.user.findUnique({ where: { id: session.userId }, select: { activeGymId: true } }),
+    db.gym.findMany({
+      where: { userId: session.userId },
+      orderBy: { name: 'asc' },
+      select: { id: true, name: true },
+    }),
+  ]);
 
   return (
     <main className="flex-1 px-4 py-6">
@@ -51,7 +58,9 @@ export default async function NewSessionPage() {
           <h1 className="text-2xl font-bold tracking-tight">{t('startTitle')}</h1>
           {activeProgram ? (
             <p className="text-sm text-muted-foreground">
-              {t('activeProgram', { name: activeProgram.name })}
+              {t('activeProgram', {
+                name: getTrainingDisplayName(activeProgram.name, locale),
+              })}
             </p>
           ) : null}
         </div>
@@ -60,9 +69,7 @@ export default async function NewSessionPage() {
           <Card>
             <CardHeader>
               <CardTitle>{t('noActiveProgram')}</CardTitle>
-              <CardDescription>
-                {t('noActiveProgramDescription')}
-              </CardDescription>
+              <CardDescription>{t('noActiveProgramDescription')}</CardDescription>
             </CardHeader>
             <CardContent>
               <Button asChild>
@@ -74,9 +81,7 @@ export default async function NewSessionPage() {
           <Card>
             <CardHeader>
               <CardTitle>{t('noSession')}</CardTitle>
-              <CardDescription>
-                {t('noSessionDescription')}
-              </CardDescription>
+              <CardDescription>{t('noSessionDescription')}</CardDescription>
             </CardHeader>
             <CardContent>
               <Button asChild>
@@ -87,37 +92,20 @@ export default async function NewSessionPage() {
         ) : (
           <>
             <ReadinessCheckin />
-            <ul className="flex flex-col gap-3">
-            {activeProgram.workouts.map((w) => {
-              const dayKey = w.dayOfWeek != null ? DAY_KEYS[w.dayOfWeek - 1] : null;
-              const day = dayKey ? common(`days.${dayKey}`) : null;
-              return (
-                <li key={w.id}>
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <CardTitle className="text-base">
-                            {getTrainingDisplayName(w.name, locale)}
-                          </CardTitle>
-                          <CardDescription className="text-xs">
-                            {common('counts.exercises', { count: w._count.exercises })}
-                          </CardDescription>
-                        </div>
-                        {day && <Badge variant="secondary">{day}</Badge>}
-                      </div>
-                    </CardHeader>
-                    <CardContent className="pt-0">
-                      <StartWorkoutButton
-                        workoutId={w.id}
-                        disabled={w._count.exercises === 0}
-                      />
-                    </CardContent>
-                  </Card>
-                </li>
-              );
-            })}
-            </ul>
+            <WorkoutStartList
+              activeGymId={user?.activeGymId ?? null}
+              gyms={gyms}
+              workouts={activeProgram.workouts.map((w) => {
+                const dayKey = w.dayOfWeek != null ? DAY_KEYS[w.dayOfWeek - 1] : null;
+                const day = dayKey ? common(`days.${dayKey}`) : null;
+                return {
+                  id: w.id,
+                  name: getTrainingDisplayName(w.name, locale),
+                  day,
+                  exerciseCount: w._count.exercises,
+                };
+              })}
+            />
           </>
         )}
       </div>

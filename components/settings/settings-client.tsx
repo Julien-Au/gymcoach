@@ -7,8 +7,6 @@ import { Activity, Languages, Moon, Smartphone, Sun, Volume2, Monitor } from 'lu
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   DEFAULT_PREFERENCES,
   loadPreferences,
@@ -87,9 +85,7 @@ export function SettingsClient() {
       <Card>
         <CardHeader className="pb-3">
           <h2 className="text-base font-semibold">{t('session')}</h2>
-          <p className="text-xs text-muted-foreground">
-            {t('deviceOnly')}
-          </p>
+          <p className="text-xs text-muted-foreground">{t('deviceOnly')}</p>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           <PrefRow
@@ -119,105 +115,8 @@ export function SettingsClient() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="pb-3">
-          <h2 className="text-base font-semibold">{t('plateCalculator')}</h2>
-          <p className="text-xs text-muted-foreground">
-            {t('plateCalculatorDescription')}
-          </p>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <BarPlatesRow
-            unitLabel="kg"
-            barWeight={prefs.barWeightKg}
-            plates={prefs.platesKg}
-            onBarChange={(v) => update('barWeightKg', v)}
-            onPlatesChange={(v) => update('platesKg', v)}
-            disabled={!hydrated}
-          />
-          <BarPlatesRow
-            unitLabel="lb"
-            barWeight={prefs.barWeightLb}
-            plates={prefs.platesLb}
-            onBarChange={(v) => update('barWeightLb', v)}
-            onPlatesChange={(v) => update('platesLb', v)}
-            disabled={!hydrated}
-          />
-        </CardContent>
-      </Card>
-
       <BackupSection />
     </>
-  );
-}
-
-function BarPlatesRow({
-  unitLabel,
-  barWeight,
-  plates,
-  onBarChange,
-  onPlatesChange,
-  disabled,
-}: {
-  unitLabel: string;
-  barWeight: number;
-  plates: number[];
-  onBarChange: (v: number) => void;
-  onPlatesChange: (v: number[]) => void;
-  disabled?: boolean;
-}) {
-  const t = useTranslations('settings');
-  // Edit plates as comma-separated text; commit a cleaned, descending list on
-  // change. Empty / invalid entries are dropped so the calculator stays sane.
-  function commitPlates(raw: string) {
-    const parsed = raw
-      .split(',')
-      .map((s) => parseFloat(s.trim()))
-      .filter((n) => Number.isFinite(n) && n > 0)
-      .sort((a, b) => b - a);
-    onPlatesChange(parsed);
-  }
-
-  return (
-    <div className="rounded-md border border-border/40 p-3">
-      <p className="mb-2 text-sm font-medium">{t('equipment', { unit: unitLabel })}</p>
-      <div className="flex flex-col gap-3">
-        <div className="space-y-1">
-          <Label
-            htmlFor={`bar-${unitLabel}`}
-            className="text-xs uppercase tracking-wide text-muted-foreground"
-          >
-            {t('barWeight', { unit: unitLabel })}
-          </Label>
-          <Input
-            id={`bar-${unitLabel}`}
-            type="number"
-            inputMode="decimal"
-            step="0.5"
-            value={barWeight}
-            disabled={disabled}
-            onChange={(e) => onBarChange(parseFloat(e.target.value) || 0)}
-          />
-        </div>
-        <div className="space-y-1">
-          <Label
-            htmlFor={`plates-${unitLabel}`}
-            className="text-xs uppercase tracking-wide text-muted-foreground"
-          >
-            {t('platesPerSide', { unit: unitLabel })}
-          </Label>
-          <Input
-            id={`plates-${unitLabel}`}
-            type="text"
-            inputMode="decimal"
-            defaultValue={plates.join(', ')}
-            disabled={disabled}
-            onBlur={(e) => commitPlates(e.target.value)}
-            placeholder={t('platesPlaceholder')}
-          />
-        </div>
-      </div>
-    </div>
   );
 }
 

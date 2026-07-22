@@ -27,6 +27,7 @@ export default async function SessionRunPage(props: Props) {
         },
       },
       sets: { orderBy: [{ exerciseId: 'asc' }, { setNumber: 'asc' }] },
+      gym: { include: { exerciseConfigs: true } },
     },
   });
 
@@ -89,7 +90,11 @@ function buildReadinessSignal(
 
   // soreness is stored as JSON; coerce defensively to a plain { group: 1-5 } map.
   let soreness: ReadinessSignal['soreness'] = null;
-  if (checkin.soreness && typeof checkin.soreness === 'object' && !Array.isArray(checkin.soreness)) {
+  if (
+    checkin.soreness &&
+    typeof checkin.soreness === 'object' &&
+    !Array.isArray(checkin.soreness)
+  ) {
     const entries = Object.entries(checkin.soreness as Record<string, unknown>).filter(
       ([, v]) => typeof v === 'number',
     ) as Array<[string, number]>;

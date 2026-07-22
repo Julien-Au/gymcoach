@@ -28,7 +28,7 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const userId = await requireApiUserId();
-    const { workoutId } = await parseJsonBody(req, sessionStartSchema);
+    const { workoutId, gymId } = await parseJsonBody(req, sessionStartSchema);
 
     const workout = await db.workout.findUnique({
       where: { id: workoutId },
@@ -36,6 +36,19 @@ export async function POST(req: Request) {
     });
     if (!workout || workout.program.userId !== userId) {
       throw new ApiError(404, 'Session not found.');
+    }
+
+    const selectedGymId =
+      gymId ??
+      (await db.user.findUnique({ where: { id: userId }, select: { activeGymId: true } }))
+        ?.activeGymId ??
+      null;
+    if (selectedGymId) {
+      const gym = await db.gym.findFirst({
+        where: { id: selectedGymId, userId },
+        select: { id: true },
+      });
+      if (!gym) throw new ApiError(400, 'Invalid gym.');
     }
 
     const inProgress = await db.session.findFirst({
@@ -52,6 +65,7 @@ export async function POST(req: Request) {
         userId,
         workoutId,
         programId: workout.program.id,
+        gymId: selectedGymId,
       },
     });
     return NextResponse.json(created, { status: 201 });

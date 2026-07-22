@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import {
   ExerciseCategory,
+  EquipmentType,
   MessageRole,
   MuscleGroup,
   Sex,
@@ -51,7 +52,7 @@ import { sorenessSchema } from '@/lib/schemas/readiness';
 // - Program.createdAt / Program.updatedAt and Exercise.createdAt (server-side
 //   bookkeeping with no user-facing meaning; reset to the import time).
 
-const VERSION = 2;
+const VERSION = 3;
 
 // Hard cap on the import body size, enforced while reading the stream (the
 // Content-Length header is attacker-controlled). Generous: a decade of daily
@@ -73,6 +74,7 @@ export async function GET() {
       bodyweightEntries,
       readinessCheckins,
       conversations,
+      gyms,
     ] = await Promise.all([
       db.user.findUnique({
         where: { id: userId },
@@ -87,6 +89,7 @@ export async function GET() {
           weeklyFrequency: true,
           unit: true,
           deloadUntil: true,
+          activeGymId: true,
         },
       }),
       db.program.findMany({
@@ -131,6 +134,13 @@ export async function GET() {
         orderBy: { createdAt: 'asc' },
         include: { messages: { orderBy: { createdAt: 'asc' } } },
       }),
+      db.gym.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'asc' },
+        include: {
+          exerciseConfigs: { include: { exercise: { select: { name: true } } } },
+        },
+      }),
     ]);
 
     if (!user) throw new ApiError(404, 'User not found.');
@@ -149,6 +159,7 @@ export async function GET() {
         weeklyFrequency: user.weeklyFrequency,
         unit: user.unit,
         deloadUntil: user.deloadUntil?.toISOString() ?? null,
+        activeGymName: gyms.find((gym) => gym.id === user.activeGymId)?.name ?? null,
       },
       exercises: exercises.map((e) => ({
         name: e.name,
@@ -157,6 +168,18 @@ export async function GET() {
         defaultRestSec: e.defaultRestSec,
         notes: e.notes,
         usesBodyweight: e.usesBodyweight,
+        equipmentType: e.equipmentType,
+      })),
+      gyms: gyms.map((gym) => ({
+        name: gym.name,
+        dumbbellWeights: gym.dumbbellWeights,
+        plateWeights: gym.plateWeights,
+        barWeights: gym.barWeights,
+        exerciseConfigs: gym.exerciseConfigs.map((config) => ({
+          exerciseName: config.exercise.name,
+          isAvailable: config.isAvailable,
+          weightOptions: config.weightOptions,
+        })),
       })),
       programs: programs.map((p) => ({
         name: p.name,
@@ -193,6 +216,7 @@ export async function GET() {
         startedAt: s.startedAt.toISOString(),
         finishedAt: s.finishedAt?.toISOString() ?? null,
         notes: s.notes,
+        gymName: gyms.find((gym) => gym.id === s.gymId)?.name ?? null,
         sets: s.sets.map((set) => ({
           exerciseName: exercises.find((e) => e.id === set.exerciseId)?.name ?? null,
           setNumber: set.setNumber,
@@ -303,6 +327,8 @@ const importSchema = z.object({
         notes: z.string().max(2000).nullable().optional(),
         // v2; absent in v1 backups.
         usesBodyweight: z.boolean().optional(),
+        // v3; absent in older backups.
+        equipmentType: z.nativeEnum(EquipmentType).optional(),
       }),
     )
     .max(2000),
@@ -361,6 +387,7 @@ const importSchema = z.object({
         startedAt: dateString,
         finishedAt: dateString.nullable().optional(),
         notes: z.string().max(5000).nullable().optional(),
+        gymName: z.string().max(80).nullable().optional(),
         sets: z
           .array(
             z.object({
@@ -408,7 +435,28 @@ const importSchema = z.object({
       weeklyFrequency: z.number().int().min(1).max(14).nullable().optional(),
       unit: z.nativeEnum(WeightUnit).optional(),
       deloadUntil: dateString.nullable().optional(),
+      activeGymName: z.string().max(80).nullable().optional(),
     })
+    .optional(),
+  gyms: z
+    .array(
+      z.object({
+        name: z.string().trim().min(1).max(80),
+        dumbbellWeights: z.array(z.number().min(0.1).max(5000)).max(200),
+        plateWeights: z.array(z.number().min(0.1).max(5000)).max(200),
+        barWeights: z.array(z.number().min(0.1).max(5000)).max(200),
+        exerciseConfigs: z
+          .array(
+            z.object({
+              exerciseName: z.string().max(120),
+              isAvailable: z.boolean(),
+              weightOptions: z.array(z.number().min(0.1).max(5000)).max(200),
+            }),
+          )
+          .max(2000),
+      }),
+    )
+    .max(100)
     .optional(),
   exerciseGoals: z
     .array(
@@ -489,6 +537,7 @@ export async function POST(req: Request) {
         //    cascade workouts and program exercises.
         await tx.set.deleteMany({ where: { session: { userId } } });
         await tx.session.deleteMany({ where: { userId } });
+        await tx.gym.deleteMany({ where: { userId } });
         await tx.coachSession.deleteMany({ where: { userId } });
         await tx.exerciseGoal.deleteMany({ where: { userId } });
         await tx.bodyweightEntry.deleteMany({ where: { userId } });
@@ -531,12 +580,48 @@ export async function POST(req: Request) {
               defaultRestSec: e.defaultRestSec,
               notes: e.notes ?? null,
               usesBodyweight: e.usesBodyweight ?? false,
+              equipmentType: e.equipmentType ?? 'OTHER',
             },
           });
           exerciseIdByName.set(e.name, created.id);
         }
 
-        // 4. Recreate programs / workouts / programExercises.
+        // 4. Saved gyms are recreated after exercises so per-exercise
+        // availability can be linked by exercise name.
+        const gymIdByName = new Map<string, string>();
+        for (const gym of payload.gyms ?? []) {
+          const configs = gym.exerciseConfigs.flatMap((config) => {
+            const exerciseId = exerciseIdByName.get(config.exerciseName);
+            return exerciseId
+              ? [
+                  {
+                    exerciseId,
+                    isAvailable: config.isAvailable,
+                    weightOptions: config.weightOptions,
+                  },
+                ]
+              : [];
+          });
+          const created = await tx.gym.create({
+            data: {
+              userId,
+              name: gym.name,
+              dumbbellWeights: gym.dumbbellWeights,
+              plateWeights: gym.plateWeights,
+              barWeights: gym.barWeights,
+              exerciseConfigs: { createMany: { data: configs } },
+            },
+          });
+          gymIdByName.set(gym.name, created.id);
+        }
+        const activeGymId = payload.profile?.activeGymName
+          ? (gymIdByName.get(payload.profile.activeGymName) ?? null)
+          : null;
+        if (payload.gyms) {
+          await tx.user.update({ where: { id: userId }, data: { activeGymId } });
+        }
+
+        // 5. Recreate programs / workouts / programExercises.
         for (const p of payload.programs) {
           const program = await tx.program.create({
             data: {
@@ -583,7 +668,7 @@ export async function POST(req: Request) {
           }
         }
 
-        // 5. Sessions + sets: we try to link to the program/workout by name,
+        // 6. Sessions + sets: we try to link to the program/workout by name,
         //    but accept leaving them nullable if not found.
         const programs = await tx.program.findMany({
           where: { userId },
@@ -604,6 +689,7 @@ export async function POST(req: Request) {
               startedAt: new Date(s.startedAt),
               finishedAt: s.finishedAt ? new Date(s.finishedAt) : null,
               notes: s.notes ?? null,
+              gymId: s.gymName ? (gymIdByName.get(s.gymName) ?? null) : null,
             },
           });
           const setRows = s.sets.flatMap((set) => {
@@ -645,7 +731,7 @@ export async function POST(req: Request) {
           });
         }
 
-        // 6. Goals / bodyweight / readiness / conversations (v2). A goal
+        // 7. Goals / bodyweight / readiness / conversations (v2). A goal
         //    whose exercise is unknown is skipped, like sets above.
         const goalRows = (payload.exerciseGoals ?? []).flatMap((g) => {
           const exId = exerciseIdByName.get(g.exerciseName);

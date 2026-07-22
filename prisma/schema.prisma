@@ -50,6 +50,9 @@ model User {
   bodyMeasurements  BodyMeasurement[]
   volumeTargets     VolumeTarget[]
   progressPhotos    ProgressPhoto[]
+  gyms              Gym[]              @relation("GymOwner")
+  activeGymId       String?
+  activeGym         Gym?               @relation("ActiveGym", fields: [activeGymId], references: [id], onDelete: SetNull)
 }
 
 enum Sex {
@@ -114,12 +117,25 @@ model Exercise {
   // default, always >= 0 - the input schemas clamp it; negative loads for
   // assistance machines are deliberately not supported, see issue #118).
   usesBodyweight   Boolean           @default(false)
+  // Determines which saved-gym inventory constrains suggested loads.
+  equipmentType   EquipmentType     @default(OTHER)
   createdAt        DateTime          @default(now())
   programExercises ProgramExercise[]
   sets             Set[]
   goals            ExerciseGoal[]
+  gymConfigs       GymExerciseConfig[]
 
   @@unique([userId, name])
+}
+
+enum EquipmentType {
+  DUMBBELL
+  BARBELL
+  MACHINE
+  CABLE
+  BODYWEIGHT
+  CARDIO
+  OTHER
 }
 
 enum MuscleGroup {
@@ -223,9 +239,47 @@ model Session {
   startedAt  DateTime  @default(now())
   finishedAt DateTime?
   notes      String?
+  // The gym is frozen when the session starts so later switching gyms does
+  // not change the inventory used by an in-progress or historical workout.
+  gymId      String?
+  gym        Gym?      @relation(fields: [gymId], references: [id], onDelete: SetNull)
   sets       Set[]
 
   @@index([userId, startedAt])
+}
+
+model Gym {
+  id               String              @id @default(cuid())
+  userId           String
+  user             User                @relation("GymOwner", fields: [userId], references: [id], onDelete: Cascade)
+  name             String
+  // All inventory values are stored in kg, matching Set.weight.
+  dumbbellWeights  Float[]             @default([])
+  plateWeights     Float[]             @default([])
+  barWeights       Float[]             @default([])
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  activeForUsers   User[]              @relation("ActiveGym")
+  sessions         Session[]
+  exerciseConfigs  GymExerciseConfig[]
+
+  @@unique([userId, name])
+  @@index([userId, updatedAt])
+}
+
+model GymExerciseConfig {
+  id            String   @id @default(cuid())
+  gymId         String
+  gym           Gym      @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  exerciseId    String
+  exercise      Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  isAvailable   Boolean  @default(true)
+  // Optional explicit machine/cable pin stack or other exercise-specific
+  // loads. Empty means use the normal category increment.
+  weightOptions Float[]  @default([])
+
+  @@unique([gymId, exerciseId])
+  @@index([exerciseId])
 }
 
 model Set {
