@@ -1,6 +1,7 @@
 'use client';
 
 import { HeartPulse } from 'lucide-react';
+import { useFormatter, useTranslations } from 'next-intl';
 import {
   Bar,
   BarChart,
@@ -28,20 +29,19 @@ interface Props {
   weeks: ConditioningWeekView[];
 }
 
-function weekLabel(iso: string): string {
-  return new Intl.DateTimeFormat('en-US', { day: '2-digit', month: '2-digit' }).format(
-    new Date(iso),
-  );
-}
-
 // Conditioning card (issue #135, display-only): weekly cardio minutes as bars
 // against the WHO 150 min/week reference line, with distance and session
 // count as secondary labels. The parent hides the card entirely while the
 // user has never logged a cardio set.
 export function ConditioningCard({ weeks }: Props) {
+  const t = useTranslations('progress.conditioning');
+  const format = useFormatter();
   const chartData = weeks.map((w) => ({
     ...w,
-    label: weekLabel(w.weekStartIso),
+    label: format.dateTime(new Date(w.weekStartIso), {
+      day: '2-digit',
+      month: '2-digit',
+    }),
   }));
   const current = weeks[weeks.length - 1];
   const totalMinutes = weeks.reduce((acc, w) => acc + w.minutes, 0);
@@ -52,11 +52,10 @@ export function ConditioningCard({ weeks }: Props) {
       <CardHeader className="pb-3">
         <div className="flex items-center gap-2">
           <HeartPulse className="size-4 text-primary" />
-          <h2 className="text-base font-semibold">Conditioning</h2>
+          <h2 className="text-base font-semibold">{t('title')}</h2>
         </div>
         <p className="text-xs text-muted-foreground">
-          Weekly cardio minutes vs the {WEEKLY_CONDITIONING_TARGET_MIN} min/week guideline
-          (moderate activity). Distance and sessions in the tooltip.
+          {t('description', { target: WEEKLY_CONDITIONING_TARGET_MIN })}
         </p>
       </CardHeader>
       <CardContent>

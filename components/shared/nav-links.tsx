@@ -2,21 +2,23 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 
 const LINKS = [
-  { href: '/', label: 'Home' },
-  { href: '/history', label: 'History' },
-  { href: '/progress', label: 'Progress' },
-  { href: '/coach', label: 'Coach' },
-  { href: '/chat', label: 'Chat' },
-  { href: '/programs', label: 'Programs' },
-  { href: '/exercises', label: 'Catalog' },
-  { href: '/settings', label: 'Settings' },
+  { href: '/', label: 'home' },
+  { href: '/history', label: 'history' },
+  { href: '/progress', label: 'progress' },
+  { href: '/coach', label: 'coach' },
+  { href: '/chat', label: 'chat' },
+  { href: '/programs', label: 'programs' },
+  { href: '/exercises', label: 'catalog' },
+  { href: '/settings', label: 'settings' },
 ] as const;
 
 export function NavLinks() {
   const pathname = usePathname();
+  const t = useTranslations('navigation');
   return (
     <nav className="flex gap-1 overflow-x-auto border-t border-border px-2 py-1">
       {LINKS.map((link) => {
@@ -33,7 +35,7 @@ export function NavLinks() {
                 : 'text-muted-foreground hover:text-foreground',
             )}
           >
-            {link.label}
+            {t(link.label)}
           </Link>
         );
       })}

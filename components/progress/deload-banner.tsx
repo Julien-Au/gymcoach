@@ -2,11 +2,13 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useFormatter, useTranslations } from 'next-intl';
 import { BatteryCharging, BatteryLow } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { deloadReasonLine, type DeloadReason } from '@/lib/deload';
+import type { DeloadReason } from '@/lib/deload';
+import { useExerciseName } from '@/components/shared/use-exercise-name';
 
 interface Props {
   reasons: DeloadReason[];
@@ -20,6 +22,9 @@ interface Props {
 // suggestion engine then steps loads down ~10%); while active it shows the end
 // date and lets the user end it early.
 export function DeloadBanner({ reasons, deloadUntil }: Props) {
+  const t = useTranslations('progress.deload');
+  const format = useFormatter();
+  const exerciseName = useExerciseName();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const active = deloadUntil != null;
@@ -36,10 +41,10 @@ export function DeloadBanner({ reasons, deloadUntil }: Props) {
       });
       if (!res.ok) {
         const data = (await res.json().catch(() => null)) as { error?: string } | null;
-        toast.error(data?.error ?? 'Could not start the deload week.');
+        toast.error(data?.error ?? t('startError'));
         return;
       }
-      toast.success('Deload week started. Load suggestions step down for 7 days.');
+      toast.success(t('started'));
       router.refresh();
     } finally {
       setBusy(false);
@@ -52,10 +57,10 @@ export function DeloadBanner({ reasons, deloadUntil }: Props) {
       const res = await fetch('/api/deload', { method: 'DELETE' });
       if (!res.ok) {
         const data = (await res.json().catch(() => null)) as { error?: string } | null;
-        toast.error(data?.error ?? 'Could not end the deload.');
+        toast.error(data?.error ?? t('endError'));
         return;
       }
-      toast.success('Deload ended. Suggestions are back to normal progression.');
+      toast.success(t('ended'));
       router.refresh();
     } finally {
       setBusy(false);
@@ -63,27 +68,23 @@ export function DeloadBanner({ reasons, deloadUntil }: Props) {
   }
 
   if (active) {
-    const endDate = new Intl.DateTimeFormat('en-US', {
+    const endDate = format.dateTime(new Date(deloadUntil!), {
       day: '2-digit',
       month: 'short',
-    }).format(new Date(deloadUntil!));
+    });
     return (
       <Card className="border-emerald-500/50 bg-emerald-500/5">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
             <BatteryCharging className="size-4 text-emerald-600" />
-            <h2 className="text-base font-semibold">Deload week in progress</h2>
+            <h2 className="text-base font-semibold">{t('activeTitle')}</h2>
           </div>
         </CardHeader>
         <CardContent className="flex flex-col gap-3 text-sm">
-          <p className="text-muted-foreground">
-            Until {endDate}, your load suggestions step down by about 10% so you
-            keep moving while recovering. Normal progression resumes
-            automatically afterwards.
-          </p>
+          <p className="text-muted-foreground">{t('activeDescription', { date: endDate })}</p>
           <div>
             <Button variant="outline" size="sm" onClick={endDeload} disabled={busy}>
-              End deload now
+              {t('end')}
             </Button>
           </div>
         </CardContent>
@@ -96,26 +97,29 @@ export function DeloadBanner({ reasons, deloadUntil }: Props) {
       <CardHeader className="pb-3">
         <div className="flex items-center gap-2">
           <BatteryLow className="size-4 text-amber-600" />
-          <h2 className="text-base font-semibold">
-            A deload week looks due
-          </h2>
+          <h2 className="text-base font-semibold">{t('dueTitle')}</h2>
         </div>
       </CardHeader>
       <CardContent className="flex flex-col gap-3 text-sm">
         <ul className="list-disc space-y-1 pl-5">
           {reasons.map((reason) => (
-            <li key={reason.kind}>{deloadReasonLine(reason)}</li>
+            <li key={reason.kind}>
+              {reason.kind === 'stalled-lifts'
+                ? t('stalledReason', {
+                    count: reason.exerciseNames.length,
+                    names: reason.exerciseNames.map(exerciseName).join(', '),
+                  })
+                : t('readinessReason', {
+                    average: reason.averageReadiness,
+                    checkins: reason.checkins,
+                  })}
+            </li>
           ))}
         </ul>
-        <p className="text-xs text-muted-foreground">
-          Accumulated fatigue can mask progress. Starting a deload week reduces
-          your suggested loads by about 10% for 7 days, then normal progression
-          resumes. You can end it early at any time; nothing else in your
-          program changes.
-        </p>
+        <p className="text-xs text-muted-foreground">{t('dueDescription')}</p>
         <div>
           <Button size="sm" onClick={startDeload} disabled={busy}>
-            Start a deload week
+            {t('start')}
           </Button>
         </div>
       </CardContent>

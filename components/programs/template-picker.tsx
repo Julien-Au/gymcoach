@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,17 +14,18 @@ interface Props {
 }
 
 // "Start from a template" picker. Materializes the selected template into a
-// real Program through the same /api/programs/build route the AI generator
+// real Program through the same /api/programs/from-template route the AI generator
 // uses, so the structure is persisted exactly as written and the coach treats
 // it like any user-authored program.
 export function TemplatePicker({ templates }: Props) {
+  const t = useTranslations('programs');
   const router = useRouter();
   const [creatingSlug, setCreatingSlug] = useState<string | null>(null);
 
   async function instantiate(template: ProgramTemplate) {
     setCreatingSlug(template.slug);
     try {
-      const res = await fetch('/api/programs/build', {
+      const res = await fetch('/api/programs/from-template', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(template.program),
@@ -33,11 +35,11 @@ export function TemplatePicker({ templates }: Props) {
         throw new Error(j.error ?? `Error ${res.status}`);
       }
       const j = (await res.json()) as { id: string };
-      toast.success('Program created from template.');
+      toast.success(t('templateCreated'));
       router.push(`/programs/${j.id}`);
       router.refresh();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Could not create the program.');
+      toast.error(e instanceof Error ? e.message : t('createError'));
       setCreatingSlug(null);
     }
   }
@@ -55,7 +57,7 @@ export function TemplatePicker({ templates }: Props) {
                   <p className="mt-1 text-sm text-muted-foreground">{template.summary}</p>
                 </div>
                 <Badge variant="secondary" className="shrink-0">
-                  {dayCount} {dayCount === 1 ? 'day' : 'days'}
+                  {t('dayCount', { count: dayCount })}
                 </Badge>
               </div>
             </CardHeader>
@@ -68,7 +70,7 @@ export function TemplatePicker({ templates }: Props) {
                   disabled={creatingSlug !== null}
                   onClick={() => instantiate(template)}
                 >
-                  {creatingSlug === template.slug ? 'Creating...' : 'Use this template'}
+                  {creatingSlug === template.slug ? t('creating') : t('templateUse')}
                 </Button>
               </div>
             </CardContent>

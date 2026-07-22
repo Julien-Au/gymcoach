@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { MessageSquarePlus } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -17,6 +18,7 @@ interface Props {
 // constraints). It is part of "what your coach sees" - correctable AI memory.
 // Saves through PATCH /api/profile (ownership-scoped, Zod-bounded server-side).
 export function CoachNoteCard({ initialNote }: Props) {
+  const t = useTranslations('coach.note');
   const [note, setNote] = useState(initialNote ?? '');
   const [saved, setSaved] = useState(initialNote ?? '');
   const [busy, setBusy] = useState(false);
@@ -35,12 +37,12 @@ export function CoachNoteCard({ initialNote }: Props) {
       });
       if (!res.ok) {
         const data = (await res.json().catch(() => null)) as { error?: string } | null;
-        toast.error(data?.error ?? 'Could not save your note.');
+        toast.error(data?.error ?? t('error'));
         return false;
       }
       return true;
     } catch {
-      toast.error('Could not save your note.');
+      toast.error(t('error'));
       return false;
     } finally {
       setBusy(false);
@@ -54,7 +56,7 @@ export function CoachNoteCard({ initialNote }: Props) {
     if (await persist(value)) {
       setNote(value ?? '');
       setSaved(value ?? '');
-      toast.success(value ? 'Note saved.' : 'Note cleared.');
+      toast.success(value ? t('saved') : t('cleared'));
     }
   }
 
@@ -62,7 +64,7 @@ export function CoachNoteCard({ initialNote }: Props) {
     if (await persist(null)) {
       setNote('');
       setSaved('');
-      toast.success('Note cleared.');
+      toast.success(t('cleared'));
     }
   }
 
@@ -71,18 +73,16 @@ export function CoachNoteCard({ initialNote }: Props) {
       <CardHeader className="pb-3">
         <div className="flex items-center gap-2">
           <MessageSquarePlus className="size-4 text-primary" />
-          <h2 className="text-base font-semibold">Note to your coach</h2>
+          <h2 className="text-base font-semibold">{t('title')}</h2>
         </div>
         <p className="text-xs text-muted-foreground">
-          Your own current context for the coach to weigh - an injury, an
-          illness, travel, anything the data does not show. The coach reads this
-          alongside your training history.
+          {t('description')}
         </p>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         <Textarea
-          aria-label="Note to your coach"
-          placeholder="e.g. Shoulder is bothering me, go easy on pressing this week."
+          aria-label={t('title')}
+          placeholder={t('placeholder')}
           value={note}
           onChange={(e) => setNote(e.target.value)}
           rows={3}
@@ -103,14 +103,14 @@ export function CoachNoteCard({ initialNote }: Props) {
               onClick={handleClear}
               disabled={busy || (saved.trim().length === 0 && trimmed.length === 0)}
             >
-              Clear
+              {t('clear')}
             </Button>
             <Button
               type="button"
               onClick={handleSave}
               disabled={busy || overLimit || !dirty}
             >
-              Save
+              {t('save')}
             </Button>
           </div>
         </div>

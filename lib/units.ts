@@ -37,6 +37,8 @@ export function roundWeight(value: number, decimals = 1): number {
 }
 
 interface FormatOptions {
+  // BCP 47 locale used for decimal/group separators.
+  locale?: string;
   // Decimal places for the converted value (default 1).
   decimals?: number;
   // Append the unit label (default true).
@@ -55,9 +57,15 @@ export function formatWeight(
   unit: WeightUnit,
   opts: FormatOptions = {},
 ): string {
-  const { decimals = 1, withUnit = true, fixed = false, group = true } = opts;
+  const {
+    locale = 'en-US',
+    decimals = 1,
+    withUnit = true,
+    fixed = false,
+    group = true,
+  } = opts;
   const display = roundWeight(toDisplayWeight(kg, unit), decimals);
-  const str = display.toLocaleString('en-US', {
+  const str = display.toLocaleString(locale, {
     minimumFractionDigits: fixed ? decimals : 0,
     maximumFractionDigits: decimals,
     useGrouping: group,

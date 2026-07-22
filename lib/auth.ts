@@ -68,10 +68,14 @@ export async function getCurrentUserId(): Promise<string | null> {
   return session?.userId ?? null;
 }
 
+const sessionCookieSecure = process.env.SESSION_COOKIE_SECURE
+  ? process.env.SESSION_COOKIE_SECURE === 'true'
+  : process.env.NEXTAUTH_URL?.startsWith('https://') === true;
+
 export const SESSION_COOKIE_OPTIONS = {
   httpOnly: true,
   sameSite: 'lax' as const,
   path: '/',
   maxAge: SESSION_TTL_SECONDS,
-  secure: process.env.NODE_ENV === 'production',
+  secure: sessionCookieSecure,
 };

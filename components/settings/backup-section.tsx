@@ -1,12 +1,15 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { AlertTriangle, Download, Loader2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 
 export function BackupSection() {
+  const t = useTranslations('settings.backup');
+  const common = useTranslations('common');
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
   const [confirmingFile, setConfirmingFile] = useState<File | null>(null);
@@ -26,9 +29,9 @@ export function BackupSection() {
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-      toast.success('Export downloaded.');
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Export failed.');
+      toast.success(t('exportDone'));
+    } catch {
+      toast.error(t('exportError'));
     } finally {
       setExporting(false);
     }
@@ -53,7 +56,7 @@ export function BackupSection() {
       try {
         payload = JSON.parse(text);
       } catch {
-        throw new Error('Invalid JSON file.');
+        throw new Error(t('invalidJson'));
       }
       const res = await fetch('/api/backup', {
         method: 'POST',
@@ -64,12 +67,12 @@ export function BackupSection() {
         const j = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(j.error ?? `Error ${res.status}`);
       }
-      toast.success('Import complete. Existing data has been replaced.');
+      toast.success(t('importDone'));
       setConfirmingFile(null);
       // Refresh the page to start from a clean state.
       setTimeout(() => window.location.reload(), 800);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Import failed.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t('importError'));
     } finally {
       setImporting(false);
     }
@@ -78,9 +81,9 @@ export function BackupSection() {
   return (
     <Card>
       <CardHeader className="pb-3">
-        <h2 className="text-base font-semibold">Data</h2>
+        <h2 className="text-base font-semibold">{t('title')}</h2>
         <p className="text-xs text-muted-foreground">
-          Local backup or restore from a JSON file.
+          {t('description')}
         </p>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
@@ -95,7 +98,7 @@ export function BackupSection() {
           ) : (
             <Download className="size-4" />
           )}
-          <span className="ml-2">Export all my data (JSON)</span>
+          <span className="ml-2">{t('export')}</span>
         </Button>
 
         <Button
@@ -105,7 +108,7 @@ export function BackupSection() {
           className="min-h-tap"
         >
           <Upload className="size-4" />
-          <span className="ml-2">Import a backup</span>
+          <span className="ml-2">{t('import')}</span>
         </Button>
         <input
           ref={fileRef}
@@ -120,12 +123,9 @@ export function BackupSection() {
             <div className="flex items-start gap-2">
               <AlertTriangle className="size-5 shrink-0 text-amber-600" />
               <div className="flex-1">
-                <p className="font-medium">Confirm the import</p>
+                <p className="font-medium">{t('confirmTitle')}</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  The file <code>{confirmingFile.name}</code> will replace{' '}
-                  <strong>all</strong> your current data (programs,
-                  sessions, sets, goals, bodyweight history, check-ins,
-                  coach conversations). This action cannot be undone.
+                  {t('confirmDescription', { file: confirmingFile.name })}
                 </p>
                 <div className="mt-3 flex gap-2">
                   <Button
@@ -138,7 +138,7 @@ export function BackupSection() {
                       <Loader2 className="size-4 animate-spin" />
                     ) : null}
                     <span className={importing ? 'ml-2' : ''}>
-                      Yes, replace
+                      {t('replace')}
                     </span>
                   </Button>
                   <Button
@@ -147,7 +147,7 @@ export function BackupSection() {
                     onClick={() => setConfirmingFile(null)}
                     disabled={importing}
                   >
-                    Cancel
+                    {common('actions.cancel')}
                   </Button>
                 </div>
               </div>

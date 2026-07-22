@@ -30,6 +30,8 @@ describe('lib/llm provider resolution', () => {
       expect(resolveProviderId()).toBe('anthropic');
       process.env.LLM_PROVIDER = 'openrouter';
       expect(resolveProviderId()).toBe('openrouter');
+      process.env.LLM_PROVIDER = 'codex-lb';
+      expect(resolveProviderId()).toBe('codex-lb');
       process.env.LLM_PROVIDER = 'demo';
       expect(resolveProviderId()).toBe('demo');
     });
@@ -39,6 +41,8 @@ describe('lib/llm provider resolution', () => {
       expect(resolveProviderId()).toBe('demo');
       process.env.LLM_PROVIDER = 'OPENROUTER';
       expect(resolveProviderId()).toBe('openrouter');
+      process.env.LLM_PROVIDER = 'CODEX_LB';
+      expect(resolveProviderId()).toBe('codex-lb');
       process.env.LLM_PROVIDER = 'AnThRoPiC';
       expect(resolveProviderId()).toBe('anthropic');
     });
@@ -48,6 +52,8 @@ describe('lib/llm provider resolution', () => {
       expect(resolveProviderId()).toBe('demo');
       process.env.LLM_PROVIDER = '\topenrouter\n';
       expect(resolveProviderId()).toBe('openrouter');
+      process.env.LLM_PROVIDER = '  codexlb  ';
+      expect(resolveProviderId()).toBe('codex-lb');
     });
 
     it('falls back to anthropic for an unknown value', () => {
@@ -67,6 +73,8 @@ describe('lib/llm provider resolution', () => {
       expect(getLlmProvider().id).toBe('anthropic');
       process.env.LLM_PROVIDER = 'openrouter';
       expect(getLlmProvider().id).toBe('openrouter');
+      process.env.LLM_PROVIDER = 'codex-lb';
+      expect(getLlmProvider().id).toBe('codex-lb');
       process.env.LLM_PROVIDER = 'demo';
       expect(getLlmProvider().id).toBe('demo');
     });

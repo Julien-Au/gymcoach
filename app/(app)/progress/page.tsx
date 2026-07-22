@@ -1,8 +1,9 @@
 import { TrendingUp } from 'lucide-react';
+import { getTranslations } from 'next-intl/server';
 import { db } from '@/lib/db';
 import { requireSession } from '@/lib/auth';
 import { EmptyState } from '@/components/ui/empty-state';
-import { MUSCLE_GROUP_LABELS } from '@/lib/schemas/exercise';
+import { muscleGroupMessageKeys } from '@/i18n/enum-keys';
 import {
   applyBodyweight,
   best1RM,
@@ -46,6 +47,8 @@ export default async function ProgressPage(
     searchParams: Promise<SearchParams>;
   }
 ) {
+  const t = await getTranslations('progress');
+  const exerciseT = await getTranslations('exercises');
   const searchParams = await props.searchParams;
   const auth = await requireSession();
 
@@ -312,7 +315,9 @@ export default async function ProgressPage(
       return {
         exerciseId: exo.id,
         exerciseName: exo.name,
-        muscleGroup: MUSCLE_GROUP_LABELS[exo.muscleGroup],
+        muscleGroup: exerciseT(
+          `muscleGroups.${muscleGroupMessageKeys[exo.muscleGroup]}`,
+        ),
         sessions: points.length,
         firstWeight: first.maxWeight,
         firstDate: first.date,
@@ -439,7 +444,7 @@ export default async function ProgressPage(
       <div className="mx-auto flex max-w-3xl flex-col gap-6">
         <div className="flex items-center gap-3">
           <TrendingUp className="size-6" />
-          <h1 className="text-2xl font-bold tracking-tight">Progress</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t('title')}</h1>
         </div>
 
         <BodyweightCard
@@ -476,9 +481,9 @@ export default async function ProgressPage(
         {exercisesWithSets.length === 0 ? (
           <EmptyState
             icon={TrendingUp}
-            title="No progress to show yet"
-            description={`Log a few sessions and your charts and PRs will appear here, tracking the last ${RECENT_WEEKS} weeks.`}
-            action={{ label: 'Log your first session', href: '/session/new' }}
+            title={t('emptyTitle')}
+            description={t('emptyDescription', { weeks: RECENT_WEEKS })}
+            action={{ label: t('firstSession'), href: '/session/new' }}
           />
         ) : (
           <>
@@ -494,7 +499,9 @@ export default async function ProgressPage(
               exercises={exercisesWithSets.map((e) => ({
                 id: e.id,
                 name: e.name,
-                muscleGroup: MUSCLE_GROUP_LABELS[e.muscleGroup],
+                muscleGroup: exerciseT(
+                  `muscleGroups.${muscleGroupMessageKeys[e.muscleGroup]}`,
+                ),
               }))}
               selectedExerciseId={selectedExerciseId}
               exercisePoints={exercisePoints}

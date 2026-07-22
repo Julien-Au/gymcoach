@@ -1,27 +1,26 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Plus, Pencil, Search } from 'lucide-react';
 import type { Exercise, MuscleGroup } from '@/lib/prisma-client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ExerciseFormDialog } from '@/components/exercises/exercise-form-dialog';
 import { DeleteExerciseButton } from '@/components/exercises/delete-exercise-button';
-import { CATEGORY_LABELS, MUSCLE_GROUP_LABELS } from '@/lib/schemas/exercise';
+import { useExerciseName } from '@/components/shared/use-exercise-name';
+import { exerciseCategoryMessageKeys, muscleGroupMessageKeys } from '@/i18n/enum-keys';
 
 interface ExercisesViewProps {
   exercises: Exercise[];
 }
 
 export function ExercisesView({ exercises }: ExercisesViewProps) {
+  const t = useTranslations('exercises');
+  const common = useTranslations('common');
+  const exerciseName = useExerciseName();
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<Exercise | null>(null);
   const [query, setQuery] = useState('');
@@ -32,8 +31,10 @@ export function ExercisesView({ exercises }: ExercisesViewProps) {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return exercises;
-    return exercises.filter((ex) => ex.name.toLowerCase().includes(q));
-  }, [exercises, query]);
+    return exercises.filter(
+      (ex) => ex.name.toLowerCase().includes(q) || exerciseName(ex.name).toLowerCase().includes(q),
+    );
+  }, [exerciseName, exercises, query]);
 
   const grouped = useMemo(() => groupByMuscle(filtered), [filtered]);
 
@@ -41,14 +42,14 @@ export function ExercisesView({ exercises }: ExercisesViewProps) {
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Exercise catalog</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t('title')}</h1>
           <p className="text-sm text-muted-foreground">
-            {exercises.length} exercise{exercises.length > 1 ? 's' : ''} saved.
+            {t('savedCount', { count: exercises.length })}
           </p>
         </div>
         <Button onClick={() => setCreateOpen(true)} className="min-h-tap">
           <Plus className="size-4" />
-          <span className="ml-2">Add</span>
+          <span className="ml-2">{common('actions.add')}</span>
         </Button>
       </div>
 
@@ -59,8 +60,8 @@ export function ExercisesView({ exercises }: ExercisesViewProps) {
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search exercises by name"
-            aria-label="Search exercises by name"
+            placeholder={t('search')}
+            aria-label={t('search')}
             className="pl-9"
           />
         </div>
@@ -69,21 +70,15 @@ export function ExercisesView({ exercises }: ExercisesViewProps) {
       {exercises.length === 0 ? (
         <Card>
           <CardHeader>
-            <CardTitle>No exercises</CardTitle>
-            <CardDescription>
-              The catalog is empty. Add your first exercise so you can use it in
-              a program.
-            </CardDescription>
+            <CardTitle>{t('emptyTitle')}</CardTitle>
+            <CardDescription>{t('emptyDescription')}</CardDescription>
           </CardHeader>
         </Card>
       ) : filtered.length === 0 ? (
         <Card>
           <CardHeader>
-            <CardTitle>No exercises match</CardTitle>
-            <CardDescription>
-              No exercise name matches &ldquo;{query.trim()}&rdquo;. Try a different
-              search.
-            </CardDescription>
+            <CardTitle>{t('noMatchTitle')}</CardTitle>
+            <CardDescription>{t('noMatchDescription', { query: query.trim() })}</CardDescription>
           </CardHeader>
         </Card>
       ) : (
@@ -91,7 +86,7 @@ export function ExercisesView({ exercises }: ExercisesViewProps) {
           {Object.entries(grouped).map(([group, list]) => (
             <section key={group} className="flex flex-col gap-2">
               <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                {MUSCLE_GROUP_LABELS[group as MuscleGroup]}
+                {t(`muscleGroups.${muscleGroupMessageKeys[group as MuscleGroup]}`)}
               </h2>
               <div className="flex flex-col gap-2">
                 {list.map((ex) => (
@@ -117,14 +112,20 @@ export function ExercisesView({ exercises }: ExercisesViewProps) {
 }
 
 function ExerciseRow({ exercise, onEdit }: { exercise: Exercise; onEdit: () => void }) {
+  const t = useTranslations('exercises');
+  const exerciseName = useExerciseName();
+  const displayName = exerciseName(exercise.name);
+
   return (
     <Card>
       <CardContent className="flex items-start justify-between gap-3 p-3">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium">{exercise.name}</p>
+          <p className="truncate text-sm font-medium">{displayName}</p>
           <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-            <Badge variant="secondary">{CATEGORY_LABELS[exercise.category]}</Badge>
-            <span>rest {exercise.defaultRestSec}s</span>
+            <Badge variant="secondary">
+              {t(`categories.${exerciseCategoryMessageKeys[exercise.category]}`)}
+            </Badge>
+            <span>{t('restSeconds', { seconds: exercise.defaultRestSec })}</span>
           </div>
           {exercise.notes && (
             <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">{exercise.notes}</p>
@@ -135,12 +136,12 @@ function ExerciseRow({ exercise, onEdit }: { exercise: Exercise; onEdit: () => v
             variant="ghost"
             size="icon"
             onClick={onEdit}
-            aria-label="Edit"
+            aria-label={t('editTitle')}
             className="min-h-tap min-w-tap"
           >
             <Pencil className="size-4" />
           </Button>
-          <DeleteExerciseButton exerciseId={exercise.id} exerciseName={exercise.name} />
+          <DeleteExerciseButton exerciseId={exercise.id} exerciseName={displayName} />
         </div>
       </CardContent>
     </Card>

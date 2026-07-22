@@ -1,4 +1,5 @@
 import { Sparkles } from 'lucide-react';
+import { getTranslations } from 'next-intl/server';
 import { db } from '@/lib/db';
 import { requireSession } from '@/lib/auth';
 import { getLlmProvider } from '@/lib/llm';
@@ -12,6 +13,7 @@ import { CoachContextCard } from '@/components/coach/coach-context-card';
 import { CoachNoteCard } from '@/components/coach/coach-note-card';
 
 export default async function CoachPage() {
+  const t = await getTranslations('coach');
   const auth = await requireSession();
 
   const [history, activeProgram, coachPayload] = await Promise.all([
@@ -85,9 +87,9 @@ export default async function CoachPage() {
         <div className="flex items-center gap-3">
           <Sparkles className="size-6" />
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Coach</h1>
+            <h1 className="text-2xl font-bold tracking-tight">{t('title')}</h1>
             <p className="text-xs text-muted-foreground">
-              Weekly AI debrief of your training.
+              {t('description')}
             </p>
           </div>
         </div>

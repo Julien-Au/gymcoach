@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -17,17 +18,22 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 
-const schema = z.object({
-  displayName: z.string().trim().min(1, 'Name required').max(80),
-  email: z.string().email('Invalid email'),
-  password: z.string().min(8, 'At least 8 characters'),
-});
-
-type FormValues = z.infer<typeof schema>;
+type FormValues = { displayName: string; email: string; password: string };
 
 export function SignupForm() {
+  const t = useTranslations('auth');
+  const common = useTranslations('common');
   const router = useRouter();
   const [serverError, setServerError] = useState<string | null>(null);
+  const schema = useMemo(
+    () =>
+      z.object({
+        displayName: z.string().trim().min(1, t('validation.nameRequired')).max(80),
+        email: z.string().email(t('validation.invalidEmail')),
+        password: z.string().min(8, t('validation.passwordMin')),
+      }),
+    [t],
+  );
 
   const {
     register,
@@ -52,20 +58,19 @@ export function SignupForm() {
       return;
     }
 
-    const data = (await res.json().catch(() => null)) as { error?: string } | null;
-    setServerError(data?.error ?? 'Sign up error.');
+    setServerError(t('signup.error'));
   }
 
   return (
     <Card className="w-full max-w-sm">
       <CardHeader>
-        <CardTitle>Create your account</CardTitle>
-        <CardDescription>Start tracking your training.</CardDescription>
+        <CardTitle>{t('signup.title')}</CardTitle>
+        <CardDescription>{t('signup.description')}</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
           <div className="space-y-2">
-            <Label htmlFor="displayName">Name</Label>
+            <Label htmlFor="displayName">{common('fields.name')}</Label>
             <Input
               id="displayName"
               autoComplete="name"
@@ -78,7 +83,7 @@ export function SignupForm() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{common('fields.email')}</Label>
             <Input
               id="email"
               type="email"
@@ -95,7 +100,7 @@ export function SignupForm() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">{common('fields.password')}</Label>
             <Input
               id="password"
               type="password"
@@ -119,16 +124,16 @@ export function SignupForm() {
             className="min-h-tap w-full text-base"
             disabled={isSubmitting}
           >
-            {isSubmitting ? 'Creating...' : 'Create account'}
+            {isSubmitting ? t('signup.submitting') : t('signup.submit')}
           </Button>
 
           <p className="text-center text-sm text-muted-foreground">
-            Already have an account?{' '}
+            {t('signup.hasAccount')}{' '}
             <Link
               href="/login"
               className="font-medium text-foreground underline-offset-4 hover:underline"
             >
-              Sign in
+              {t('signup.signIn')}
             </Link>
           </p>
         </form>

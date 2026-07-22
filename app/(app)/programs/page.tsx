@@ -1,12 +1,17 @@
 import Link from 'next/link';
 import { Plus, Wand2 } from 'lucide-react';
+import { getFormatter, getLocale, getTranslations } from 'next-intl/server';
 import { db } from '@/lib/db';
 import { requireSession } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { getTrainingDisplayName } from '@/i18n/training-names';
 
 export default async function ProgramsPage() {
+  const t = await getTranslations('programs');
+  const format = await getFormatter();
+  const locale = await getLocale();
   const session = await requireSession();
   const programs = await db.program.findMany({
     where: { userId: session.userId },
@@ -21,22 +26,22 @@ export default async function ProgramsPage() {
       <div className="mx-auto flex max-w-3xl flex-col gap-6">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Programs</h1>
+            <h1 className="text-2xl font-bold tracking-tight">{t('title')}</h1>
             <p className="text-sm text-muted-foreground">
-              {programs.length} program{programs.length > 1 ? 's' : ''}.
+              {t('count', { count: programs.length })}
             </p>
           </div>
           <div className="flex gap-2">
             <Button asChild variant="outline" className="min-h-tap">
               <Link href="/programs/generate">
                 <Wand2 className="size-4" />
-                <span className="ml-2">Generate with AI</span>
+                <span className="ml-2">{t('generateWithAi')}</span>
               </Link>
             </Button>
             <Button asChild className="min-h-tap">
               <Link href="/programs/new">
                 <Plus className="size-4" />
-                <span className="ml-2">Create</span>
+                <span className="ml-2">{t('create')}</span>
               </Link>
             </Button>
           </div>
@@ -45,10 +50,8 @@ export default async function ProgramsPage() {
         {programs.length === 0 ? (
           <Card>
             <CardHeader>
-              <CardTitle>No program</CardTitle>
-              <CardDescription>
-                Create your first program so you can start a session.
-              </CardDescription>
+              <CardTitle>{t('noProgram')}</CardTitle>
+              <CardDescription>{t('noProgramDescription')}</CardDescription>
             </CardHeader>
           </Card>
         ) : (
@@ -59,21 +62,27 @@ export default async function ProgramsPage() {
                   <Card className="transition-colors hover:bg-accent">
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between gap-3">
-                        <CardTitle className="text-base">{p.name}</CardTitle>
-                        {p.isActive && <Badge>Active</Badge>}
+                        <CardTitle className="text-base">
+                          {getTrainingDisplayName(p.name, locale)}
+                        </CardTitle>
+                        {p.isActive && <Badge>{t('active')}</Badge>}
                       </div>
                       <CardDescription className="text-xs">
-                        {p.phase} · started on{' '}
-                        {new Intl.DateTimeFormat('en-US', {
-                          day: '2-digit',
-                          month: '2-digit',
-                          year: 'numeric',
-                        }).format(p.startDate)}
+                        {t('startedOn', {
+                          phase: p.phase,
+                          date: format.dateTime(p.startDate, {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                          }),
+                        })}
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="pt-0 text-xs text-muted-foreground">
-                      {p._count.workouts} session{p._count.workouts > 1 ? 's' : ''} ·{' '}
-                      {p._count.sessions} logged session{p._count.sessions > 1 ? 's' : ''}
+                      {t('listSummary', {
+                        workouts: p._count.workouts,
+                        logged: p._count.sessions,
+                      })}
                     </CardContent>
                   </Card>
                 </Link>

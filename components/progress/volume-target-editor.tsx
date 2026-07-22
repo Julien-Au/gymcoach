@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -44,6 +45,8 @@ export function VolumeTargetEditor({
   defaultMev,
   defaultMrv,
 }: Props) {
+  const t = useTranslations('progress.volumeTarget');
+  const common = useTranslations('common');
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [mevValue, setMevValue] = useState(String(mev));
@@ -61,15 +64,15 @@ export function VolumeTargetEditor({
     const m = Number(mevValue);
     const r = Number(mrvValue);
     if (!Number.isInteger(m) || !Number.isInteger(r)) {
-      setError('Enter whole numbers of sets.');
+      setError(t('wholeNumbers'));
       return null;
     }
     if (m < 1 || m > VOLUME_TARGET_MAX || r < 1 || r > VOLUME_TARGET_MAX) {
-      setError(`Values must be between 1 and ${VOLUME_TARGET_MAX} sets.`);
+      setError(t('range', { max: VOLUME_TARGET_MAX }));
       return null;
     }
     if (r <= m) {
-      setError('MRV must be greater than MEV.');
+      setError(t('order'));
       return null;
     }
     return { mev: m, mrv: r };
@@ -87,13 +90,13 @@ export function VolumeTargetEditor({
         body: JSON.stringify({ muscleGroup, mev: parsed.mev, mrv: parsed.mrv }),
       });
       if (!res.ok) {
-        setError('Could not save the target.');
+        setError(t('saveError'));
         return;
       }
       setOpen(false);
       router.refresh();
     } catch {
-      setError('Could not save the target.');
+      setError(t('saveError'));
     } finally {
       setBusy(false);
     }
@@ -109,13 +112,13 @@ export function VolumeTargetEditor({
         body: JSON.stringify({ muscleGroup }),
       });
       if (!res.ok) {
-        setError('Could not reset the target.');
+        setError(t('resetError'));
         return;
       }
       setOpen(false);
       router.refresh();
     } catch {
-      setError('Could not reset the target.');
+      setError(t('resetError'));
     } finally {
       setBusy(false);
     }
@@ -131,20 +134,23 @@ export function VolumeTargetEditor({
     >
       <DialogTrigger asChild>
         <Button variant="ghost" size="sm" className="h-7 px-2 text-xs">
-          Edit
+          {t('edit')}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{label} volume target</DialogTitle>
+          <DialogTitle>{t('title', { name: label })}</DialogTitle>
           <DialogDescription>
-            Your personal weekly set band (MEV-MRV) for {label.toLowerCase()}.
-            Leave it to use the {defaultMev}-{defaultMrv} default.
+            {t('description', {
+              name: label.toLowerCase(),
+              mev: defaultMev,
+              mrv: defaultMrv,
+            })}
           </DialogDescription>
         </DialogHeader>
         <div className="flex gap-4">
           <div className="flex-1">
-            <Label htmlFor={`mev-${muscleGroup}`}>MEV (sets/week)</Label>
+            <Label htmlFor={`mev-${muscleGroup}`}>{t('mev')}</Label>
             <Input
               id={`mev-${muscleGroup}`}
               type="number"
@@ -155,7 +161,7 @@ export function VolumeTargetEditor({
             />
           </div>
           <div className="flex-1">
-            <Label htmlFor={`mrv-${muscleGroup}`}>MRV (sets/week)</Label>
+            <Label htmlFor={`mrv-${muscleGroup}`}>{t('mrv')}</Label>
             <Input
               id={`mrv-${muscleGroup}`}
               type="number"
@@ -169,17 +175,12 @@ export function VolumeTargetEditor({
         {error && <p className="text-sm text-destructive">{error}</p>}
         <DialogFooter className="gap-2 sm:gap-2">
           {custom && (
-            <Button
-              variant="outline"
-              onClick={clear}
-              disabled={busy}
-              className="mr-auto"
-            >
-              Reset to default
+            <Button variant="outline" onClick={clear} disabled={busy} className="mr-auto">
+              {t('reset')}
             </Button>
           )}
           <Button onClick={save} disabled={busy}>
-            Save
+            {common('actions.save')}
           </Button>
         </DialogFooter>
       </DialogContent>

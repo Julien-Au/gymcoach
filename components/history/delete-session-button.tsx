@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useFormatter, useTranslations } from 'next-intl';
 import { Loader2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -24,14 +25,17 @@ interface Props {
 }
 
 export function DeleteSessionButton({ sessionId, workoutName, startedAt }: Props) {
+  const t = useTranslations('history.delete');
+  const common = useTranslations('common');
+  const format = useFormatter();
   const router = useRouter();
   const [pending, setPending] = useState(false);
 
-  const formatted = new Intl.DateTimeFormat('en-US', {
+  const formatted = format.dateTime(startedAt, {
     day: '2-digit',
     month: 'long',
     year: 'numeric',
-  }).format(startedAt);
+  });
 
   async function handleDelete() {
     setPending(true);
@@ -41,11 +45,11 @@ export function DeleteSessionButton({ sessionId, workoutName, startedAt }: Props
         const j = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(j.error ?? `Error ${res.status}`);
       }
-      toast.success('Session deleted.');
+      toast.success(t('deleted'));
       router.push('/history');
       router.refresh();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to delete.');
+      toast.error(e instanceof Error ? e.message : t('error'));
       setPending(false);
     }
   }
@@ -59,20 +63,18 @@ export function DeleteSessionButton({ sessionId, workoutName, startedAt }: Props
           className="text-rose-600 hover:bg-rose-500/10 hover:text-rose-600"
         >
           <Trash2 className="size-4" />
-          <span className="ml-1">Delete</span>
+          <span className="ml-1">{t('button')}</span>
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete this session?</AlertDialogTitle>
+          <AlertDialogTitle>{t('title')}</AlertDialogTitle>
           <AlertDialogDescription>
-            The <strong>{workoutName ?? 'free'}</strong> session from {formatted} and
-            all its sets will be permanently deleted. This action cannot be
-            undone.
+            {t('description', { name: workoutName ?? t('free'), date: formatted })}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={pending}>{common('actions.cancel')}</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleDelete}
             disabled={pending}
@@ -81,10 +83,10 @@ export function DeleteSessionButton({ sessionId, workoutName, startedAt }: Props
             {pending ? (
               <>
                 <Loader2 className="size-4 animate-spin" />
-                <span className="ml-2">Deleting...</span>
+                <span className="ml-2">{t('deleting')}</span>
               </>
             ) : (
-              'Yes, delete'
+              t('confirm')
             )}
           </AlertDialogAction>
         </AlertDialogFooter>

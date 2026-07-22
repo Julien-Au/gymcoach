@@ -1,7 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useFormatter, useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { Ruler, Trash2 } from 'lucide-react';
 import {
@@ -22,10 +23,10 @@ import {
   formatLength,
   fromDisplayLength,
   MEASUREMENT_SITES,
-  measurementSiteLabel,
   roundLength,
   toDisplayLength,
 } from '@/lib/measurement';
+import { measurementSiteMessageKeys } from '@/i18n/enum-keys';
 
 // One body measurement, as serialized at the Server Component boundary.
 export interface BodyMeasurementView {
@@ -43,25 +44,30 @@ interface Props {
   listLimit?: number;
 }
 
-function shortDate(iso: string) {
-  return new Intl.DateTimeFormat('en-US', {
-    day: '2-digit',
-    month: '2-digit',
-  }).format(new Date(iso));
-}
-
 // Body-measurement card (issue #202), mirroring the bodyweight card (#99):
 // pick a site, quick-add a value in the display unit (cm in metric, inches in
 // imperial), see the latest value per site and a trend for the selected site,
 // delete bad entries. Storage is always cm; the unit only affects display.
 export function MeasurementsCard({ entries, unit, listLimit = 5 }: Props) {
+  const t = useTranslations('progress.measurements');
+  const siteT = useTranslations('progress.measurements.sites');
+  const common = useTranslations('common');
+  const format = useFormatter();
   const router = useRouter();
   const metric = unit !== 'LB';
   const unitSuffix = metric ? 'cm' : 'in';
+  const shortDate = useCallback(
+    (iso: string) => format.dateTime(new Date(iso), { day: '2-digit', month: '2-digit' }),
+    [format],
+  );
 
   const [site, setSite] = useState<BodyMeasurementSite>('WAIST');
   const [valueField, setValueField] = useState('');
   const [busy, setBusy] = useState(false);
+  const siteLabel = useCallback(
+    (value: BodyMeasurementSite) => siteT(measurementSiteMessageKeys[value]),
+    [siteT],
+  );
 
   // Newest entry per site, for the "latest per site" summary grid.
   const latestPerSite = useMemo(() => {
@@ -74,27 +80,22 @@ export function MeasurementsCard({ entries, unit, listLimit = 5 }: Props) {
   }, [entries]);
 
   // Entries for the selected site, newest first.
-  const siteEntries = useMemo(
-    () => entries.filter((e) => e.site === site),
-    [entries, site],
-  );
+  const siteEntries = useMemo(() => entries.filter((e) => e.site === site), [entries, site]);
 
   // Chart data for the selected site, oldest to newest, in the display unit.
   const chartData = useMemo(
     () =>
-      [...siteEntries]
-        .reverse()
-        .map((e) => ({
-          label: shortDate(e.measuredAt),
-          value: roundLength(toDisplayLength(e.valueCm, metric)),
-        })),
-    [siteEntries, metric],
+      [...siteEntries].reverse().map((e) => ({
+        label: shortDate(e.measuredAt),
+        value: roundLength(toDisplayLength(e.valueCm, metric)),
+      })),
+    [siteEntries, metric, shortDate],
   );
 
   async function addEntry() {
     const value = parseFloat(valueField);
     if (!Number.isFinite(value) || value <= 0) {
-      toast.error('Enter a positive measurement.');
+      toast.error(t('invalid'));
       return;
     }
     setBusy(true);
@@ -106,10 +107,10 @@ export function MeasurementsCard({ entries, unit, listLimit = 5 }: Props) {
       });
       if (!res.ok) {
         const data = (await res.json().catch(() => null)) as { error?: string } | null;
-        toast.error(data?.error ?? 'Could not log the measurement.');
+        toast.error(data?.error ?? t('logError'));
         return;
       }
-      toast.success('Measurement logged.');
+      toast.success(t('logged'));
       setValueField('');
       router.refresh();
     } finally {
@@ -123,10 +124,10 @@ export function MeasurementsCard({ entries, unit, listLimit = 5 }: Props) {
       const res = await fetch(`/api/measurements/${id}`, { method: 'DELETE' });
       if (!res.ok) {
         const data = (await res.json().catch(() => null)) as { error?: string } | null;
-        toast.error(data?.error ?? 'Could not delete the measurement.');
+        toast.error(data?.error ?? t('deleteError'));
         return;
       }
-      toast.success('Measurement deleted.');
+      toast.success(t('deleted'));
       router.refresh();
     } finally {
       setBusy(false);
@@ -139,7 +140,7 @@ export function MeasurementsCard({ entries, unit, listLimit = 5 }: Props) {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="flex items-center gap-2 text-base font-semibold">
             <Ruler className="size-4" />
-            Measurements
+            {t('title')}
           </h2>
         </div>
       </CardHeader>
@@ -153,7 +154,7 @@ export function MeasurementsCard({ entries, unit, listLimit = 5 }: Props) {
           }}
         >
           <div className="flex-1 space-y-1">
-            <Label htmlFor="measurement-site">Site</Label>
+            <Label htmlFor="measurement-site">{t('site')}</Label>
             <select
               id="measurement-site"
               className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
@@ -162,13 +163,13 @@ export function MeasurementsCard({ entries, unit, listLimit = 5 }: Props) {
             >
               {MEASUREMENT_SITES.map((s) => (
                 <option key={s} value={s}>
-                  {measurementSiteLabel(s)}
+                  {siteLabel(s)}
                 </option>
               ))}
             </select>
           </div>
           <div className="flex-1 space-y-1">
-            <Label htmlFor="measurement-value">Value ({unitSuffix})</Label>
+            <Label htmlFor="measurement-value">{t('value', { unit: unitSuffix })}</Label>
             <Input
               id="measurement-value"
               type="number"
@@ -180,7 +181,7 @@ export function MeasurementsCard({ entries, unit, listLimit = 5 }: Props) {
             />
           </div>
           <Button type="submit" disabled={busy}>
-            {busy ? 'Saving...' : 'Log'}
+            {busy ? common('actions.saving') : t('log')}
           </Button>
         </form>
 
@@ -189,7 +190,7 @@ export function MeasurementsCard({ entries, unit, listLimit = 5 }: Props) {
           <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-3">
             {MEASUREMENT_SITES.filter((s) => latestPerSite.has(s)).map((s) => (
               <div key={s} className="flex items-center justify-between gap-2">
-                <span className="text-muted-foreground">{measurementSiteLabel(s)}</span>
+                <span className="text-muted-foreground">{siteLabel(s)}</span>
                 <span className="font-medium">
                   {formatLength(latestPerSite.get(s)!.valueCm, metric)}
                 </span>
@@ -202,8 +203,8 @@ export function MeasurementsCard({ entries, unit, listLimit = 5 }: Props) {
         {chartData.length < 2 ? (
           <p className="text-sm text-muted-foreground">
             {chartData.length === 0
-              ? `No ${measurementSiteLabel(site).toLowerCase()} measurement yet. Log one to start the trend.`
-              : `Log a second ${measurementSiteLabel(site).toLowerCase()} measurement to see the trend.`}
+              ? t('empty', { site: siteLabel(site) })
+              : t('second', { site: siteLabel(site) })}
           </p>
         ) : (
           <div className="h-48 w-full">
@@ -227,7 +228,7 @@ export function MeasurementsCard({ entries, unit, listLimit = 5 }: Props) {
                 <Line
                   type="monotone"
                   dataKey="value"
-                  name={`${measurementSiteLabel(site)} (${unitSuffix})`}
+                  name={`${siteLabel(site)} (${unitSuffix})`}
                   stroke="hsl(var(--primary))"
                   strokeWidth={2}
                   dot={{ r: 3 }}
@@ -241,19 +242,21 @@ export function MeasurementsCard({ entries, unit, listLimit = 5 }: Props) {
         {siteEntries.length > 0 && (
           <ul className="flex flex-col gap-1">
             {siteEntries.slice(0, listLimit).map((e) => (
-              <li
-                key={e.id}
-                className="flex items-center justify-between gap-3 text-sm"
-              >
+              <li key={e.id} className="flex items-center justify-between gap-3 text-sm">
                 <span>
                   <span className="font-medium">{formatLength(e.valueCm, metric)}</span>{' '}
-                  <span className="text-muted-foreground">on {shortDate(e.measuredAt)}</span>
+                  <span className="text-muted-foreground">
+                    {t('onDate', { date: shortDate(e.measuredAt) })}
+                  </span>
                 </span>
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
-                  aria-label={`Delete ${measurementSiteLabel(e.site)} measurement of ${shortDate(e.measuredAt)}`}
+                  aria-label={t('deleteAria', {
+                    site: siteLabel(e.site),
+                    date: shortDate(e.measuredAt),
+                  })}
                   onClick={() => void deleteEntry(e.id)}
                   disabled={busy}
                 >

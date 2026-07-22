@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { selectHomeInsight, type HomeInsightInput } from './home-insight';
+import {
+  createHomeInsightTranslator,
+  selectHomeInsight,
+  type HomeInsightInput,
+} from './home-insight';
 
 function input(over: Partial<HomeInsightInput>): HomeInsightInput {
   return {
@@ -72,9 +76,7 @@ describe('selectHomeInsight (issue #237)', () => {
     expect(weight?.detail).toContain('heaviest set');
     expect(weight?.detail).toContain('Bench');
 
-    const e1rm = selectHomeInsight(
-      input({ recentPR: { exerciseName: 'Squat', kind: 'e1rm' } }),
-    );
+    const e1rm = selectHomeInsight(input({ recentPR: { exerciseName: 'Squat', kind: 'e1rm' } }));
     expect(e1rm?.detail).toContain('estimated 1RM');
   });
 
@@ -90,5 +92,20 @@ describe('selectHomeInsight (issue #237)', () => {
   it('always links somewhere actionable', () => {
     const result = selectHomeInsight(input({ trainingDaysThisWeek: 2 }));
     expect(result?.href).toBe('/progress');
+  });
+
+  it('renders every insight through the requested locale', () => {
+    const translate = createHomeInsightTranslator('ru');
+    const result = selectHomeInsight(
+      input({
+        deload: {
+          recommended: true,
+          reasons: [{ kind: 'stalled-lifts', exerciseNames: ['Жим лёжа', 'Приседания'] }],
+        },
+      }),
+      translate,
+    );
+    expect(result?.title).toBe('Похоже, пора восстановиться');
+    expect(result?.detail).toContain('Прогресс остановился в 2 упражнениях');
   });
 });

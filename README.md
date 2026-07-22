@@ -53,7 +53,7 @@ auto-merges it once CI is green. A human still owns the vision and the hard call
 The whole playbook is open and reproducible in [`docs/loops/`](docs/loops/): the
 pipeline (triage -> implement -> ship -> write-up), the guardrails, and the
 [autonomy charter](docs/loops/07-autonomy.md) the agent runs inside. If you care
-more about *how a repo can maintain itself* than about the gym app, start there.
+more about _how a repo can maintain itself_ than about the gym app, start there.
 
 ## Features
 
@@ -164,7 +164,7 @@ The app:
 
 The AI layer:
 
-- A single provider interface (`lib/llm`) sits in front of either the Anthropic SDK or any OpenRouter model. You pick one with the `LLM_PROVIDER` env var; the rest of the app does not care which.
+- A single provider interface (`lib/llm`) sits in front of the Anthropic SDK, any OpenRouter model, or an OpenAI Responses-compatible `codex-lb` endpoint. You pick one with the `LLM_PROVIDER` env var; the rest of the app does not care which.
 - For every AI call the server builds a compact, structured payload (your profile + recent sessions + active program + per-exercise progression) instead of dumping raw rows, then:
   - Weekly debrief and program adjustments: one completion that returns markdown plus an optional structured block of suggested changes, validated with Zod before anything touches your program.
   - Chat coach: the same context plus your conversation, streamed back token by token.
@@ -186,7 +186,7 @@ The AI layer:
   </tr>
 </table>
 
-> These clips use the built-in `demo` provider (canned responses, no key). Point `LLM_PROVIDER` at your Anthropic or OpenRouter key for the real thing.
+> These clips use the built-in `demo` provider (canned responses, no key). Point `LLM_PROVIDER` at Anthropic, OpenRouter, or `codex-lb` for the real thing.
 
 ## Requirements
 
@@ -250,21 +250,21 @@ build and E2E on every push and pull request.
 
 ## Scripts
 
-| Script | Description |
-| --- | --- |
-| `npm run dev` | Next.js dev server (port 3030) |
-| `npm run build` | Production build |
-| `npm run start` | Run the production build |
-| `npm run lint` | ESLint |
-| `npm run typecheck` | TypeScript type checking |
-| `npm run test` | Unit and component tests |
-| `npm run test:e2e` | End to end tests |
-| `npm run format` | Prettier |
-| `npm run db:migrate` | Apply migrations (dev) |
-| `npm run db:reset` | Reset the database (drop + migrate + seed) |
-| `npm run db:seed` | Load the demo dataset |
-| `npm run db:studio` | Open Prisma Studio |
-| `npm run db:generate` | Regenerate the Prisma client |
+| Script                | Description                                |
+| --------------------- | ------------------------------------------ |
+| `npm run dev`         | Next.js dev server (port 3030)             |
+| `npm run build`       | Production build                           |
+| `npm run start`       | Run the production build                   |
+| `npm run lint`        | ESLint                                     |
+| `npm run typecheck`   | TypeScript type checking                   |
+| `npm run test`        | Unit and component tests                   |
+| `npm run test:e2e`    | End to end tests                           |
+| `npm run format`      | Prettier                                   |
+| `npm run db:migrate`  | Apply migrations (dev)                     |
+| `npm run db:reset`    | Reset the database (drop + migrate + seed) |
+| `npm run db:seed`     | Load the demo dataset                      |
+| `npm run db:studio`   | Open Prisma Studio                         |
+| `npm run db:generate` | Regenerate the Prisma client               |
 
 ## Project layout
 

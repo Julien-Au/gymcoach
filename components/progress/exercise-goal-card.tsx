@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useLocale, useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { Target } from 'lucide-react';
 import type { WeightUnit } from '@/lib/prisma-client';
@@ -48,6 +49,9 @@ export function ExerciseGoalCard({
   bestE1RM,
   unit,
 }: Props) {
+  const t = useTranslations('progress.goal');
+  const common = useTranslations('common');
+  const locale = useLocale();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -73,7 +77,7 @@ export function ExerciseGoalCard({
     const weight = parseFloat(weightField);
     const reps = parseInt(repsField, 10);
     if (!Number.isFinite(weight) || weight <= 0 || !Number.isInteger(reps) || reps < 1) {
-      toast.error('Enter a positive target weight and at least 1 rep.');
+      toast.error(t('invalid'));
       return;
     }
     setBusy(true);
@@ -89,10 +93,10 @@ export function ExerciseGoalCard({
       });
       if (!res.ok) {
         const data = (await res.json().catch(() => null)) as { error?: string } | null;
-        toast.error(data?.error ?? 'Could not save the goal.');
+        toast.error(data?.error ?? t('saveError'));
         return;
       }
-      toast.success('Goal saved.');
+      toast.success(t('saved'));
       setOpen(false);
       router.refresh();
     } finally {
@@ -107,10 +111,10 @@ export function ExerciseGoalCard({
       const res = await fetch(`/api/goals/${goal.id}`, { method: 'DELETE' });
       if (!res.ok) {
         const data = (await res.json().catch(() => null)) as { error?: string } | null;
-        toast.error(data?.error ?? 'Could not remove the goal.');
+        toast.error(data?.error ?? t('removeError'));
         return;
       }
-      toast.success('Goal removed.');
+      toast.success(t('removed'));
       router.refresh();
     } finally {
       setBusy(false);
@@ -123,11 +127,11 @@ export function ExerciseGoalCard({
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="flex items-center gap-2 text-base font-semibold">
             <Target className="size-4" />
-            Goal - {exerciseName}
+            {t('title', { exercise: exerciseName })}
           </h2>
           <div className="flex items-center gap-2">
             <Button type="button" variant="outline" size="sm" onClick={openDialog}>
-              {goal ? 'Edit goal' : 'Set a goal'}
+              {goal ? t('edit') : t('set')}
             </Button>
             {goal && (
               <Button
@@ -137,7 +141,7 @@ export function ExerciseGoalCard({
                 onClick={removeGoal}
                 disabled={busy}
               >
-                Remove
+                {t('remove')}
               </Button>
             )}
           </div>
@@ -146,30 +150,33 @@ export function ExerciseGoalCard({
       <CardContent>
         {!goal || !target ? (
           <p className="text-sm text-muted-foreground">
-            No goal set for this exercise. Set a target load and reps to track
-            your progress toward it.
+            {t('empty')}
           </p>
         ) : (
           <div className="flex flex-col gap-2">
             <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
               <span className="font-medium">
-                Target: {formatWeight(goal.targetWeight, unit)} x {goal.targetReps}{' '}
-                {goal.targetReps === 1 ? 'rep' : 'reps'}
+                {t('target', {
+                  weight: formatWeight(goal.targetWeight, unit, { locale }),
+                  reps: goal.targetReps,
+                })}
               </span>
               {achieved && (
                 <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">
-                  Achieved
+                  {t('achieved')}
                 </Badge>
               )}
             </div>
             <Progress
               value={Math.round(progress * 100)}
-              aria-label="Progress toward goal"
+              aria-label={t('progressAria')}
             />
             <p className="text-xs text-muted-foreground">
-              {Math.round(progress * 100)}% of the target on the estimated-1RM
-              scale ({formatWeight(bestE1RM, unit)} best vs{' '}
-              {formatWeight(goalTargetE1RM(target), unit)} target).
+              {t('progress', {
+                percent: Math.round(progress * 100),
+                best: formatWeight(bestE1RM, unit, { locale }),
+                target: formatWeight(goalTargetE1RM(target), unit, { locale }),
+              })}
             </p>
           </div>
         )}
@@ -179,12 +186,12 @@ export function ExerciseGoalCard({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {goal ? 'Edit the goal' : 'Set a goal'} - {exerciseName}
+              {goal ? t('edit') : t('set')} - {exerciseName}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="goal-weight">Target load ({unitLabel(unit)})</Label>
+              <Label htmlFor="goal-weight">{t('targetLoad', { unit: unitLabel(unit) })}</Label>
               <Input
                 id="goal-weight"
                 type="number"
@@ -196,13 +203,12 @@ export function ExerciseGoalCard({
               />
               {usesBodyweight && (
                 <p className="text-xs text-muted-foreground">
-                  Bodyweight exercise: enter the total effective load
-                  (bodyweight + added load), like the progress charts.
+                  {t('bodyweightHelp')}
                 </p>
               )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="goal-reps">Target reps</Label>
+              <Label htmlFor="goal-reps">{t('targetReps')}</Label>
               <Input
                 id="goal-reps"
                 type="number"
@@ -215,10 +221,10 @@ export function ExerciseGoalCard({
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              Cancel
+              {common('actions.cancel')}
             </Button>
             <Button type="button" onClick={saveGoal} disabled={busy}>
-              {busy ? 'Saving...' : 'Save goal'}
+              {busy ? common('actions.saving') : t('save')}
             </Button>
           </DialogFooter>
         </DialogContent>

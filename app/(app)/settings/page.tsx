@@ -1,4 +1,5 @@
 import { Settings as SettingsIcon } from 'lucide-react';
+import { getTranslations } from 'next-intl/server';
 import { requireSession } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -7,6 +8,8 @@ import { ProfileSection } from '@/components/settings/profile-section';
 import { ImportSection } from '@/components/settings/import-section';
 
 export default async function SettingsPage() {
+  const t = await getTranslations('settings');
+  const common = await getTranslations('common');
   const auth = await requireSession();
   const user = await db.user.findUnique({
     where: { id: auth.userId },
@@ -26,16 +29,16 @@ export default async function SettingsPage() {
       <div className="mx-auto flex max-w-2xl flex-col gap-6">
         <div className="flex items-center gap-3">
           <SettingsIcon className="size-6" />
-          <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t('title')}</h1>
         </div>
 
         <Card>
           <CardHeader className="pb-3">
-            <h2 className="text-base font-semibold">Account</h2>
+            <h2 className="text-base font-semibold">{t('account')}</h2>
           </CardHeader>
           <CardContent className="text-sm">
             <div className="flex items-center justify-between gap-3">
-              <span className="text-muted-foreground">Email</span>
+              <span className="text-muted-foreground">{common('fields.email')}</span>
               <span className="font-medium">{auth.email}</span>
             </div>
           </CardContent>

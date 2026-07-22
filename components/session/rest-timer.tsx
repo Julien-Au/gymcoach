@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { FastForward, Plus } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,6 +17,7 @@ interface Props {
 }
 
 export function RestTimer({ endsAt, totalSec, nextLabel, onEnd, onSkip, onAdd30 }: Props) {
+  const t = useTranslations('session.rest');
   const [now, setNow] = useState(() => Date.now());
   const endedRef = useRef(false);
 
@@ -42,12 +44,12 @@ export function RestTimer({ endsAt, totalSec, nextLabel, onEnd, onSkip, onAdd30 
   return (
     <Card>
       <CardContent className="flex flex-col items-center gap-4 py-8">
-        <p className="text-xs uppercase tracking-wider text-muted-foreground">Rest</p>
+        <p className="text-xs uppercase tracking-wider text-muted-foreground">{t('title')}</p>
 
         <div className="relative">
           <p className="text-7xl font-bold tabular-nums">
             <span data-testid="rest-remaining">{remainingSec}</span>
-            <span className="ml-2 text-2xl text-muted-foreground">s</span>
+            <span className="ml-2 text-2xl text-muted-foreground">{t('seconds')}</span>
           </p>
         </div>
 
@@ -60,18 +62,18 @@ export function RestTimer({ endsAt, totalSec, nextLabel, onEnd, onSkip, onAdd30 
 
         {nextLabel && (
           <p className="text-center text-sm text-muted-foreground">
-            Next: <span className="font-medium text-foreground">{nextLabel}</span>
+            {t('next', { name: nextLabel })}
           </p>
         )}
 
         <div className="flex w-full max-w-sm gap-2">
           <Button variant="outline" onClick={onAdd30} className="min-h-tap flex-1">
             <Plus className="size-4" />
-            <span className="ml-1">30s</span>
+            <span className="ml-1">{t('addThirty')}</span>
           </Button>
           <Button variant="default" onClick={onSkip} className="min-h-tap flex-1">
             <FastForward className="size-4" />
-            <span className="ml-1">Skip</span>
+            <span className="ml-1">{t('skip')}</span>
           </Button>
         </div>
       </CardContent>

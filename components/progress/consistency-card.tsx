@@ -1,4 +1,5 @@
 import { CalendarCheck, Flame } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import type { ConsistencyWeek } from '@/lib/stats';
 
@@ -17,20 +18,21 @@ function shortLabelFromWeekKey(weekKey: string) {
 // Read-only consistency card: current streak plus a compact per-week bar of
 // trained days over the window. On-streak weeks are filled, off weeks muted.
 export function ConsistencyCard({ weeks, currentStreak, weeklyFrequency }: Props) {
+  const t = useTranslations('progress.consistency');
   const maxTrained = Math.max(1, ...weeks.map((w) => w.trainedDays));
-  const streakLabel = currentStreak === 1 ? '1 week' : `${currentStreak} weeks`;
 
   return (
     <Card>
       <CardHeader className="pb-3">
         <div className="flex items-center gap-2">
           <CalendarCheck className="size-4 text-muted-foreground" />
-          <h2 className="text-base font-semibold">Training consistency</h2>
+          <h2 className="text-base font-semibold">{t('title')}</h2>
         </div>
         <p className="text-xs text-muted-foreground">
-          {weeklyFrequency
-            ? `Trained days per week over the last ${weeks.length} weeks (target ${weeklyFrequency}/week).`
-            : `Trained days per week over the last ${weeks.length} weeks.`}
+          {t('description', {
+            weeks: weeks.length,
+            target: weeklyFrequency ?? 'none',
+          })}
         </p>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
@@ -40,11 +42,11 @@ export function ConsistencyCard({ weeks, currentStreak, weeklyFrequency }: Props
           />
           <span className="text-2xl font-bold tabular-nums">{currentStreak}</span>
           <span className="text-sm text-muted-foreground">
-            current streak ({streakLabel})
+            {t('streak', { weeks: currentStreak })}
           </span>
         </div>
 
-        <div className="flex items-end gap-1" role="list" aria-label="Trained days per week">
+        <div className="flex items-end gap-1" role="list" aria-label={t('aria')}>
           {weeks.map((w) => {
             const heightPct = Math.round((w.trainedDays / maxTrained) * 100);
             return (
@@ -52,7 +54,10 @@ export function ConsistencyCard({ weeks, currentStreak, weeklyFrequency }: Props
                 key={w.weekKey}
                 role="listitem"
                 className="flex flex-1 flex-col items-center gap-1"
-                title={`${shortLabelFromWeekKey(w.weekKey)}: ${w.trainedDays} trained ${w.trainedDays === 1 ? 'day' : 'days'}`}
+                title={t('weekTitle', {
+                  week: shortLabelFromWeekKey(w.weekKey),
+                  days: w.trainedDays,
+                })}
               >
                 <div className="flex h-16 w-full items-end">
                   <div

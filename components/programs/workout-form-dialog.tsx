@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
@@ -23,7 +24,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { DAY_LABELS, workoutInputSchema, type WorkoutInput } from '@/lib/schemas/workout';
+import { workoutInputSchema, type WorkoutInput } from '@/lib/schemas/workout';
+
+const DAY_KEYS = [
+  'monday',
+  'tuesday',
+  'wednesday',
+  'thursday',
+  'friday',
+  'saturday',
+  'sunday',
+] as const;
 
 interface CreateProps {
   open: boolean;
@@ -42,6 +53,8 @@ type Props = CreateProps | EditProps;
 const NO_DAY = '__none__';
 
 export function WorkoutFormDialog(props: Props) {
+  const t = useTranslations('programs.workout');
+  const common = useTranslations('common');
   const router = useRouter();
 
   const initial: WorkoutInput =
@@ -74,11 +87,10 @@ export function WorkoutFormDialog(props: Props) {
       body: JSON.stringify({ name: values.name, dayOfWeek: values.dayOfWeek ?? null }),
     });
     if (!res.ok) {
-      const data = (await res.json().catch(() => null)) as { error?: string } | null;
-      toast.error(data?.error ?? 'Error');
+      toast.error(t('saveError'));
       return;
     }
-    toast.success(props.mode === 'edit' ? 'Session updated.' : 'Session created.');
+    toast.success(props.mode === 'edit' ? t('updated') : t('created'));
     props.onOpenChange(false);
     router.refresh();
   }
@@ -88,20 +100,20 @@ export function WorkoutFormDialog(props: Props) {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {props.mode === 'edit' ? 'Edit session' : 'New session'}
+            {props.mode === 'edit' ? t('edit') : t('create')}
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
           <div className="space-y-2">
-            <Label htmlFor="name">Name</Label>
-            <Input id="name" placeholder="e.g. Upper - Upper body" {...form.register('name')} />
+            <Label htmlFor="name">{common('fields.name')}</Label>
+            <Input id="name" placeholder={t('namePlaceholder')} {...form.register('name')} />
             {form.formState.errors.name && (
               <p className="text-sm text-destructive">{form.formState.errors.name.message}</p>
             )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="dayOfWeek">Day (optional)</Label>
+            <Label htmlFor="dayOfWeek">{t('day')}</Label>
             <Select
               value={form.watch('dayOfWeek') == null ? NO_DAY : String(form.watch('dayOfWeek'))}
               onValueChange={(v) =>
@@ -109,13 +121,13 @@ export function WorkoutFormDialog(props: Props) {
               }
             >
               <SelectTrigger id="dayOfWeek">
-                <SelectValue placeholder="Flexible" />
+                <SelectValue placeholder={t('flexible')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={NO_DAY}>Flexible</SelectItem>
-                {DAY_LABELS.map((label, i) => (
+                <SelectItem value={NO_DAY}>{t('flexible')}</SelectItem>
+                {DAY_KEYS.map((key, i) => (
                   <SelectItem key={i} value={String(i + 1)}>
-                    {label}
+                    {common(`days.${key}`)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -129,14 +141,14 @@ export function WorkoutFormDialog(props: Props) {
               onClick={() => props.onOpenChange(false)}
               disabled={form.formState.isSubmitting}
             >
-              Cancel
+              {common('actions.cancel')}
             </Button>
             <Button type="submit" disabled={form.formState.isSubmitting}>
               {form.formState.isSubmitting
-                ? 'Saving...'
+                ? common('actions.saving')
                 : props.mode === 'edit'
-                  ? 'Save'
-                  : 'Create'}
+                  ? common('actions.save')
+                  : common('actions.create')}
             </Button>
           </DialogFooter>
         </form>
