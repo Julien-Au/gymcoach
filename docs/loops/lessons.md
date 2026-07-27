@@ -223,3 +223,19 @@ Format per entry: trigger/evidence, the lesson (actionable), and **Status** = `g
   :5434/:3031 concurrently - serialize them (a green isolated re-run of the failed tier is the
   tell that a red was this contention, not a regression; acknowledge the actual failing step
   before re-planning, per L2).
+
+### L17 - The E2E tier is not repeatable back to back: the app's own register rate limit reds unrelated specs
+- **Trigger:** 2026-07-27 batch (#282). One tick ran `verify.sh --full` and then, to confirm a
+  flake, re-ran the E2E tier twice more within a couple of minutes. Different specs failed each
+  time (`measurements` on `ECONNRESET`, then `auth` + `deload` stuck on `/signup`) while the
+  change under test touched only progress-photo storage. CI, running the suite once, was green
+  on the first try.
+- **Lesson:** the E2E specs sign up through the real API, which enforces `register:<ip>` at 5 per
+  60s. A suite run consumes most of that budget, so a second run inside the window starves the
+  specs that sign up through the UI (the ones that cannot set a distinct `x-forwarded-for`). This
+  is self-inflicted: re-running "to check the flake" is exactly what causes the next red, and the
+  moving target of which spec fails is the tell. Distinct from L16 - that is two CONCURRENT runs
+  contending on shared infra; this is one session running SEQUENTIALLY too fast.
+- **Status:** graduated -> `CLAUDE.md` (green-gate section) now states the tier is not safely
+  repeatable inside a minute and how to read an auth/signup red after a recent run. Filed **#292**
+  to make the UI-signup specs use a per-spec client IP so the suite stops sharing one bucket.
