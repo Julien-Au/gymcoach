@@ -21,6 +21,7 @@ import {
 } from '@/lib/cardio';
 import { MAX_SUPERSET_GROUP, MIN_SUPERSET_GROUP } from '@/lib/supersets';
 import { sorenessSchema } from '@/lib/schemas/readiness';
+import { gymWeightListSchema } from '@/lib/schemas/gym';
 
 // ============================================================
 // Backup / Import JSON (LOT 11, completed by issue #168)
@@ -442,15 +443,17 @@ const importSchema = z.object({
     .array(
       z.object({
         name: z.string().trim().min(1).max(80),
-        dumbbellWeights: z.array(z.number().min(0.1).max(5000)).max(200),
-        plateWeights: z.array(z.number().min(0.1).max(5000)).max(200),
-        barWeights: z.array(z.number().min(0.1).max(5000)).max(200),
+        // Same normalization as the gym API (rounded, deduped, sorted), so an
+        // imported file cannot store a weight array the UI would never write.
+        dumbbellWeights: gymWeightListSchema,
+        plateWeights: gymWeightListSchema,
+        barWeights: gymWeightListSchema,
         exerciseConfigs: z
           .array(
             z.object({
               exerciseName: z.string().max(120),
               isAvailable: z.boolean(),
-              weightOptions: z.array(z.number().min(0.1).max(5000)).max(200),
+              weightOptions: gymWeightListSchema,
             }),
           )
           .max(2000),
@@ -587,9 +590,13 @@ export async function POST(req: Request) {
         }
 
         // 4. Saved gyms are recreated after exercises so per-exercise
-        // availability can be linked by exercise name.
+        // availability can be linked by exercise name. Gym names are unique
+        // per user, so a hand-edited file carrying the same name twice would
+        // abort the whole restore: keep the first occurrence and skip the
+        // rest instead of failing.
         const gymIdByName = new Map<string, string>();
         for (const gym of payload.gyms ?? []) {
+          if (gymIdByName.has(gym.name)) continue;
           const configs = gym.exerciseConfigs.flatMap((config) => {
             const exerciseId = exerciseIdByName.get(config.exerciseName);
             return exerciseId

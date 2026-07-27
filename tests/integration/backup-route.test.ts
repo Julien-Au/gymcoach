@@ -614,3 +614,74 @@ describe('POST /api/backup - malformed and oversized input (issue #168)', () => 
     expect(await db.bodyweightEntry.count({ where: { userId: user.id } })).toBe(0);
   });
 });
+
+describe('POST /api/backup - gym normalization on import (issue #286)', () => {
+  it('normalizes gym weight arrays and skips duplicate gym names instead of failing', async () => {
+    const user = await db.user.create({
+      data: { email: 'gyms@test.dev', passwordHash: 'x' },
+    });
+    actAs(user.id);
+
+    // Hand-edited file: unsorted / duplicated / over-precise weights, and the
+    // same gym name twice (which the @@unique([userId, name]) constraint would
+    // otherwise reject, aborting the whole restore).
+    const res = await postBackup(
+      jsonReq({
+        payload: {
+          version: 3,
+          profile: { activeGymName: 'Home' },
+          exercises: [
+            {
+              name: 'Bench Press',
+              muscleGroup: 'CHEST',
+              category: 'COMPOUND',
+              defaultRestSec: 120,
+            },
+          ],
+          programs: [],
+          sessions: [],
+          gyms: [
+            {
+              name: ' Home ',
+              dumbbellWeights: [20, 10, 12.499, 10],
+              plateWeights: [],
+              barWeights: [20],
+              exerciseConfigs: [
+                {
+                  exerciseName: 'Bench Press',
+                  isAvailable: true,
+                  weightOptions: [60, 40, 60],
+                },
+              ],
+            },
+            {
+              name: 'Home',
+              dumbbellWeights: [5],
+              plateWeights: [],
+              barWeights: [],
+              exerciseConfigs: [],
+            },
+          ],
+        },
+        confirmReplace: true,
+      }),
+    );
+    expect(res.status).toBe(200);
+
+    const gyms = await db.gym.findMany({
+      where: { userId: user.id },
+      include: { exerciseConfigs: true },
+    });
+    expect(gyms).toHaveLength(1);
+    const gym = gyms[0]!;
+    // First occurrence wins, with the same normalization the gym API applies.
+    expect(gym.name).toBe('Home');
+    expect(gym.dumbbellWeights).toEqual([10, 12.5, 20]);
+    expect(gym.barWeights).toEqual([20]);
+    expect(gym.exerciseConfigs[0]!.weightOptions).toEqual([40, 60]);
+
+    // The active gym still resolves to the surviving row.
+    const profile = await db.user.findUnique({ where: { id: user.id } });
+    expect(profile?.activeGymId).toBe(gym.id);
+  });
+});
