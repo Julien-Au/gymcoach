@@ -335,3 +335,33 @@ vetting.
 demo photos are seeded (`scripts/seed-demo-history.ts` has none yet), so no screenshot re-shoot
 is worthwhile until the demo seed carries a couple of photos - noted as a small demo-media
 follow-up, within the staleness cap.
+
+## 2026-07-27 - backup gym import (#290) + progress-photo storage hardening (#291)
+
+Merged since the last digest: **#290** and **#291** (both loop-authored, from follow-up issues
+the previous batch's reviews filed), plus **#288** (docs thanking the fork contributor) and
+**#289** (CI: more headroom for the Docker smoke job on a cold cache). Read these first:
+
+1. **#291 - the file-storage security surface.** `gh pr diff 291`. It changes the containment
+   check that every photo read, write and delete goes through (`lib/progress-photo.ts`): the
+   textual `startsWith` check now has a `realpath` companion resolved against the deepest
+   existing component of the target. Read it for the case where the storage dir itself does not
+   exist yet (containment then compares two identical ancestors - intended, nothing to escape)
+   and for the delete-ordering swap in `app/api/progress-photos/[id]/route.ts`, which trades
+   "row gone, file orphaned" for "file gone, row retryable".
+2. **#290 - the restore path.** `gh pr diff 290`. Backup restore runs in one transaction over a
+   user's whole dataset, so a change to what it accepts is worth a look: gym weight arrays are
+   now parsed with the same schema the gym API uses (which also means `z.coerce.number()`, so a
+   numeric string in a hand-edited file is now accepted rather than rejected), and duplicate gym
+   names are skipped instead of aborting the restore. Both are covered by an integration test
+   that was confirmed to fail without the fix.
+
+**Skim:** this write-up (CHANGELOG Fixed + Security, README uploads paragraph, lesson L17, the
+new `CLAUDE.md` note on re-running the E2E tier), #288 and #289.
+
+**Media note:** still no re-shoot. The captured pages HAVE drifted since 2026-06-18 (the catalog
+and logger now show exercise technique media, the Progress page has a photos card), so the
+screenshots are the oldest debt in this repo - but the Progress card renders empty until the demo
+seed carries photos, so the shoot is worth doing once, after `scripts/seed-demo-history.ts` seeds
+a couple of demo photos. That is the next media tick, not this one; it is now at the edge of the
+~3-batch staleness cap.

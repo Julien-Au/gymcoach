@@ -1928,3 +1928,31 @@ Fable per the model-routing directive). #272 is a concurrent session's work, not
 **Deferred to human.** #282 (photo-storage hardening) and #283 (shared-infra serialization) are
 filed for a later tick. The remaining SHAREN PRs #273-#276 still await human vetting.
 
+
+## 2026-07-27 - follow-up batch: #286 -> PR #290, #282 -> PR #291
+
+**What ran.** One interactive `/loop` in dynamic pacing (self-scheduled ticks, no cron), acting
+as the maintainer loop: ship -> implement -> ship -> write up. Backlog was already full (five
+issues filed by the previous batch's reviews), so triage and ideate did not run. Both PRs were
+authored, gated and merged by the loop; both close issues the previous batch's skeptics filed,
+which is the review->issue->PR->merge circuit closing on itself for the first time.
+
+**Green gate.** #290: fast gate + the backup integration suite (11 passed). #291: `--full`,
+including E2E. In both cases the new test was first confirmed to FAIL against the unfixed code
+(409 on the duplicate-gym restore; row deleted despite the unlink error), so the tests are
+regression tests, not decoration.
+
+**Feedback-blindness check (L2).** The `--full` gate went red twice on E2E specs unrelated to the
+change, and the tempting read was "flaky infra, re-run". The actual cause was self-inflicted: the
+suite's signups share one per-IP register bucket (5/min), and re-running to confirm the flake is
+what starved the next run. Acknowledged the failing step before re-planning, spaced the run out,
+got 17/17, and CI passed first try on both PRs. Graduated as lesson **L17** into `CLAUDE.md`, with
+**#292** filed to stop the specs sharing one IP.
+
+**One metric.** Accepted-change rate this batch: 2 merged / 0 abandoned (#290, #291), plus this
+docs PR. No reverts. Implementing-tick token spend: not recorded separately (both ticks ran in the
+same interactive session as the shipping and write-up ticks).
+
+**Deferred.** #283 (serialize the shared test infra), #285 (plate-calculator fallback inventory -
+needs a product call, so it stays for a human), #287 (MCP hardening follow-ups), #292 (E2E signup
+IPs), and the demo-media re-shoot once the demo seed carries progress photos.

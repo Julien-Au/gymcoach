@@ -33,6 +33,14 @@ CI (`.github/workflows/ci.yml`) runs lint, typecheck, unit, integration, build
 and E2E on every PR. The default gate mirrors the fast, DB-free part so a loop
 can catch its own regressions locally.
 
+**The E2E tier is not safely repeatable back to back.** Its specs register users
+through the app's real per-IP rate limit (`register:<ip>`, 5 per 60s), so a
+second `--full` run started within the minute reds on signup redirects
+(`toHaveURL` stuck on `/signup`) or `ECONNRESET` - in specs unrelated to the
+change. A red E2E that names auth/signup after a recent run is that budget, not
+a regression: wait out the window and re-run the tier alone before diagnosing
+(lesson L17; the concurrency twin is L16).
+
 **Fix the code, never the test.** A red gate is fixed at its cause. Deleting or
 skipping a test, loosening an assertion, or silencing an error to get green is
 forbidden - it improves the scoreboard, not the code. A diff that weakens a test

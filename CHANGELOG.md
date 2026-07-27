@@ -321,6 +321,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Restoring a backup no longer fails on a file that carries the same saved-gym
+  name twice: the first gym of that name is kept and later duplicates are
+  skipped, instead of the unique-name constraint aborting the whole restore.
+  Imported gym weight arrays are also normalized (rounded, deduped, sorted)
+  exactly as the gym editor does, so a hand-edited file cannot store a shape
+  the app would never write.
 - Neutralized leading formula characters in the CSV history export so
   imported exercise names or notes cannot plant spreadsheet formulas
   (CSV/DDE injection) in an exported file.
@@ -330,6 +336,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- Hardened progress-photo storage: deleting a photo now unlinks the file before
+  its row, so an unlink failure other than "already gone" keeps the photo
+  listed instead of orphaning bytes; path containment resolves symlinks
+  (`realpath`) on top of the textual check; and per-user directories are
+  `0o700` (files stay `0o600`), including directories created by an earlier
+  version.
 - Session cookies are now `Secure` by default in production; self-hosting over
   plain HTTP requires an explicit `SESSION_COOKIE_SECURE=false` opt-out.
 

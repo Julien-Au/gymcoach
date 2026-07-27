@@ -237,8 +237,11 @@ All configuration is done through environment variables. See `.env.example` for 
 Progress photos are stored as plain files on the server's local filesystem,
 under `UPLOADS_DIR` (default `./uploads`, gitignored) - no cloud, no third
 party. Images are served only through an ownership-scoped API route, never as
-a public static path. If you self-host with Docker, mount that directory as a
-volume and include it in your backups alongside the database.
+a public static path. Files are written owner-only (`0o600`) inside per-user
+directories created `0o700`, and every stored path is re-resolved (symlinks
+included) inside the uploads dir before it is read, written or deleted. If you
+self-host with Docker, mount that directory as a volume and include it in your
+backups alongside the database.
 
 ## Testing
 
