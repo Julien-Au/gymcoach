@@ -1,6 +1,9 @@
 import { z } from 'zod';
 
-const weightList = z
+// Shared by the gym API and the backup restore path: any weight array that
+// reaches the database is rounded to 2 decimals, deduped and sorted ascending,
+// so a hand-edited or legacy file cannot store a shape the UI never produces.
+export const gymWeightListSchema = z
   .array(z.coerce.number().min(0.1).max(5000))
   .max(200)
   .transform((values) =>
@@ -10,14 +13,14 @@ const weightList = z
 export const gymExerciseConfigSchema = z.object({
   exerciseId: z.string().min(1),
   isAvailable: z.boolean().default(true),
-  weightOptions: weightList.default([]),
+  weightOptions: gymWeightListSchema.default([]),
 });
 
 export const gymCreateSchema = z.object({
   name: z.string().trim().min(1).max(80),
-  dumbbellWeights: weightList.default([]),
-  plateWeights: weightList.default([]),
-  barWeights: weightList.default([]),
+  dumbbellWeights: gymWeightListSchema.default([]),
+  plateWeights: gymWeightListSchema.default([]),
+  barWeights: gymWeightListSchema.default([]),
   exerciseConfigs: z.array(gymExerciseConfigSchema).max(2000).default([]),
   makeActive: z.boolean().default(false),
 });
