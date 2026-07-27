@@ -1,9 +1,15 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterAll, beforeAll } from 'vitest';
+import { mkdtemp, mkdir, rm, stat, symlink } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import {
+  deletePhotoFile,
   extensionForMime,
   MAX_PROGRESS_PHOTO_BYTES,
   photoRelativePath,
+  progressPhotoStorageDir,
   sniffImageType,
+  writePhotoFile,
 } from './progress-photo';
 
 // Builders for the accepted signatures, padded with arbitrary payload bytes
@@ -98,5 +104,64 @@ describe('photoRelativePath', () => {
 describe('MAX_PROGRESS_PHOTO_BYTES', () => {
   it('is 8 MiB', () => {
     expect(MAX_PROGRESS_PHOTO_BYTES).toBe(8 * 1024 * 1024);
+  });
+});
+
+
+// Storage containment and file permissions (issue #282). These touch a scratch
+// uploads dir; nothing outside it is created or read.
+describe('photo file storage', () => {
+  let scratch = '';
+  const prevUploadsDir = process.env.UPLOADS_DIR;
+
+  beforeAll(async () => {
+    scratch = await mkdtemp(path.join(os.tmpdir(), 'gymcoach-photo-storage-'));
+    process.env.UPLOADS_DIR = path.join(scratch, 'uploads');
+  });
+
+  afterAll(async () => {
+    if (prevUploadsDir === undefined) delete process.env.UPLOADS_DIR;
+    else process.env.UPLOADS_DIR = prevUploadsDir;
+    if (scratch) await rm(scratch, { recursive: true, force: true });
+  });
+
+  it('writes the file 0o600 and its per-user dir 0o700', async () => {
+    const rel = photoRelativePath('user-1', 'photo-1', 'image/jpeg');
+    await writePhotoFile(rel, Uint8Array.from([0xff, 0xd8, 0xff]));
+
+    const abs = path.join(progressPhotoStorageDir(), rel);
+    expect((await stat(abs)).mode & 0o777).toBe(0o600);
+    expect((await stat(path.dirname(abs))).mode & 0o777).toBe(0o700);
+  });
+
+  it('tightens a per-user dir left behind with looser permissions', async () => {
+    const dir = path.join(progressPhotoStorageDir(), 'user-legacy');
+    await mkdir(dir, { recursive: true, mode: 0o755 });
+
+    await writePhotoFile(
+      photoRelativePath('user-legacy', 'photo-2', 'image/png'),
+      Uint8Array.from([0x89, 0x50, 0x4e, 0x47]),
+    );
+    expect((await stat(dir)).mode & 0o777).toBe(0o700);
+  });
+
+  it('refuses a stored path that escapes the uploads dir', async () => {
+    await expect(writePhotoFile('../escaped.jpg', new Uint8Array(1))).rejects.toThrow(
+      /escapes the uploads dir/,
+    );
+    await expect(deletePhotoFile('/etc/passwd')).rejects.toThrow(/escapes the uploads dir/);
+  });
+
+  it('refuses a path whose directory is a symlink pointing outside', async () => {
+    const outside = path.join(scratch, 'outside');
+    await mkdir(outside, { recursive: true });
+    await mkdir(progressPhotoStorageDir(), { recursive: true });
+    await symlink(outside, path.join(progressPhotoStorageDir(), 'linked-user'));
+
+    // Textually inside the uploads dir, really not: only the realpath check
+    // catches this one.
+    await expect(
+      writePhotoFile('linked-user/photo-3.jpg', new Uint8Array(1)),
+    ).rejects.toThrow(/escapes the uploads dir/);
   });
 });
