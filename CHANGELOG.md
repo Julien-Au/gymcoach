@@ -321,6 +321,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The E2E suite is repeatable back to back: each spec file now signs up from its
+  own client IP (`x-forwarded-for`) instead of sharing the default
+  `register:<ip>` bucket, so a second run started inside the rate limit's 60s
+  window no longer reds unrelated specs. The registration rate limit itself is
+  unchanged.
 - Restoring a backup no longer fails on a file that carries the same saved-gym
   name twice: the first gym of that name is kept and later duplicates are
   skipped, instead of the unique-name constraint aborting the whole restore.

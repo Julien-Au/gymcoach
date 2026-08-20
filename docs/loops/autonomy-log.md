@@ -1956,3 +1956,38 @@ same interactive session as the shipping and write-up ticks).
 **Deferred.** #283 (serialize the shared test infra), #285 (plate-calculator fallback inventory -
 needs a product call, so it stays for a human), #287 (MCP hardening follow-ups), #292 (E2E signup
 IPs), and the demo-media re-shoot once the demo seed carries progress photos.
+
+
+## 2026-08-20 - single-issue batch: #292 -> PR #294 (the loop closes its own lesson)
+
+**What ran.** One maintainer loop: implement -> ship -> write up. The backlog already held the
+issue, so triage and ideate did not run. #292 was filed by the *previous* batch's lesson L17 -
+the loop hitting a failure mode, recording it, filing it, and then fixing it one batch later. The
+interim rule L17 imposed ("wait out the minute before re-running E2E") is now retired because the
+cause is gone, not because it was inconvenient.
+
+**Green gate.** `verify.sh` green, `verify.sh --full` green. The acceptance criterion was
+measured rather than asserted: a second `npm run test:e2e` started immediately after the first,
+inside the 60s rate-limit window, was green - 17/17 tests on both runs. Before #294 that second
+run was the reliable way to red the suite.
+
+**Fix the code, not the test - read carefully.** The tempting fix was to raise or disable
+`register:<ip>` for the test environment. That would have been the forbidden move in the other
+direction: weakening a real product guardrail so the scoreboard goes green. The defect was the
+suite's assumption that every spec may share one client identity, so the specs were fixed and the
+limit was left exactly as users experience it.
+
+**Docs debt paid.** This write-up also retires the stale text the fix invalidated: the `CLAUDE.md`
+green-gate paragraph that described the tier as not repeatable, and lesson L17's open status
+(appended a resolution note rather than rewriting it - lessons are a log, not a claim about the
+present). Both keep the bounded caveat: CI `retries: 2` means one flaky spec can still burn three
+registers on its own IP, and #283 (concurrent runs sharing :5434/:3031) is a different race, still
+open.
+
+**One metric.** Accepted-change rate this batch: 1 merged / 0 abandoned (#294), plus this docs PR.
+No reverts. Implementing-tick token spend: not recorded separately (dev tick was Fable per the
+model-routing directive).
+
+**Deferred.** #283 (serialize or isolate the shared test infra), #285 (plate-calculator fallback
+inventory - needs a product call), #287 (MCP hardening follow-ups), and the demo-media re-shoot
+once the demo seed carries progress photos.

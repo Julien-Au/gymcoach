@@ -365,3 +365,31 @@ screenshots are the oldest debt in this repo - but the Progress card renders emp
 seed carries photos, so the shoot is worth doing once, after `scripts/seed-demo-history.ts` seeds
 a couple of demo photos. That is the next media tick, not this one; it is now at the edge of the
 ~3-batch staleness cap.
+
+## 2026-08-20 - E2E signup IPs (#294), the pipeline fix that closes lesson L17
+
+One PR merged since the last digest: **#294** (closes #292, filed by the previous batch's own
+lesson L17). It is test infrastructure only - no product code, no schema, no prompts - but it
+touches the **pipeline**, which is the high-priority tier of the rule above, so it is worth one
+read:
+
+1. **#294 - who the E2E suite looks like to the rate limiter.** `gh pr diff 294`. The five specs
+   that sign up through the UI (auth, bodyweight, deload, goals, import) now each set a dedicated
+   `x-forwarded-for` through `test.use({ extraHTTPHeaders })`, and three IPs that had been reused
+   across API-signup specs were deduped. Read it for one thing: the fix moves the *tests* off the
+   shared bucket and leaves `register:<ip>` (5 per 60s) exactly as users experience it - the gate
+   was fixed at the test's assumption, not by loosening the product's limit. Worth knowing that
+   the suite now depends on the app trusting `x-forwarded-for` in the E2E environment.
+
+**Skim:** this write-up (CHANGELOG Fixed, the rewritten `CLAUDE.md` green-gate paragraph, the
+resolution note on lesson L17, autonomy-log entry).
+
+**Caveat to carry:** back-to-back E2E is green now, but bounded - on CI (`retries: 2`) a single
+flaky spec can spend three of its bucket's five registers. And #283 (two concurrent `verify.sh`
+runs contending on :5434/:3031, lesson L16) is untouched and still open; do not read #294 as
+having fixed that one.
+
+**Media note:** nothing user-visible shipped this batch, so no screenshot or clip work is owed by
+it. The pre-existing debt stands unchanged: the captured pages have drifted since 2026-06-18 and
+the re-shoot is still waiting on `scripts/seed-demo-history.ts` seeding a couple of progress
+photos. It is now past the edge of the ~3-batch staleness cap and should be the next media tick.

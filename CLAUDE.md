@@ -33,13 +33,17 @@ CI (`.github/workflows/ci.yml`) runs lint, typecheck, unit, integration, build
 and E2E on every PR. The default gate mirrors the fast, DB-free part so a loop
 can catch its own regressions locally.
 
-**The E2E tier is not safely repeatable back to back.** Its specs register users
-through the app's real per-IP rate limit (`register:<ip>`, 5 per 60s), so a
-second `--full` run started within the minute reds on signup redirects
-(`toHaveURL` stuck on `/signup`) or `ECONNRESET` - in specs unrelated to the
-change. A red E2E that names auth/signup after a recent run is that budget, not
-a regression: wait out the window and re-run the tier alone before diagnosing
-(lesson L17; the concurrency twin is L16).
+**Back-to-back E2E runs are expected green.** The specs still register users
+through the app's real per-IP rate limit (`register:<ip>`, 5 per 60s), but since
+#294 every spec file sends its own `x-forwarded-for`, so no two specs share a
+bucket and a second `--full` run inside the same minute is green (verified 17/17
+on two consecutive runs). Two residual caveats: the guarantee is bounded, not
+unconditional - on CI (`retries: 2`) a spec that flakes can burn up to three of
+its bucket's five registers, so a flaky run plus a re-run inside the same minute
+can still trip the limit; and #283
+(two concurrent `verify.sh` runs sharing the test Postgres on :5434 and the dev
+server on :3031) is still open and is a different, unrelated race. History:
+lesson L17, resolved by #294; the concurrency twin is L16.
 
 **Fix the code, never the test.** A red gate is fixed at its cause. Deleting or
 skipping a test, loosening an assertion, or silencing an error to get green is
