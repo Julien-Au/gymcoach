@@ -8,6 +8,11 @@ import {
 const DEFAULT_BASE_URL = 'http://127.0.0.1:8317/v1';
 const DEFAULT_MODEL = 'gpt-5.6-sol';
 const DEFAULT_MAX_TOKENS = 8000;
+// Bounds the wait for response headers so a hung upstream cannot stall the
+// request forever (issue #287). Non-streaming responses only send headers
+// after the full generation, so this must cover a whole completion; the timer
+// is cleared once headers arrive, leaving started streams uncapped.
+const REQUEST_TIMEOUT_MS = 120_000;
 
 interface ResponsesApiContent {
   type?: string;
@@ -99,6 +104,8 @@ export class CodexLbProvider implements LlmProvider {
       throw new LlmError(503, 'CODEX_LB_API_KEY is not configured.');
     }
 
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     let response: Response;
     try {
       response = await fetch(`${this.baseUrl}/responses`, {
@@ -108,12 +115,21 @@ export class CodexLbProvider implements LlmProvider {
           Authorization: `Bearer ${this.apiKey}`,
         },
         body: JSON.stringify(this.buildBody(req, stream)),
+        signal: controller.signal,
       });
     } catch (error) {
+      if (controller.signal.aborted) {
+        throw new LlmError(
+          504,
+          `codex-lb timed out after ${Math.round(REQUEST_TIMEOUT_MS / 1000)}s.`,
+        );
+      }
       throw new LlmError(
         502,
         `Network failure to codex-lb: ${error instanceof Error ? error.message : 'unknown'}`,
       );
+    } finally {
+      clearTimeout(timer);
     }
 
     if (!response.ok) {
