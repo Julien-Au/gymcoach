@@ -78,3 +78,21 @@ each idea is re-derived in our own words from verified facts (untrusted-input po
 - NOT FILED (uncertain / larger) - ingest HRV/sleep from FIT wellness files into the existing readiness model (finding #9). Wedge-safe ONLY as ingestion of already-on-box files (NOT OAuth sync); but HRV/sleep live in Garmin monitoring FIT files, not activity FIT, so it is a bigger parser job; demand source is competing vendors. Note for a human.
 - NOT FILED (capability-not-demand) - shareable program export/import link + relative muscle-activation map (Liftosaur features, finding #6); scriptable programs is an epic. Candidates for a future bounded ideate run if the above drain.
 - NOT FILED (low priority / thin) - public REST API for body stats ingestion (finding #7, brushes the no-external-sync anti-rec); endless/no-end-date routines (finding #8, n=1, unverified our model forces dates).
+
+## "Make it pop" ideate batch (2026-08-20)
+
+Operator directive for this round: the next features should be COOL - impressive,
+demo-able, "wow" features a lifter would show a friend and that make a launch video or a
+screenshot shine. Not chores, not plumbing. Same constraints as always (self-hosted, no
+external SaaS, LLM optional, en/ru i18n, mobile-first Shadcn/Tailwind), and each idea is
+still a single-PR slice built on data we already have. Filed six (the directive raised the
+usual cap of three for this round).
+
+- proposed - muscle heat map on the progress page, front/back body tinted by weekly volume (issue #299) - inline-SVG silhouettes over the existing weeklySetsByMuscleGroup + MEV/MRV band (personal VolumeTarget wins); the most screenshot-friendly view in the app, no new data
+- proposed - training recap poster, your year in tonnage/PRs/streaks (issue #300) - pure lib/recap.ts aggregation + a poster page at /progress/recap with a period switcher; PNG/next-og export deliberately deferred to a follow-up slice
+- proposed - strength level badges, e1RM on a bodyweight-relative Beginner-to-Elite scale (issue #301) - pure lookup table in lib/strength-standards.ts keyed by canonical lift + sex, hidden when sex/bodyweight are missing; no leaderboard, no external dataset
+- proposed - draw the route of a GPX-imported run or ride (issue #302) - GPX already parses lat/lon for Haversine and discards it; keep it on TrackPoint and render a self-contained SVG polyline. Explicit non-goal: no map tiles, a tile request would leak the GPS trace off-box
+- proposed - year-long training heatmap, contribution-graph day grid (issue #303) - lib/training-heatmap.ts over the existing UTC ISO-week helpers + a CSS-grid card; complements (does not replace) the 12-week consistency card
+- proposed - celebrate a personal record in-session (issue #304) - CSS-only burst over the existing detectPRs badge, reusing lib/vibrate.ts and lib/sound.ts, gated on a sound preference and prefers-reduced-motion; no confetti dependency
+- NOT FILED (deferred slice) - PNG/OG image export of the recap poster via next/og; wanted, but the Docker standalone bundling of the wasm/font is its own risk and belongs in a second PR once the poster exists
+- NOT FILED (still an epic, for a human) - the longitudinal training-load model (CTL/ATL/Form) noted in the 2026-06-30 batch remains the highest-value multi-PR opportunity
