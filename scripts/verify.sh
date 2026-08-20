@@ -58,6 +58,19 @@ JWT_SECRET="ci-build-placeholder-secret-at-least-32-chars" \
   npm run build || fail "production build"
 
 if [ "$FULL" = "1" ]; then
+  # Serialize the DB/port-sharing tiers across concurrent verify runs
+  # (issue #283). Every checkout and worktree shares the one test Postgres on
+  # :5434 and the one E2E server port :3031, so two overlapping --full runs
+  # corrupt each other: a concurrent TRUNCATE resets the DB mid-run and the
+  # port is contended (lessons L15/L16). A machine-wide lock makes the second
+  # run wait instead; it is released automatically when this process exits.
+  # CI runs one job per runner, so the lock is uncontended there.
+  LOCK_FILE="${TMPDIR:-/tmp}/gymcoach-test-infra.lock"
+  exec 9>"$LOCK_FILE" || fail "test-infra lock (cannot open $LOCK_FILE)"
+  if ! flock --nonblock 9; then
+    echo "  another verify run holds the shared test infra (:5434/:3031); waiting for the lock..."
+    flock 9 || fail "test-infra lock"
+  fi
   step "integration tests (needs Postgres on :5434)"
   npm run test:integration || fail "integration tests"
   step "E2E tests (Playwright)"
