@@ -153,4 +153,26 @@ export const progress = {
     saveError: 'Could not save the target.',
     resetError: 'Could not reset the target.',
   },
+  muscleMap: {
+    title: 'Muscle heat map',
+    description:
+      'Each muscle is tinted by your working sets in the week of {week}, against its MEV-MRV band.',
+    front: 'Front',
+    back: 'Back',
+    legend: {
+      none: 'Untrained',
+      low: 'Below MEV',
+      optimal: 'In range',
+      high: 'Above MRV',
+    },
+    status: {
+      none: 'untrained',
+      low: 'below MEV',
+      optimal: 'within range',
+      high: 'above MRV',
+    },
+    regionLabel: '{name}: {sets, plural, one {# set} other {# sets}} this week, {status}',
+    hint: 'Tap a muscle for details.',
+    empty: 'No working sets that week; log a session and the body lights up.',
+  },
 };

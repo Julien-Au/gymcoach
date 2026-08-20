@@ -21,6 +21,7 @@ import {
   WEEKLY_SETS_MEV,
   WEEKLY_SETS_MRV,
 } from '@/lib/stats';
+import { buildMuscleMap } from '@/lib/muscle-map';
 import {
   DELOAD_READINESS_LOOKBACK,
   DELOAD_READINESS_MAX_AGE_DAYS,
@@ -274,6 +275,12 @@ export default async function ProgressPage(
         ),
       }
     : null;
+
+  // Muscle heat map (issue #299): same week and same personal-target
+  // resolution as the volume-landmarks card, mapped onto silhouette regions.
+  const muscleMap = latestCompletedWeek
+    ? buildMuscleMap(latestCompletedWeek.byMuscleGroup, volumeTargets)
+    : [];
 
   // Recap table: per exercise, first and last session in the period,
   // delta of the max load and the 1RM.
@@ -531,6 +538,7 @@ export default async function ProgressPage(
                 total: w.total,
               }))}
               volumeLandmarks={volumeLandmarks}
+              muscleMap={muscleMap}
               defaultBand={{ mev: WEEKLY_SETS_MEV, mrv: WEEKLY_SETS_MRV }}
               recap={recap}
               unit={unit}

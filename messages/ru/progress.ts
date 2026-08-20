@@ -160,4 +160,27 @@ export const progress = {
     saveError: 'Не удалось сохранить целевой объём.',
     resetError: 'Не удалось сбросить целевой объём.',
   },
+  muscleMap: {
+    title: 'Тепловая карта мышц',
+    description:
+      'Каждая мышца окрашена по рабочим подходам за неделю {week} относительно её диапазона MEV-MRV.',
+    front: 'Спереди',
+    back: 'Сзади',
+    legend: {
+      none: 'Не тренировалась',
+      low: 'Ниже MEV',
+      optimal: 'В диапазоне',
+      high: 'Выше MRV',
+    },
+    status: {
+      none: 'не тренировалась',
+      low: 'ниже MEV',
+      optimal: 'в диапазоне',
+      high: 'выше MRV',
+    },
+    regionLabel:
+      '{name}: {sets, plural, one {# подход} few {# подхода} many {# подходов} other {# подхода}} за неделю, {status}',
+    hint: 'Нажмите на мышцу, чтобы увидеть детали.',
+    empty: 'За эту неделю нет рабочих подходов; запишите тренировку, и тело загорится.',
+  },
 } satisfies MessageShape<typeof english>;
