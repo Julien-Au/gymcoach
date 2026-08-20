@@ -80,6 +80,35 @@ describe('CodexLbProvider', () => {
     ).rejects.toMatchObject({ status: 429 });
   });
 
+  it('aborts a hung upstream after the timeout and maps it to a 504', async () => {
+    process.env.CODEX_LB_API_KEY = 'test-key';
+    vi.useFakeTimers();
+    try {
+      // A fetch that never resolves on its own and only rejects when the
+      // provider's timeout fires its abort signal.
+      const fetchMock = vi.fn(
+        (_url: string, init: RequestInit) =>
+          new Promise<Response>((_resolve, reject) => {
+            init.signal?.addEventListener('abort', () =>
+              reject(new DOMException('This operation was aborted', 'AbortError')),
+            );
+          }),
+      );
+      vi.stubGlobal('fetch', fetchMock);
+
+      const pending = new CodexLbProvider().complete({
+        system: 'S',
+        messages: [{ role: 'user', content: 'x' }],
+      });
+      const assertion = expect(pending).rejects.toMatchObject({ status: 504 });
+      await vi.advanceTimersByTimeAsync(120_000);
+      await assertion;
+      expect((fetchMock.mock.calls[0]![1] as RequestInit).signal).toBeInstanceOf(AbortSignal);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('throws on an empty successful response', async () => {
     process.env.CODEX_LB_API_KEY = 'test-key';
     vi.stubGlobal(
