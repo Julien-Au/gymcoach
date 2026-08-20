@@ -10,8 +10,10 @@ describe('MuscleMapCard', () => {
   it('renders both views with a region per silhouette area', () => {
     render(<MuscleMapCard regions={buildMuscleMap({})} weekLabel={WEEK} />);
 
-    expect(screen.getByRole('img', { name: 'Front' })).toBeInTheDocument();
-    expect(screen.getByRole('img', { name: 'Back' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Front' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Back' })).toBeInTheDocument();
+    // Each region is its own img so screen readers reach the per-region labels.
+    expect(screen.getAllByRole('img').length).toBe(27);
     // 13 front + 14 back paintable regions.
     expect(document.querySelectorAll('svg path[aria-label]')).toHaveLength(27);
   });

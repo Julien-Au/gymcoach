@@ -49,7 +49,9 @@ export function MuscleMapCard({ regions, weekLabel }: Props) {
     return (
       <svg
         viewBox={BODY_VIEWBOX}
-        role="img"
+        // role="group", not "img": an img SVG prunes its descendants from the
+        // accessibility tree, which would silence the per-region labels.
+        role="group"
         aria-label={t(view)}
         className="h-auto w-full max-w-[180px]"
       >
@@ -62,10 +64,16 @@ export function MuscleMapCard({ regions, weekLabel }: Props) {
             <path
               key={region.regionId}
               d={REGION_PATHS[view][region.regionId]}
-              className={`${LEVEL_FILL[region.level]} stroke-background cursor-pointer`}
+              className={`${LEVEL_FILL[region.level]} stroke-background cursor-pointer focus:outline-none focus-visible:stroke-ring`}
               strokeWidth={2}
+              role="img"
               aria-label={regionLabel(region)}
+              tabIndex={0}
               onClick={() => setSelected(region)}
+              onFocus={() => setSelected(region)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') setSelected(region);
+              }}
               onMouseEnter={() => setSelected(region)}
             >
               <title>{regionLabel(region)}</title>
