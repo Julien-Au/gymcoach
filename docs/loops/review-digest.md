@@ -393,3 +393,49 @@ having fixed that one.
 it. The pre-existing debt stands unchanged: the captured pages have drifted since 2026-06-18 and
 the re-shoot is still waiting on `scripts/seed-demo-history.ts` seeding a couple of progress
 photos. It is now past the edge of the ~3-batch staleness cap and should be the next media tick.
+
+## 2026-08-20 - five-PR batch: MCP hardening (#296), plate fallback (#297), infra lock (#298), ideation (#305), muscle heat map (#306)
+
+Merged since the last digest: **#296** (closes #287), **#297** (closes #285), **#298** (closes
+#283), **#305** (the ideate batch record for #299-#304) and **#306** (closes #299). All five are
+loop-authored, all five passed CI 5/5 and an independent pre-merge review, and two of those
+reviews found a real defect that was fixed on the branch before merge. Read these first:
+
+1. **#296 - the externally reachable surface.** `gh pr diff 296`. This is the only diff in the
+   batch that changes what a remote party can do: `lib/mcp/cors.ts` decides which `Origin` the
+   MCP endpoint echoes and whether the transport's DNS-rebinding protection is armed. Read it for
+   the opt-in semantics (unset envs preserve today's open behavior, so an existing deployment is
+   not silently hardened *or* silently broken), for CORS keying off `MCP_ALLOWED_ORIGINS` alone
+   while `MCP_ALLOWED_HOSTS` only arms rebinding protection, and for `Vary: Origin` being sent on
+   the deny branch too (without it a shared cache can serve a deny to a later allowlisted
+   origin). The `get_training_context` email drop is one line and needs no review time.
+2. **#298 - the gate protecting every other gate.** `gh pr diff 298`. A bug here silently
+   weakens or hangs the green-gate itself. Read the lock lifecycle: `exec 9>`, non-blocking
+   attempt, wait notice, `flock --wait 3600`, and `9>&-` on both `npm` invocations so the lock fd
+   does not survive into a test child. The `9>&-` is the review finding - without it a zombie
+   next-server holds the lock for its whole lifetime while the waiter blocks forever.
+3. **#297 - the settings write race.** `gh pr diff 297`. The restored card is plain UI, but the
+   review finding is worth reading as a pattern: two components that each hydrate a copy of one
+   `localStorage` blob and write `{...ownState, key: value}` back will clobber each other's edits
+   as soon as the second one exists. Both writers now re-read before writing. The symmetric
+   regression test is the part to check.
+4. **#306 - the money shot.** `gh pr diff 306`. Additive display-only UI on the progress page, so
+   it ranks last by risk, but it is the batch's visible feature: `lib/muscle-map.ts` maps weekly
+   working sets per muscle group to heat levels through the SAME `classifyWeeklySets` /
+   `resolveVolumeBand` path as the volume-landmarks card (so the two cards can never disagree),
+   and nothing feeds back into progression. Skim the mapping table for muscle-group coverage;
+   `OTHER` is deliberately unpainted.
+
+**Skim:** #305 (the ideation record) and this write-up (CHANGELOG Added/Fixed/Security, the README
+feature bullet and roadmap line, the L8 reinforcement and L16 resolution note, the `CLAUDE.md`
+concurrency paragraph, autonomy-log).
+
+**Carry forward:** #300-#304 (recap poster, strength level badges, GPX route drawing, year-long
+training heatmap, PR celebration) remain in the backlog, unimplemented.
+
+**Media note:** the progress page changed visibly this batch and the muscle heat map is the money
+shot for both a screenshot and a clip - neither was captured here (this tick does not launch the
+app). The re-shoot is now the highest-value media debt: `progress.png` predates the photos card
+AND the heat map, and no committed clip shows either. Next media tick should seed a couple of
+demo progress photos in `scripts/seed-demo-history.ts`, re-shoot the progress page, and re-record
+the progress scenario in one pass.

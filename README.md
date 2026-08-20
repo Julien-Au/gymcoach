@@ -84,6 +84,9 @@ on your own key - all self-hosted.
   percentage loading table.
 - **Volume and frequency** - weekly volume per muscle group with MEV/MRV landmark
   bands, and per-muscle weekly training frequency.
+- **Muscle heat map** - front and back body silhouettes tinted by last week's
+  working sets per muscle against its MEV/MRV band, so a neglected or
+  over-cooked area is one glance away.
 - **Records and consistency** - an all-time records board, personal-record badges
   in-session and on the summary, and a training-consistency calendar.
 - **Auto-regulation** - stalled-lift detection and a deload recommendation from
@@ -346,6 +349,7 @@ than CI reaching in to a small VPS.
       form from plain language; you confirm before it logs)
 - [x] Progress photos (local-only upload with side-by-side compare)
 - [x] Interface localization (English and Russian, extensible message catalogs)
+- [x] Muscle heat map (body silhouettes tinted by weekly volume vs MEV/MRV)
 
 ## Contributing
 

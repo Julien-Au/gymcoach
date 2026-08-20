@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Muscle heat map on the progress page: front and back body silhouettes whose
+  regions are tinted by the latest completed week's working sets per muscle
+  group, compared against that muscle's MEV/MRV band (a personal volume target
+  wins over the defaults, exactly as the volume-landmarks card). Untrained,
+  under-MEV, in-band and over-MRV read as four steps of one warm ramp, checked
+  for separation in light and dark and for common color-vision deficiencies;
+  every region is labelled and keyboard-reachable for screen readers. Derived
+  on read from existing set history - display-only, and it never affects
+  progression.
 - ChatGPT / external-agent MCP connector: an authenticated Streamable HTTP
   MCP endpoint exposes your training context and program editing to any
   MCP-compatible agent. Access uses per-user bearer tokens created in
@@ -321,6 +330,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The plate-calculator fallback inventory is editable again in Settings, in
+  both kilograms and pounds. Its editor had been dropped when saved gyms
+  landed, leaving the no-active-gym fallback (and the only place an lb plate
+  inventory lives) unreachable from the UI. The restored card also displays
+  the stored values properly - its inputs were uncontrolled before, so
+  hydrated bars and plates never showed - and settings cards now re-read
+  stored preferences before every write, so editing plates and then toggling
+  another setting no longer reverts the plates.
+- A hung `codex-lb` upstream can no longer stall an AI request forever: the
+  request is aborted if response headers do not arrive within 120 seconds and
+  surfaces as a 504 instead of hanging.
+- Two concurrent `scripts/verify.sh --full` runs no longer corrupt each other:
+  the integration and E2E tiers take a machine-wide lock, so the second run
+  waits for the shared test database and dev port instead of truncating tables
+  under the first run's suite.
 - The E2E suite is repeatable back to back: each spec file now signs up from its
   own client IP (`x-forwarded-for`) instead of sharing the default
   `register:<ip>` bucket, so a second run started inside the rate limit's 60s
@@ -341,6 +365,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- Hardened the MCP endpoint: setting `MCP_ALLOWED_ORIGINS` and/or
+  `MCP_ALLOWED_HOSTS` turns on DNS-rebinding protection and makes CORS echo
+  only allowlisted origins (with `Vary: Origin` on both the allow and the deny
+  answer) instead of `*`. Both are opt-in, so existing deployments keep their
+  current behavior until they set them. The MCP training-context tool also
+  stopped selecting the token owner's email address, which it never used.
 - Hardened progress-photo storage: deleting a photo now unlinks the file before
   its row, so an unlink failure other than "already gone" keeps the photo
   listed instead of orphaning bytes; path containment resolves symlinks
