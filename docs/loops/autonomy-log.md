@@ -1968,7 +1968,7 @@ cause is gone, not because it was inconvenient.
 
 **Green gate.** `verify.sh` green, `verify.sh --full` green. The acceptance criterion was
 measured rather than asserted: a second `npm run test:e2e` started immediately after the first,
-inside the 60s rate-limit window, was green - 17/17 specs on both runs. Before #294 that second
+inside the 60s rate-limit window, was green - 17/17 tests on both runs. Before #294 that second
 run was the reliable way to red the suite.
 
 **Fix the code, not the test - read carefully.** The tempting fix was to raise or disable

@@ -246,6 +246,7 @@ Format per entry: trigger/evidence, the lesson (actionable), and **Status** = `g
   Acceptance was measured, not assumed: a second `npm run test:e2e` started immediately after the
   first, inside the 60s window, was green 17/17 both runs. `CLAUDE.md` now says back-to-back runs
   are expected green. Residual caveat kept: the guarantee is bounded, not unconditional - on CI
-  (`retries: 2`) one flaky spec can burn up to three registers on its own IP, the whole budget for
-  that bucket. The interim "wait out the minute" rule is retired; **#283** (concurrent runs sharing
+  (`retries: 2`) one flaky spec can burn up to three of its bucket's five registers, so a flaky
+  run combined with a re-run inside the same minute can still trip the limit. The interim "wait
+  out the minute" rule is retired; **#283** (concurrent runs sharing
   :5434/:3031, lesson L16) is a different race and is still open.

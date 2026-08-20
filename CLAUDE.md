@@ -38,8 +38,9 @@ through the app's real per-IP rate limit (`register:<ip>`, 5 per 60s), but since
 #294 every spec file sends its own `x-forwarded-for`, so no two specs share a
 bucket and a second `--full` run inside the same minute is green (verified 17/17
 on two consecutive runs). Two residual caveats: the guarantee is bounded, not
-unconditional - on CI (`retries: 2`) a spec that flakes can burn up to three
-registers on its own IP, which is the whole budget for that bucket; and #283
+unconditional - on CI (`retries: 2`) a spec that flakes can burn up to three of
+its bucket's five registers, so a flaky run plus a re-run inside the same minute
+can still trip the limit; and #283
 (two concurrent `verify.sh` runs sharing the test Postgres on :5434 and the dev
 server on :3031) is still open and is a different, unrelated race. History:
 lesson L17, resolved by #294; the concurrency twin is L16.
