@@ -1991,3 +1991,49 @@ model-routing directive).
 **Deferred.** #283 (serialize or isolate the shared test infra), #285 (plate-calculator fallback
 inventory - needs a product call), #287 (MCP hardening follow-ups), and the demo-media re-shoot
 once the demo seed carries progress photos.
+
+
+## 2026-08-20 - five-PR batch: #287/#285/#283 cleared, ideation, and the first "make it pop" feature
+
+**What ran.** One interactive maintainer loop across the day: implement -> ship, three times over
+the deferred backlog (#287, #285, #283 - the three items every previous batch had pushed forward),
+then an ideate tick on an operator directive, then implement -> ship on the first idea it
+produced. Triage did not run; the backlog was already full and ended fuller.
+
+**The deferred list is empty.** #296 (MCP hardening), #297 (plate-calculator fallback editor) and
+#298 (shared-infra lock) close the three issues that had been carried as "deferred to human" since
+2026-07-15. Two of them were deferred for a reason that turned out to be soft: #285 was tagged
+"needs a product call" and the call (restore the editor, describe it as the no-active-gym
+fallback) took one paragraph of reasoning; #283 was tagged infra-heavy and took one flock. A
+"deferred" tag ages badly - it is worth re-reading the backlog's deferred items as a batch rather
+than skipping them each tick.
+
+**Ideation on an operator directive.** The operator asked for cool, demo-able features - ones that
+land visually in a screenshot, not just in the changelog. The ideate tick filed six: muscle heat map (#299), training recap poster (#300),
+strength level badges (#301), GPX route drawing (#302), year-long training heatmap (#303), PR
+celebration (#304), recorded in `docs/loops/ideas-backlog.md` via #305. #299 shipped the same day
+as #306; #300-#304 remain open.
+
+**Independent review earned its keep, twice.** Every PR got a pre-merge review by an independent
+reviewer, and two of the five came back with a REAL defect that the author, the green gate and CI
+had all missed - the settings clobber in #297 and the leaked lock fd in #298. Both were fixed on
+the branch before merge, both with tests. Recorded as a reinforcement of lesson **L8** rather than
+a new lesson: the mechanism was already known, the batch supplies the rate (2 defects / 5 PRs) and
+a sharper shape for it - a new piece of code making an existing pattern unsafe is the author's
+reliable blind spot.
+
+**Green gate.** All five PRs: local gate green, CI 5/5 green. #298's acceptance was measured
+rather than asserted - a 300s lock holder was started deliberately, and the second run printed the
+wait notice, blocked, then went green. #306 also validated its color ramp for common color-vision
+deficiencies and for light/dark separation before merge, and fixed an a11y nit from review (the
+per-region labels were pruned from the accessibility tree until the svg got `role=group` and each
+region `role=img`).
+
+**One metric.** Accepted-change rate this batch: 5 merged / 0 abandoned (#296, #297, #298, #305,
+#306), plus this docs PR. No reverts. 2 real defects caught pre-merge by independent review. 6
+issues filed (#299-#304). Implementing-tick token spend: not recorded separately (dev ticks were
+Fable per the model-routing directive; reviews, ideation and this write-up ran on Opus).
+
+**Deferred.** #300-#304 (the rest of the "make it pop" ideas) and the demo-media re-shoot, which is
+now the oldest debt in the repo: the progress page has drifted twice (photos card, muscle heat map)
+since the committed screenshots, and the heat map is exactly the frame a clip should open on.

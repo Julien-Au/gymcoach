@@ -105,6 +105,20 @@ Format per entry: trigger/evidence, the lesson (actionable), and **Status** = `g
   multiple "lenses" - independence, not effort, is what catches the defect.
 - **Status:** graduated -> charter (`07-autonomy.md`, "Subagent challenge protocol"): the
   no-reviewer-available case is now an explicit rule with the post-merge backstop.
+- **Reinforced (2026-08-20).** Two of the five PRs in that batch shipped a REAL defect that
+  the author's own gate (green `verify.sh`, green CI 5/5, the author's own re-read) had
+  missed, and the independent pre-merge review found both. #297: adding a second settings
+  writer turned the pre-existing spread-own-state write pattern into a live clobber - editing
+  the plate inventory and then toggling vibration reverted the plates, because each card wrote
+  its own mount-time copy back (fixed by re-reading `localStorage` before every write in BOTH
+  writers, with a symmetric regression test). #298: the flock fd 9 leaked into the `npm`
+  children, so a zombie next-server surviving an interrupted run could hold the shared-infra
+  lock forever while the blocking `flock` had no timeout (fixed with `9>&-` on both npm calls,
+  `flock --wait 3600`, and an actionable failure message). Both defects are the same shape -
+  a *new* piece of code makes an *existing* pattern unsafe, which is exactly the blind spot an
+  author has after writing the new piece. The rate (2 real defects in 5 PRs) is the argument
+  for keeping the review pre-merge and independent even when everything is green; treat a
+  CLEAN verdict as information, not as the expected outcome.
 
 ### L9 - Gates rot, permissions creep: schedule the meta-checks
 - **Trigger:** an external loop-engineering writeup (2026-06-11) listed two failure modes
@@ -223,6 +237,13 @@ Format per entry: trigger/evidence, the lesson (actionable), and **Status** = `g
   :5434/:3031 concurrently - serialize them (a green isolated re-run of the failed tier is the
   tell that a red was this contention, not a regression; acknowledge the actual failing step
   before re-planning, per L2).
+- **Resolved by #298 on 2026-08-20.** `scripts/verify.sh --full` now takes a machine-wide
+  `flock` on `${TMPDIR:-/tmp}/gymcoach-test-infra.lock` around the integration and E2E tiers,
+  so a second concurrent run prints a wait notice and blocks instead of truncating the first
+  run's database. Verified against a real 300s lock holder rather than asserted. The control
+  is structural, so the interim "do not overlap two `--full` runs" rule is retired - but the
+  lock is per machine and per lock file: two runs with different `TMPDIR`s, or an integration
+  tier invoked outside `verify.sh`, still bypass it.
 
 ### L17 - The E2E tier is not repeatable back to back: the app's own register rate limit reds unrelated specs
 - **Trigger:** 2026-07-27 batch (#282). One tick ran `verify.sh --full` and then, to confirm a
