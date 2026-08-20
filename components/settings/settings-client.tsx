@@ -30,11 +30,12 @@ export function SettingsClient() {
   }, []);
 
   function update<K extends keyof UserPreferences>(key: K, value: UserPreferences[K]) {
-    setPrefs((p) => {
-      const next = { ...p, [key]: value };
-      savePreferences(next);
-      return next;
-    });
+    // Re-read before writing: the plate-fallback card below keeps its own
+    // copy of the prefs, so spreading this component's state could resurrect
+    // stale values it changed since mount.
+    const next = { ...loadPreferences(), [key]: value };
+    savePreferences(next);
+    setPrefs(next);
   }
 
   return (

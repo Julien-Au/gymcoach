@@ -86,10 +86,11 @@ function BarPlatesRow({
   // The text is controlled and re-synced from the saved list, so the values
   // hydrated from localStorage after mount actually show up (the pre-#274
   // editor used defaultValue and silently displayed the defaults).
-  const [platesText, setPlatesText] = useState(plates.join(', '));
+  const joinedPlates = plates.join(', ');
+  const [platesText, setPlatesText] = useState(joinedPlates);
   useEffect(() => {
-    setPlatesText(plates.join(', '));
-  }, [plates]);
+    setPlatesText(joinedPlates);
+  }, [joinedPlates]);
 
   function commitPlates(raw: string) {
     const parsed = raw
