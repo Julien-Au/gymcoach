@@ -1,5 +1,9 @@
 import { test, expect, type Page } from '@playwright/test';
 
+// Dedicated client IP so the UI signup does not share the default register
+// rate-limit bucket with other specs (issue #292).
+test.use({ extraHTTPHeaders: { 'x-forwarded-for': '10.111.1.4' } });
+
 // Per-exercise target goals (issue #90): set a goal on the progress page,
 // watch the progress bar, reach it, see the achieved badge, remove it.
 // Data is seeded through the authenticated API (the browser context shares

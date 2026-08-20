@@ -24,7 +24,7 @@ test('a lifter can import a GPX activity as a cardio session', async ({ page }) 
   // register rate-limit bucket (the suite's parallel UI signups use the per-IP
   // 5/min budget).
   const registerRes = await page.request.post('/api/auth/register', {
-    headers: { 'x-forwarded-for': '10.111.0.4' },
+    headers: { 'x-forwarded-for': '10.111.0.14' },
     data: {
       displayName: 'GPX E2E',
       email: `e2e-gpx-${Date.now()}@test.dev`,

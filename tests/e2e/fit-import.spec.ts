@@ -16,7 +16,7 @@ const RECORDS_FIT_B64 =
 
 test('a lifter can import multiple FIT activities at once', async ({ page }) => {
   const registerRes = await page.request.post('/api/auth/register', {
-    headers: { 'x-forwarded-for': '10.111.0.5' },
+    headers: { 'x-forwarded-for': '10.111.0.15' },
     data: {
       displayName: 'FIT E2E',
       email: `e2e-fit-${Date.now()}@test.dev`,

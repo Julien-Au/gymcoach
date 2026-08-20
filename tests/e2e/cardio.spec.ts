@@ -52,7 +52,7 @@ test('a trainee can log a cardio set (duration + distance) in a live session', a
   // unique X-Forwarded-For keeps this spec in its own register rate-limit
   // bucket - the suite's UI signups use up the 5/min per-IP budget.
   const registerRes = await page.request.post('/api/auth/register', {
-    headers: { 'x-forwarded-for': '10.111.0.3' },
+    headers: { 'x-forwarded-for': '10.111.0.13' },
     data: {
       displayName: 'Cardio E2E',
       email: `e2e-cardio-${Date.now()}@test.dev`,

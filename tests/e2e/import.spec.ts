@@ -1,5 +1,9 @@
 import { test, expect } from '@playwright/test';
 
+// Dedicated client IP so the UI signup does not share the default register
+// rate-limit bucket with other specs (issue #292).
+test.use({ extraHTTPHeaders: { 'x-forwarded-for': '10.111.1.5' } });
+
 // Strong CSV import (issue #100): upload an export in settings, check the
 // dry-run preview, confirm, and find the imported session in the history.
 

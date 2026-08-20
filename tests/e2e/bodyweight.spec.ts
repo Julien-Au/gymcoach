@@ -1,5 +1,9 @@
 import { test, expect } from '@playwright/test';
 
+// Dedicated client IP so the UI signup does not share the default register
+// rate-limit bucket with other specs (issue #292).
+test.use({ extraHTTPHeaders: { 'x-forwarded-for': '10.111.1.2' } });
+
 // Bodyweight tracking (issue #99): quick-add a measurement on the progress
 // page, see it listed as the current value, then delete it. The card renders
 // even with no training data, so a fresh user is enough.
