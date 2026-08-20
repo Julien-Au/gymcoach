@@ -239,3 +239,13 @@ Format per entry: trigger/evidence, the lesson (actionable), and **Status** = `g
 - **Status:** graduated -> `CLAUDE.md` (green-gate section) now states the tier is not safely
   repeatable inside a minute and how to read an auth/signup red after a recent run. Filed **#292**
   to make the UI-signup specs use a per-spec client IP so the suite stops sharing one bucket.
+- **Resolved by #294 on 2026-08-20.** The root cause (one shared bucket) is gone: the five specs
+  that sign up through the UI now each set a dedicated `x-forwarded-for` via
+  `test.use({ extraHTTPHeaders })`, and three client IPs accidentally reused across API-signup
+  specs were deduped. The rate limit itself was left untouched (fix the code, not the test).
+  Acceptance was measured, not assumed: a second `npm run test:e2e` started immediately after the
+  first, inside the 60s window, was green 17/17 both runs. `CLAUDE.md` now says back-to-back runs
+  are expected green. Residual caveat kept: the guarantee is bounded, not unconditional - on CI
+  (`retries: 2`) one flaky spec can burn up to three registers on its own IP, the whole budget for
+  that bucket. The interim "wait out the minute" rule is retired; **#283** (concurrent runs sharing
+  :5434/:3031, lesson L16) is a different race and is still open.
