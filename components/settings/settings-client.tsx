@@ -14,6 +14,7 @@ import {
   type UserPreferences,
 } from '@/lib/preferences';
 import { BackupSection } from './backup-section';
+import { PlateFallbackSection } from './plate-fallback-section';
 import { LanguageSelector } from '@/components/shared/language-selector';
 
 export function SettingsClient() {
@@ -114,6 +115,8 @@ export function SettingsClient() {
           />
         </CardContent>
       </Card>
+
+      <PlateFallbackSection />
 
       <BackupSection />
     </>
