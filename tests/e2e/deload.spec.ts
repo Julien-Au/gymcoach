@@ -1,5 +1,9 @@
 import { test, expect, type Page } from '@playwright/test';
 
+// Dedicated client IP so the UI signup does not share the default register
+// rate-limit bucket with other specs (issue #292).
+test.use({ extraHTTPHeaders: { 'x-forwarded-for': '10.111.1.3' } });
+
 // One-tap planned deload week (issue #112): the deload recommendation banner
 // gains a "Start a deload week" button; while active the banner shows the end
 // date and an early-exit button. Data is seeded through the authenticated API

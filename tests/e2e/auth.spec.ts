@@ -1,5 +1,10 @@
 import { test, expect } from '@playwright/test';
 
+// Each spec file registers through the app's real per-IP rate limit
+// (register:<ip>, 5 per 60s). A dedicated client IP per file keeps UI signups
+// out of the shared default bucket so back-to-back runs stay green (issue #292).
+test.use({ extraHTTPHeaders: { 'x-forwarded-for': '10.111.1.1' } });
+
 // Auth flow does not require an LLM key, only a migrated database.
 test('a new user can sign up, log out and sign back in', async ({ page }) => {
   const email = `e2e-${Date.now()}@test.dev`;
