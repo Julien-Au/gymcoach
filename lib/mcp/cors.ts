@@ -56,5 +56,7 @@ export function corsHeadersFor(
       Vary: 'Origin',
     };
   }
-  return { ...BASE_CORS_HEADERS };
+  // Vary on the deny branch too, so a shared or preflight cache never reuses
+  // a no-allow-origin response for a later allowlisted origin.
+  return { ...BASE_CORS_HEADERS, Vary: 'Origin' };
 }

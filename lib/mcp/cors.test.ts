@@ -57,5 +57,7 @@ describe('corsHeadersFor', () => {
     expect(corsHeadersFor(policy, 'https://evil.test')['Access-Control-Allow-Origin']).toBeUndefined();
     expect(corsHeadersFor(policy, null)['Access-Control-Allow-Origin']).toBeUndefined();
     expect(corsHeadersFor(policy, null)['Access-Control-Allow-Methods']).toContain('POST');
+    // The deny branch still varies on Origin so caches never reuse it.
+    expect(corsHeadersFor(policy, 'https://evil.test').Vary).toBe('Origin');
   });
 });
