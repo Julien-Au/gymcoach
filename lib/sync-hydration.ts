@@ -18,6 +18,7 @@ export async function hydrateFromServerSets(
     localId: `srv_${s.id}`,
     sessionId,
     exerciseId: s.exerciseId,
+    gymEquipmentId: s.gymEquipmentId,
     setNumber: s.setNumber,
     weight: s.weight,
     reps: s.reps,

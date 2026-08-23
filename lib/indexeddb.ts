@@ -24,6 +24,9 @@ export interface PendingSet {
   sessionId: string;
 
   exerciseId: string;
+  // Concrete physical machine/equipment selected for this set. Optional keeps
+  // IndexedDB rows written before equipment selection backward-compatible.
+  gymEquipmentId?: string | null;
   setNumber: number;
   weight: number;
   reps: number;
@@ -37,7 +40,7 @@ export interface PendingSet {
   isWarmup: boolean;
   isDropSet: boolean;
 
-  createdAt: number;        // epoch ms
+  createdAt: number; // epoch ms
   status: PendingSetStatus;
   // If synced: server id returned by the API. Allows reconciliation
   // with the UI state and avoids double-POST on retry.

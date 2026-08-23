@@ -399,6 +399,65 @@ describe('SetInput AI parse', () => {
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ weight: 0, reps: 8, rir: 2 }));
   });
 
+  it('submits the selected physical gym equipment', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(
+      <SetInput
+        programExercise={pe}
+        existingSets={[]}
+        lastPerformance={undefined}
+        readiness={null}
+        deloadActive={false}
+        unit="KG"
+        equipmentOptions={[{ id: 'machine-1', name: 'Hammer Strength Squat' }]}
+        onSubmit={onSubmit}
+      />,
+    );
+
+    await user.selectOptions(screen.getByRole('combobox'), 'machine-1');
+    await user.click(screen.getByRole('button', { name: /log the set/i }));
+
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ gymEquipmentId: 'machine-1' }));
+  });
+
+  it('keeps the most recently used physical equipment selected for the next set', () => {
+    const previousSet = {
+      localId: 'l-equipment',
+      sessionId: 's1',
+      exerciseId: 'e1',
+      gymEquipmentId: 'machine-1',
+      setNumber: 1,
+      weight: 100,
+      reps: 8,
+      rir: 2,
+      notes: null,
+      isWarmup: false,
+      isDropSet: false,
+      createdAt: Date.now(),
+      status: 'synced' as const,
+      serverId: 'set-equipment',
+      syncedAt: Date.now(),
+      attempts: 0,
+      lastError: null,
+    };
+
+    render(
+      <SetInput
+        programExercise={pe}
+        existingSets={[previousSet]}
+        lastPerformance={undefined}
+        readiness={null}
+        deloadActive={false}
+        unit="KG"
+        equipmentOptions={[{ id: 'machine-1', name: 'Hammer Strength Squat' }]}
+        onSubmit={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    expect(screen.getByRole('combobox')).toHaveValue('machine-1');
+  });
+
   it('ignores a cardio parse on a strength exercise (wrong shape)', async () => {
     const user = userEvent.setup();
     stubFetch({ kind: 'cardio', durationSec: 1500 });

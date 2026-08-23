@@ -55,6 +55,7 @@ async function doFlush(): Promise<FlushResult> {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           exerciseId: item.exerciseId,
+          gymEquipmentId: item.gymEquipmentId ?? null,
           setNumber: item.setNumber,
           weight: item.weight,
           reps: item.reps,
@@ -107,7 +108,10 @@ async function doFlush(): Promise<FlushResult> {
 
 // Helper: adds a set to the queue (status pending) and triggers a flush.
 export async function queueSet(
-  set: Omit<PendingSet, 'createdAt' | 'status' | 'serverId' | 'syncedAt' | 'attempts' | 'lastError'>,
+  set: Omit<
+    PendingSet,
+    'createdAt' | 'status' | 'serverId' | 'syncedAt' | 'attempts' | 'lastError'
+  >,
 ): Promise<PendingSet> {
   const db = getDB();
   const record: PendingSet = {

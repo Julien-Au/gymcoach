@@ -28,7 +28,7 @@ export default async function SessionRunPage(props: Props) {
         },
       },
       sets: { orderBy: [{ exerciseId: 'asc' }, { setNumber: 'asc' }] },
-      gym: { include: { exerciseConfigs: true } },
+      gym: { include: { exerciseConfigs: true, equipment: { include: { exerciseLinks: true } } } },
     },
   });
 
