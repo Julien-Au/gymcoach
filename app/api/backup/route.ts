@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import {
@@ -22,6 +23,7 @@ import {
 import { MAX_SUPERSET_GROUP, MIN_SUPERSET_GROUP } from '@/lib/supersets';
 import { sorenessSchema } from '@/lib/schemas/readiness';
 import { gymWeightListSchema } from '@/lib/schemas/gym';
+import { GYM_EQUIPMENT_IMAGE_MIME_TYPES, decodeGymEquipmentImage } from '@/lib/gym-equipment';
 
 // ============================================================
 // Backup / Import JSON (LOT 11, completed by issue #168)
@@ -43,6 +45,8 @@ import { gymWeightListSchema } from '@/lib/schemas/gym';
 //   usesBodyweight.
 // - Program / Workout / ProgramExercise: all user content incl supersetGroup.
 // - Session / Set: all user content incl durationSec, distanceM, avgHr.
+// - Saved Gym profiles plus physical GymEquipment, equipment-to-exercise links,
+//   and uploaded/external equipment images.
 // - CoachSession, ExerciseGoal, BodyweightEntry, ReadinessCheckin,
 //   Conversation / Message: all user content.
 //
@@ -53,7 +57,7 @@ import { gymWeightListSchema } from '@/lib/schemas/gym';
 // - Program.createdAt / Program.updatedAt and Exercise.createdAt (server-side
 //   bookkeeping with no user-facing meaning; reset to the import time).
 
-const VERSION = 3;
+const VERSION = 4;
 
 // Hard cap on the import body size, enforced while reading the stream (the
 // Content-Length header is attacker-controlled). Generous: a decade of daily
@@ -139,6 +143,10 @@ export async function GET() {
         where: { userId },
         orderBy: { createdAt: 'asc' },
         include: {
+          equipment: {
+            orderBy: { name: 'asc' },
+            include: { exerciseLinks: { include: { exercise: { select: { name: true } } } } },
+          },
           exerciseConfigs: { include: { exercise: { select: { name: true } } } },
         },
       }),
@@ -176,6 +184,19 @@ export async function GET() {
         dumbbellWeights: gym.dumbbellWeights,
         plateWeights: gym.plateWeights,
         barWeights: gym.barWeights,
+        equipment: gym.equipment.map((item) => ({
+          name: item.name,
+          equipmentType: item.equipmentType,
+          description: item.description,
+          manufacturer: item.manufacturer,
+          modelName: item.modelName,
+          quantity: item.quantity,
+          weightOptions: item.weightOptions,
+          imageUrl: item.imageUrl,
+          imageMimeType: item.imageMimeType,
+          imageBase64: item.imageData ? Buffer.from(item.imageData).toString('base64') : null,
+          exerciseNames: item.exerciseLinks.map((link) => link.exercise.name),
+        })),
         exerciseConfigs: gym.exerciseConfigs.map((config) => ({
           exerciseName: config.exercise.name,
           isAvailable: config.isAvailable,
@@ -448,6 +469,32 @@ const importSchema = z.object({
         dumbbellWeights: gymWeightListSchema,
         plateWeights: gymWeightListSchema,
         barWeights: gymWeightListSchema,
+        equipment: z
+          .array(
+            z.object({
+              name: z.string().trim().min(1).max(120),
+              equipmentType: z.nativeEnum(EquipmentType),
+              description: z.string().max(4000).nullable().optional(),
+              manufacturer: z.string().max(120).nullable().optional(),
+              modelName: z.string().max(120).nullable().optional(),
+              quantity: z.number().int().min(1).max(100),
+              weightOptions: gymWeightListSchema,
+              imageUrl: z
+                .string()
+                .url()
+                .max(2048)
+                .nullable()
+                .optional()
+                .refine((value) => value == null || value.startsWith('https://'), {
+                  message: 'Equipment image URL must use HTTPS.',
+                }),
+              imageMimeType: z.enum(GYM_EQUIPMENT_IMAGE_MIME_TYPES).nullable().optional(),
+              imageBase64: z.string().max(7_100_000).nullable().optional(),
+              exerciseNames: z.array(z.string().max(120)).max(100),
+            }),
+          )
+          .max(1000)
+          .optional(),
         exerciseConfigs: z
           .array(
             z.object({
@@ -619,6 +666,39 @@ export async function POST(req: Request) {
               exerciseConfigs: { createMany: { data: configs } },
             },
           });
+          for (const item of gym.equipment ?? []) {
+            const decoded = item.imageBase64
+              ? decodeGymEquipmentImage(item.imageBase64, item.imageMimeType ?? undefined)
+              : null;
+            const equipment = await tx.gymEquipment.create({
+              data: {
+                gymId: created.id,
+                name: item.name,
+                equipmentType: item.equipmentType,
+                description: item.description ?? null,
+                manufacturer: item.manufacturer ?? null,
+                modelName: item.modelName ?? null,
+                quantity: item.quantity,
+                weightOptions: item.weightOptions,
+                imageUrl: decoded ? null : (item.imageUrl ?? null),
+                imageData: decoded?.bytes,
+                imageMimeType: decoded?.mimeType ?? null,
+              },
+            });
+            const exerciseIds = [
+              ...new Set(
+                item.exerciseNames.flatMap((name) => {
+                  const exerciseId = exerciseIdByName.get(name);
+                  return exerciseId ? [exerciseId] : [];
+                }),
+              ),
+            ];
+            if (exerciseIds.length > 0) {
+              await tx.gymEquipmentExercise.createMany({
+                data: exerciseIds.map((exerciseId) => ({ equipmentId: equipment.id, exerciseId })),
+              });
+            }
+          }
           gymIdByName.set(gym.name, created.id);
         }
         const activeGymId = payload.profile?.activeGymName

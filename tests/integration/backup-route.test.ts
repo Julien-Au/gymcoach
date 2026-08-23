@@ -10,6 +10,8 @@ import { getCurrentUserId } from '@/lib/auth';
 // Auth is read through getCurrentUserId (via requireApiUserId in @/lib/api).
 vi.mock('@/lib/auth', () => ({ getCurrentUserId: vi.fn() }));
 const mockUserId = vi.mocked(getCurrentUserId);
+const EQUIPMENT_PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+const EQUIPMENT_PNG_BASE64 = 'iVBORw0KGgo=';
 
 import { GET as getBackup, POST as postBackup } from '@/app/api/backup/route';
 
@@ -106,6 +108,21 @@ async function seedFullUser(email: string) {
     },
   });
   await db.user.update({ where: { id: user.id }, data: { activeGymId: gym.id } });
+  await db.gymEquipment.create({
+    data: {
+      gymId: gym.id,
+      name: 'Competition bench station',
+      equipmentType: 'BARBELL',
+      description: 'Flat bench with uprights and safety arms.',
+      manufacturer: 'GymCo',
+      modelName: 'Bench Pro',
+      quantity: 2,
+      weightOptions: [20, 40, 60, 80, 100],
+      imageData: EQUIPMENT_PNG,
+      imageMimeType: 'image/png',
+      exerciseLinks: { create: { exerciseId: bench.id } },
+    },
+  });
   const program = await db.program.create({
     data: {
       userId: user.id,
@@ -265,6 +282,10 @@ async function countsFor(userId: string) {
     messages: await db.message.count({ where: { conversation: { userId } } }),
     gyms: await db.gym.count({ where: { userId } }),
     gymConfigs: await db.gymExerciseConfig.count({ where: { gym: { userId } } }),
+    gymEquipment: await db.gymEquipment.count({ where: { gym: { userId } } }),
+    gymEquipmentLinks: await db.gymEquipmentExercise.count({
+      where: { equipment: { gym: { userId } } },
+    }),
   };
 }
 
@@ -273,7 +294,7 @@ beforeEach(() => {
 });
 
 describe('GET /api/backup - export completeness (issue #168)', () => {
-  it('exports version 3 with saved gyms and all earlier backup fields', async () => {
+  it('exports version 4 with physical gym equipment and all earlier backup fields', async () => {
     const user = await seedFullUser('a@test.dev');
     actAs(user.id);
 
@@ -281,7 +302,7 @@ describe('GET /api/backup - export completeness (issue #168)', () => {
     expect(res.status).toBe(200);
     const dump = await res.json();
 
-    expect(dump.version).toBe(3);
+    expect(dump.version).toBe(4);
     expect(dump.profile).toMatchObject({
       displayName: 'Julien',
       bodyweight: 82.5,
@@ -303,6 +324,21 @@ describe('GET /api/backup - export completeness (issue #168)', () => {
         dumbbellWeights: [10, 12, 14, 16, 19],
         plateWeights: [1.25, 2.5, 5, 10, 20],
         barWeights: [20],
+        equipment: [
+          {
+            name: 'Competition bench station',
+            equipmentType: 'BARBELL',
+            description: 'Flat bench with uprights and safety arms.',
+            manufacturer: 'GymCo',
+            modelName: 'Bench Pro',
+            quantity: 2,
+            weightOptions: [20, 40, 60, 80, 100],
+            imageUrl: null,
+            imageMimeType: 'image/png',
+            imageBase64: EQUIPMENT_PNG_BASE64,
+            exerciseNames: ['Bench Press'],
+          },
+        ],
         exerciseConfigs: [{ exerciseName: 'Running', isAvailable: false, weightOptions: [] }],
       },
     ]);

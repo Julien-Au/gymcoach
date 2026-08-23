@@ -1,0 +1,176 @@
+import { Buffer } from 'node:buffer';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { db } from '@/lib/db';
+import { getCurrentUserId } from '@/lib/auth';
+
+vi.mock('@/lib/auth', () => ({ getCurrentUserId: vi.fn() }));
+const mockUserId = vi.mocked(getCurrentUserId);
+
+import { GET as listEquipment, POST as createEquipment } from '@/app/api/gyms/[id]/equipment/route';
+import { DELETE as deleteEquipment, PUT as updateEquipment } from '@/app/api/gym-equipment/[id]/route';
+import {
+  DELETE as deleteImage,
+  GET as getImage,
+  PUT as setImage,
+} from '@/app/api/gym-equipment/[id]/image/route';
+
+const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+
+function request(url: string, method = 'GET', body?: unknown): Request {
+  return new Request(url, {
+    method,
+    headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+}
+
+function params(id: string) {
+  return { params: Promise.resolve({ id }) };
+}
+
+async function seedUser(label: string) {
+  const user = await db.user.create({
+    data: { email: `equipment-${label}-${Date.now()}@test.dev`, passwordHash: 'unused' },
+  });
+  const gym = await db.gym.create({ data: { userId: user.id, name: `${label} gym` } });
+  return { user, gym };
+}
+
+beforeEach(() => mockUserId.mockReset());
+
+describe('gym equipment REST API', () => {
+  it('manages a physical station, exercise links, compatibility config, and image', async () => {
+    const { user, gym } = await seedUser('owner');
+    const exercise = await db.exercise.create({
+      data: {
+        userId: user.id,
+        name: 'Cable row',
+        muscleGroup: 'BACK_THICKNESS',
+        category: 'COMPOUND',
+        equipmentType: 'CABLE',
+      },
+    });
+    mockUserId.mockResolvedValue(user.id);
+
+    const createdResponse = await createEquipment(
+      request(`http://test.local/api/gyms/${gym.id}/equipment`, 'POST', {
+        name: 'Dual cable station',
+        equipmentType: 'CABLE',
+        description: 'Two adjustable pulleys',
+        manufacturer: 'GymCo',
+        modelName: 'DC-2',
+        quantity: 2,
+        weightOptions: [20, 10, 20],
+        exerciseIds: [exercise.id],
+      }),
+      params(gym.id),
+    );
+    expect(createdResponse.status).toBe(201);
+    const created = await createdResponse.json();
+    const equipmentId = created.equipment.id as string;
+    expect(created.equipment).toMatchObject({
+      name: 'Dual cable station',
+      equipmentType: 'CABLE',
+      quantity: 2,
+      weightOptions: [10, 20],
+    });
+
+    const link = await db.gymEquipmentExercise.findUnique({
+      where: { equipmentId_exerciseId: { equipmentId, exerciseId: exercise.id } },
+    });
+    expect(link).not.toBeNull();
+    const compatibility = await db.gymExerciseConfig.findUnique({
+      where: { gymId_exerciseId: { gymId: gym.id, exerciseId: exercise.id } },
+    });
+    expect(compatibility).toMatchObject({ isAvailable: true, weightOptions: [10, 20] });
+
+    const listedResponse = await listEquipment(
+      request(`http://test.local/api/gyms/${gym.id}/equipment`),
+      params(gym.id),
+    );
+    expect(listedResponse.status).toBe(200);
+    const listed = await listedResponse.json();
+    expect(listed.equipment).toHaveLength(1);
+    expect(listed.equipment[0].exerciseLinks).toEqual([
+      expect.objectContaining({ id: exercise.id, name: 'Cable row' }),
+    ]);
+
+    const updatedResponse = await updateEquipment(
+      request(`http://test.local/api/gym-equipment/${equipmentId}`, 'PUT', {
+        name: 'Cable station A',
+        equipmentType: 'CABLE',
+        quantity: 1,
+        weightOptions: [5, 10, 15, 20],
+        exerciseIds: [exercise.id],
+      }),
+      params(equipmentId),
+    );
+    expect(updatedResponse.status).toBe(200);
+    expect((await updatedResponse.json()).equipment.name).toBe('Cable station A');
+
+    const imageResponse = await setImage(
+      request(`http://test.local/api/gym-equipment/${equipmentId}/image`, 'PUT', {
+        imageBase64: PNG.toString('base64'),
+        mimeType: 'image/png',
+      }),
+      params(equipmentId),
+    );
+    expect(imageResponse.status).toBe(200);
+    const fetchedImage = await getImage(
+      request(`http://test.local/api/gym-equipment/${equipmentId}/image`),
+      params(equipmentId),
+    );
+    expect(fetchedImage.status).toBe(200);
+    expect(fetchedImage.headers.get('content-type')).toBe('image/png');
+    expect(Buffer.from(await fetchedImage.arrayBuffer())).toEqual(PNG);
+
+    const clearResponse = await deleteImage(
+      request(`http://test.local/api/gym-equipment/${equipmentId}/image`, 'DELETE'),
+      params(equipmentId),
+    );
+    expect(clearResponse.status).toBe(200);
+    expect(
+      await db.gymEquipment.findUnique({ where: { id: equipmentId }, select: { imageData: true } }),
+    ).toEqual({ imageData: null });
+
+    const deletedResponse = await deleteEquipment(
+      request(`http://test.local/api/gym-equipment/${equipmentId}`, 'DELETE'),
+      params(equipmentId),
+    );
+    expect(deletedResponse.status).toBe(200);
+    expect(await db.gymEquipment.count({ where: { id: equipmentId } })).toBe(0);
+  });
+
+  it('does not expose another user gym or accept another user exercise link', async () => {
+    const owner = await seedUser('private-owner');
+    const other = await seedUser('other');
+    const otherExercise = await db.exercise.create({
+      data: {
+        userId: other.user.id,
+        name: 'Other machine exercise',
+        muscleGroup: 'QUADS',
+        category: 'COMPOUND',
+        equipmentType: 'MACHINE',
+      },
+    });
+
+    mockUserId.mockResolvedValue(owner.user.id);
+    const foreignLinkResponse = await createEquipment(
+      request(`http://test.local/api/gyms/${owner.gym.id}/equipment`, 'POST', {
+        name: 'Private station',
+        equipmentType: 'MACHINE',
+        exerciseIds: [otherExercise.id],
+      }),
+      params(owner.gym.id),
+    );
+    expect(foreignLinkResponse.status).toBe(400);
+    expect(await db.gymEquipment.count({ where: { gymId: owner.gym.id } })).toBe(0);
+
+    mockUserId.mockResolvedValue(other.user.id);
+    const foreignGymResponse = await listEquipment(
+      request(`http://test.local/api/gyms/${owner.gym.id}/equipment`),
+      params(owner.gym.id),
+    );
+    expect(foreignGymResponse.status).toBe(404);
+  });
+});
