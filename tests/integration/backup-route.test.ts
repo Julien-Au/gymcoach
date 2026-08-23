@@ -108,7 +108,7 @@ async function seedFullUser(email: string) {
     },
   });
   await db.user.update({ where: { id: user.id }, data: { activeGymId: gym.id } });
-  await db.gymEquipment.create({
+  const equipment = await db.gymEquipment.create({
     data: {
       gymId: gym.id,
       name: 'Competition bench station',
@@ -179,6 +179,18 @@ async function seedFullUser(email: string) {
         create: [
           {
             exerciseId: bench.id,
+            gymEquipmentId: equipment.id,
+            equipmentNameSnapshot: 'Competition bench station',
+            selectedLoadKg: 100,
+            selectedLoadMultiplierSnapshot: null,
+            nominalResistanceKg: null,
+            equipmentLoadSnapshot: {
+              version: 1,
+              equipmentType: 'BARBELL',
+              manufacturer: 'GymCo',
+              modelName: 'Bench Pro',
+              weightOptions: [20, 40, 60, 80, 100],
+            },
             setNumber: 1,
             weight: 100,
             reps: 5,
@@ -294,7 +306,7 @@ beforeEach(() => {
 });
 
 describe('GET /api/backup - export completeness (issue #168)', () => {
-  it('exports version 4 with physical gym equipment and all earlier backup fields', async () => {
+  it('exports version 5 with set equipment history and all earlier backup fields', async () => {
     const user = await seedFullUser('a@test.dev');
     actAs(user.id);
 
@@ -302,7 +314,7 @@ describe('GET /api/backup - export completeness (issue #168)', () => {
     expect(res.status).toBe(200);
     const dump = await res.json();
 
-    expect(dump.version).toBe(4);
+    expect(dump.version).toBe(5);
     expect(dump.profile).toMatchObject({
       displayName: 'Julien',
       bodyweight: 82.5,
@@ -345,6 +357,21 @@ describe('GET /api/backup - export completeness (issue #168)', () => {
     expect(dump.sessions[0].gymName).toBe('Basement');
 
     const sets = dump.sessions[0].sets as Array<Record<string, unknown>>;
+    const benchSet = sets.find((s) => s.exerciseName === 'Bench Press');
+    expect(benchSet).toMatchObject({
+      gymEquipmentName: 'Competition bench station',
+      equipmentNameSnapshot: 'Competition bench station',
+      selectedLoadKg: 100,
+      selectedLoadMultiplierSnapshot: null,
+      nominalResistanceKg: null,
+      equipmentLoadSnapshot: {
+        version: 1,
+        equipmentType: 'BARBELL',
+        manufacturer: 'GymCo',
+        modelName: 'Bench Pro',
+        weightOptions: [20, 40, 60, 80, 100],
+      },
+    });
     const cardio = sets.find((s) => s.exerciseName === 'Running');
     expect(cardio).toMatchObject({ durationSec: 1800, distanceM: 5000, avgHr: 152, maxHr: 181 });
 

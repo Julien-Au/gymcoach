@@ -319,6 +319,7 @@ model GymEquipment {
   createdAt     DateTime               @default(now())
   updatedAt     DateTime               @updatedAt
   exerciseLinks GymEquipmentExercise[]
+  performedSets Set[]
 
   @@unique([gymId, name])
   @@index([gymId, equipmentType])
@@ -335,40 +336,48 @@ model GymEquipmentExercise {
 }
 
 model Set {
-  id          String   @id @default(cuid())
-  sessionId   String
-  session     Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  exerciseId  String
-  exercise    Exercise @relation(fields: [exerciseId], references: [id])
-  setNumber   Int
-  weight      Float
-  reps        Int
-  rir         Int?
+  id                             String        @id @default(cuid())
+  sessionId                      String
+  session                        Session       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  exerciseId                     String
+  exercise                       Exercise      @relation(fields: [exerciseId], references: [id])
+  gymEquipmentId                 String?
+  gymEquipment                   GymEquipment? @relation(fields: [gymEquipmentId], references: [id], onDelete: SetNull)
+  equipmentNameSnapshot          String?
+  selectedLoadKg                 Float?
+  selectedLoadMultiplierSnapshot Float?
+  nominalResistanceKg            Float?
+  equipmentLoadSnapshot          Json?
+  setNumber                      Int
+  weight                         Float
+  reps                           Int
+  rir                            Int?
   // Cardio sets (issue #133, additive): duration in seconds (>= 1 when set)
   // and optional distance in meters. NULL on strength sets - existing rows
   // are untouched and lifting flows never write these.
-  durationSec Int?
-  distanceM   Float?
+  durationSec                    Int?
+  distanceM                      Float?
   // Average heart rate in bpm (issue #152, additive): the extra signal a TCX
   // file import carries over manual logging. 40..250 when present (enforced
   // by every writer), NULL on strength sets and on cardio logged without it.
-  avgHr       Int?
+  avgHr                          Int?
   // Maximum (peak) heart rate in bpm (issue #203, additive): the companion HR
   // metric watches record, carried in the same TCX exports. 40..250 when
   // present (enforced by every writer), NULL on strength sets and on cardio
   // logged without it.
-  maxHr       Int?
+  maxHr                          Int?
   // Downsampled pace/HR track of an imported cardio activity (issue #254,
   // additive): a JSON array of up to a few hundred points
   // [{ t, d?, hr? }] where t = seconds from the start, d = cumulative meters,
   // hr = bpm. NULL on strength sets and on cardio logged without a track.
-  track       Json?
-  notes       String?
-  isWarmup    Boolean  @default(false)
-  isDropSet   Boolean  @default(false)
-  completedAt DateTime @default(now())
+  track                          Json?
+  notes                          String?
+  isWarmup                       Boolean       @default(false)
+  isDropSet                      Boolean       @default(false)
+  completedAt                    DateTime      @default(now())
 
   @@index([exerciseId, completedAt])
+  @@index([gymEquipmentId, completedAt])
 }
 
 // Per-exercise target goal (issue #90): a concrete "weight x reps" the user

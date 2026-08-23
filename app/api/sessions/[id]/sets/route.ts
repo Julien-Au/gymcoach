@@ -5,6 +5,7 @@ import { setInputSchema, validateSetForCategory } from '@/lib/schemas/set';
 import { ApiError, handleApiError, parseJsonBody, requireApiUserId } from '@/lib/api';
 import { setAchievesGoal } from '@/lib/goals';
 import { effectiveWeight } from '@/lib/stats';
+import { resolveSetEquipmentSnapshot } from '@/lib/set-equipment';
 
 interface Params {
   params: Promise<{ id: string }>;
@@ -44,24 +45,35 @@ export async function POST(req: Request, props: Params) {
     }
     const isCardio = exercise.category === 'CARDIO';
 
-    const created = await db.set.create({
-      data: {
-        sessionId: params.id,
+    const created = await db.$transaction(async (tx) => {
+      const canonicalWeight = isCardio ? 0 : data.weight;
+      const equipmentSnapshot = await resolveSetEquipmentSnapshot(tx, {
+        userId,
+        sessionGymId: session.gymId,
         exerciseId: data.exerciseId,
-        setNumber: data.setNumber,
-        // Cardio sets store weight = 0 / reps = 1 by convention (the columns
-        // are NOT NULL); the UI never shows them for CARDIO exercises.
-        weight: isCardio ? 0 : data.weight,
-        reps: isCardio ? 1 : data.reps,
-        rir: isCardio ? null : (data.rir ?? null),
-        durationSec: isCardio ? data.durationSec : null,
-        distanceM: isCardio ? (data.distanceM ?? null) : null,
-        avgHr: isCardio ? (data.avgHr ?? null) : null,
-        maxHr: isCardio ? (data.maxHr ?? null) : null,
-        notes: data.notes ?? null,
-        isWarmup: data.isWarmup ?? false,
-        isDropSet: data.isDropSet ?? false,
-      },
+        gymEquipmentId: data.gymEquipmentId,
+        selectedLoadKg: canonicalWeight,
+      });
+      return tx.set.create({
+        data: {
+          sessionId: params.id,
+          exerciseId: data.exerciseId,
+          ...equipmentSnapshot,
+          setNumber: data.setNumber,
+          // Cardio sets store weight = 0 / reps = 1 by convention (the columns
+          // are NOT NULL); the UI never shows them for CARDIO exercises.
+          weight: canonicalWeight,
+          reps: isCardio ? 1 : data.reps,
+          rir: isCardio ? null : (data.rir ?? null),
+          durationSec: isCardio ? data.durationSec : null,
+          distanceM: isCardio ? (data.distanceM ?? null) : null,
+          avgHr: isCardio ? (data.avgHr ?? null) : null,
+          maxHr: isCardio ? (data.maxHr ?? null) : null,
+          notes: data.notes ?? null,
+          isWarmup: data.isWarmup ?? false,
+          isDropSet: data.isDropSet ?? false,
+        },
+      });
     });
     // Best-effort: the set is already committed, so a failure here must never
     // fail the request (a 500 would make the offline sync retry the POST and

@@ -1,6 +1,7 @@
 import { Buffer } from 'node:buffer';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { Prisma } from '@/prisma/generated/client';
 import {
   ExerciseCategory,
   EquipmentType,
@@ -61,7 +62,7 @@ import {
 // - Program.createdAt / Program.updatedAt and Exercise.createdAt (server-side
 //   bookkeeping with no user-facing meaning; reset to the import time).
 
-const VERSION = 4;
+const VERSION = 5;
 
 // Hard cap on the import body size, enforced while reading the stream (the
 // Content-Length header is attacker-controlled). Generous: a decade of daily
@@ -121,7 +122,10 @@ export async function GET() {
         where: { userId },
         orderBy: { startedAt: 'asc' },
         include: {
-          sets: { orderBy: [{ exerciseId: 'asc' }, { setNumber: 'asc' }] },
+          sets: {
+            orderBy: [{ exerciseId: 'asc' }, { setNumber: 'asc' }],
+            include: { gymEquipment: { select: { name: true } } },
+          },
         },
       }),
       db.coachSession.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } }),
@@ -245,6 +249,12 @@ export async function GET() {
         gymName: gyms.find((gym) => gym.id === s.gymId)?.name ?? null,
         sets: s.sets.map((set) => ({
           exerciseName: exercises.find((e) => e.id === set.exerciseId)?.name ?? null,
+          gymEquipmentName: set.gymEquipment?.name ?? null,
+          equipmentNameSnapshot: set.equipmentNameSnapshot,
+          selectedLoadKg: set.selectedLoadKg,
+          selectedLoadMultiplierSnapshot: set.selectedLoadMultiplierSnapshot,
+          nominalResistanceKg: set.nominalResistanceKg,
+          equipmentLoadSnapshot: set.equipmentLoadSnapshot,
           setNumber: set.setNumber,
           weight: set.weight,
           reps: set.reps,
@@ -425,6 +435,12 @@ const importSchema = z.object({
           .array(
             z.object({
               exerciseName: z.string().max(120).nullable(),
+              gymEquipmentName: z.string().max(120).nullable().optional(),
+              equipmentNameSnapshot: z.string().max(120).nullable().optional(),
+              selectedLoadKg: z.number().min(0).max(5000).nullable().optional(),
+              selectedLoadMultiplierSnapshot: z.number().positive().max(100).nullable().optional(),
+              nominalResistanceKg: z.number().min(0).max(50_000).nullable().optional(),
+              equipmentLoadSnapshot: z.record(z.string(), z.unknown()).nullable().optional(),
               setNumber: z.number().int().min(1).max(1000),
               weight: z.number().min(0).max(5000),
               reps: z.number().int().min(0).max(1000),
@@ -682,6 +698,7 @@ export async function POST(req: Request) {
         // abort the whole restore: keep the first occurrence and skip the
         // rest instead of failing.
         const gymIdByName = new Map<string, string>();
+        const gymEquipmentIdByGymAndName = new Map<string, string>();
         for (const gym of payload.gyms ?? []) {
           if (gymIdByName.has(gym.name)) continue;
           const configs = gym.exerciseConfigs.flatMap((config) => {
@@ -727,6 +744,9 @@ export async function POST(req: Request) {
                 })
               : [];
           const equipmentIdByName = new Map(createdEquipment.map((item) => [item.name, item.id]));
+          for (const item of createdEquipment) {
+            gymEquipmentIdByGymAndName.set(JSON.stringify([gym.name, item.name]), item.id);
+          }
           const equipmentExerciseLinks = preparedEquipment.flatMap(({ item }) => {
             const equipmentId = equipmentIdByName.get(item.name);
             if (!equipmentId) return [];
@@ -829,6 +849,20 @@ export async function POST(req: Request) {
               {
                 sessionId: session.id,
                 exerciseId: exId,
+                gymEquipmentId:
+                  s.gymName && set.gymEquipmentName
+                    ? (gymEquipmentIdByGymAndName.get(
+                        JSON.stringify([s.gymName, set.gymEquipmentName]),
+                      ) ?? null)
+                    : null,
+                equipmentNameSnapshot: set.equipmentNameSnapshot ?? null,
+                selectedLoadKg: set.selectedLoadKg ?? null,
+                selectedLoadMultiplierSnapshot: set.selectedLoadMultiplierSnapshot ?? null,
+                nominalResistanceKg: set.nominalResistanceKg ?? null,
+                equipmentLoadSnapshot:
+                  set.equipmentLoadSnapshot == null
+                    ? Prisma.DbNull
+                    : (set.equipmentLoadSnapshot as Prisma.InputJsonValue),
                 setNumber: set.setNumber,
                 weight: set.weight,
                 reps: set.reps,
