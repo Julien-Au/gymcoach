@@ -43,6 +43,24 @@ export const session = {
       'bodyweight-adjust-reps': 'Load cannot be reduced below bodyweight; adjust reps instead.',
     },
   },
+  returnToTraining: {
+    title: 'Return calibration',
+    exerciseReintro:
+      'This exercise was last performed {days} days ago. Muscle readiness from other movements does not fully restore exercise-specific coordination.',
+    recentReturnAfterGap:
+      'The latest session was recent, but it followed a {days}-day gap, so return calibration remains active.',
+    muscleReintro:
+      'The primary muscle has had no recorded working sets for more than six weeks. Volume and effort are reduced for this session.',
+    newExercise:
+      'There is no usable history for this exercise. Loads from related exercises are not converted directly.',
+    targets: 'Sets today: {sets}. Target RIR: {rir}.',
+    startWeight: 'Conservative starting load: {weight}.',
+    bodyweightStart: 'Start with bodyweight and no added load.',
+    chooseLoad: 'Choose a deliberately light calibration load for the first set.',
+    ceiling: 'Do not exceed the history-based ceiling today: {weight}.',
+    calibrate:
+      'Record an honest RIR after the first set. The next-set recommendation will adapt from the result.',
+  },
   readiness: {
     open: 'Readiness check-in (optional)',
     update: 'Update readiness check-in',

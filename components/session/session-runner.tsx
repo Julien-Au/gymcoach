@@ -47,9 +47,11 @@ import { SetsList } from '@/components/session/sets-list';
 import { SetInput } from '@/components/session/set-input';
 import { RestTimer } from '@/components/session/rest-timer';
 import { SessionSummary } from '@/components/session/session-summary';
+import { ReturnToTrainingNotice } from '@/components/session/return-to-training-notice';
 import { useExerciseName } from '@/components/shared/use-exercise-name';
 import { useTrainingName } from '@/components/shared/use-training-name';
 import type { GymLoadConstraints } from '@/lib/gym-loads';
+import type { ReturnRecommendation } from '@/lib/return-to-training';
 
 export interface SerializedLastPerformance {
   sessionStartedAt: string;
@@ -76,6 +78,7 @@ type SessionRunnerProps = {
     gym: (Gym & { exerciseConfigs: GymExerciseConfig[] }) | null;
   };
   lastPerformances: Record<string, SerializedLastPerformance>;
+  returnRecommendations: Record<string, ReturnRecommendation>;
   // Latest in-window readiness check-in (or null). Drives whether the load
   // suggestion is held/reduced and the matching explainer in the UI.
   readiness: ReadinessSignal | null;
@@ -93,6 +96,7 @@ type Mode =
 export function SessionRunner({
   session,
   lastPerformances,
+  returnRecommendations,
   readiness,
   deloadActive,
   unit,
@@ -108,6 +112,24 @@ export function SessionRunner({
   const supersetView = useMemo(() => buildSupersetView(workout.exercises), [workout.exercises]);
   const programExercises = supersetView.ordered;
 
+  const effectiveProgramExercises = useMemo<ProgramExerciseWithExercise[]>(
+    () =>
+      programExercises.map((pe) => {
+        const recommendation = returnRecommendations[pe.id];
+        if (!recommendation || recommendation.mode === 'normal') return pe;
+        return {
+          ...pe,
+          targetSets: recommendation.targetSets,
+          targetRIR: recommendation.targetRIR,
+        };
+      }),
+    [programExercises, returnRecommendations],
+  );
+  const effectiveProgramExerciseById = useMemo(
+    () => new Map(effectiveProgramExercises.map((pe) => [pe.id, pe])),
+    [effectiveProgramExercises],
+  );
+
   const [hydrated, setHydrated] = useState(false);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [mode, setMode] = useState<Mode>({ kind: 'input' });
@@ -118,6 +140,7 @@ export function SessionRunner({
   const [autoRegulate, setAutoRegulate] = useState(true);
 
   const currentPE = programExercises[currentIdx];
+  const currentTarget = effectiveProgramExercises[currentIdx];
 
   // When auto-regulation is off, the readiness signal is dropped entirely, so
   // the suggestion falls back to pure programmed progression (pre-#55 behavior).
@@ -166,8 +189,8 @@ export function SessionRunner({
   }, [liveSets]);
 
   const programExerciseByExerciseId = useMemo(
-    () => new Map(programExercises.map((pe) => [pe.exerciseId, pe])),
-    [programExercises],
+    () => new Map(effectiveProgramExercises.map((pe) => [pe.exerciseId, pe])),
+    [effectiveProgramExercises],
   );
 
   function recommendationFor(
@@ -212,6 +235,7 @@ export function SessionRunner({
       recoverySec: Math.max(0, (atMs - lastWorkingSet.createdAt) / 1000),
       sameMuscleSuperset,
       allowLoadIncrease,
+      maxWeight: returnRecommendations[pe.id]?.weightCeiling ?? null,
       loadConstraints: loadConstraintsFor(pe),
     });
   }
@@ -241,12 +265,12 @@ export function SessionRunner({
 
   const completedExerciseCount = useMemo(() => {
     let count = 0;
-    for (const pe of programExercises) {
+    for (const pe of effectiveProgramExercises) {
       const done = setsByExercise.get(pe.exerciseId)?.filter((s) => !s.isWarmup).length ?? 0;
       if (done >= pe.targetSets) count += 1;
     }
     return count;
-  }, [programExercises, setsByExercise]);
+  }, [effectiveProgramExercises, setsByExercise]);
 
   const progressPct =
     programExercises.length === 0
@@ -263,7 +287,7 @@ export function SessionRunner({
     isDropSet: boolean;
     notes: string | null;
   }) {
-    if (!currentPE) return;
+    if (!currentPE || !currentTarget) return;
     const existing = setsByExercise.get(currentPE.exerciseId) ?? [];
     const setNumber = (existing.at(-1)?.setNumber ?? 0) + 1;
 
@@ -291,9 +315,10 @@ export function SessionRunner({
     // completes the target. Superset member (issue #146): alternate to the
     // next member of the group that still has sets, the A1/A2 flow.
     const remainingAfterThisSet = (pe: ProgramExerciseWithExercise) => {
+      const target = effectiveProgramExerciseById.get(pe.id) ?? pe;
       const logged = setsByExercise.get(pe.exerciseId)?.filter((s) => !s.isWarmup).length ?? 0;
       const justLogged = pe.exerciseId === currentPE.exerciseId ? 1 : 0;
-      return pe.targetSets - logged - justLogged;
+      return target.targetSets - logged - justLogged;
     };
     const nextIdx = values.isWarmup
       ? null
@@ -303,7 +328,7 @@ export function SessionRunner({
     // auto-advance moves to another member of the same group (A1 -> A2); the
     // full per-exercise rest after the last member and for standalone work.
     const transition = isSupersetTransitionRest(supersetView, currentIdx, nextIdx);
-    const restSec = transition ? SUPERSET_TRANSITION_REST_SEC : currentPE.restSec;
+    const restSec = transition ? SUPERSET_TRANSITION_REST_SEC : currentTarget.restSec;
 
     setMode({
       kind: 'rest',
@@ -378,8 +403,10 @@ export function SessionRunner({
   }
   // Next is linear for standalone exercises (unchanged) and cycles within a
   // superset group before advancing past it (issue #146).
-  const remainingNow = (pe: ProgramExerciseWithExercise) =>
-    pe.targetSets - (setsByExercise.get(pe.exerciseId)?.filter((s) => !s.isWarmup).length ?? 0);
+  const remainingNow = (pe: ProgramExerciseWithExercise) => {
+    const target = effectiveProgramExerciseById.get(pe.id) ?? pe;
+    return target.targetSets - (setsByExercise.get(pe.exerciseId)?.filter((s) => !s.isWarmup).length ?? 0);
+  };
   const navNextIdx = nextNavIndex(supersetView, currentIdx, remainingNow);
   function goNext() {
     if (navNextIdx == null) return;
@@ -392,7 +419,7 @@ export function SessionRunner({
       <SessionSummary
         session={session}
         sets={liveSets}
-        programExercises={programExercises}
+        programExercises={effectiveProgramExercises}
         unit={unit}
         priorSets={priorSetsByExercise}
         onBack={() => setMode({ kind: 'input' })}
@@ -402,7 +429,7 @@ export function SessionRunner({
     );
   }
 
-  if (!currentPE) {
+  if (!currentPE || !currentTarget) {
     return (
       <main className="flex flex-1 items-center justify-center px-4 py-6">
         <p className="text-muted-foreground">{t('noExercises')}</p>
@@ -412,13 +439,14 @@ export function SessionRunner({
 
   const lastPerf = lastPerformances[currentPE.exerciseId];
   const currentSets = setsByExercise.get(currentPE.exerciseId) ?? [];
-  const currentRecommendation = recommendationFor(currentPE, Date.now());
+  const currentReturnRecommendation = returnRecommendations[currentPE.id];
+  const currentRecommendation = recommendationFor(currentTarget, Date.now());
   const restNextPe =
     mode.kind === 'rest'
       ? mode.nextExerciseIdx != null
-        ? (programExercises[mode.nextExerciseIdx] ?? null)
-        : currentSets.filter((set) => !set.isWarmup).length < currentPE.targetSets
-          ? currentPE
+        ? (effectiveProgramExercises[mode.nextExerciseIdx] ?? null)
+        : currentSets.filter((set) => !set.isWarmup).length < currentTarget.targetSets
+          ? currentTarget
           : null
       : null;
   const restRecommendation =
@@ -474,9 +502,14 @@ export function SessionRunner({
           gymName={session.gym?.name ?? null}
           loadConstraints={loadConstraintsFor(currentPE)}
         />
+        <ReturnToTrainingNotice
+          recommendation={currentReturnRecommendation}
+          unit={unit}
+          usesBodyweight={currentTarget.exercise.usesBodyweight}
+        />
 
         <SetsList
-          programExercise={currentPE}
+          programExercise={currentTarget}
           sets={currentSets}
           isInputActive={mode.kind === 'input'}
           onDeleteSet={handleDeleteSet}
@@ -485,14 +518,15 @@ export function SessionRunner({
 
         {!hydrated ? null : mode.kind === 'input' ? (
           <SetInput
-            programExercise={currentPE}
+            programExercise={currentTarget}
             existingSets={currentSets}
             lastPerformance={lastPerf}
             readiness={effectiveReadiness}
             deloadActive={deloadActive}
             unit={unit}
             recommendation={currentRecommendation}
-            loadConstraints={loadConstraintsFor(currentPE)}
+            returnRecommendation={currentReturnRecommendation}
+            loadConstraints={loadConstraintsFor(currentTarget)}
             onSubmit={handleValidate}
           />
         ) : (

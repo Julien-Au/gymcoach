@@ -26,7 +26,12 @@ import { WarmupCalculator } from '@/components/session/warmup-calculator';
 import type { PendingSet } from '@/lib/indexeddb';
 import type { SerializedLastPerformance } from './session-runner';
 import type { IntraSetRecommendation } from '@/lib/intra-set-autoregulation';
-import { constrainGymWeight, type GymLoadConstraints } from '@/lib/gym-loads';
+import type { ReturnRecommendation } from '@/lib/return-to-training';
+import {
+  constrainGymWeight,
+  constrainGymWeightAtOrBelow,
+  type GymLoadConstraints,
+} from '@/lib/gym-loads';
 
 interface Props {
   programExercise: ProgramExercise & { exercise: Exercise };
@@ -37,6 +42,7 @@ interface Props {
   deloadActive: boolean;
   unit: WeightUnit;
   recommendation?: IntraSetRecommendation | null;
+  returnRecommendation?: ReturnRecommendation | null;
   loadConstraints?: GymLoadConstraints | null;
   onSubmit: (values: {
     weight: number;
@@ -77,6 +83,7 @@ export function SetInput({
   deloadActive,
   unit,
   recommendation = null,
+  returnRecommendation = null,
   loadConstraints = null,
   onSubmit,
 }: Props) {
@@ -92,6 +99,7 @@ export function SetInput({
     readiness,
     deloadActive,
     recommendation,
+    returnRecommendation,
     loadConstraints,
   );
   const [form, setForm] = useState<FormState>(initial);
@@ -114,6 +122,7 @@ export function SetInput({
         readiness,
         deloadActive,
         recommendation,
+        returnRecommendation,
         loadConstraints,
       ),
     );
@@ -529,6 +538,7 @@ export function SetInput({
               <label className="flex cursor-pointer items-center gap-2">
                 <Switch
                   checked={form.isDropSet}
+                  disabled={returnRecommendation != null && returnRecommendation.mode !== 'normal'}
                   onCheckedChange={(v) => setForm((f) => ({ ...f, isDropSet: v }))}
                 />
                 <span>{t('dropSet')}</span>
@@ -582,6 +592,7 @@ function computeInitial(
   readiness: ReadinessSignal | null,
   deloadActive: boolean,
   recommendation: IntraSetRecommendation | null = null,
+  returnRecommendation: ReturnRecommendation | null = null,
   loadConstraints: GymLoadConstraints | null = null,
 ): FormState {
   // Cardio exercises (issue #133): prefill the duration/distance from the
@@ -619,6 +630,38 @@ function computeInitial(
       notes: '',
     };
   }
+  // 2. A return after a long break is a session-only calibration. Keep the
+  //    normal progression path intact for ordinary sessions, but start this one
+  //    at the conservative history/inventory value and let later sets hand off
+  //    to RIR-aware intra-set autoregulation.
+  if (returnRecommendation && returnRecommendation.mode !== 'normal') {
+    let weight = returnRecommendation.suggestedWeight;
+    if (weight == null && lastPerf) {
+      const ordinary = suggestNextWeight(
+        pe,
+        lastPerf.sets,
+        readiness,
+        deloadActive,
+        loadConstraints,
+      );
+      weight = ordinary.weight ?? lastPerf.maxWeight;
+      if (returnRecommendation.weightCeiling != null && weight > returnRecommendation.weightCeiling) {
+        weight = constrainGymWeightAtOrBelow(returnRecommendation.weightCeiling, loadConstraints);
+      }
+    }
+
+    return {
+      weight: weight ?? 0,
+      reps: pe.targetRepsMin,
+      rir: pe.targetRIR,
+      durationInput: '',
+      distanceInput: '',
+      isWarmup: false,
+      isDropSet: false,
+      notes: '',
+    };
+  }
+
   // 2. Otherwise, pre-fill with the suggestion (double progression algo). If
   //    progressing, aim for the bottom of the rep range with the heavier
   //    load; otherwise try to beat the previous reps (at least match them).

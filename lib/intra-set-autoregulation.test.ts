@@ -145,6 +145,26 @@ describe('recommendNextIntraSet', () => {
     expect(result!.weight).toBe(20);
   });
 
+  it('does not jump above a return-session ceiling across a gym inventory gap', () => {
+    const result = recommendNextIntraSet({
+      programExercise: makePe(curl, {
+        targetRepsMin: 8,
+        targetRepsMax: 10,
+        autoregulationMode: 'PRESERVE_REPS',
+        fatigueRate: 0.25,
+      }),
+      completedSets: [{ weight: 16, reps: 10, rir: 5 }],
+      recoverySec: 120,
+      maxWeight: 17,
+      loadConstraints: {
+        equipmentType: 'DUMBBELL',
+        dumbbellWeights: [10, 12, 14, 16, 19],
+      },
+    });
+
+    expect(result!.weight).toBe(16);
+  });
+
   it('adjusts reps instead of attempting a negative bodyweight load', () => {
     const bodyweightExercise = { ...squat, usesBodyweight: true };
     const result = recommendNextIntraSet({

@@ -4,6 +4,7 @@ import { requireSession } from '@/lib/auth';
 import { getLastPerformances, type LastPerformance } from '@/lib/last-performance';
 import { READINESS_RECENCY_HOURS, type ReadinessSignal } from '@/lib/progression';
 import { isDeloadActive } from '@/lib/deload';
+import { getReturnToTrainingRecommendations } from '@/lib/return-to-training-history';
 import { SessionRunner, type SerializedLastPerformance } from '@/components/session/session-runner';
 
 interface Props {
@@ -44,7 +45,7 @@ export default async function SessionRunPage(props: Props) {
     getLastPerformances(auth.userId, exerciseIds, session.id),
     db.user.findUnique({
       where: { id: auth.userId },
-      select: { unit: true, deloadUntil: true },
+      select: { unit: true, deloadUntil: true, bodyweight: true },
     }),
     db.readinessCheckin.findFirst({
       where: { userId: auth.userId },
@@ -57,6 +58,15 @@ export default async function SessionRunPage(props: Props) {
     lastPerfRecord[k] = serializePerf(v);
   }
 
+  const returnRecommendations = await getReturnToTrainingRecommendations({
+    userId: auth.userId,
+    programExercises: session.workout.exercises,
+    excludeSessionId: session.id,
+    now: session.startedAt,
+    bodyweight: user?.bodyweight ?? null,
+    gym: session.gym,
+  });
+
   const readiness = buildReadinessSignal(latestCheckin);
   // Planned deload week (issue #112): resolved against the clock here so the
   // client never reasons about dates; an expired deloadUntil has no effect.
@@ -66,6 +76,7 @@ export default async function SessionRunPage(props: Props) {
     <SessionRunner
       session={session}
       lastPerformances={lastPerfRecord}
+      returnRecommendations={returnRecommendations}
       readiness={readiness}
       deloadActive={deloadActive}
       unit={user?.unit ?? 'KG'}
