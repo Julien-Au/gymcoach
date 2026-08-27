@@ -19,7 +19,9 @@ This project is maintained day to day by an AI agent under a public charter
   granted vetted status, after which green, reviewed PRs may be merged by the
   agent.
 - **Your code is executed by CI** (GitHub Actions, ephemeral, no secrets) when
-  you open a PR. The maintainers do not run unreviewed external code locally.
+  you open a PR. Outside CI, external code is only ever executed in an
+  isolated, credential-free container - never directly on a maintainer
+  machine.
 - **Some paths are never auto-merged** and always need a human decision:
   CI/workflows, `scripts/`, `.claude/`, build and container files, ignore
   files, dependency manifests and lockfiles, executable configs

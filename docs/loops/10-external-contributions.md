@@ -50,8 +50,14 @@ during the gate, and code running there can reach `.env`, `~/.ssh`, and the
 loop's own GitHub token. Checking out an unvetted branch for **reading** is
 fine; executing anything from it locally is not.
 
-Local execution (gate runs, fixup commits) is permitted only for maintainer
-and vetted-contributor PRs, after passes 1 and 2 are clean.
+Local execution of **external** code is containerized, vetted tier included
+(operator directive 2026-08-27). When a vetted-contributor PR genuinely needs
+a local run (fixups, conflict resolution), after passes 1 and 2 are clean, it
+happens inside an **ephemeral, isolated container**: a fresh copy of the
+branch, no mounted credentials (no `~/.config/gh`, no `~/.ssh`), no real
+`.env`, and network reach limited to its own throwaway test database - never
+directly on the operator host. Only the loop's own maintainer-tier code runs
+on the host as before.
 
 ## Hard-block paths (mechanical, gate execution AND auto-merge)
 
@@ -76,7 +82,7 @@ its own scripts, skills, dependencies, or this very policy.
   "destructive" ones - destructiveness is a judgment call and this gate is
   mechanical)
 - Auth and security surface: `lib/auth*`, `lib/mcp/**`, `lib/api.ts`,
-  `lib/rate-limit.ts`, `app/api/mcp-tokens/**`
+  `lib/rate-limit*`, `app/api/mcp-tokens/**`
 - Bulk-data surface: `app/api/backup/**`, `app/api/history/csv/**`
 - LLM surface: `lib/llm/**` (the one legitimate egress point),
   `lib/prompts/**` (prompt supply chain into every user's coach)
@@ -120,11 +126,12 @@ touches the same files, re-run pass 2 on the new merge result.
 **Outcomes by tier**:
 
 - **Vetted contributor**, all passes clean, tests included, no hard-block
-  path, within the run's merge caps: the loop may auto-merge. Large PRs and
-  anything with a migration additionally carry the charter's reinforced
-  non-regression controls (full local gate in a worktree - permitted at this
-  tier - plus rollback baseline tag). Stacked PRs use merge commits, per the
-  established fork-stack workflow.
+  path, within the run's merge caps: the loop may auto-merge. Large PRs
+  additionally carry the charter's reinforced non-regression controls (full
+  gate run - inside the isolated container required by the execution gate,
+  never on the host - plus a rollback baseline tag). A PR with a migration
+  is hard-blocked by definition, so it never reaches this path. Stacked PRs
+  use merge commits, per the established fork-stack workflow.
 - **Unvetted author**: the loop posts the structured verdict as a PR comment -
   what was checked, what was found, what a human still has to decide - and
   stops. No local execution, no fixup commits, no merge. If the verdict is
