@@ -19,10 +19,12 @@ export async function POST(req: Request, props: Params) {
     const userId = await requireApiUserId();
     const { adjustments } = await parseJsonBody(req, applyAdjustmentsSchema);
 
-    const coachSession = await db.coachSession.findUnique({
-      where: { id: params.id },
+    // Scoped read (issue #317): ownership is part of the query, not a
+    // separate comparison that a later edit could drop.
+    const coachSession = await db.coachSession.findFirst({
+      where: { id: params.id, userId },
     });
-    if (!coachSession || coachSession.userId !== userId) {
+    if (!coachSession) {
       throw new ApiError(404, 'Debrief not found.');
     }
 

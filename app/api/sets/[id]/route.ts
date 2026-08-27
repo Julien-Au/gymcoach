@@ -14,14 +14,16 @@ export async function DELETE(_req: Request, props: Params) {
   const params = await props.params;
   try {
     const userId = await requireApiUserId();
-    const set = await db.set.findUnique({
-      where: { id: params.id },
-      include: { session: { select: { userId: true } } },
+    // Ownership lives in the query scope itself (issue #317): both the read
+    // and the delete carry the owner, so neither survives the removal of the
+    // other.
+    const set = await db.set.findFirst({
+      where: { id: params.id, session: { userId } },
     });
-    if (!set || set.session.userId !== userId) {
+    if (!set) {
       throw new ApiError(404, 'Set not found.');
     }
-    await db.set.delete({ where: { id: params.id } });
+    await db.set.delete({ where: { id: params.id, session: { userId } } });
     // Best-effort, mirroring the stamping at set-save: the set is already
     // gone, so a failure here must never fail the deletion. A stale
     // achievedAt also self-heals on goal re-creation.

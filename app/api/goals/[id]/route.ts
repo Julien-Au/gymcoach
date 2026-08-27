@@ -11,11 +11,12 @@ export async function DELETE(_req: Request, props: Params) {
   const params = await props.params;
   try {
     const userId = await requireApiUserId();
-    const goal = await db.exerciseGoal.findUnique({ where: { id: params.id } });
-    if (!goal || goal.userId !== userId) {
+    // Ownership lives in the query scope itself (issue #317).
+    const goal = await db.exerciseGoal.findFirst({ where: { id: params.id, userId } });
+    if (!goal) {
       throw new ApiError(404, 'Goal not found.');
     }
-    await db.exerciseGoal.delete({ where: { id: params.id } });
+    await db.exerciseGoal.delete({ where: { id: params.id, userId } });
     return NextResponse.json({ ok: true });
   } catch (err) {
     return handleApiError(err);

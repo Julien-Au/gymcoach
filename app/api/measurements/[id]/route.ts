@@ -13,11 +13,14 @@ export async function DELETE(_req: Request, props: Params) {
   const params = await props.params;
   try {
     const userId = await requireApiUserId();
-    const entry = await db.bodyMeasurement.findUnique({ where: { id: params.id } });
-    if (!entry || entry.userId !== userId) {
+    // Ownership lives in the query scope itself (issue #317).
+    const entry = await db.bodyMeasurement.findFirst({
+      where: { id: params.id, userId },
+    });
+    if (!entry) {
       throw new ApiError(404, 'Measurement not found.');
     }
-    await db.bodyMeasurement.delete({ where: { id: params.id } });
+    await db.bodyMeasurement.delete({ where: { id: params.id, userId } });
     return NextResponse.json({ ok: true });
   } catch (err) {
     return handleApiError(err);

@@ -214,6 +214,7 @@ describe('route ownership: /api/programs/[id]', () => {
       idParams(program.id),
     );
     expect(put.status).toBe(200);
+    expect((await db.program.findUnique({ where: { id: program.id } }))?.name).toBe('Block 2');
   });
 
   it('returns 404 to a stranger on GET, PUT and DELETE and leaves the program intact', async () => {
@@ -242,6 +243,7 @@ describe('route ownership: /api/workouts/[id]', () => {
       idParams(workout.id),
     );
     expect(res.status).toBe(200);
+    expect((await db.workout.findUnique({ where: { id: workout.id } }))?.name).toBe('Push B');
   });
 
   it('returns 404 to a stranger on PUT and DELETE and leaves the workout intact', async () => {
@@ -343,6 +345,7 @@ describe('route ownership: /api/gyms/[id]', () => {
     actAs(a.id);
     const res = await putGym(jsonReq('PUT', { name: 'Garage' }), idParams(gym.id));
     expect(res.status).toBe(200);
+    expect((await db.gym.findUnique({ where: { id: gym.id } }))?.name).toBe('Garage');
   });
 
   it('returns 404 to a stranger on PUT and DELETE and leaves the gym intact', async () => {
