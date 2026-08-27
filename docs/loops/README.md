@@ -33,6 +33,10 @@ This folder is the reproducible playbook. Read in order:
   filesystem memory + lessons that **graduate** into skills - no vector RAG), and regrounds
   on its purpose. Staging area in [`lessons.md`](lessons.md); the per-batch human reading
   list (comprehension-debt antidote) in [`review-digest.md`](review-digest.md).
+- [`10-external-contributions.md`](10-external-contributions.md) - the trust and vetting
+  policy for external issues and PRs: trust tiers, the execution gate (CI is the only
+  executor of unvetted code), the hard-block path list, the three vetting passes, the
+  issue-adoption pipeline, and the human-granted vetted-contributor ladder.
 
 ## The system at a glance
 

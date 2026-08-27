@@ -353,9 +353,11 @@ than CI reaching in to a small VPS.
 
 ## Contributing
 
-Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup,
-conventions and the test commands. Notable changes are tracked in the
-[CHANGELOG](CHANGELOG.md).
+Contributions are welcome and encouraged. See [CONTRIBUTING.md](CONTRIBUTING.md)
+for setup, conventions, the test commands, and - since this repo is largely
+maintained by an autonomous AI loop - an honest description of how external
+issues and PRs are reviewed and merged ("How your contribution is handled").
+Notable changes are tracked in the [CHANGELOG](CHANGELOG.md).
 
 ### Thanks
 
