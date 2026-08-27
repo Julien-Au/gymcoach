@@ -14,8 +14,10 @@ export async function POST(req: Request, props: Params) {
   const params = await props.params;
   try {
     const userId = await requireApiUserId();
-    const program = await db.program.findUnique({ where: { id: params.id } });
-    if (!program || program.userId !== userId) {
+    // Ownership lives in the query scope itself (issue #317): the read and
+    // both writes carry userId, so none survives the removal of the others.
+    const program = await db.program.findFirst({ where: { id: params.id, userId } });
+    if (!program) {
       throw new ApiError(404, 'Program not found.');
     }
 
@@ -28,13 +30,13 @@ export async function POST(req: Request, props: Params) {
           where: { userId, isActive: true, id: { not: params.id } },
           data: { isActive: false },
         }),
-        db.program.update({ where: { id: params.id }, data: { isActive: true } }),
+        db.program.update({ where: { id: params.id, userId }, data: { isActive: true } }),
       ]);
     } else {
-      await db.program.update({ where: { id: params.id }, data: { isActive: false } });
+      await db.program.update({ where: { id: params.id, userId }, data: { isActive: false } });
     }
 
-    const updated = await db.program.findUnique({ where: { id: params.id } });
+    const updated = await db.program.findFirst({ where: { id: params.id, userId } });
     return NextResponse.json(updated);
   } catch (err) {
     return handleApiError(err);

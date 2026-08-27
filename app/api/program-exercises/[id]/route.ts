@@ -7,31 +7,34 @@ interface Params {
   params: Promise<{ id: string }>;
 }
 
-async function ensureOwnership(id: string, userId: string) {
-  const pe = await db.programExercise.findUnique({
-    where: { id },
-    include: { workout: { include: { program: { select: { userId: true } } } } },
-  });
-  if (!pe || pe.workout.program.userId !== userId) {
-    throw new ApiError(404, 'Program exercise not found.');
-  }
-  return pe;
-}
+// Ownership is enforced by scoping the writes themselves through the owning
+// program (issue #317): a stranger's id makes Prisma throw P2025, which
+// handleApiError maps to 404. No separate check to delete.
 
 export async function PUT(req: Request, props: Params) {
   const params = await props.params;
   try {
     const userId = await requireApiUserId();
-    await ensureOwnership(params.id, userId);
+    // Scoped existence probe so a stranger gets 404 before any 400 about the
+    // body; the update below carries the same scope, so this probe is about
+    // the status code, not the security boundary.
+    const owned = await db.programExercise.findFirst({
+      where: { id: params.id, workout: { program: { userId } } },
+      select: { id: true },
+    });
+    if (!owned) throw new ApiError(404, 'Program exercise not found.');
+
     const data = await parseJsonBody(req, programExerciseInputSchema);
 
-    const exercise = await db.exercise.findUnique({ where: { id: data.exerciseId } });
-    if (!exercise || exercise.userId !== userId) {
+    const exercise = await db.exercise.findFirst({
+      where: { id: data.exerciseId, userId },
+    });
+    if (!exercise) {
       throw new ApiError(400, 'Invalid exercise.');
     }
 
     const updated = await db.programExercise.update({
-      where: { id: params.id },
+      where: { id: params.id, workout: { program: { userId } } },
       data: {
         exerciseId: data.exerciseId,
         targetSets: data.targetSets,
@@ -60,8 +63,9 @@ export async function DELETE(_req: Request, props: Params) {
   const params = await props.params;
   try {
     const userId = await requireApiUserId();
-    await ensureOwnership(params.id, userId);
-    await db.programExercise.delete({ where: { id: params.id } });
+    await db.programExercise.delete({
+      where: { id: params.id, workout: { program: { userId } } },
+    });
     return NextResponse.json({ ok: true });
   } catch (err) {
     return handleApiError(err);

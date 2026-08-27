@@ -16,8 +16,10 @@ export async function POST(req: Request, props: Params) {
   try {
     const userId = await requireApiUserId();
 
-    const session = await db.session.findUnique({ where: { id: params.id } });
-    if (!session || session.userId !== userId) {
+    // Scoped reads (issue #317): ownership is part of each query, not a
+    // separate comparison that a later edit could drop.
+    const session = await db.session.findFirst({ where: { id: params.id, userId } });
+    if (!session) {
       throw new ApiError(404, 'Session not found.');
     }
     if (session.finishedAt) {
@@ -27,8 +29,10 @@ export async function POST(req: Request, props: Params) {
     const data = await parseJsonBody(req, setInputSchema);
 
     // Validation: the exercise must belong to the user.
-    const exercise = await db.exercise.findUnique({ where: { id: data.exerciseId } });
-    if (!exercise || exercise.userId !== userId) {
+    const exercise = await db.exercise.findFirst({
+      where: { id: data.exerciseId, userId },
+    });
+    if (!exercise) {
       throw new ApiError(400, 'Invalid exercise.');
     }
 

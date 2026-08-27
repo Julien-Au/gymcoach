@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import type { Prisma } from '@prisma/client';
 import { db } from '@/lib/db';
 import { handleApiError, requireApiUserId } from '@/lib/api';
 import { csvEscape, HISTORY_CSV_HEADERS } from '@/lib/csv';
@@ -16,7 +17,9 @@ export async function GET(req: Request) {
     const programId = url.searchParams.get('programId');
     const month = url.searchParams.get('month');
 
-    const where: Record<string, unknown> = {
+    // Typed where (issue #317): with Record<string, unknown> the compiler
+    // could not see the userId scope, so deleting it produced no type error.
+    const where: Prisma.SessionWhereInput = {
       userId,
       finishedAt: { not: null },
     };

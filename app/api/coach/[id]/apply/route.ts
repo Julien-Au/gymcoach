@@ -118,8 +118,10 @@ export async function POST(req: Request, props: Params) {
       applied.push({ exerciseName: adj.exerciseName, programExerciseIds: ids });
     }
 
+    // The write carries userId too (issue #317): marking a debrief applied
+    // stays scoped even if the ownership check above is ever removed.
     const updated = await db.coachSession.update({
-      where: { id: params.id },
+      where: { id: params.id, userId },
       data: { appliedAt: new Date() },
     });
 

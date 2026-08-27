@@ -22,10 +22,12 @@ export async function PUT(req: Request, props: Params) {
     const input = await parseJsonBody(req, gymUpdateSchema);
     const exerciseConfigs = await validateGymExerciseConfigs(userId, input.exerciseConfigs);
 
+    // The writes carry the owner scope too (issue #317): they stay scoped
+    // even if the requireOwnedGym check is ever removed.
     const updated = await db.$transaction(async (tx) => {
-      await tx.gymExerciseConfig.deleteMany({ where: { gymId: id } });
+      await tx.gymExerciseConfig.deleteMany({ where: { gymId: id, gym: { userId } } });
       return tx.gym.update({
-        where: { id },
+        where: { id, userId },
         data: {
           name: input.name,
           dumbbellWeights: input.dumbbellWeights,
@@ -48,7 +50,7 @@ export async function DELETE(_req: Request, props: Params) {
     const userId = await requireApiUserId();
     await requireOwnedGym(id, userId);
     await db.$transaction(async (tx) => {
-      await tx.gym.delete({ where: { id } });
+      await tx.gym.delete({ where: { id, userId } });
       const user = await tx.user.findUnique({
         where: { id: userId },
         select: { activeGymId: true },
