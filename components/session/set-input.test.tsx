@@ -52,6 +52,82 @@ function renderSetInput(unit: 'KG' | 'LB' = 'KG') {
   return { onSubmit };
 }
 
+describe('SetInput first working set', () => {
+  const lastPerformance = {
+    sessionStartedAt: '2026-06-01T12:00:00.000Z',
+    sets: [{ weight: 100, reps: 8, rir: 2 }],
+    maxWeight: 100,
+    repsAtMaxWeight: 8,
+    cardio: null,
+  };
+
+  it('keeps the existing upstream first-set progression when no return calibration is active', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(
+      <SetInput
+        programExercise={pe}
+        existingSets={[]}
+        lastPerformance={lastPerformance}
+        readiness={null}
+        deloadActive={false}
+        unit="KG"
+        onSubmit={onSubmit}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: /log the set/i }));
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ weight: 100, reps: 8, rir: 2, isDropSet: false }),
+    );
+  });
+
+  it('uses the conservative return start and RIR instead of ordinary progression after a long break', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    const returnPe = { ...pe, targetSets: 2, targetRIR: 3 };
+    render(
+      <SetInput
+        programExercise={returnPe}
+        existingSets={[]}
+        lastPerformance={lastPerformance}
+        readiness={null}
+        deloadActive={false}
+        unit="KG"
+        returnRecommendation={{
+          mode: 'exercise-reintro',
+          exerciseGapDays: 60,
+          returnGapDays: 60,
+          muscleGapDays: 5,
+          muscleMaintained: true,
+          recentMuscleSets: 12,
+          baselineMuscleSetsPer28Days: 12,
+          recentVolumeRatio: 1,
+          targetSets: 2,
+          targetRIR: 3,
+          weightCeiling: 90,
+          suggestedWeight: 80,
+          startFraction: 0.85,
+          calibrationRequired: true,
+          historySessionCount: 3,
+          recentHistorySessionCount: 0,
+          longTermHistorySessionCount: 3,
+          nonComparableHistorySessionCount: 0,
+          historyBasis: 'long-term-exact',
+          confidence: 'medium',
+        }}
+        onSubmit={onSubmit}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: /log the set/i }));
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ weight: 80, reps: 6, rir: 3, isDropSet: false }),
+    );
+    expect(screen.getByRole('switch', { name: /drop set/i })).toBeDisabled();
+  });
+});
+
 describe('SetInput quick entry', () => {
   it('prefills the deterministic next-set recommendation after a completed set', async () => {
     const user = userEvent.setup();

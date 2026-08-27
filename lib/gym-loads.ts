@@ -9,6 +9,33 @@ export interface GymLoadConstraints {
   weightOptions?: number[];
 }
 
+export function gymWeightOptions(
+  constraints: GymLoadConstraints | null | undefined,
+  referenceWeight: number,
+): number[] {
+  if (!constraints || constraints.isAvailable === false) return [];
+
+  switch (constraints.equipmentType) {
+    case 'DUMBBELL':
+      return uniquePositive(constraints.dumbbellWeights ?? []);
+    case 'BARBELL':
+      return constructibleBarbellWeights(
+        constraints.barWeights ?? [],
+        constraints.plateWeights ?? [],
+        Math.max(200, referenceWeight + 100),
+      );
+    case 'MACHINE':
+    case 'CABLE':
+    case 'OTHER':
+      return uniquePositive(constraints.weightOptions ?? []);
+    case 'BODYWEIGHT':
+    case 'CARDIO':
+      return [];
+    default:
+      return [];
+  }
+}
+
 export function constrainGymWeight(
   targetWeight: number,
   referenceWeight: number,
@@ -44,6 +71,18 @@ export function constrainGymWeight(
   const normalized = uniquePositive(options);
   if (normalized.length === 0) return round(targetWeight);
   return selectDirectionalWeight(normalized, targetWeight, referenceWeight);
+}
+
+export function constrainGymWeightAtOrBelow(
+  targetWeight: number,
+  constraints?: GymLoadConstraints | null,
+): number {
+  if (constraints?.isAvailable === false) return 0;
+  if (!constraints || targetWeight <= 0) return round(Math.max(0, targetWeight));
+
+  const options = gymWeightOptions(constraints, targetWeight);
+  if (options.length === 0) return round(Math.max(0, targetWeight));
+  return round(options.filter((value) => value <= targetWeight + Number.EPSILON).at(-1) ?? 0);
 }
 
 export function constructibleBarbellWeights(

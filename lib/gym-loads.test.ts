@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { constrainGymWeight, constructibleBarbellWeights } from '@/lib/gym-loads';
+import {
+  constrainGymWeight,
+  constrainGymWeightAtOrBelow,
+  constructibleBarbellWeights,
+} from '@/lib/gym-loads';
 
 describe('saved gym load constraints', () => {
   it('steps down to an actually available dumbbell across inventory gaps', () => {
@@ -40,6 +44,15 @@ describe('saved gym load constraints', () => {
         weightOptions: [10, 20, 30, 40, 50, 60],
       }),
     ).toBe(40);
+  });
+
+  it('caps a recommendation without jumping over the ceiling across an inventory gap', () => {
+    expect(
+      constrainGymWeightAtOrBelow(17, {
+        equipmentType: 'DUMBBELL',
+        dumbbellWeights: [10, 12, 14, 16, 19],
+      }),
+    ).toBe(16);
   });
 
   it('falls back to the calculated load when no inventory is configured', () => {

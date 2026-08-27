@@ -4,6 +4,7 @@ import { requireSession } from '@/lib/auth';
 import { getLastPerformances, type LastPerformance } from '@/lib/last-performance';
 import { READINESS_RECENCY_HOURS, type ReadinessSignal } from '@/lib/progression';
 import { isDeloadActive } from '@/lib/deload';
+import { getReturnToTrainingRecommendations } from '@/lib/return-to-training-history';
 import { SessionRunner, type SerializedLastPerformance } from '@/components/session/session-runner';
 
 interface Props {
@@ -40,16 +41,27 @@ export default async function SessionRunPage(props: Props) {
   if (!session.workout) notFound();
 
   const exerciseIds = session.workout.exercises.map((pe) => pe.exerciseId);
-  const [lastPerformances, user, latestCheckin] = await Promise.all([
+  const userPromise = db.user.findUnique({
+    where: { id: auth.userId },
+    select: { unit: true, deloadUntil: true, bodyweight: true },
+  });
+  const [lastPerformances, user, latestCheckin, returnRecommendations] = await Promise.all([
     getLastPerformances(auth.userId, exerciseIds, session.id),
-    db.user.findUnique({
-      where: { id: auth.userId },
-      select: { unit: true, deloadUntil: true },
-    }),
+    userPromise,
     db.readinessCheckin.findFirst({
       where: { userId: auth.userId },
       orderBy: { createdAt: 'desc' },
     }),
+    userPromise.then((resolvedUser) =>
+      getReturnToTrainingRecommendations({
+        userId: auth.userId,
+        programExercises: session.workout!.exercises,
+        excludeSessionId: session.id,
+        now: session.startedAt,
+        bodyweight: resolvedUser?.bodyweight ?? null,
+        gym: session.gym,
+      }),
+    ),
   ]);
 
   const lastPerfRecord: Record<string, SerializedLastPerformance> = {};
@@ -66,6 +78,7 @@ export default async function SessionRunPage(props: Props) {
     <SessionRunner
       session={session}
       lastPerformances={lastPerfRecord}
+      returnRecommendations={returnRecommendations}
       readiness={readiness}
       deloadActive={deloadActive}
       unit={user?.unit ?? 'KG'}
