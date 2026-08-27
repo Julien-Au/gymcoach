@@ -285,6 +285,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Opened the project to outside contributors with a published security-vetting
+  process. `docs/loops/10-external-contributions.md` is now the single source of
+  truth for how external issues and pull requests are handled: three trust tiers
+  (maintainers, vetted contributors, unvetted), an execution gate (unvetted code
+  is executed by CI only, never on a maintainer's machine, and even vetted code
+  runs locally only in an ephemeral isolated container), a published list of
+  hard-blocked paths that forces a human merge, three review passes pinned to a
+  reviewed commit SHA, and service commitments (triage within a day, a public
+  structured verdict on every external PR). CONTRIBUTING.md states the same
+  terms plainly for contributors: the reviews are AI-assisted, a human clicks
+  merge for new contributors, and a DCO sign-off is requested but not enforced.
+  The optional CodeRabbit configuration is an advisory lens only, never a merge
+  or trust signal.
+
 - Upgraded to Next.js 15 and React 19, resolving the runtime security
   advisories that npm audit reported against Next.js 14. The PWA service
   worker moved to the maintained @ducanh2912/next-pwa; behavior is unchanged.
@@ -330,6 +344,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- An authenticated `GET /mcp` no longer hangs forever. The endpoint serves the
+  MCP Streamable HTTP transport statelessly, so there is no event stream for a
+  GET to attach to and the response was never written or closed; unauthenticated
+  GETs failed early with a 401, which hid the problem, while an MCP client that
+  probes with GET (Claude Desktop's connector does) could never connect. GET now
+  answers 405 with an `Allow` header before authentication, as the Streamable
+  HTTP spec prescribes. Reported by @mvnixon (#314).
 - The plate-calculator fallback inventory is editable again in Settings, in
   both kilograms and pounds. Its editor had been dropped when saved gyms
   landed, leaving the no-active-gym fallback (and the only place an lb plate
