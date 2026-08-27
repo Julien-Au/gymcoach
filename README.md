@@ -310,6 +310,21 @@ docker compose -f docker-compose.prod.yml up -d --build
 docker compose -f docker-compose.prod.yml exec app npx prisma migrate deploy
 ```
 
+### Pulling the prebuilt image
+
+Every `main` commit whose CI run is green publishes a linux/amd64 image to
+GHCR, so you can pull instead of building on your own hardware, and registry
+watchers (Watchtower, Diun) have digests to compare (a commit whose CI fails
+is never published):
+
+- `ghcr.io/julien-au/gymcoach:latest` - moving tag, follows `main`
+- `ghcr.io/julien-au/gymcoach:sha-<short>` - immutable, one per commit
+
+To use it, replace the `build:` block of the `app` service in
+`docker-compose.prod.yml` with `image: ghcr.io/julien-au/gymcoach:latest`
+(the compose file keeps `build:` as its default so existing setups and forks
+keep working unchanged).
+
 ### Deploying a public demo instance
 
 Set `NEXT_PUBLIC_DEMO_MODE=true` (plus the throwaway demo credentials) in the

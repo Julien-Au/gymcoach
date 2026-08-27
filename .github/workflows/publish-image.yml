@@ -1,0 +1,82 @@
+# Publish the production image to GHCR so self-hosters can pull instead of
+# building locally and registry watchers (Watchtower, Diun) have digests to
+# compare (issue #310, operator-approved 2026-08-27).
+#
+# Runs only after the CI workflow SUCCEEDS on a main commit (workflow_run
+# gate), so a commit whose main-branch CI goes red never reaches :latest -
+# green CI stays the trust boundary for self-hosters too. workflow_dispatch
+# is the manual re-run escape hatch and is restricted to main as well.
+#
+# Uses the same Dockerfile the docker-smoke CI job builds and probes on every
+# PR, and the built-in GITHUB_TOKEN - no extra secrets. Tags: a moving
+# :latest plus an immutable :sha-<short> per commit. linux/amd64 only for
+# now; arm64 needs QEMU emulation that multiplies build time and is tracked
+# as a follow-up rather than a blocker. Docker actions ride the same mutable
+# major tags as ci.yml; pinning them by SHA across both workflows is a
+# possible hardening follow-up.
+#
+# One-time operator step after the first run: GHCR packages are born PRIVATE.
+# Open https://github.com/users/Julien-Au/packages/container/gymcoach/settings
+# and set visibility to Public, or anonymous `docker pull` fails with
+# "denied". The setting sticks for all later pushes.
+name: Publish image
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: publish-image
+  # Do not cancel an in-flight publish: each commit should get its immutable
+  # sha- tag, and pushes are idempotent.
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Build and push to GHCR
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Fork guard + green-CI gate; manual dispatch only from main.
+    if: >-
+      github.repository == 'Julien-Au/gymcoach' &&
+      (
+        (github.event_name == 'workflow_run' &&
+         github.event.workflow_run.conclusion == 'success' &&
+         github.event.workflow_run.head_branch == 'main') ||
+        (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+      )
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # For workflow_run, github.sha is not necessarily the commit the CI
+          # run validated; build exactly the SHA that went green.
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - uses: docker/setup-buildx-action@v3
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Compute the short SHA tag
+        id: vars
+        run: echo "sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64
+          # Image name is the lowercased repository (GHCR requires lowercase).
+          tags: |
+            ghcr.io/julien-au/gymcoach:latest
+            ghcr.io/julien-au/gymcoach:sha-${{ steps.vars.outputs.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
