@@ -20,20 +20,23 @@ This project is maintained day to day by an AI agent under a public charter
   agent.
 - **Your code is executed by CI** (GitHub Actions, ephemeral, no secrets) when
   you open a PR. The maintainers do not run unreviewed external code locally.
-- **Some paths are never auto-merged** and always need a human decision,
-  whoever writes them: CI/workflows, build and container files, dependency
-  manifests and lockfiles, executable configs (`next.config.js`, test
-  configs), Prisma schema and migrations, auth/session/rate-limit code, the
-  MCP surface, bulk data export routes, the LLM provider and prompt layer,
-  and the maintenance charter in `docs/loops/`. PRs there are welcome - just
-  expect a human in the loop and a slower cycle.
+- **Some paths are never auto-merged** and always need a human decision:
+  CI/workflows, `scripts/`, `.claude/`, build and container files, ignore
+  files, dependency manifests and lockfiles, executable configs
+  (`next.config.js`, test configs, `middleware.ts`), Prisma schema and
+  migrations, auth/session/rate-limit code, the MCP surface, bulk data export
+  routes, the LLM provider and prompt layer, locale modules (`messages/`,
+  `i18n/`), and the maintenance charter in `docs/loops/`. The authoritative
+  list lives in `docs/loops/10-external-contributions.md`. PRs there are
+  welcome - just expect a human in the loop and a slower cycle.
 - **Feature ideas are welcome as issues.** Clear, in-scope issues may be
   implemented by the agent itself, with credit to you in the PR and CHANGELOG.
 - **License and sign-off**: by submitting a contribution you agree it is
   provided under the repository's license. Please add a
   `Signed-off-by: Your Name <email>` line to your commits
   (`git commit -s`, the Developer Certificate of Origin,
-  https://developercertificate.org/).
+  https://developercertificate.org/). This is requested, not yet enforced by
+  CI.
 
 None of this is a security guarantee - review reduces risk, it does not
 certify code. It is simply the honest description of the pipeline your PR

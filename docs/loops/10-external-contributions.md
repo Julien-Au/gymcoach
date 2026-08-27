@@ -55,9 +55,13 @@ and vetted-contributor PRs, after passes 1 and 2 are clean.
 
 ## Hard-block paths (mechanical, gate execution AND auto-merge)
 
-A PR that touches any of the following is never auto-merged and never executed
-locally, regardless of author tier or review outcome. The loop may still
-review it and comment; the merge is human-only.
+An **external** PR (vetted or unvetted tier) that touches any of the following
+is never auto-merged and never executed locally, regardless of review outcome
+- vetted status does not soften this list. The loop may still review it and
+comment; the merge is human-only. The loop's **own** (maintainer-tier) work on
+these surfaces is governed by the charter as before - its hard guardrails and
+stop-for-human list - not by this list; otherwise the loop could not maintain
+its own scripts, skills, dependencies, or this very policy.
 
 - `.github/**` (workflows, CI), `scripts/**`, `.claude/**`
 - `CLAUDE.md`, `docs/loops/**` - a PR editing the charter or this policy is a
@@ -72,12 +76,13 @@ review it and comment; the merge is human-only.
   "destructive" ones - destructiveness is a judgment call and this gate is
   mechanical)
 - Auth and security surface: `lib/auth*`, `lib/mcp/**`, `lib/api.ts`,
-  rate-limiting code, `app/api/mcp-tokens/**`
+  `lib/rate-limit.ts`, `app/api/mcp-tokens/**`
 - Bulk-data surface: `app/api/backup/**`, `app/api/history/csv/**`
 - LLM surface: `lib/llm/**` (the one legitimate egress point),
   `lib/prompts/**` (prompt supply chain into every user's coach)
-- `messages/**` (locale files are executable TS modules imported by the unit
-  test setup)
+- `messages/**` and `i18n/**` (locale and i18n files are executable TS modules
+  imported by the unit test setup, `next.config.js`, and `middleware.ts`)
+- `.coderabbit.yaml` (config that shapes a review lens)
 
 This list is public (summarized in `CONTRIBUTING.md`) so nobody spends a
 weekend on a PR that was never auto-mergeable.

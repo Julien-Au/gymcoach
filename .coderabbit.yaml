@@ -21,9 +21,10 @@ reviews:
         database query to the authenticated user. Flag any handler where an
         ownership check was removed, weakened, or where a query on a
         user-owned model lacks a userId constraint.
-    - path: "**/*.test.ts"
+    - path: "**/*.{test,spec}.ts"
       instructions: >-
         Flag deleted or loosened assertions, skipped tests, and widened
         tolerances - a diff that weakens a test to pass CI is itself a defect.
 chat:
-  auto_reply: true
+  # Public repo: do not let arbitrary commenters drive the bot.
+  auto_reply: false
