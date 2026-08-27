@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import type { Prisma } from '@/prisma/generated/client';
 import { db } from '@/lib/db';
 import { handleApiError, requireApiUserId } from '@/lib/api';
 import { csvEscape, HISTORY_CSV_HEADERS } from '@/lib/csv';
@@ -16,7 +17,10 @@ export async function GET(req: Request) {
     const programId = url.searchParams.get('programId');
     const month = url.searchParams.get('month');
 
-    const where: Record<string, unknown> = {
+    // The where stays typed as a real Prisma filter (issue #317) so its
+    // shape is checked; the userId scope itself is pinned by the cross-user
+    // case in tests/integration/route-ownership.test.ts.
+    const where: Prisma.SessionWhereInput = {
       userId,
       finishedAt: { not: null },
     };

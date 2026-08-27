@@ -35,11 +35,13 @@ export async function POST(req: Request) {
 
     let conversationId: string;
     if (existingId) {
-      const conv = await db.conversation.findUnique({
-        where: { id: existingId },
-        select: { userId: true },
+      // Scoped read (issue #317): ownership is part of the query, not a
+      // separate comparison that a later edit could drop.
+      const conv = await db.conversation.findFirst({
+        where: { id: existingId, userId },
+        select: { id: true },
       });
-      if (!conv || conv.userId !== userId) {
+      if (!conv) {
         throw new ApiError(404, 'Conversation not found.');
       }
       conversationId = existingId;
@@ -100,7 +102,7 @@ export async function POST(req: Request) {
               .create({ data: { conversationId, role: 'ASSISTANT', content: assistant } })
               .catch(() => {});
             await db.conversation
-              .update({ where: { id: conversationId }, data: { updatedAt: new Date() } })
+              .update({ where: { id: conversationId, userId }, data: { updatedAt: new Date() } })
               .catch(() => {});
           }
           controller.close();

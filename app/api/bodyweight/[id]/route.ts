@@ -16,8 +16,11 @@ export async function DELETE(_req: Request, props: Params) {
   const params = await props.params;
   try {
     const userId = await requireApiUserId();
-    const entry = await db.bodyweightEntry.findUnique({ where: { id: params.id } });
-    if (!entry || entry.userId !== userId) {
+    // Ownership lives in the query scope itself (issue #317).
+    const entry = await db.bodyweightEntry.findFirst({
+      where: { id: params.id, userId },
+    });
+    if (!entry) {
       throw new ApiError(404, 'Entry not found.');
     }
 
@@ -25,7 +28,7 @@ export async function DELETE(_req: Request, props: Params) {
       // Lock the user row first so the re-sync serializes with concurrent
       // bodyweight mutations (issue #107), matching the POST route.
       await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`;
-      await tx.bodyweightEntry.delete({ where: { id: params.id } });
+      await tx.bodyweightEntry.delete({ where: { id: params.id, userId } });
       const remaining = await tx.bodyweightEntry.findMany({
         where: { userId },
         orderBy: [{ measuredAt: 'asc' }, { id: 'asc' }],

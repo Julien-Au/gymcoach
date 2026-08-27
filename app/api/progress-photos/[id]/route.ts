@@ -17,15 +17,16 @@ export async function DELETE(_req: Request, props: Params) {
   const params = await props.params;
   try {
     const userId = await requireApiUserId();
-    const photo = await db.progressPhoto.findUnique({
-      where: { id: params.id },
+    // Ownership lives in the query scope itself (issue #317).
+    const photo = await db.progressPhoto.findFirst({
+      where: { id: params.id, userId },
     });
-    if (!photo || photo.userId !== userId) {
+    if (!photo) {
       throw new ApiError(404, 'Photo not found.');
     }
 
     await deletePhotoFile(photo.storagePath);
-    await db.progressPhoto.delete({ where: { id: photo.id } });
+    await db.progressPhoto.delete({ where: { id: photo.id, userId } });
     return NextResponse.json({ ok: true });
   } catch (err) {
     return handleApiError(err);

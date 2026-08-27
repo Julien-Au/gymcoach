@@ -7,21 +7,17 @@ interface Params {
   params: Promise<{ id: string }>;
 }
 
-async function ensureOwnership(id: string, userId: string) {
-  const session = await db.session.findUnique({ where: { id } });
-  if (!session || session.userId !== userId) {
-    throw new ApiError(404, 'Session not found.');
-  }
-  return session;
-}
+// Ownership is enforced by scoping every query with userId (issue #317):
+// the read that serves the response is itself the check, and the writes
+// carry userId in their where, so a stranger's id yields 404 (null read or
+// Prisma P2025 via handleApiError).
 
 export async function GET(_req: Request, props: Params) {
   const params = await props.params;
   try {
     const userId = await requireApiUserId();
-    await ensureOwnership(params.id, userId);
-    const session = await db.session.findUnique({
-      where: { id: params.id },
+    const session = await db.session.findFirst({
+      where: { id: params.id, userId },
       include: {
         workout: {
           include: {
@@ -35,6 +31,7 @@ export async function GET(_req: Request, props: Params) {
         sets: { orderBy: [{ exerciseId: 'asc' }, { setNumber: 'asc' }] },
       },
     });
+    if (!session) throw new ApiError(404, 'Session not found.');
     return NextResponse.json(session);
   } catch (err) {
     return handleApiError(err);
@@ -45,11 +42,12 @@ export async function PUT(req: Request, props: Params) {
   const params = await props.params;
   try {
     const userId = await requireApiUserId();
-    const session = await ensureOwnership(params.id, userId);
+    const session = await db.session.findFirst({ where: { id: params.id, userId } });
+    if (!session) throw new ApiError(404, 'Session not found.');
     const data = await parseJsonBody(req, sessionUpdateSchema);
 
     const updated = await db.session.update({
-      where: { id: params.id },
+      where: { id: params.id, userId },
       data: {
         notes: data.notes ?? session.notes,
         finishedAt: data.finish ? new Date() : session.finishedAt,
@@ -65,8 +63,7 @@ export async function DELETE(_req: Request, props: Params) {
   const params = await props.params;
   try {
     const userId = await requireApiUserId();
-    await ensureOwnership(params.id, userId);
-    await db.session.delete({ where: { id: params.id } });
+    await db.session.delete({ where: { id: params.id, userId } });
     return NextResponse.json({ ok: true });
   } catch (err) {
     return handleApiError(err);

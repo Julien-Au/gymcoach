@@ -7,21 +7,16 @@ interface Params {
   params: Promise<{ id: string }>;
 }
 
-async function ensureOwnership(id: string, userId: string) {
-  const program = await db.program.findUnique({ where: { id } });
-  if (!program || program.userId !== userId) {
-    throw new ApiError(404, 'Program not found.');
-  }
-  return program;
-}
+// Ownership is enforced by scoping every query with userId (issue #317):
+// there is no separate check to delete, so a stranger's id yields 404 via a
+// null read or Prisma P2025, which handleApiError maps to 404.
 
 export async function GET(_req: Request, props: Params) {
   const params = await props.params;
   try {
     const userId = await requireApiUserId();
-    await ensureOwnership(params.id, userId);
-    const program = await db.program.findUnique({
-      where: { id: params.id },
+    const program = await db.program.findFirst({
+      where: { id: params.id, userId },
       include: {
         workouts: {
           orderBy: { order: 'asc' },
@@ -34,6 +29,7 @@ export async function GET(_req: Request, props: Params) {
         },
       },
     });
+    if (!program) throw new ApiError(404, 'Program not found.');
     return NextResponse.json(program);
   } catch (err) {
     return handleApiError(err);
@@ -44,10 +40,9 @@ export async function PUT(req: Request, props: Params) {
   const params = await props.params;
   try {
     const userId = await requireApiUserId();
-    await ensureOwnership(params.id, userId);
     const data = await parseJsonBody(req, programInputSchema);
     const program = await db.program.update({
-      where: { id: params.id },
+      where: { id: params.id, userId },
       data: {
         name: data.name,
         phase: data.phase,
@@ -64,11 +59,10 @@ export async function DELETE(_req: Request, props: Params) {
   const params = await props.params;
   try {
     const userId = await requireApiUserId();
-    await ensureOwnership(params.id, userId);
     // onDelete: Cascade on Workout removes workouts + programExercises.
     // Linked Sessions have a nullable programId so they will be detached
     // (Prisma sets null by default on optional relations).
-    await db.program.delete({ where: { id: params.id } });
+    await db.program.delete({ where: { id: params.id, userId } });
     return NextResponse.json({ ok: true });
   } catch (err) {
     return handleApiError(err);

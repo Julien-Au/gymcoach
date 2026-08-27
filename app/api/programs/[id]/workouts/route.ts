@@ -13,8 +13,10 @@ export async function POST(req: Request, props: Params) {
   const params = await props.params;
   try {
     const userId = await requireApiUserId();
-    const program = await db.program.findUnique({ where: { id: params.id } });
-    if (!program || program.userId !== userId) {
+    // Scoped read (issue #317): ownership is part of the query, not a
+    // separate comparison that a later edit could drop.
+    const program = await db.program.findFirst({ where: { id: params.id, userId } });
+    if (!program) {
       throw new ApiError(404, 'Program not found.');
     }
 
