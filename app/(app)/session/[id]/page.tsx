@@ -41,31 +41,33 @@ export default async function SessionRunPage(props: Props) {
   if (!session.workout) notFound();
 
   const exerciseIds = session.workout.exercises.map((pe) => pe.exerciseId);
-  const [lastPerformances, user, latestCheckin] = await Promise.all([
+  const userPromise = db.user.findUnique({
+    where: { id: auth.userId },
+    select: { unit: true, deloadUntil: true, bodyweight: true },
+  });
+  const [lastPerformances, user, latestCheckin, returnRecommendations] = await Promise.all([
     getLastPerformances(auth.userId, exerciseIds, session.id),
-    db.user.findUnique({
-      where: { id: auth.userId },
-      select: { unit: true, deloadUntil: true, bodyweight: true },
-    }),
+    userPromise,
     db.readinessCheckin.findFirst({
       where: { userId: auth.userId },
       orderBy: { createdAt: 'desc' },
     }),
+    userPromise.then((resolvedUser) =>
+      getReturnToTrainingRecommendations({
+        userId: auth.userId,
+        programExercises: session.workout!.exercises,
+        excludeSessionId: session.id,
+        now: session.startedAt,
+        bodyweight: resolvedUser?.bodyweight ?? null,
+        gym: session.gym,
+      }),
+    ),
   ]);
 
   const lastPerfRecord: Record<string, SerializedLastPerformance> = {};
   for (const [k, v] of lastPerformances) {
     lastPerfRecord[k] = serializePerf(v);
   }
-
-  const returnRecommendations = await getReturnToTrainingRecommendations({
-    userId: auth.userId,
-    programExercises: session.workout.exercises,
-    excludeSessionId: session.id,
-    now: session.startedAt,
-    bodyweight: user?.bodyweight ?? null,
-    gym: session.gym,
-  });
 
   const readiness = buildReadinessSignal(latestCheckin);
   // Planned deload week (issue #112): resolved against the clock here so the

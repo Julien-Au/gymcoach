@@ -26,10 +26,10 @@ export function ReturnToTrainingNotice({ recommendation, unit, usesBodyweight }:
     recommendation.mode === 'exercise-reintro'
       ? preservedPriorGap
         ? t('recentReturnAfterGap', { days: recommendation.returnGapDays! })
-        : t('exerciseReintro', { days: recommendation.returnGapDays ?? recommendation.exerciseGapDays ?? 42 })
-      : recommendation.mode === 'muscle-reintro'
-        ? t('muscleReintro')
-        : t('newExercise');
+        : t('exerciseReintro', {
+            days: recommendation.returnGapDays ?? recommendation.exerciseGapDays ?? 42,
+          })
+      : t('muscleReintro');
 
   return (
     <section

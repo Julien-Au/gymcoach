@@ -11,6 +11,7 @@ import {
   BASELINE_MUSCLE_VOLUME_DAYS,
   calculateReturnRecommendation,
   RECENT_MUSCLE_VOLUME_DAYS,
+  RETURN_LONG_TERM_ANCHOR_SESSION_LIMIT,
   type ReturnHistorySession,
   type ReturnRecommendation,
   type ReturnTrainingHistory,
@@ -36,24 +37,16 @@ interface ReturnRecommendationQuery {
   gym?: GymForReturn | null;
 }
 
-interface ExerciseHistoryRow {
-  sessionId: string;
-  setNumber: number;
-  weight: number;
-  reps: number;
-  rir: number | null;
-  isDropSet: boolean;
-  completedAt: Date;
-  session: { startedAt: Date };
+interface BoundedExerciseHistory {
+  lastPerformedAt: Date | null;
+  sessions: ReturnHistorySession[];
 }
 
-interface HistoricalSetWithOrder {
-  setNumber: number;
-  weight: number;
-  reps: number;
-  rir: number | null;
-  isDropSet: boolean;
-}
+// Detailed load anchors older than ten years are intentionally ignored. The
+// latest-performance lookup remains unbounded and indexed, so an older real
+// performance still activates return calibration; it simply falls back to a
+// conservative load instead of mining an arbitrarily large history.
+export const RETURN_HISTORY_LOOKBACK_DAYS = 3650;
 
 // Builds session-only return recommendations. Nothing is persisted to the
 // program: the active runner applies these targets while this session is open.
@@ -70,6 +63,7 @@ export async function getReturnToTrainingRecommendations({
   const exerciseIds = [...new Set(programExercises.map((item) => item.exerciseId))];
   const muscleGroups = [...new Set(programExercises.map((item) => item.exercise.muscleGroup))];
   const excludedSession = excludeSessionId ? { id: { not: excludeSessionId } } : {};
+  const historyStart = new Date(now.getTime() - RETURN_HISTORY_LOOKBACK_DAYS * 86_400_000);
   const baselineStart = new Date(
     now.getTime() - (RECENT_MUSCLE_VOLUME_DAYS + BASELINE_MUSCLE_VOLUME_DAYS) * 86_400_000,
   );
@@ -78,29 +72,70 @@ export async function getReturnToTrainingRecommendations({
   const [exerciseEntries, muscleLatestEntries, volumeRows] = await Promise.all([
     Promise.all(
       exerciseIds.map(async (exerciseId) => {
-        const rows = await db.set.findMany({
-          where: {
-            exerciseId,
-            isWarmup: false,
-            isDropSet: false,
-            reps: { gt: 0 },
-            weight: { gte: 0 },
-            completedAt: { lt: now },
-            session: { userId, ...excludedSession },
-          },
-          orderBy: { completedAt: 'desc' },
-          select: {
-            sessionId: true,
-            setNumber: true,
-            weight: true,
-            reps: true,
-            rir: true,
-            isDropSet: true,
-            completedAt: true,
-            session: { select: { startedAt: true } },
-          },
-        });
-        return [exerciseId, rows] as const;
+        const workingSetFilter = {
+          exerciseId,
+          isWarmup: false,
+          isDropSet: false,
+          reps: { gt: 0 },
+          weight: { gte: 0 },
+          completedAt: { lt: now },
+        } as const;
+
+        // Both queries are bounded in what they return. The indexed latest-set
+        // lookup preserves knowledge of arbitrarily old real exercise history,
+        // while only the newest sessions needed by the anchor algorithm are
+        // loaded with their sets.
+        const [latestSet, sessions] = await Promise.all([
+          db.set.findFirst({
+            where: {
+              ...workingSetFilter,
+              session: { userId, finishedAt: { not: null }, ...excludedSession },
+            },
+            orderBy: { completedAt: 'desc' },
+            select: { session: { select: { startedAt: true } } },
+          }),
+          db.session.findMany({
+            where: {
+              userId,
+              finishedAt: { not: null },
+              ...excludedSession,
+              startedAt: { gte: historyStart, lt: now },
+              sets: { some: workingSetFilter },
+            },
+            orderBy: { startedAt: 'desc' },
+            take: RETURN_LONG_TERM_ANCHOR_SESSION_LIMIT,
+            select: {
+              id: true,
+              startedAt: true,
+              sets: {
+                where: workingSetFilter,
+                orderBy: { setNumber: 'asc' },
+                select: {
+                  setNumber: true,
+                  weight: true,
+                  reps: true,
+                  rir: true,
+                  isDropSet: true,
+                },
+              },
+            },
+          }),
+        ]);
+
+        const history: BoundedExerciseHistory = {
+          lastPerformedAt: latestSet?.session.startedAt ?? null,
+          sessions: sessions.map((session) => ({
+            sessionId: session.id,
+            performedAt: session.startedAt,
+            sets: session.sets.map(({ weight, reps, rir, isDropSet }) => ({
+              weight,
+              reps,
+              rir,
+              isDropSet,
+            })),
+          })),
+        };
+        return [exerciseId, history] as const;
       }),
     ),
     Promise.all(
@@ -111,13 +146,13 @@ export async function getReturnToTrainingRecommendations({
             isDropSet: false,
             reps: { gt: 0 },
             completedAt: { lt: now },
-            session: { userId, ...excludedSession },
+            session: { userId, finishedAt: { not: null }, ...excludedSession },
             exercise: { muscleGroup, category: { not: 'CARDIO' } },
           },
           orderBy: { completedAt: 'desc' },
-          select: { completedAt: true },
+          select: { session: { select: { startedAt: true } } },
         });
-        return [muscleGroup, row?.completedAt ?? null] as const;
+        return [muscleGroup, row?.session.startedAt ?? null] as const;
       }),
     ),
     db.set.findMany({
@@ -126,7 +161,7 @@ export async function getReturnToTrainingRecommendations({
         isDropSet: false,
         reps: { gt: 0 },
         completedAt: { gte: baselineStart, lt: now },
-        session: { userId, ...excludedSession },
+        session: { userId, finishedAt: { not: null }, ...excludedSession },
         exercise: {
           muscleGroup: { in: muscleGroups },
           category: { not: 'CARDIO' },
@@ -150,18 +185,18 @@ export async function getReturnToTrainingRecommendations({
     target.set(group, (target.get(group) ?? 0) + 1);
   }
 
-  const exerciseRows = new Map<string, ExerciseHistoryRow[]>(exerciseEntries);
+  const exerciseHistory = new Map<string, BoundedExerciseHistory>(exerciseEntries);
   for (const pe of programExercises) {
     if (historiesByExercise.has(pe.exerciseId)) continue;
-    const rows = exerciseRows.get(pe.exerciseId) ?? [];
+    const history = exerciseHistory.get(pe.exerciseId) ?? { lastPerformedAt: null, sessions: [] };
     const baselineSets = baselineSetsByMuscle.get(pe.exercise.muscleGroup) ?? 0;
     historiesByExercise.set(pe.exerciseId, {
-      exerciseLastPerformedAt: rows[0]?.completedAt ?? null,
+      exerciseLastPerformedAt: history.lastPerformedAt,
       muscleLastPerformedAt: latestByMuscle.get(pe.exercise.muscleGroup) ?? null,
       recentMuscleSets: recentSetsByMuscle.get(pe.exercise.muscleGroup) ?? 0,
       baselineMuscleSetsPer28Days:
         baselineSets * (RECENT_MUSCLE_VOLUME_DAYS / BASELINE_MUSCLE_VOLUME_DAYS),
-      exerciseSessions: groupHistoricalSessions(rows),
+      exerciseSessions: history.sessions,
     });
   }
 
@@ -177,39 +212,6 @@ export async function getReturnToTrainingRecommendations({
       }),
     ]),
   );
-}
-
-function groupHistoricalSessions(rows: ExerciseHistoryRow[]): ReturnHistorySession[] {
-  const sessions = new Map<
-    string,
-    Omit<ReturnHistorySession, 'sets'> & { sets: HistoricalSetWithOrder[] }
-  >();
-  for (const row of rows) {
-    let session = sessions.get(row.sessionId);
-    if (!session) {
-      session = {
-        sessionId: row.sessionId,
-        performedAt: row.completedAt,
-        sets: [],
-      };
-      sessions.set(row.sessionId, session);
-    }
-    session.sets.push({
-      setNumber: row.setNumber,
-      weight: row.weight,
-      reps: row.reps,
-      rir: row.rir,
-      isDropSet: row.isDropSet,
-    });
-  }
-
-  return [...sessions.values()].map((session) => ({
-    sessionId: session.sessionId,
-    performedAt: session.performedAt,
-    sets: [...session.sets]
-      .sort((left, right) => left.setNumber - right.setNumber)
-      .map(({ weight, reps, rir, isDropSet }) => ({ weight, reps, rir, isDropSet })),
-  }));
 }
 
 function loadConstraintsFor(

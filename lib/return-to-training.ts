@@ -34,7 +34,7 @@ export const RETURN_LONG_TERM_CAPACITY_WEIGHT = 0.25;
 export const RETURN_RECENT_ANCHOR_MIN_RATIO = 0.75;
 export const RETURN_RECENT_ANCHOR_MAX_RATIO = 1.25;
 
-export type ReturnMode = 'normal' | 'exercise-reintro' | 'muscle-reintro' | 'new-exercise';
+export type ReturnMode = 'normal' | 'exercise-reintro' | 'muscle-reintro';
 export type ReturnConfidence = 'low' | 'medium' | 'high';
 export type ReturnHistoryBasis =
   | 'none'
@@ -187,13 +187,14 @@ function resolveReturnMode(
   muscleGapDays: number | null,
 ): ReturnMode {
   if (category === 'CARDIO') return 'normal';
-  // No history is not evidence of a break. Preserve the authored program for
-  // a first-ever session instead of silently treating a new user as detrained.
-  if (exerciseGapDays == null && muscleGapDays == null) return 'normal';
+  // No exercise history is not evidence of a break. A newly introduced
+  // movement stays on normal upstream progression even if the same muscle
+  // has older history from other exercises.
+  if (exerciseGapDays == null) return 'normal';
   if (muscleGapDays == null || muscleGapDays > RETURN_EXERCISE_GAP_DAYS) {
     return 'muscle-reintro';
   }
-  if (exerciseGapDays == null) return 'new-exercise';
+
   if (exerciseGapDays > RETURN_EXERCISE_GAP_DAYS) return 'exercise-reintro';
   return 'normal';
 }

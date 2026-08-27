@@ -146,7 +146,7 @@ describe('return-to-training recommendations', () => {
     });
   });
 
-  it('does not convert another exercise into an exact load for a new movement', () => {
+  it('keeps normal upstream programming for a new movement with no exercise history', () => {
     const result = calculateReturnRecommendation({
       programExercise,
       history: history({ exerciseLastPerformedAt: null, exerciseSessions: [] }),
@@ -155,12 +155,13 @@ describe('return-to-training recommendations', () => {
     });
 
     expect(result).toMatchObject({
-      mode: 'new-exercise',
+      mode: 'normal',
       muscleMaintained: true,
-      targetSets: 2,
-      targetRIR: 3,
+      targetSets: 4,
+      targetRIR: 2,
       weightCeiling: null,
-      suggestedWeight: 10,
+      calibrationRequired: false,
+      suggestedWeight: null,
     });
   });
 
@@ -419,33 +420,33 @@ describe('return-to-training recommendations', () => {
     { label: 'recent weak record', recentWeight: 5, olderWeights: [40] },
     { label: 'two older records with a PR', recentWeight: 40, olderWeights: [40, 200] },
     { label: 'two older records with a weak outlier', recentWeight: 40, olderWeights: [40, 5] },
-  ])('uses equipment-floor calibration for conflicting sparse history: $label', ({
-    recentWeight,
-    olderWeights,
-  }) => {
-    const result = calculateReturnRecommendation({
-      programExercise,
-      history: history({
-        exerciseLastPerformedAt: daysAgo(3),
-        exerciseSessions: historySessions([
-          { days: 3, weight: recentWeight },
-          ...olderWeights.map((weight, index) => ({ days: 90 + index * 10, weight })),
-        ]),
-      }),
-      now,
-      loadConstraints: {
-        equipmentType: 'DUMBBELL',
-        dumbbellWeights: Array.from({ length: 100 }, (_, index) => index + 1),
-      },
-    });
+  ])(
+    'uses equipment-floor calibration for conflicting sparse history: $label',
+    ({ recentWeight, olderWeights }) => {
+      const result = calculateReturnRecommendation({
+        programExercise,
+        history: history({
+          exerciseLastPerformedAt: daysAgo(3),
+          exerciseSessions: historySessions([
+            { days: 3, weight: recentWeight },
+            ...olderWeights.map((weight, index) => ({ days: 90 + index * 10, weight })),
+          ]),
+        }),
+        now,
+        loadConstraints: {
+          equipmentType: 'DUMBBELL',
+          dumbbellWeights: Array.from({ length: 100 }, (_, index) => index + 1),
+        },
+      });
 
-    expect(result).toMatchObject({
-      historyBasis: 'recent-and-long-term',
-      confidence: 'low',
-      weightCeiling: null,
-      suggestedWeight: 1,
-    });
-  });
+      expect(result).toMatchObject({
+        historyBasis: 'recent-and-long-term',
+        confidence: 'low',
+        weightCeiling: null,
+        suggestedWeight: 1,
+      });
+    },
+  );
 
   it.each([{ olderWeights: [40] }, { olderWeights: [40, 42] }])(
     'keeps sparse older-only exact history eligible at low confidence: $olderWeights',
@@ -570,7 +571,7 @@ describe('return-to-training recommendations', () => {
       confidence: 'low',
       nonComparableHistorySessionCount: 4,
       weightCeiling: null,
-      suggestedWeight: 10,
+      suggestedWeight: null,
     });
   });
 

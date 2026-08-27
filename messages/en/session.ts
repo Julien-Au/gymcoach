@@ -51,8 +51,7 @@ export const session = {
       'The latest session was recent, but it followed a {days}-day gap, so return calibration remains active.',
     muscleReintro:
       'The primary muscle has had no recorded working sets for more than six weeks. Volume and effort are reduced for this session.',
-    newExercise:
-      'There is no usable history for this exercise. Loads from related exercises are not converted directly.',
+
     targets: 'Sets today: {sets}. Target RIR: {rir}.',
     startWeight: 'Conservative starting load: {weight}.',
     bodyweightStart: 'Start with bodyweight and no added load.',
