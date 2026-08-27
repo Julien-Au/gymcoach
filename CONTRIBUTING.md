@@ -1,7 +1,43 @@
 # Contributing to GymCoach
 
-Thanks for your interest in improving GymCoach. This guide covers the local
-setup and the checks your changes should pass.
+Thanks for your interest in improving GymCoach. External issues and pull
+requests are welcome and encouraged. This guide covers the local setup, the
+checks your changes should pass, and - because this repo is largely maintained
+by an autonomous AI loop - an honest description of how your contribution is
+handled.
+
+## How your contribution is handled
+
+This project is maintained day to day by an AI agent under a public charter
+(`docs/loops/`). So that you know exactly what to expect:
+
+- **An AI reviews your PR; a human merges it.** New external PRs get a triage
+  response within about a day and a full structured review verdict within 72
+  hours: a mechanical surface check, an adversarial multi-lens code review,
+  and a read of CI. The final merge click for new contributors is always made
+  by a human maintainer. Contributors with an established track record can be
+  granted vetted status, after which green, reviewed PRs may be merged by the
+  agent.
+- **Your code is executed by CI** (GitHub Actions, ephemeral, no secrets) when
+  you open a PR. The maintainers do not run unreviewed external code locally.
+- **Some paths are never auto-merged** and always need a human decision,
+  whoever writes them: CI/workflows, build and container files, dependency
+  manifests and lockfiles, executable configs (`next.config.js`, test
+  configs), Prisma schema and migrations, auth/session/rate-limit code, the
+  MCP surface, bulk data export routes, the LLM provider and prompt layer,
+  and the maintenance charter in `docs/loops/`. PRs there are welcome - just
+  expect a human in the loop and a slower cycle.
+- **Feature ideas are welcome as issues.** Clear, in-scope issues may be
+  implemented by the agent itself, with credit to you in the PR and CHANGELOG.
+- **License and sign-off**: by submitting a contribution you agree it is
+  provided under the repository's license. Please add a
+  `Signed-off-by: Your Name <email>` line to your commits
+  (`git commit -s`, the Developer Certificate of Origin,
+  https://developercertificate.org/).
+
+None of this is a security guarantee - review reduces risk, it does not
+certify code. It is simply the honest description of the pipeline your PR
+goes through.
 
 ## Development setup
 

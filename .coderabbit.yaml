@@ -1,0 +1,29 @@
+# CodeRabbit config - advisory AI review lens on PRs.
+# Role in this repo (see docs/loops/10-external-contributions.md): CodeRabbit
+# comments are ADVISORY ONLY. They may be read as leads for the loop's own
+# adversarial review; they are never a merge signal, never a trust signal, and
+# never a substitute for the vetting passes. Installing the GitHub App is a
+# human (maintainer) action.
+language: "en-US"
+reviews:
+  profile: "assertive"
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  auto_review:
+    enabled: true
+    drafts: false
+  path_instructions:
+    - path: "app/api/**"
+      instructions: >-
+        Every route must validate input with Zod (lib/schemas) and scope every
+        database query to the authenticated user. Flag any handler where an
+        ownership check was removed, weakened, or where a query on a
+        user-owned model lacks a userId constraint.
+    - path: "**/*.test.ts"
+      instructions: >-
+        Flag deleted or loosened assertions, skipped tests, and widened
+        tolerances - a diff that weakens a test to pass CI is itself a defect.
+chat:
+  auto_reply: true
