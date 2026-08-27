@@ -119,6 +119,17 @@ Format per entry: trigger/evidence, the lesson (actionable), and **Status** = `g
   author has after writing the new piece. The rate (2 real defects in 5 PRs) is the argument
   for keeping the review pre-merge and independent even when everything is green; treat a
   CLEAN verdict as information, not as the expected outcome.
+- **Reinforced again (2026-08-27).** Third consecutive batch where the independent pre-merge
+  review found real defects - this time in the external-contributions POLICY PR (#315), not in
+  feature code, which is the harder case because the artifact is prose and its bugs read as
+  ordinary sentences. Verdict NOT READY with 3 blocking findings: the new hard-block path list
+  was written so it applied to the maintainer tier too (it would have silently ended the loop's
+  own auto-merge autonomy), the `ship-pr` skill still executed unvetted code at its fix-a-red-gate
+  step although step 1 forbade exactly that, and `i18n/**` was missing from the hard-block list
+  while `messages/**` was listed. All fixed on the branch, re-review READY. Same shape as the
+  code cases - the author wrote the new rule and could not see where it contradicted the rest of
+  the system - so documents that change how the loop behaves get reviewed with the same
+  independence as code, not skimmed because they compile trivially.
 
 ### L9 - Gates rot, permissions creep: schedule the meta-checks
 - **Trigger:** an external loop-engineering writeup (2026-06-11) listed two failure modes
@@ -271,3 +282,27 @@ Format per entry: trigger/evidence, the lesson (actionable), and **Status** = `g
   run combined with a re-run inside the same minute can still trip the limit. The interim "wait
   out the minute" rule is retired; **#283** (concurrent runs sharing
   :5434/:3031, lesson L16) is a different race and is still open.
+
+### L18 - Running the green-gate on an external PR is remote code execution on the operator's host
+- **Trigger:** the 2026-08-27 operator directive to encourage outside contributions. The first
+  draft of the process had the loop check an external PR out into a git worktree and run
+  `bash scripts/verify.sh` on it before reviewing the diff. The independent challenge of that
+  design (run BEFORE adoption, not on the diff) named what the draft had treated as routine: the
+  gate executes the contributor's test files, `vitest.config.ts` and any `postinstall` hook as
+  the operator's own user, with `.env` and an authenticated `gh` token in reach. A worktree is a
+  filesystem convenience, not a security boundary, and "read the diff first" does not fix it -
+  reading the diff is what the execution was supposed to help with.
+- **Lesson:** for code the loop did not author, "just run the tests to see if it works" IS the
+  attack. The executor must be the sandbox that already exists: CI runs on a disposable runner
+  with no operator secrets, so CI is the only thing that executes an unvetted PR, and the local
+  gate happens after a human merges, never before. Author trust does not relax this (trusting a
+  contributor is not a property of their next diff); where local execution of external code is
+  genuinely needed it belongs in an ephemeral isolated container. Generalize it: any loop step
+  that says "run it to check" on input the loop did not write is an execution decision and must
+  be written down as one.
+- **Status:** graduated -> `docs/loops/10-external-contributions.md` (trust tiers + the execution
+  gate + the hard-block path list), the charter's trust section, `CLAUDE.md`, and the `triage` /
+  `implement-issue` / `ship-pr` skills (#315). Residual risk recorded for the operator in the same
+  batch: `main` has NO branch protection (the loop account is not an admin and cannot add it), so
+  every control here is behavioral until a human enables it - the cheapest, highest-leverage fix
+  available and the one thing the loop cannot do for itself.

@@ -2037,3 +2037,109 @@ Fable per the model-routing directive; reviews, ideation and this write-up ran o
 **Deferred.** #300-#304 (the rest of the "make it pop" ideas) and the demo-media re-shoot, which is
 now the oldest debt in the repo: the progress page has drifted twice (photos card, muscle heat map)
 since the committed screenshots, and the heat map is exactly the frame a clip should open on.
+
+
+## 2026-08-27 - opening the repo to outside contributors: the policy (#315), the first adopted external report (#314 -> #316 -> PR #318), and three fork PRs vetted
+
+**What ran.** One interactive maintainer loop on an operator directive: encourage external
+open-source contributors, and put security vetting passes in front of every external issue and
+especially every external PR before it is validated. Sequence: design -> independent adversarial
+challenge of the design -> policy PR -> triage the external backlog -> adopt and fix one external
+bug -> vet three fork PRs -> write up. Triage ran on the external backlog only; ideate did not run.
+
+**The design was challenged before it was adopted, not after.** The usual protocol reviews a diff;
+here an independent reviewer was pointed at the *design*, and four findings reshaped it before a
+line was written. (a) Running `scripts/verify.sh` on an external PR is remote code execution on the
+operator's host: a contributor's test file, `vitest.config.ts` or `postinstall` hook executes as the
+operator's user with `.env` and an authenticated `gh` token in reach, and a git worktree is a
+filesystem convenience, not a security boundary. CI became the only executor of unvetted code.
+(b) `main` has no branch protection at all - the loop account is not an admin and cannot add it - so
+every control in the policy is behavioral until a human enables it; flagged to the operator as the
+cheapest, highest-leverage fix in the design. (c) The realistic crafted-diff attack is not an
+obvious backdoor but one deleted ownership check inside 2,000 plausible lines, and correlated LLM
+review lenses have an unmeasured false-negative rate against exactly that shape; so unvetted authors
+are never auto-merged - the loop does all the labor and a human clicks merge. (d) Adopting an issue
+needs a threat-model lens, not just a prompt-injection screen, because blast radius attaches to the
+change, not to the author. Mid-session the operator added two more rules: vetted status never
+softens the passes, and any local execution of external code (vetted included) happens only in an
+ephemeral isolated container.
+
+**What shipped as policy (#315, merged).** A new `docs/loops/10-external-contributions.md` is the
+single source of truth: three trust tiers (maintainers / vetted / unvetted), the execution gate, a
+mechanical hard-block path list that gates execution AND auto-merge, three review passes pinned to a
+reviewed commit SHA (`--match-head-commit`), the issue-adoption pipeline, service commitments
+(triage inside 24h, a public structured verdict on every external PR), and a promotion ladder where
+only a human grants vetted status (SHAREN is the one vetted contributor today). The charter's trust
+section, `CLAUDE.md` and the `triage` / `implement-issue` / `ship-pr` skills were rewritten to point
+at that one file instead of carrying four copies that had already started to drift. `CONTRIBUTING.md`
+now discloses the honest shape of the process to contributors: reviews are AI-assisted, a human
+merges for new contributors, external code runs in CI only, the hard-block list is published, and a
+DCO sign-off is requested but not enforced. `.coderabbit.yaml` was added as an advisory-only lens -
+installing the app is a human action and its verdict is never a merge or trust signal.
+
+**The policy PR's own review came back NOT READY.** Three blocking findings, all real: the new
+hard-block path list was written so it applied to the maintainer tier too (it would have silently
+ended the loop's own auto-merge autonomy), the `ship-pr` skill still executed unvetted code at its
+fix-a-red-gate step despite step 1 forbidding exactly that, and `i18n/**` was missing from the
+hard-block list while `messages/**` was listed. All three fixed on the branch, re-review READY.
+Third consecutive batch where independent pre-merge review caught real defects, recorded as a
+reinforcement of lesson **L8** - notable because this time the defects were in the policy itself, an
+artifact whose bugs read as ordinary sentences.
+
+**The first external report the loop adopted.** External user mvnixon filed #314: an authenticated
+`GET /mcp` hangs forever. Verified against the code before adopting it - the endpoint runs the MCP
+Streamable HTTP transport statelessly, so there is no SSE stream to attach and the response is never
+written or closed; unauthenticated GETs 401 early, which is what hid the bug, and Claude Desktop's
+connector probes with GET and so could never connect. Re-derived and re-filed as #316 with the
+reporter credited, per the new issue-adoption pipeline, and fixed in PR #318 (merged): GET
+short-circuits before authentication to a 405 with an `Allow` header, per the spec. The review
+confirmed the diagnosis down in the SDK and caught one honesty nit - a test name that overstated
+what it covered - fixed before merge. The fix also brings the first test coverage of
+`app/mcp/route.ts` (4 integration tests).
+
+**Four external issues, four public verdicts, inside the tick.** #310 (publish a GHCR image): the
+analysis is correct, but `.github/workflows` is a hard-blocked path, so it is labeled
+`needs-maintainer` with a concrete accept recommendation attached. #309 (an iOS app): a product
+decision, not a code decision. #308 (vendoring a third-party exercise dataset): supply-chain and
+licensing decisions, plus the issue asserts a "per owner decision" the loop cannot verify - flagged
+politely rather than acted on. New labels `needs-maintainer` and `adopted` now carry that state.
+Straight out of the challenge findings the loop also filed **#317**: make ownership checks
+unremovable by construction (`ensureOwnership` returns the row, with a CI-enforced cross-user test
+convention), so the one-line-deletion attack stops being invisible. It touches the auth surface, so
+it waits for a maintainer green light.
+
+**The vetting pipeline's first full run: SHAREN #311/#312/#313.** All three touch hard-blocked paths
+(`messages/**` for #311, Prisma migrations for #312 and #313), so all three are human-merge by rule,
+and all three got read-only multi-lens reviews with a structured verdict posted publicly. #311
+(return-to-training, 2,089 lines): security CLEAN on all four lenses, 2 major product/performance
+findings (the new-exercise mode is broader than advertised; an unbounded history fan-out sits on the
+session hot path). #312 (equipment inventory): security CLEAN - ownership scoping complete on all
+nine new queries, the import provably cannot cross tenants, the image validator does real magic-byte
+checking and excludes SVG - with 3 major engineering findings (an uncapped export against a 50 MiB
+import cap breaks the restore promise; import amplification of roughly 200k serial round trips
+inside one 60s locked transaction; `IF NOT EXISTS` migration guards masking schema drift plus an
+unqualified `pg_constraint` check) and an untested image-decoder rejection surface. #313 (equipment
+history delta): 1 BLOCKING - the new 400s on stale equipment references are fatal in `lib/sync.ts`,
+where an offline-logged set is silently destroyed - plus 3 major (5 MiB image blobs shipped in the
+RSC session payload; a `JsonNull` vs `DbNull` split between the two writers; a non-idempotent
+migration). The shared migration was verified byte-identical across the stack, and the verdicts name
+a merge order (#312 then #313, merge commits) and credit explicitly what SHAREN did well.
+
+**Green gate.** Both loop PRs merged on green (local gate + CI). The three external PRs got no local
+gate at all, deliberately: under the new policy CI is the only executor of unvetted code, so the
+reviews are read-only reads of the diff and the verdicts say so. That is the first time the loop has
+reviewed a change it did not run, and the write-up records it as intended behavior rather than a
+gap.
+
+**One metric.** Accepted-change rate this batch: 2 merged / 0 abandoned (#315, #318), plus this docs
+PR. No reverts. 3 blocking defects caught pre-merge by independent review, all of them in the policy
+itself. 2 issues filed (#316, #317); 4 external issues triaged with public verdicts; 3 external PRs
+security-vetted with structured verdicts. Implementing-tick token spend: not recorded separately
+(the MCP fix ran on Fable per the model-routing directive; the design challenge, all reviews and
+this write-up ran on Opus).
+
+**Deferred to the operator.** Enable branch protection on `main` (the loop account lacks admin, and
+this is the one control it cannot give itself); optionally install the CodeRabbit app; decide #308,
+#309 and #310; merge #311-#313 after the fixups the verdicts list. Still carried: #317 (unremovable
+ownership checks, auth surface), #300-#304 (the rest of the "make it pop" ideas) and the demo-media
+re-shoot, now the oldest debt in the repo.
