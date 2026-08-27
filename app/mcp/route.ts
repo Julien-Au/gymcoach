@@ -57,7 +57,16 @@ export async function POST(req: Request) {
 }
 
 export async function GET(req: Request) {
-  return handle(req);
+  // The transport is stateless (sessionIdGenerator: undefined), so there is no
+  // session to attach an SSE stream to and a GET routed into handle() would
+  // hang with no response at all (issue #316). The Streamable HTTP spec says a
+  // server that offers no SSE stream on GET responds 405 so clients fall back
+  // to POST. If session support is ever added, this must become conditional on
+  // whether a session id generator is configured.
+  return withCors(
+    req,
+    new Response(null, { status: 405, headers: { Allow: 'POST, DELETE, OPTIONS' } }),
+  );
 }
 
 export async function DELETE(req: Request) {
