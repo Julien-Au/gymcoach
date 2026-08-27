@@ -13,7 +13,11 @@ describe('MCP route method handling', () => {
     expect(res.headers.get('allow')).toBe('POST, DELETE, OPTIONS');
   });
 
-  it('answers an authenticated-looking SSE probe GET with 405 too', async () => {
+  // Both GET tests use unauthenticated requests (the old code 401'd them
+  // before reaching the transport), so they pin the fix and its before-auth
+  // ordering rather than reproducing the literal hang, which needed a valid
+  // seeded token.
+  it('answers an SSE probe GET carrying a bearer token with 405 too', async () => {
     const res = await GET(
       new Request('http://test.local/mcp', {
         headers: {
