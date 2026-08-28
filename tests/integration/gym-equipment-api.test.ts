@@ -7,7 +7,10 @@ vi.mock('@/lib/auth', () => ({ getCurrentUserId: vi.fn() }));
 const mockUserId = vi.mocked(getCurrentUserId);
 
 import { GET as listEquipment, POST as createEquipment } from '@/app/api/gyms/[id]/equipment/route';
-import { DELETE as deleteEquipment, PUT as updateEquipment } from '@/app/api/gym-equipment/[id]/route';
+import {
+  DELETE as deleteEquipment,
+  PUT as updateEquipment,
+} from '@/app/api/gym-equipment/[id]/route';
 import {
   DELETE as deleteImage,
   GET as getImage,
@@ -108,6 +111,22 @@ describe('gym equipment REST API', () => {
     expect(updatedResponse.status).toBe(200);
     expect((await updatedResponse.json()).equipment.name).toBe('Cable station A');
 
+    const renamedViaCollection = await createEquipment(
+      request('http://test.local/api/gyms/' + gym.id + '/equipment', 'POST', {
+        equipmentId,
+        name: 'Cable station renamed',
+        equipmentType: 'CABLE',
+        quantity: 1,
+        weightOptions: [5, 10, 15, 20],
+        exerciseIds: [exercise.id],
+      }),
+      params(gym.id),
+    );
+    expect(renamedViaCollection.status).toBe(200);
+    const renamed = await renamedViaCollection.json();
+    expect(renamed.equipment).toMatchObject({ id: equipmentId, name: 'Cable station renamed' });
+    expect(await db.gymEquipment.count({ where: { gymId: gym.id } })).toBe(1);
+
     const imageResponse = await setImage(
       request(`http://test.local/api/gym-equipment/${equipmentId}/image`, 'PUT', {
         imageBase64: PNG.toString('base64'),
@@ -123,6 +142,14 @@ describe('gym equipment REST API', () => {
     expect(fetchedImage.status).toBe(200);
     expect(fetchedImage.headers.get('content-type')).toBe('image/png');
     expect(Buffer.from(await fetchedImage.arrayBuffer())).toEqual(PNG);
+
+    const listedWithImage = await listEquipment(
+      request('http://attacker.invalid/api/gyms/' + gym.id + '/equipment'),
+      params(gym.id),
+    );
+    const listedImage = (await listedWithImage.json()).equipment[0].image;
+    expect(listedImage.url.startsWith(`/api/gym-equipment/${equipmentId}/image?v=`)).toBe(true);
+    expect(listedImage.url).not.toContain('attacker.invalid');
 
     const clearResponse = await deleteImage(
       request(`http://test.local/api/gym-equipment/${equipmentId}/image`, 'DELETE'),

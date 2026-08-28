@@ -7,11 +7,11 @@ interface Params {
   params: Promise<{ id: string }>;
 }
 
-export async function GET(req: Request, props: Params) {
+export async function GET(_req: Request, props: Params) {
   try {
     const userId = await requireApiUserId();
     const { id } = await props.params;
-    return NextResponse.json({ equipment: await listOwnedGymEquipment(userId, id, req.url) });
+    return NextResponse.json({ equipment: await listOwnedGymEquipment(userId, id) });
   } catch (err) {
     return handleApiError(err);
   }

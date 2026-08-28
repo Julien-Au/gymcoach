@@ -6,6 +6,7 @@ import { gymWeightListSchema } from '@/lib/schemas/gym';
 const databaseIdSchema = z.string().trim().min(1).max(191);
 
 export const gymEquipmentUpsertSchema = z.object({
+  equipmentId: databaseIdSchema.optional(),
   name: z.string().trim().min(1).max(120),
   equipmentType: z.nativeEnum(EquipmentType),
   description: z.string().trim().max(4000).nullable().optional(),

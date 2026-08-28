@@ -19,8 +19,8 @@ export async function PUT(req: Request, props: Params) {
     if (!existing) return NextResponse.json({ error: 'Gym equipment not found.' }, { status: 404 });
     const input = await parseJsonBody(req, gymEquipmentUpsertSchema);
     const saved = await upsertOwnedGymEquipment(userId, existing.gymId, {
-      equipmentId: existing.id,
       ...input,
+      equipmentId: existing.id,
     });
     return NextResponse.json(saved);
   } catch (err) {

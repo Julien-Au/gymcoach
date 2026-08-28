@@ -58,7 +58,7 @@ const equipmentSelection = {
   },
 } as const;
 
-export async function listOwnedGymEquipment(userId: string, gymId: string, baseUrl: string) {
+export async function listOwnedGymEquipment(userId: string, gymId: string) {
   await requireOwnedGym(userId, gymId);
   const equipment = await db.gymEquipment.findMany({
     where: { gymId },
@@ -70,10 +70,7 @@ export async function listOwnedGymEquipment(userId: string, gymId: string, baseU
     image: item.imageMimeType
       ? {
           kind: 'uploaded' as const,
-          url: new URL(
-            `/api/gym-equipment/${item.id}/image?v=${item.updatedAt.getTime()}`,
-            baseUrl,
-          ).toString(),
+          url: `/api/gym-equipment/${item.id}/image?v=${item.updatedAt.getTime()}`,
           mimeType: item.imageMimeType,
         }
       : item.imageUrl
@@ -203,7 +200,10 @@ export async function upsertOwnedGymEquipment(
     return saved;
   });
 
-  const saved = await db.gymEquipment.findUnique({ where: { id: item.id }, select: equipmentSelection });
+  const saved = await db.gymEquipment.findUnique({
+    where: { id: item.id },
+    select: equipmentSelection,
+  });
   if (!saved) throw new ApiError(500, 'Gym equipment could not be read after saving.');
 
   const mismatchedExercises = exercises
@@ -241,7 +241,9 @@ export async function getOwnedGymEquipmentImage(userId: string, equipmentId: str
   if (!equipment) throw new ApiError(404, 'Gym equipment not found.');
 
   if (equipment.imageData && equipment.imageMimeType) {
-    if (!GYM_EQUIPMENT_IMAGE_MIME_TYPES.includes(equipment.imageMimeType as GymEquipmentImageMimeType)) {
+    if (
+      !GYM_EQUIPMENT_IMAGE_MIME_TYPES.includes(equipment.imageMimeType as GymEquipmentImageMimeType)
+    ) {
       throw new ApiError(500, 'Gym equipment image has an unsupported MIME type.');
     }
     return {
@@ -263,8 +265,9 @@ export async function setOwnedGymEquipmentImage(
   input: SetGymEquipmentImageInput,
 ) {
   const equipment = await requireOwnedEquipment(userId, equipmentId);
-  const modes = [input.clear === true, input.imageUrl != null, input.imageBase64 != null].filter(Boolean)
-    .length;
+  const modes = [input.clear === true, input.imageUrl != null, input.imageBase64 != null].filter(
+    Boolean,
+  ).length;
   if (modes !== 1) {
     throw new ApiError(400, 'Choose exactly one image action: clear, imageUrl, or imageBase64.');
   }
@@ -282,7 +285,14 @@ export async function setOwnedGymEquipmentImage(
   return db.gymEquipment.update({
     where: { id: equipment.id },
     data,
-    select: { id: true, gymId: true, name: true, imageUrl: true, imageMimeType: true, updatedAt: true },
+    select: {
+      id: true,
+      gymId: true,
+      name: true,
+      imageUrl: true,
+      imageMimeType: true,
+      updatedAt: true,
+    },
   });
 }
 
