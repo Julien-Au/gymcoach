@@ -306,3 +306,38 @@ Format per entry: trigger/evidence, the lesson (actionable), and **Status** = `g
   batch: `main` has NO branch protection (the loop account is not an admin and cannot add it), so
   every control here is behavioral until a human enables it - the cheapest, highest-leverage fix
   available and the one thing the loop cannot do for itself.
+
+### L19 - "CI is green" is a claim about a commit: resolve check runs by head SHA, never by PR
+- **Trigger:** 2026-08-28, merging SHAREN's #312. The PR's checks summary read 6/6 green, and the
+  check runs behind it belonged to the PREVIOUS head - the contributor had pushed a fixup and the
+  new head had not been checked yet. Across #312 and #313 the contributor pushed five times during
+  review, and each push silently aged both the CI verdict and the loop's own pinned review.
+- **Lesson:** a green summary answers "has this PR ever been green", not "is the code I am about to
+  merge green". Before merging anything the loop did not author, resolve the check runs against the
+  current head SHA through the API and compare that SHA to the one the review was pinned to
+  (`--match-head-commit`); if they differ, re-review, do not merge. The failure is silent and looks
+  exactly like success, which is why it needs a mechanical step rather than attention. Corollary:
+  the review verdict and the CI verdict must be pinned to the SAME SHA, or one of them is about
+  code that no longer exists.
+- **Status:** standing rule, not yet graduated. It belongs in `10-external-contributions.md` (the
+  review-passes section already pins reviews to a SHA but says nothing about check runs) and in the
+  `ship-pr` skill's merge preconditions; the next edit to either should encode it.
+
+### L20 - Before calling an index reader-less, check whether the DATABASE is the reader
+- **Trigger:** the 2026-08-27 review of #313 called `Set_gymEquipmentId_completedAt_idx`
+  reader-less because no application query used it, and the contributor removed it on that basis.
+  Wrong: the FK is `ON DELETE SET NULL` with `relationMode` unset, so Postgres has to locate the
+  referencing `Set` rows on every equipment deletion (single delete, gym delete cascade, and backup
+  restore, which cascades across every equipment row the user owns), and Postgres does not index
+  the referencing side of a foreign key. The advisory CodeRabbit lens had the mechanism right where
+  the loop's own review had it wrong.
+- **Lesson:** "no reader in application code" is the wrong question when a database-level
+  referential action is the reader. Before recommending that an index be dropped, read the schema
+  for `ON DELETE`/`ON UPDATE` actions and cascade paths on that column, and remember that only the
+  referenced side of an FK is indexed automatically. More generally: a review finding that tells a
+  contributor to DELETE something needs the same evidence bar as one that asks them to add
+  something, because the loop's mistake gets implemented by someone else's hands.
+- **Status:** graduated -> **#325** filed to restore the index, with the provenance (which lens was
+  right, and why) written into the issue rather than the index quietly re-added. The general rule
+  is a standing review-practice rule; it also stands as the first concrete evidence that the
+  advisory third-party lens earns the slot the policy gives it.
