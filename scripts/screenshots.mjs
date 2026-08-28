@@ -7,9 +7,13 @@ const base = process.env.SHOT_BASE_URL ?? 'http://localhost:3032';
 const email = process.env.USER_EMAIL ?? 'you@example.com';
 const password = process.env.USER_PASSWORD ?? 'change-me-immediately';
 
+// An optional `openOn` heading scrolls that section into view before the
+// capture. The progress page leads with the bodyweight card, which is the
+// least distinctive thing on it; the muscle heat map is the frame worth
+// showing, and it sits below the fold.
 const shots = [
   ['/', 'home'],
-  ['/progress', 'progress'],
+  ['/progress', 'progress', { openOn: 'Muscle heat map' }],
   ['/programs/generate', 'program-generator'],
   ['/exercises', 'catalog'],
 ];
@@ -56,10 +60,22 @@ await page.getByRole('button', { name: 'Sign in' }).click();
 await page.waitForURL(`${base}/`, { timeout: 30000 });
 await assertHealthy('after sign in');
 
-for (const [path, name] of shots) {
+for (const [path, name, opts] of shots) {
   await page.goto(`${base}${path}`, { waitUntil: 'networkidle' });
   await page.waitForTimeout(1500);
   await assertHealthy(`page ${path}`);
+  if (opts?.openOn) {
+    // Fail loudly rather than silently capturing the top of the page: a
+    // renamed or removed section must not degrade into a wrong screenshot.
+    const target = page.getByText(opts.openOn, { exact: false }).first();
+    if ((await target.count()) === 0) {
+      console.error(`[screenshots] ABORT - "${opts.openOn}" not found on ${path}`);
+      await browser.close().catch(() => {});
+      process.exit(1);
+    }
+    await target.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(500);
+  }
   await page.screenshot({ path: `docs/screenshots/${name}.png` });
   console.log('captured', name, '- healthy');
 }

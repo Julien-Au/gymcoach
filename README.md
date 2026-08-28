@@ -74,6 +74,15 @@ on your own key - all self-hosted.
   navigation and superset-aware rest.
 - **Readiness check-in** - an optional pre-session soreness/readiness prompt that
   auto-regulates the suggested load and says why it held or dropped.
+- **Return-to-training calibration** - after a real layoff, the first session
+  back is eased in on its own: fewer working sets, a higher target RIR and a
+  conservative opening load derived from your long-term history, then normal
+  autoregulation takes over. Adding a brand-new exercise is not a layoff and is
+  left alone.
+- **Your actual gym, not a generic one** - describe the concrete stations and
+  items you train on (type, manufacturer, model, quantity, item-specific weight
+  options, an optional photo), link them to the exercises they serve, and the
+  equipment you used is recorded on every set you log.
 - **Quality-of-life** - kilograms or pounds per user, an interface in English or
   Russian (extensible message catalogs), multi-user with strict per-user data
   isolation, and an installable PWA with offline logging.
@@ -365,6 +374,9 @@ than CI reaching in to a small VPS.
 - [x] Progress photos (local-only upload with side-by-side compare)
 - [x] Interface localization (English and Russian, extensible message catalogs)
 - [x] Muscle heat map (body silhouettes tinted by weekly volume vs MEV/MRV)
+- [x] Physical gym equipment inventory, with the equipment used recorded on
+      each logged set
+- [x] Return-to-training calibration after a long layoff
 
 ## Contributing
 
@@ -381,7 +393,16 @@ Notable changes are tracked in the [CHANGELOG](CHANGELOG.md).
   autoregulation (#273), saved gyms with equipment-aware load selection
   (#274), exercise technique media (#275), and the ChatGPT / MCP connector
   (#276). Along the way they also found and fixed a latent `.gitignore` bug
-  that shadowed an API route in fresh clones.
+  that shadowed an API route in fresh clones. Then a second series:
+  return-to-training calibration (#311), the physical gym equipment inventory
+  (#312) and the equipment recorded on each logged set (#313).
+- [@mvnixon](https://github.com/mvnixon) - reported the `GET /mcp` hang that
+  stopped MCP clients probing with GET from connecting at all (#314), and
+  made the case for publishing the production image so self-hosters can pull
+  instead of build (#310).
+- [@gogoku121](https://github.com/gogoku121) - proposed the browsable
+  exercise library built on an MIT-licensed dataset (#308, scoped and tracked
+  as #320).
 - Exercise technique photos come from
   [free-exercise-db](https://github.com/yuhonas/free-exercise-db) (Unlicense).
 
