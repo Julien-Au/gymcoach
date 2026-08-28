@@ -206,7 +206,8 @@ describe('gym equipment REST API', () => {
 
     const foreignSetImageResponse = await setImage(
       request(`http://test.local/api/gym-equipment/${privateEquipment.id}/image`, 'PUT', {
-        clear: true,
+        imageBase64: PNG.toString('base64'),
+        mimeType: 'image/png',
       }),
       params(privateEquipment.id),
     );
