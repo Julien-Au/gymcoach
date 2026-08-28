@@ -11,6 +11,7 @@ import {
 
 export const setInputSchema = z.object({
   exerciseId: z.string().min(1),
+  gymEquipmentId: z.string().min(1).nullable().optional(),
   setNumber: z.coerce.number().int().min(1).max(50),
   weight: z.coerce.number().min(0).max(500),
   reps: z.coerce.number().int().min(0).max(100),

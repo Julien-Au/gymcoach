@@ -44,6 +44,7 @@ interface Props {
   recommendation?: IntraSetRecommendation | null;
   returnRecommendation?: ReturnRecommendation | null;
   loadConstraints?: GymLoadConstraints | null;
+  equipmentOptions?: { id: string; name: string }[];
   onSubmit: (values: {
     weight: number;
     reps: number;
@@ -53,6 +54,7 @@ interface Props {
     isWarmup: boolean;
     isDropSet: boolean;
     notes: string | null;
+    gymEquipmentId?: string | null;
   }) => Promise<void>;
 }
 
@@ -85,6 +87,7 @@ export function SetInput({
   recommendation = null,
   returnRecommendation = null,
   loadConstraints = null,
+  equipmentOptions = [],
   onSubmit,
 }: Props) {
   const t = useTranslations('session.input');
@@ -111,6 +114,7 @@ export function SetInput({
   const [aiText, setAiText] = useState('');
   const [aiParsing, setAiParsing] = useState(false);
   const [aiHint, setAiHint] = useState<string | null>(null);
+  const [gymEquipmentId, setGymEquipmentId] = useState('');
 
   // Re-init when the exercise changes or a set changes.
   useEffect(() => {
@@ -129,6 +133,12 @@ export function SetInput({
     setQuickEntry('');
     setAiText('');
     setAiHint(null);
+    const recentEquipmentId = existingSets.at(-1)?.gymEquipmentId ?? '';
+    setGymEquipmentId(
+      equipmentOptions.some((equipment) => equipment.id === recentEquipmentId)
+        ? recentEquipmentId
+        : '',
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [programExercise.id, existingSets.length]);
 
@@ -254,29 +264,31 @@ export function SetInput({
     if (cardioInvalid) return;
     setSubmitting(true);
     try {
+      const values = isCardio
+        ? {
+            weight: 0,
+            reps: 1,
+            rir: null,
+            durationSec: durationSec!,
+            distanceM: hasDistance && distanceKm > 0 ? Math.round(distanceKm * 1000) : null,
+            isWarmup: false,
+            isDropSet: false,
+            notes: form.notes.trim() || null,
+          }
+        : {
+            weight: form.weight,
+            reps: form.reps,
+            rir: form.rir,
+            durationSec: null,
+            distanceM: null,
+            isWarmup: form.isWarmup,
+            isDropSet: form.isDropSet,
+            notes: form.notes.trim() || null,
+          };
       await onSubmit(
-        isCardio
-          ? {
-              weight: 0,
-              reps: 1,
-              rir: null,
-              durationSec: durationSec!,
-              // Stored in meters; the input is km with decimals.
-              distanceM: hasDistance && distanceKm > 0 ? Math.round(distanceKm * 1000) : null,
-              isWarmup: false,
-              isDropSet: false,
-              notes: form.notes.trim() || null,
-            }
-          : {
-              weight: form.weight,
-              reps: form.reps,
-              rir: form.rir,
-              durationSec: null,
-              distanceM: null,
-              isWarmup: form.isWarmup,
-              isDropSet: form.isDropSet,
-              notes: form.notes.trim() || null,
-            },
+        equipmentOptions.length > 0
+          ? { ...values, gymEquipmentId: gymEquipmentId || null }
+          : values,
       );
       // The transition animation to the rest timer is handled by the parent.
     } finally {
@@ -341,6 +353,30 @@ export function SetInput({
             <p className="text-xs text-muted-foreground">{t('parseHelp')}</p>
           )}
         </div>
+
+        {equipmentOptions.length > 0 && (
+          <div className="space-y-1">
+            <Label
+              htmlFor="gym-equipment"
+              className="text-xs uppercase tracking-wide text-muted-foreground"
+            >
+              {t('equipment')}
+            </Label>
+            <select
+              id="gym-equipment"
+              value={gymEquipmentId}
+              onChange={(event) => setGymEquipmentId(event.target.value)}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            >
+              <option value="">{t('equipmentNone')}</option>
+              {equipmentOptions.map((equipment) => (
+                <option key={equipment.id} value={equipment.id}>
+                  {equipment.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {isCardio ? (
           <>

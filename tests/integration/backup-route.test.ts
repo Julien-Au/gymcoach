@@ -108,7 +108,7 @@ async function seedFullUser(email: string) {
     },
   });
   await db.user.update({ where: { id: user.id }, data: { activeGymId: gym.id } });
-  await db.gymEquipment.create({
+  const equipment = await db.gymEquipment.create({
     data: {
       gymId: gym.id,
       name: 'Competition bench station',
@@ -179,6 +179,15 @@ async function seedFullUser(email: string) {
         create: [
           {
             exerciseId: bench.id,
+            gymEquipmentId: equipment.id,
+            equipmentNameSnapshot: 'Competition bench station',
+            equipmentLoadSnapshot: {
+              version: 1,
+              equipmentType: 'BARBELL',
+              manufacturer: 'GymCo',
+              modelName: 'Bench Pro',
+              weightOptions: [20, 40, 60, 80, 100],
+            },
             setNumber: 1,
             weight: 100,
             reps: 5,
@@ -294,7 +303,7 @@ beforeEach(() => {
 });
 
 describe('GET /api/backup - export completeness (issue #168)', () => {
-  it('exports version 4 with physical gym equipment and all earlier backup fields', async () => {
+  it('exports version 5 with set equipment history and all earlier backup fields', async () => {
     const user = await seedFullUser('a@test.dev');
     actAs(user.id);
 
@@ -302,7 +311,7 @@ describe('GET /api/backup - export completeness (issue #168)', () => {
     expect(res.status).toBe(200);
     const dump = await res.json();
 
-    expect(dump.version).toBe(4);
+    expect(dump.version).toBe(5);
     expect(dump.profile).toMatchObject({
       displayName: 'Julien',
       bodyweight: 82.5,
@@ -345,6 +354,18 @@ describe('GET /api/backup - export completeness (issue #168)', () => {
     expect(dump.sessions[0].gymName).toBe('Basement');
 
     const sets = dump.sessions[0].sets as Array<Record<string, unknown>>;
+    const benchSet = sets.find((s) => s.exerciseName === 'Bench Press');
+    expect(benchSet).toMatchObject({
+      gymEquipmentName: 'Competition bench station',
+      equipmentNameSnapshot: 'Competition bench station',
+      equipmentLoadSnapshot: {
+        version: 1,
+        equipmentType: 'BARBELL',
+        manufacturer: 'GymCo',
+        modelName: 'Bench Pro',
+        weightOptions: [20, 40, 60, 80, 100],
+      },
+    });
     const cardio = sets.find((s) => s.exerciseName === 'Running');
     expect(cardio).toMatchObject({ durationSec: 1800, distanceM: 5000, avgHr: 152, maxHr: 181 });
 
@@ -431,6 +452,22 @@ describe('POST /api/backup - restore round trip (issue #168)', () => {
     // Ownership-scoped: user A's data is untouched, user B owns a full copy.
     expect(await countsFor(userA.id)).toEqual(countsA);
     expect(await countsFor(userB.id)).toEqual(countsA);
+
+    // JSON null convention is preserved by restore: a set with no equipment
+    // snapshot stores JSON null, not SQL NULL, matching the normal set writer.
+    const [restoredNullState] = await db.$queryRaw<
+      Array<{ isDbNull: boolean; isJsonNull: boolean }>
+    >`
+      SELECT
+        s."equipmentLoadSnapshot" IS NULL AS "isDbNull",
+        s."equipmentLoadSnapshot" = 'null'::jsonb AS "isJsonNull"
+      FROM "Set" s
+      JOIN "Session" sess ON sess."id" = s."sessionId"
+      JOIN "Exercise" e ON e."id" = s."exerciseId"
+      WHERE sess."userId" = ${userB.id} AND e."name" = 'Running'
+      LIMIT 1
+    `;
+    expect(restoredNullState).toEqual({ isDbNull: false, isJsonNull: true });
 
     // The goal was re-linked to user B's own copy of the exercise.
     const goalB = await db.exerciseGoal.findFirst({
