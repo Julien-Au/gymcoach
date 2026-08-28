@@ -32,8 +32,10 @@ export async function POST(req: Request) {
     const userId = await requireApiUserId();
     const data = await parseJsonBody(req, goalInputSchema);
 
-    const exercise = await db.exercise.findUnique({ where: { id: data.exerciseId } });
-    if (!exercise || exercise.userId !== userId) {
+    const exercise = await db.exercise.findFirst({
+      where: { id: data.exerciseId, userId },
+    });
+    if (!exercise) {
       throw new ApiError(404, 'Exercise not found.');
     }
 
