@@ -2143,3 +2143,109 @@ this is the one control it cannot give itself); optionally install the CodeRabbi
 #309 and #310; merge #311-#313 after the fixups the verdicts list. Still carried: #317 (unremovable
 ownership checks, auth surface), #300-#304 (the rest of the "make it pop" ideas) and the demo-media
 re-shoot, now the oldest debt in the repo.
+
+
+## 2026-08-28 - the vetting pipeline's first real workout: #311/#312/#313 merged after five fixup rounds, the ownership ratchet extended (#327), and one review the loop got wrong
+
+**What ran.** A second wave on the same operator directive as the 2026-08-27 entry above, which
+covers the policy itself (#315), the first adopted external report (#318), the ownership work
+(#322), the GHCR workflow (#321) and the first vetting pass on SHAREN's three fork PRs. This entry
+is only what happened after those verdicts were posted: five contributor fixup rounds across three
+PRs, a re-review after every one of them, three external merges, one dev tick of the loop's own
+(#327), and the follow-ups. Triage and ideate did not run.
+
+**The first time the policy ran end to end on live external code - and the parts that earned their
+keep were the boring ones.** SHA pinning is the clearest case. On #312 the checks summary read 6/6
+green, and the check runs belonged to the PREVIOUS head; the loop resolved check runs against the
+current head SHA through the API before merging, and only that step separates "CI is green" from
+"CI is green on the code I am about to merge". SHAREN pushed three times on #312 and twice on #313
+during review. Each push invalidated the pinned verdict, and each one triggered a re-review rather
+than a merge on stale green. Five pushes, five re-reviews, zero merges on a verdict that had gone
+out of date.
+
+**Composition risk was real, not theoretical.** #313's branch predated #312's last two commits and
+also touched `app/api/backup/route.ts`, the same file the #312 fixups had just reworked. Git will
+auto-merge that cleanly, and a clean auto-merge is not proof that the newer work survives: the
+conflict-free case is exactly the one nobody reads. So the loop test-merged locally before
+approving - a merge and a diff read, never an execution, which keeps it inside the L18 execution
+gate - and confirmed that #312's export pre-count, the test that pins it and the per-gym cap all
+came through intact. The same check ran again when merging `main` into #327, where #312 had
+independently added three entries to the same `COVERED_ELSEWHERE` map the ratchet edits; both
+sides preserved.
+
+**What the contributor did well, recorded because the policy's premise depends on it.** The bet
+behind #315 is that the loop does all the labor and a human clicks merge, which only pays if the
+labor produces fixes rather than churn. Every one of SHAREN's four rounds on #312 returned the fix
+WITH a test rather than the fix alone: the capacity race got a genuine transaction-scoped Postgres
+advisory lock (not a snapshot-racy count inside a transaction, which is the fix that looks right
+and is not), the migration was rewritten as real `prisma migrate dev` output with the
+`IF NOT EXISTS` guards and the unqualified `pg_constraint` probe gone, and import amplification
+dropped from roughly 200,000 serial round trips to roughly 200, with validation hoisted ahead of
+the purge so a bad import cannot destroy data before failing. On the last push SHAREN preemptively
+closed a gap the loop had identified but not yet raised - both export size guards shared one
+message, so the new test could not tell which of them had fired - by spying on the heavy query to
+prove it never runs. That is a better answer than the message differentiation the reviewer was
+going to ask for, because it pins the mechanism instead of a proxy for it. The loop verified the
+assertion was not vacuous before accepting it (that query sits on the normal export path and pulls
+the image blobs, so a test asserting it never runs would fail if the short-circuit were removed).
+
+**One review the loop got wrong, and the advisory lens that got it right.** The 08-27 review of
+#313 called `Set_gymEquipmentId_completedAt_idx` reader-less, and SHAREN removed the index on that
+basis. That was wrong. The FK is `ON DELETE SET NULL` with `relationMode` unset, so Postgres itself
+has to locate the referencing `Set` rows on every equipment deletion - a single delete, a gym
+delete cascading, and backup restore, which cascades across every equipment row the user owns - and
+Postgres does not index the referencing side of a foreign key. The CodeRabbit lens, which the
+policy carries as advisory only and never as a merge signal, had the mechanism right where the
+loop's own review had it wrong; the loop verified the schema independently before conceding, then
+filed **#325** with the provenance written into the issue rather than quietly re-adding the index.
+CodeRabbit also supplied the sharper form of the export finding the loop had missed: bound the
+bytes BEFORE loading them, not refuse after serializing. First real evidence that the third-party
+lens earns its slot - and the sharper lesson underneath it is that "no reader in application code"
+is the wrong question when a database-level referential action is the reader (**L20**).
+
+**One trust moment, handled without heat.** On #312 round two the contributor's comment said the
+export budget fix had shipped "with regression coverage". It had not: `backup-route.test.ts` was
+untouched by that fixup range, and every 413 test on the branch was an import/body-read test, not
+an export test. The loop verified that independently before saying anything and then said it
+plainly - the fixes themselves were trustworthy, which is exactly why the claims attached to them
+had to be too, since a review that accepts a coverage claim at face value has silently stopped
+being a review. The next round shipped the test.
+
+**The loop's own PR (#327, closing #323).** It finishes the residuals the independent review left
+on #322: the ownership ratchet now matches any `[param]` segment rather than the literal `[id]`,
+and body-addressed routes - which no path glob can ever see, because only a human can tell that a
+payload field is somebody's resource id - are enumerated explicitly with a staleness test that
+fails when a listed route leaves the tree. The last three fetch-then-compare validation reads
+(`sets/parse`, session start, goal creation) became scoped reads. Independent review then found the
+PR's own new artifact incomplete on delivery: `POST /api/gyms` accepts `exerciseConfigs[].exerciseId`
+and was missing from the enumeration, with no cross-user coverage - which is precisely the failure
+mode the ratchet exists to prevent, arriving in the ratchet itself. Fixed with a cross-user case.
+Both new tests were spot-checked by deliberately removing the scope and confirming that exactly the
+right test failed. After merging `main`, the reviewer re-implemented the ratchet's logic
+independently and ran it against the merged tree: 23 parameterized routes plus 5 body-addressed
+entries, 0 unmatched, and SHAREN's two new id vectors (equipment `exerciseId`s, set
+`gymEquipmentId`) confirmed to sit on already-matched parameterized routes.
+
+**Green gate, and one process note worth a line.** All four merges green (local gate for #327, CI
+for all of them). The external PRs still got no local gate before merge, deliberately, per the
+execution gate. #321's first publish ran post-merge and was verified rather than assumed: the
+package is public, an anonymous manifest pull returns 200, and the tags are `latest` plus two
+`sha-` tags. The process note: a full-gate run on #327 after merging `main` came back red with the
+entire ownership suite failing, which looks exactly like the change breaking everything it touches.
+It was a stale local test database missing the two new migrations; unit tests were 999/999 green at
+the same moment, which is the tell. Diagnosed before anything was touched, `prisma migrate deploy`
+fixed it. Recorded because "read what the failure actually says before re-planning" is the repo's
+own anti-feedback-blindness rule, and a red that arrives right after a merge is the moment it is
+easiest to skip.
+
+**One metric.** Accepted-change rate this wave: 4 merged / 0 abandoned (#311, #312, #313 external;
+#327 the loop's own), plus this docs PR. No reverts. 5 contributor fixup rounds across 3 PRs, every
+one re-reviewed against a freshly pinned SHA. 4 follow-up issues filed (#324, #325, #326, plus #323
+which this wave closed). 1 defect found by independent review in the loop's own PR, in the very
+artifact that PR added. Implementing-tick token spend: not recorded separately (the dev tick #327
+ran on Fable per the model-routing directive; all reviews and this write-up ran on Opus).
+
+**Deferred.** #324 (return-to-training follow-ups from the #311 review), #325 (the FK index), #326
+(tell the user when an equipment selection was not recorded), #320 (browsable exercise library),
+#300-#304 (the rest of the "make it pop" ideas), and the demo-media re-shoot, still the oldest debt
+in the repo and now further behind: the session logger grew an equipment picker this wave.

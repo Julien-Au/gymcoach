@@ -9,6 +9,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Physical gym equipment inventory: each saved gym can now hold the concrete
+  stations and items you actually train on (name, type, description,
+  manufacturer, model, quantity, item-specific weight options), linked to the
+  exercises they serve and optionally illustrated with an uploaded JPEG, PNG or
+  WebP image or an external HTTPS image URL. Linked exercises feed the existing
+  equipment-aware load selection, uploads are signature-checked and capped, and
+  every read and write is scoped to the owner. The backup export/import
+  round-trips equipment, images and exercise links (v4). The inventory is
+  managed through owner-scoped API endpoints for now; its first UI surface is
+  the equipment picker in the logger below. Community contribution by @SHAREN
+  (#312).
+- Equipment on your logged sets: while logging, you can pick the specific
+  machine or item you used, and the set stores a server-derived snapshot of its
+  name and load options so history stays readable after the inventory is
+  renamed or deleted. The selection survives offline logging, the IndexedDB
+  queue and sync, and is treated as optional metadata - a stale, unlinked or
+  foreign reference is dropped rather than losing the set. Backups move to v5 to
+  carry it, and restore stays backward compatible with earlier versions.
+  Community contribution by @SHAREN (#313).
+- Return-to-training calibration: after a long layoff, the first session back
+  starts easier. When an exercise (or its primary muscle group) has been unused
+  for long enough, that session alone gets fewer working sets, a higher target
+  RIR and a conservative first load derived from long-term history, respecting
+  the saved gym's loadable options and never exceeding the return-session
+  ceiling. Later sets hand back to the normal intra-set autoregulation, the
+  saved program is not rewritten, and you can always log what you actually did.
+  Community contribution by @SHAREN (#311).
+- Prebuilt production Docker image: every push to `main` publishes
+  `ghcr.io/julien-au/gymcoach` (`latest` plus an immutable `sha-<short>` tag,
+  linux/amd64) from the same Dockerfile the PR smoke test already validates, so
+  self-hosting no longer requires a local build. `docker-compose.prod.yml` still
+  builds from source by default, so existing setups are unchanged; the README
+  documents the pull. Requested by @mvnixon (#310).
 - Muscle heat map on the progress page: front and back body silhouettes whose
   regions are tinted by the latest completed week's working sets per muscle
   group, compared against that muscle's MEV/MRV band (a personal volume target
@@ -386,6 +419,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- Made API route ownership checks structural instead of deletable. Routes that
+  address someone's data now read it through a scoped query that cannot return
+  another user's row, rather than fetching first and comparing the owner
+  afterwards, so the check cannot be removed one line at a time without the
+  read itself failing. A CI-enforced ratchet keeps it that way: every route with
+  a `[param]` segment, plus an enumerated list of routes that take a resource id
+  in the request body, must have a cross-user test that asserts the side effect
+  did not happen, and the enumeration fails the suite when it goes stale. Owners
+  see no behavior change; a stranger gets a 404 with nothing created, sent or
+  posted.
 - Hardened the MCP endpoint: setting `MCP_ALLOWED_ORIGINS` and/or
   `MCP_ALLOWED_HOSTS` turns on DNS-rebinding protection and makes CORS echo
   only allowlisted origins (with `Vary: Origin` on both the allow and the deny
