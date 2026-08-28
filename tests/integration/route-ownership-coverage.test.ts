@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
 // Ratchet for issues #317 and #323: every API route that addresses a resource
@@ -39,6 +39,7 @@ const BODY_ADDRESSED_ROUTES: string[] = [
   'app/api/goals/route.ts', // exerciseId
   'app/api/sets/parse/route.ts', // exerciseId
   'app/api/coach/chat/route.ts', // conversationId
+  'app/api/gyms/route.ts', // exerciseConfigs[].exerciseId
 ];
 
 function findParameterizedRoutes(dir: string): string[] {
@@ -91,10 +92,12 @@ describe('ownership-test coverage ratchet (issues #317, #323)', () => {
 
   it('lists only body-addressed routes that exist', () => {
     for (const routePath of BODY_ADDRESSED_ROUTES) {
+      // existsSync, not readFileSync: a missing file must produce this
+      // message rather than a raw ENOENT.
       expect(
-        readFileSync(join(ROOT, routePath), 'utf8').length,
+        existsSync(join(ROOT, routePath)),
         `${routePath} is listed as body-addressed but is missing; the list is stale.`,
-      ).toBeGreaterThan(0);
+      ).toBe(true);
     }
   });
 });

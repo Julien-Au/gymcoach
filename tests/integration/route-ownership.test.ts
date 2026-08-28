@@ -37,6 +37,7 @@ import { POST as activateGym } from '@/app/api/gyms/[id]/activate/route';
 import { POST as startSession } from '@/app/api/sessions/route';
 import { POST as parseSet } from '@/app/api/sets/parse/route';
 import { POST as postChat } from '@/app/api/coach/chat/route';
+import { POST as createGym } from '@/app/api/gyms/route';
 import { DELETE as deleteMcpToken } from '@/app/api/mcp-tokens/[id]/route';
 import { PUT as putGym, DELETE as deleteGym } from '@/app/api/gyms/[id]/route';
 import { POST as postCoachApply } from '@/app/api/coach/[id]/apply/route';
@@ -451,6 +452,19 @@ describe('route ownership: body-addressed resource ids', () => {
     // reaches the LLM layer.
     const res = await parseSet(jsonReq('POST', { exerciseId: exercise.id, text: '100x8' }));
     expect(res.status).toBe(404);
+  });
+
+  it("rejects a gym configured against someone else's exercise, and creates nothing", async () => {
+    const { b, exercise } = await seed();
+    actAs(b.id);
+    const res = await createGym(
+      jsonReq('POST', {
+        name: 'Borrowed config',
+        exerciseConfigs: [{ exerciseId: exercise.id, isAvailable: true, weightOptions: [20] }],
+      }),
+    );
+    expect(res.status).toBe(400);
+    expect(await db.gym.count({ where: { userId: b.id } })).toBe(0);
   });
 
   it("returns 404 when a stranger posts into someone else's conversation", async () => {

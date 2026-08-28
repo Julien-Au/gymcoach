@@ -32,7 +32,6 @@ export async function POST(req: Request) {
 
     const workout = await db.workout.findFirst({
       where: { id: workoutId, program: { userId } },
-      include: { program: { select: { id: true } } },
     });
     if (!workout) {
       throw new ApiError(404, 'Session not found.');
@@ -64,7 +63,7 @@ export async function POST(req: Request) {
       data: {
         userId,
         workoutId,
-        programId: workout.program.id,
+        programId: workout.programId,
         gymId: selectedGymId,
       },
     });
