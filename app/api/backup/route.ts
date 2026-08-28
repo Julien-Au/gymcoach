@@ -67,11 +67,23 @@ const VERSION = 4;
 // Content-Length header is attacker-controlled). Generous: a decade of daily
 // training exports to a few MB.
 const MAX_BACKUP_BYTES = 50 * 1024 * 1024;
+const BACKUP_TOO_LARGE_MESSAGE =
+  'This backup is larger than the maximum restorable backup size. Reduce uploaded gym equipment images and try again.';
 
 // GET /api/backup: returns an exportable JSON.
 export async function GET() {
   try {
     const userId = await requireApiUserId();
+
+    const [imageBudget] = await db.$queryRaw<Array<{ encodedBytes: bigint }>>`
+      SELECT COALESCE(SUM(4 * CEIL(OCTET_LENGTH(e."imageData")::numeric / 3)), 0)::bigint AS "encodedBytes"
+      FROM "GymEquipment" e
+      INNER JOIN "Gym" g ON g.id = e."gymId"
+      WHERE g."userId" = ${userId} AND e."imageData" IS NOT NULL
+    `;
+    if ((imageBudget?.encodedBytes ?? 0n) >= BigInt(MAX_BACKUP_BYTES)) {
+      throw new ApiError(413, BACKUP_TOO_LARGE_MESSAGE);
+    }
 
     const [
       user,
@@ -301,10 +313,7 @@ export async function GET() {
     const filename = `gymcoach-backup-${new Date().toISOString().slice(0, 10)}.json`;
     const serialized = JSON.stringify(dump, null, 2);
     if (Buffer.byteLength(serialized, 'utf8') > MAX_BACKUP_BYTES) {
-      throw new ApiError(
-        413,
-        'This backup is larger than the maximum restorable backup size. Reduce uploaded gym equipment images and try again.',
-      );
+      throw new ApiError(413, BACKUP_TOO_LARGE_MESSAGE);
     }
     return new NextResponse(serialized, {
       headers: {

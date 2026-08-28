@@ -375,6 +375,35 @@ describe('GET /api/backup - export completeness (issue #168)', () => {
     expect(dump.conversations).toHaveLength(1);
     expect(dump.conversations[0].messages).toHaveLength(2);
   });
+
+  it('rejects image-heavy exports before materializing an unrestorable backup', async () => {
+    const user = await db.user.create({
+      data: { email: 'export-budget@test.dev', passwordHash: 'x' },
+    });
+    const gym = await db.gym.create({
+      data: { userId: user.id, name: 'Image-heavy gym' },
+    });
+    const maxImage = new Uint8Array(5 * 1024 * 1024);
+    maxImage.set(EQUIPMENT_PNG);
+    await db.gymEquipment.createMany({
+      data: Array.from({ length: 8 }, (_, index) => ({
+        gymId: gym.id,
+        name: 'Image station ' + index,
+        equipmentType: 'MACHINE' as const,
+        imageData: maxImage,
+        imageMimeType: 'image/png',
+      })),
+    });
+    actAs(user.id);
+
+    const response = await getBackup();
+
+    expect(response.status).toBe(413);
+    expect(await response.json()).toEqual({
+      error:
+        'This backup is larger than the maximum restorable backup size. Reduce uploaded gym equipment images and try again.',
+    });
+  });
 });
 
 describe('POST /api/backup - restore round trip (issue #168)', () => {
