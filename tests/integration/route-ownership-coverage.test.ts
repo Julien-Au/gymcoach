@@ -35,8 +35,12 @@ const COVERED_ELSEWHERE: Record<string, string> = {
   'app/api/goals/route.ts': 'tests/integration/goals-route.test.ts',
 };
 
-// Routes that take a resource id in the request body. Add an entry when a new
-// route accepts someone's id in its payload; the ratchet cannot infer these.
+// Routes that take a resource id in the request body AND are not already
+// matched by the parameterized glob above - listing a parameterized route
+// here would only duplicate an it.each name. So a body-addressed route on a
+// `[param]` path (gyms/[id]/equipment, sessions/[id]/sets) belongs above, not
+// here. Add an entry when a new NON-parameterized route accepts someone's id
+// in its payload; the ratchet cannot infer these.
 const BODY_ADDRESSED_ROUTES: string[] = [
   'app/api/sessions/route.ts', // workoutId
   'app/api/goals/route.ts', // exerciseId
