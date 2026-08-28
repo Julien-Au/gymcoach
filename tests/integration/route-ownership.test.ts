@@ -34,6 +34,9 @@ import { POST as addWorkout } from '@/app/api/programs/[id]/workouts/route';
 import { POST as addProgramExercise } from '@/app/api/workouts/[id]/program-exercises/route';
 import { POST as addSet } from '@/app/api/sessions/[id]/sets/route';
 import { POST as activateGym } from '@/app/api/gyms/[id]/activate/route';
+import { POST as startSession } from '@/app/api/sessions/route';
+import { POST as parseSet } from '@/app/api/sets/parse/route';
+import { POST as postChat } from '@/app/api/coach/chat/route';
 import { DELETE as deleteMcpToken } from '@/app/api/mcp-tokens/[id]/route';
 import { PUT as putGym, DELETE as deleteGym } from '@/app/api/gyms/[id]/route';
 import { POST as postCoachApply } from '@/app/api/coach/[id]/apply/route';
@@ -426,6 +429,39 @@ describe('route ownership: nested creation and activation routes', () => {
     const res = await activateGym(new Request('http://t/api', { method: 'POST' }), idParams(gym.id));
     expect(res.status).toBe(404);
     expect((await db.user.findUnique({ where: { id: b.id } }))?.activeGymId).toBeNull();
+  });
+});
+
+// Routes that take someone's resource id in the request BODY rather than the
+// path (issue #323). A path-based glob cannot see these, so they are pinned
+// here and enumerated in route-ownership-coverage.test.ts.
+describe('route ownership: body-addressed resource ids', () => {
+  it("returns 404 when a stranger starts a session on someone else's workout", async () => {
+    const { b, workout } = await seed();
+    actAs(b.id);
+    const res = await startSession(jsonReq('POST', { workoutId: workout.id }));
+    expect(res.status).toBe(404);
+    expect(await db.session.count({ where: { userId: b.id } })).toBe(0);
+  });
+
+  it("returns 404 when a stranger parses a set against someone else's exercise", async () => {
+    const { b, exercise } = await seed();
+    actAs(b.id);
+    // The ownership check runs before any provider call, so this never
+    // reaches the LLM layer.
+    const res = await parseSet(jsonReq('POST', { exerciseId: exercise.id, text: '100x8' }));
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 404 when a stranger posts into someone else's conversation", async () => {
+    const { b, conversation } = await seed();
+    actAs(b.id);
+    const res = await postChat(
+      jsonReq('POST', { conversationId: conversation.id, message: 'let me in' }),
+    );
+    expect(res.status).toBe(404);
+    // The foreign conversation gained no message.
+    expect(await db.message.count({ where: { conversationId: conversation.id } })).toBe(1);
   });
 });
 

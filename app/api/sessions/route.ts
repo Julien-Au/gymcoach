@@ -30,11 +30,11 @@ export async function POST(req: Request) {
     const userId = await requireApiUserId();
     const { workoutId, gymId } = await parseJsonBody(req, sessionStartSchema);
 
-    const workout = await db.workout.findUnique({
-      where: { id: workoutId },
-      include: { program: { select: { userId: true, id: true } } },
+    const workout = await db.workout.findFirst({
+      where: { id: workoutId, program: { userId } },
+      include: { program: { select: { id: true } } },
     });
-    if (!workout || workout.program.userId !== userId) {
+    if (!workout) {
       throw new ApiError(404, 'Session not found.');
     }
 

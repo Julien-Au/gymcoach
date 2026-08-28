@@ -36,13 +36,13 @@ export async function POST(req: Request) {
     // Ownership check: only parse against an exercise the user owns, and read
     // its category to tell the model which shape to return.
     const [exercise, user] = await Promise.all([
-      db.exercise.findUnique({
-        where: { id: exerciseId },
-        select: { name: true, category: true, userId: true },
+      db.exercise.findFirst({
+        where: { id: exerciseId, userId },
+        select: { name: true, category: true },
       }),
       db.user.findUnique({ where: { id: userId }, select: { unit: true } }),
     ]);
-    if (!exercise || exercise.userId !== userId) {
+    if (!exercise) {
       throw new ApiError(404, 'Exercise not found.');
     }
 
