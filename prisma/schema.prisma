@@ -122,26 +122,27 @@ model Message {
 }
 
 model Exercise {
-  id               String              @id @default(cuid())
-  userId           String
-  user             User                @relation(fields: [userId], references: [id])
-  name             String
-  muscleGroup      MuscleGroup
-  category         ExerciseCategory
-  defaultRestSec   Int                 @default(90)
-  notes            String?
+  id                String                 @id @default(cuid())
+  userId            String
+  user              User                   @relation(fields: [userId], references: [id])
+  name              String
+  muscleGroup       MuscleGroup
+  category          ExerciseCategory
+  defaultRestSec    Int                    @default(90)
+  notes             String?
   // For bodyweight exercises (pull-ups, dips, push-ups...): the effective
   // tonnage includes User.bodyweight. Set.weight remains the added load (0 by
   // default, always >= 0 - the input schemas clamp it; negative loads for
   // assistance machines are deliberately not supported, see issue #118).
-  usesBodyweight   Boolean             @default(false)
+  usesBodyweight    Boolean                @default(false)
   // Determines which saved-gym inventory constrains suggested loads.
-  equipmentType    EquipmentType       @default(OTHER)
-  createdAt        DateTime            @default(now())
-  programExercises ProgramExercise[]
-  sets             Set[]
-  goals            ExerciseGoal[]
-  gymConfigs       GymExerciseConfig[]
+  equipmentType     EquipmentType          @default(OTHER)
+  createdAt         DateTime               @default(now())
+  programExercises  ProgramExercise[]
+  sets              Set[]
+  goals             ExerciseGoal[]
+  gymConfigs        GymExerciseConfig[]
+  gymEquipmentLinks GymEquipmentExercise[]
 
   @@unique([userId, name])
 }
@@ -280,6 +281,7 @@ model Gym {
   activeForUsers  User[]              @relation("ActiveGym")
   sessions        Session[]
   exerciseConfigs GymExerciseConfig[]
+  equipment       GymEquipment[]
 
   @@unique([userId, name])
   @@index([userId, updatedAt])
@@ -300,39 +302,76 @@ model GymExerciseConfig {
   @@index([exerciseId])
 }
 
-model Set {
-  id          String   @id @default(cuid())
-  sessionId   String
-  session     Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+model GymEquipment {
+  id            String                 @id @default(cuid())
+  gymId         String
+  gym           Gym                    @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  name          String
+  equipmentType EquipmentType
+  description   String?
+  manufacturer  String?
+  modelName     String?
+  quantity      Int                    @default(1)
+  weightOptions Float[]                @default([])
+  imageUrl      String?
+  imageData     Bytes?
+  imageMimeType String?
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+  exerciseLinks GymEquipmentExercise[]
+  performedSets Set[]
+
+  @@unique([gymId, name])
+  @@index([gymId, equipmentType])
+}
+
+model GymEquipmentExercise {
+  equipmentId String
+  equipment   GymEquipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
   exerciseId  String
-  exercise    Exercise @relation(fields: [exerciseId], references: [id])
-  setNumber   Int
-  weight      Float
-  reps        Int
-  rir         Int?
+  exercise    Exercise     @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+
+  @@id([equipmentId, exerciseId])
+  @@index([exerciseId])
+}
+
+model Set {
+  id                             String        @id @default(cuid())
+  sessionId                      String
+  session                        Session       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  exerciseId                     String
+  exercise                       Exercise      @relation(fields: [exerciseId], references: [id])
+  gymEquipmentId                 String?
+  gymEquipment                   GymEquipment? @relation(fields: [gymEquipmentId], references: [id], onDelete: SetNull)
+  equipmentNameSnapshot          String?
+  equipmentLoadSnapshot          Json?
+  setNumber                      Int
+  weight                         Float
+  reps                           Int
+  rir                            Int?
   // Cardio sets (issue #133, additive): duration in seconds (>= 1 when set)
   // and optional distance in meters. NULL on strength sets - existing rows
   // are untouched and lifting flows never write these.
-  durationSec Int?
-  distanceM   Float?
+  durationSec                    Int?
+  distanceM                      Float?
   // Average heart rate in bpm (issue #152, additive): the extra signal a TCX
   // file import carries over manual logging. 40..250 when present (enforced
   // by every writer), NULL on strength sets and on cardio logged without it.
-  avgHr       Int?
+  avgHr                          Int?
   // Maximum (peak) heart rate in bpm (issue #203, additive): the companion HR
   // metric watches record, carried in the same TCX exports. 40..250 when
   // present (enforced by every writer), NULL on strength sets and on cardio
   // logged without it.
-  maxHr       Int?
+  maxHr                          Int?
   // Downsampled pace/HR track of an imported cardio activity (issue #254,
   // additive): a JSON array of up to a few hundred points
   // [{ t, d?, hr? }] where t = seconds from the start, d = cumulative meters,
   // hr = bpm. NULL on strength sets and on cardio logged without a track.
-  track       Json?
-  notes       String?
-  isWarmup    Boolean  @default(false)
-  isDropSet   Boolean  @default(false)
-  completedAt DateTime @default(now())
+  track                          Json?
+  notes                          String?
+  isWarmup                       Boolean       @default(false)
+  isDropSet                      Boolean       @default(false)
+  completedAt                    DateTime      @default(now())
 
   @@index([exerciseId, completedAt])
 }

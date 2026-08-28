@@ -102,6 +102,8 @@ export const session = {
     quickEntryExample: 'например: 100x8@9 ({unit} x повторы @ RPE)',
     quickEntryError:
       'Формат: вес x повторы, при необходимости @ RPE, например 100x8 или 62.5x8@8.5',
+    equipment: 'Тренажёр / оборудование',
+    equipmentNone: 'Без конкретного тренажёра',
     load: 'Вес ({unit})',
     reps: 'Повторы',
     repsInReserve: 'RIR (повторов в запасе)',

@@ -98,6 +98,8 @@ export const session = {
     quickEntry: 'Quick entry',
     quickEntryExample: 'e.g. 100x8@9 ({unit} x reps @ RPE)',
     quickEntryError: 'Expected format: weight x reps, optionally @ RPE - e.g. 100x8 or 62.5x8@8.5',
+    equipment: 'Machine / equipment',
+    equipmentNone: 'No specific machine',
     load: 'Load ({unit})',
     reps: 'Reps',
     repsInReserve: 'RIR (reps in reserve)',

@@ -10,6 +10,8 @@ import { getCurrentUserId } from '@/lib/auth';
 // Auth is read through getCurrentUserId (via requireApiUserId in @/lib/api).
 vi.mock('@/lib/auth', () => ({ getCurrentUserId: vi.fn() }));
 const mockUserId = vi.mocked(getCurrentUserId);
+const EQUIPMENT_PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+const EQUIPMENT_PNG_BASE64 = 'iVBORw0KGgo=';
 
 import { GET as getBackup, POST as postBackup } from '@/app/api/backup/route';
 
@@ -106,6 +108,21 @@ async function seedFullUser(email: string) {
     },
   });
   await db.user.update({ where: { id: user.id }, data: { activeGymId: gym.id } });
+  const equipment = await db.gymEquipment.create({
+    data: {
+      gymId: gym.id,
+      name: 'Competition bench station',
+      equipmentType: 'BARBELL',
+      description: 'Flat bench with uprights and safety arms.',
+      manufacturer: 'GymCo',
+      modelName: 'Bench Pro',
+      quantity: 2,
+      weightOptions: [20, 40, 60, 80, 100],
+      imageData: EQUIPMENT_PNG,
+      imageMimeType: 'image/png',
+      exerciseLinks: { create: { exerciseId: bench.id } },
+    },
+  });
   const program = await db.program.create({
     data: {
       userId: user.id,
@@ -162,6 +179,15 @@ async function seedFullUser(email: string) {
         create: [
           {
             exerciseId: bench.id,
+            gymEquipmentId: equipment.id,
+            equipmentNameSnapshot: 'Competition bench station',
+            equipmentLoadSnapshot: {
+              version: 1,
+              equipmentType: 'BARBELL',
+              manufacturer: 'GymCo',
+              modelName: 'Bench Pro',
+              weightOptions: [20, 40, 60, 80, 100],
+            },
             setNumber: 1,
             weight: 100,
             reps: 5,
@@ -265,6 +291,10 @@ async function countsFor(userId: string) {
     messages: await db.message.count({ where: { conversation: { userId } } }),
     gyms: await db.gym.count({ where: { userId } }),
     gymConfigs: await db.gymExerciseConfig.count({ where: { gym: { userId } } }),
+    gymEquipment: await db.gymEquipment.count({ where: { gym: { userId } } }),
+    gymEquipmentLinks: await db.gymEquipmentExercise.count({
+      where: { equipment: { gym: { userId } } },
+    }),
   };
 }
 
@@ -273,7 +303,7 @@ beforeEach(() => {
 });
 
 describe('GET /api/backup - export completeness (issue #168)', () => {
-  it('exports version 3 with saved gyms and all earlier backup fields', async () => {
+  it('exports version 5 with set equipment history and all earlier backup fields', async () => {
     const user = await seedFullUser('a@test.dev');
     actAs(user.id);
 
@@ -281,7 +311,7 @@ describe('GET /api/backup - export completeness (issue #168)', () => {
     expect(res.status).toBe(200);
     const dump = await res.json();
 
-    expect(dump.version).toBe(3);
+    expect(dump.version).toBe(5);
     expect(dump.profile).toMatchObject({
       displayName: 'Julien',
       bodyweight: 82.5,
@@ -303,12 +333,39 @@ describe('GET /api/backup - export completeness (issue #168)', () => {
         dumbbellWeights: [10, 12, 14, 16, 19],
         plateWeights: [1.25, 2.5, 5, 10, 20],
         barWeights: [20],
+        equipment: [
+          {
+            name: 'Competition bench station',
+            equipmentType: 'BARBELL',
+            description: 'Flat bench with uprights and safety arms.',
+            manufacturer: 'GymCo',
+            modelName: 'Bench Pro',
+            quantity: 2,
+            weightOptions: [20, 40, 60, 80, 100],
+            imageUrl: null,
+            imageMimeType: 'image/png',
+            imageBase64: EQUIPMENT_PNG_BASE64,
+            exerciseNames: ['Bench Press'],
+          },
+        ],
         exerciseConfigs: [{ exerciseName: 'Running', isAvailable: false, weightOptions: [] }],
       },
     ]);
     expect(dump.sessions[0].gymName).toBe('Basement');
 
     const sets = dump.sessions[0].sets as Array<Record<string, unknown>>;
+    const benchSet = sets.find((s) => s.exerciseName === 'Bench Press');
+    expect(benchSet).toMatchObject({
+      gymEquipmentName: 'Competition bench station',
+      equipmentNameSnapshot: 'Competition bench station',
+      equipmentLoadSnapshot: {
+        version: 1,
+        equipmentType: 'BARBELL',
+        manufacturer: 'GymCo',
+        modelName: 'Bench Pro',
+        weightOptions: [20, 40, 60, 80, 100],
+      },
+    });
     const cardio = sets.find((s) => s.exerciseName === 'Running');
     expect(cardio).toMatchObject({ durationSec: 1800, distanceM: 5000, avgHr: 152, maxHr: 181 });
 
@@ -339,6 +396,38 @@ describe('GET /api/backup - export completeness (issue #168)', () => {
     expect(dump.conversations).toHaveLength(1);
     expect(dump.conversations[0].messages).toHaveLength(2);
   });
+
+  it('rejects image-heavy exports before materializing an unrestorable backup', async () => {
+    const user = await db.user.create({
+      data: { email: 'export-budget@test.dev', passwordHash: 'x' },
+    });
+    const gym = await db.gym.create({
+      data: { userId: user.id, name: 'Image-heavy gym' },
+    });
+    const maxImage = new Uint8Array(5 * 1024 * 1024);
+    maxImage.set(EQUIPMENT_PNG);
+    await db.gymEquipment.createMany({
+      data: Array.from({ length: 8 }, (_, index) => ({
+        gymId: gym.id,
+        name: 'Image station ' + index,
+        equipmentType: 'MACHINE' as const,
+        imageData: maxImage,
+        imageMimeType: 'image/png',
+      })),
+    });
+    actAs(user.id);
+    const materializeGyms = vi.spyOn(db.gym, 'findMany');
+
+    const response = await getBackup();
+
+    expect(response.status).toBe(413);
+    expect(materializeGyms).not.toHaveBeenCalled();
+    materializeGyms.mockRestore();
+    expect(await response.json()).toEqual({
+      error:
+        'This backup is larger than the maximum restorable backup size. Reduce uploaded gym equipment images and try again.',
+    });
+  });
 });
 
 describe('POST /api/backup - restore round trip (issue #168)', () => {
@@ -363,6 +452,22 @@ describe('POST /api/backup - restore round trip (issue #168)', () => {
     // Ownership-scoped: user A's data is untouched, user B owns a full copy.
     expect(await countsFor(userA.id)).toEqual(countsA);
     expect(await countsFor(userB.id)).toEqual(countsA);
+
+    // JSON null convention is preserved by restore: a set with no equipment
+    // snapshot stores JSON null, not SQL NULL, matching the normal set writer.
+    const [restoredNullState] = await db.$queryRaw<
+      Array<{ isDbNull: boolean; isJsonNull: boolean }>
+    >`
+      SELECT
+        s."equipmentLoadSnapshot" IS NULL AS "isDbNull",
+        s."equipmentLoadSnapshot" = 'null'::jsonb AS "isJsonNull"
+      FROM "Set" s
+      JOIN "Session" sess ON sess."id" = s."sessionId"
+      JOIN "Exercise" e ON e."id" = s."exerciseId"
+      WHERE sess."userId" = ${userB.id} AND e."name" = 'Running'
+      LIMIT 1
+    `;
+    expect(restoredNullState).toEqual({ isDbNull: false, isJsonNull: true });
 
     // The goal was re-linked to user B's own copy of the exercise.
     const goalB = await db.exerciseGoal.findFirst({

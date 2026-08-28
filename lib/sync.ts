@@ -50,22 +50,33 @@ async function doFlush(): Promise<FlushResult> {
     await db.pendingSets.update(item.localId, { status: 'syncing' });
 
     try {
-      const res = await fetch(`/api/sessions/${item.sessionId}/sets`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          exerciseId: item.exerciseId,
-          setNumber: item.setNumber,
-          weight: item.weight,
-          reps: item.reps,
-          rir: item.rir,
-          durationSec: item.durationSec ?? null,
-          distanceM: item.distanceM ?? null,
-          notes: item.notes,
-          isWarmup: item.isWarmup,
-          isDropSet: item.isDropSet,
-        }),
-      });
+      const payload = {
+        exerciseId: item.exerciseId,
+        gymEquipmentId: item.gymEquipmentId ?? null,
+        setNumber: item.setNumber,
+        weight: item.weight,
+        reps: item.reps,
+        rir: item.rir,
+        durationSec: item.durationSec ?? null,
+        distanceM: item.distanceM ?? null,
+        notes: item.notes,
+        isWarmup: item.isWarmup,
+        isDropSet: item.isDropSet,
+      };
+      const post = (gymEquipmentId: string | null) =>
+        fetch(`/api/sessions/${item.sessionId}/sets`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...payload, gymEquipmentId }),
+        });
+
+      let res = await post(payload.gymEquipmentId);
+      // Equipment is optional metadata. If a server version rejects a stale
+      // reference with 400, retry once without it so the actual queued set is
+      // never stranded by an inventory decoration.
+      if (res.status === 400 && payload.gymEquipmentId) {
+        res = await post(null);
+      }
 
       if (!res.ok) {
         const data = (await res.json().catch(() => null)) as { error?: string } | null;
@@ -107,7 +118,10 @@ async function doFlush(): Promise<FlushResult> {
 
 // Helper: adds a set to the queue (status pending) and triggers a flush.
 export async function queueSet(
-  set: Omit<PendingSet, 'createdAt' | 'status' | 'serverId' | 'syncedAt' | 'attempts' | 'lastError'>,
+  set: Omit<
+    PendingSet,
+    'createdAt' | 'status' | 'serverId' | 'syncedAt' | 'attempts' | 'lastError'
+  >,
 ): Promise<PendingSet> {
   const db = getDB();
   const record: PendingSet = {

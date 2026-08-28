@@ -65,6 +65,11 @@ export interface SerializedLastPerformance {
 }
 
 type ProgramExerciseWithExercise = ProgramExercise & { exercise: Exercise };
+type SessionGymEquipment = {
+  id: string;
+  name: string;
+  exerciseLinks: { exerciseId: string }[];
+};
 
 type SessionRunnerProps = {
   session: Session & {
@@ -75,7 +80,7 @@ type SessionRunnerProps = {
         })
       | null;
     sets: PrismaSet[];
-    gym: (Gym & { exerciseConfigs: GymExerciseConfig[] }) | null;
+    gym: (Gym & { exerciseConfigs: GymExerciseConfig[]; equipment: SessionGymEquipment[] }) | null;
   };
   lastPerformances: Record<string, SerializedLastPerformance>;
   returnRecommendations: Record<string, ReturnRecommendation>;
@@ -286,6 +291,7 @@ export function SessionRunner({
     isWarmup: boolean;
     isDropSet: boolean;
     notes: string | null;
+    gymEquipmentId?: string | null;
   }) {
     if (!currentPE || !currentTarget) return;
     const existing = setsByExercise.get(currentPE.exerciseId) ?? [];
@@ -297,6 +303,7 @@ export function SessionRunner({
       localId: generateLocalId(),
       sessionId: session.id,
       exerciseId: currentPE.exerciseId,
+      gymEquipmentId: values.gymEquipmentId ?? null,
       setNumber,
       weight: values.weight,
       reps: values.reps,
@@ -527,6 +534,9 @@ export function SessionRunner({
             recommendation={currentRecommendation}
             returnRecommendation={currentReturnRecommendation}
             loadConstraints={loadConstraintsFor(currentTarget)}
+            equipmentOptions={(session.gym?.equipment ?? []).filter((item) =>
+              item.exerciseLinks.some((link) => link.exerciseId === currentPE.exerciseId),
+            )}
             onSubmit={handleValidate}
           />
         ) : (
