@@ -181,6 +181,28 @@ describe('gym equipment REST API', () => {
     expect(await response.json()).toEqual({ error: 'Invalid gym id.' });
   });
 
+  it('rejects invalid equipment route ids before ownership operations', async () => {
+    const { user } = await seedUser('invalid-equipment-route-id');
+    mockUserId.mockResolvedValue(user.id);
+
+    const updateResponse = await updateEquipment(
+      request('http://test.local/api/gym-equipment/%20', 'PUT', {
+        name: 'Ignored station',
+        equipmentType: 'MACHINE',
+      }),
+      params('   '),
+    );
+    expect(updateResponse.status).toBe(400);
+    expect(await updateResponse.json()).toEqual({ error: 'Invalid equipment id.' });
+
+    const deleteResponse = await deleteEquipment(
+      request('http://test.local/api/gym-equipment/%20', 'DELETE'),
+      params('   '),
+    );
+    expect(deleteResponse.status).toBe(400);
+    expect(await deleteResponse.json()).toEqual({ error: 'Invalid equipment id.' });
+  });
+
   it('enforces the per-gym equipment cap atomically across concurrent creates', async () => {
     const { user, gym } = await seedUser('capacity-race');
     mockUserId.mockResolvedValue(user.id);
