@@ -3,7 +3,7 @@ import { EquipmentType } from '@/lib/prisma-client';
 import { GYM_EQUIPMENT_IMAGE_MIME_TYPES } from '@/lib/gym-equipment';
 import { gymWeightListSchema } from '@/lib/schemas/gym';
 
-const databaseIdSchema = z.string().trim().min(1).max(191);
+export const databaseIdSchema = z.string().trim().min(1).max(191);
 
 export const gymEquipmentUpsertSchema = z.object({
   equipmentId: databaseIdSchema.optional(),

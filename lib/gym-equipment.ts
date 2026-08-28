@@ -108,15 +108,6 @@ export async function upsertOwnedGymEquipment(
       });
   if (input.equipmentId && !current) throw new ApiError(404, 'Gym equipment not found.');
   const created = current == null;
-  if (created) {
-    const equipmentCount = await db.gymEquipment.count({ where: { gymId } });
-    if (equipmentCount >= MAX_GYM_EQUIPMENT_PER_GYM) {
-      throw new ApiError(
-        400,
-        'A gym can contain at most ' + MAX_GYM_EQUIPMENT_PER_GYM + ' physical equipment items.',
-      );
-    }
-  }
 
   const exerciseIds =
     requestedExerciseIds ?? current?.exerciseLinks.map((link) => link.exerciseId) ?? [];
@@ -136,6 +127,19 @@ export async function upsertOwnedGymEquipment(
   const effectiveWeightOptions = input.weightOptions ?? current?.weightOptions ?? [];
 
   const item = await db.$transaction(async (tx) => {
+    if (created) {
+      // Serialize creations per gym so concurrent requests cannot both observe
+      // the same pre-limit count and exceed MAX_GYM_EQUIPMENT_PER_GYM.
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${gymId}))`;
+      const equipmentCount = await tx.gymEquipment.count({ where: { gymId } });
+      if (equipmentCount >= MAX_GYM_EQUIPMENT_PER_GYM) {
+        throw new ApiError(
+          400,
+          'A gym can contain at most ' + MAX_GYM_EQUIPMENT_PER_GYM + ' physical equipment items.',
+        );
+      }
+    }
+
     const saved = current
       ? await tx.gymEquipment.update({
           where: { id: current.id },
