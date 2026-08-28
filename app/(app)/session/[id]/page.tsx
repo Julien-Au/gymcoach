@@ -6,6 +6,7 @@ import { READINESS_RECENCY_HOURS, type ReadinessSignal } from '@/lib/progression
 import { isDeloadActive } from '@/lib/deload';
 import { getReturnToTrainingRecommendations } from '@/lib/return-to-training-history';
 import { SessionRunner, type SerializedLastPerformance } from '@/components/session/session-runner';
+import { liveSessionGymInclude } from '@/lib/session-gym-selection';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -28,7 +29,7 @@ export default async function SessionRunPage(props: Props) {
         },
       },
       sets: { orderBy: [{ exerciseId: 'asc' }, { setNumber: 'asc' }] },
-      gym: { include: { exerciseConfigs: true, equipment: { include: { exerciseLinks: true } } } },
+      gym: { include: liveSessionGymInclude },
     },
   });
 

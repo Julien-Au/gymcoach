@@ -251,9 +251,6 @@ export async function GET() {
           exerciseName: exercises.find((e) => e.id === set.exerciseId)?.name ?? null,
           gymEquipmentName: set.gymEquipment?.name ?? null,
           equipmentNameSnapshot: set.equipmentNameSnapshot,
-          selectedLoadKg: set.selectedLoadKg,
-          selectedLoadMultiplierSnapshot: set.selectedLoadMultiplierSnapshot,
-          nominalResistanceKg: set.nominalResistanceKg,
           equipmentLoadSnapshot: set.equipmentLoadSnapshot,
           setNumber: set.setNumber,
           weight: set.weight,
@@ -437,9 +434,6 @@ const importSchema = z.object({
               exerciseName: z.string().max(120).nullable(),
               gymEquipmentName: z.string().max(120).nullable().optional(),
               equipmentNameSnapshot: z.string().max(120).nullable().optional(),
-              selectedLoadKg: z.number().min(0).max(5000).nullable().optional(),
-              selectedLoadMultiplierSnapshot: z.number().positive().max(100).nullable().optional(),
-              nominalResistanceKg: z.number().min(0).max(50_000).nullable().optional(),
               equipmentLoadSnapshot: z.record(z.string(), z.unknown()).nullable().optional(),
               setNumber: z.number().int().min(1).max(1000),
               weight: z.number().min(0).max(5000),
@@ -611,7 +605,7 @@ export async function POST(req: Request) {
     const preparedEquipmentByGymName = new Map<
       string,
       Array<{
-        item: NonNullable<NonNullable<(typeof payload.gyms)>[number]['equipment']>[number];
+        item: NonNullable<NonNullable<typeof payload.gyms>[number]['equipment']>[number];
         decoded: ReturnType<typeof decodeGymEquipmentImage> | null;
       }>
     >();
@@ -856,12 +850,9 @@ export async function POST(req: Request) {
                       ) ?? null)
                     : null,
                 equipmentNameSnapshot: set.equipmentNameSnapshot ?? null,
-                selectedLoadKg: set.selectedLoadKg ?? null,
-                selectedLoadMultiplierSnapshot: set.selectedLoadMultiplierSnapshot ?? null,
-                nominalResistanceKg: set.nominalResistanceKg ?? null,
                 equipmentLoadSnapshot:
                   set.equipmentLoadSnapshot == null
-                    ? Prisma.DbNull
+                    ? Prisma.JsonNull
                     : (set.equipmentLoadSnapshot as Prisma.InputJsonValue),
                 setNumber: set.setNumber,
                 weight: set.weight,

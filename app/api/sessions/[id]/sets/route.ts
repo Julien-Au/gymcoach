@@ -52,7 +52,6 @@ export async function POST(req: Request, props: Params) {
         sessionGymId: session.gymId,
         exerciseId: data.exerciseId,
         gymEquipmentId: data.gymEquipmentId,
-        selectedLoadKg: canonicalWeight,
       });
       return tx.set.create({
         data: {
@@ -96,11 +95,7 @@ export async function POST(req: Request, props: Params) {
 // (deterministic - the same instant the goal-creation path would derive).
 // Comparison runs on the effective load (bodyweight + added load for
 // bodyweight exercises), consistent with lib/stats.
-async function stampGoalIfAchieved(
-  userId: string,
-  exercise: Exercise,
-  set: Set,
-): Promise<void> {
+async function stampGoalIfAchieved(userId: string, exercise: Exercise, set: Set): Promise<void> {
   if (set.isWarmup) return;
   const goal = await db.exerciseGoal.findUnique({
     where: { userId_exerciseId: { userId, exerciseId: exercise.id } },

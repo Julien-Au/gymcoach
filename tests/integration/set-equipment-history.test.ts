@@ -91,9 +91,6 @@ describe('set equipment history', () => {
     expect(created).toMatchObject({
       gymEquipmentId: equipment.id,
       equipmentNameSnapshot: 'Cable station original',
-      selectedLoadKg: 20,
-      selectedLoadMultiplierSnapshot: null,
-      nominalResistanceKg: null,
       equipmentLoadSnapshot: {
         version: 1,
         equipmentType: 'CABLE',
@@ -103,7 +100,10 @@ describe('set equipment history', () => {
       },
     });
 
-    await db.gymEquipment.update({ where: { id: equipment.id }, data: { name: 'Renamed station' } });
+    await db.gymEquipment.update({
+      where: { id: equipment.id },
+      data: { name: 'Renamed station' },
+    });
     const afterRename = await db.set.findUniqueOrThrow({ where: { id: created.id } });
     expect(afterRename.gymEquipmentId).toBe(equipment.id);
     expect(afterRename.equipmentNameSnapshot).toBe('Cable station original');
@@ -112,7 +112,6 @@ describe('set equipment history', () => {
     const afterDelete = await db.set.findUniqueOrThrow({ where: { id: created.id } });
     expect(afterDelete.gymEquipmentId).toBeNull();
     expect(afterDelete.equipmentNameSnapshot).toBe('Cable station original');
-    expect(afterDelete.selectedLoadKg).toBe(20);
     expect(afterDelete.equipmentLoadSnapshot).toMatchObject({
       version: 1,
       equipmentType: 'CABLE',
@@ -121,8 +120,8 @@ describe('set equipment history', () => {
     });
   });
 
-  it('rejects equipment outside the frozen session gym or not linked to the exercise', async () => {
-    const { user, exercise, wrongGymEquipment, unlinked, session } = await seed();
+  it('drops stale optional equipment references and still records the training sets', async () => {
+    const { user, exercise, equipment, wrongGymEquipment, unlinked, session } = await seed();
     mockUserId.mockResolvedValue(user.id);
 
     const wrongGym = await createSet(
@@ -135,24 +134,62 @@ describe('set equipment history', () => {
       }),
       params(session.id),
     );
-    expect(wrongGym.status).toBe(400);
-    expect(await wrongGym.json()).toEqual({
-      error: 'Equipment must belong to the gym frozen on this session.',
+    expect(wrongGym.status).toBe(201);
+    const wrongGymSet = await wrongGym.json();
+    expect(wrongGymSet).toMatchObject({
+      gymEquipmentId: null,
+      equipmentNameSnapshot: null,
+      weight: 20,
+      reps: 10,
     });
+    const [nullState] = await db.$queryRaw<Array<{ isDbNull: boolean; isJsonNull: boolean }>>`
+      SELECT
+        "equipmentLoadSnapshot" IS NULL AS "isDbNull",
+        "equipmentLoadSnapshot" = 'null'::jsonb AS "isJsonNull"
+      FROM "Set"
+      WHERE "id" = ${wrongGymSet.id}
+    `;
+    expect(nullState).toEqual({ isDbNull: false, isJsonNull: true });
 
     const notLinked = await createSet(
       request(session.id, {
         exerciseId: exercise.id,
         gymEquipmentId: unlinked.id,
-        setNumber: 1,
+        setNumber: 2,
         weight: 10,
         reps: 10,
       }),
       params(session.id),
     );
-    expect(notLinked.status).toBe(400);
-    expect(await notLinked.json()).toEqual({ error: 'Equipment is not available for this exercise.' });
+    expect(notLinked.status).toBe(201);
+    expect(await notLinked.json()).toMatchObject({
+      gymEquipmentId: null,
+      equipmentNameSnapshot: null,
+      weight: 10,
+      reps: 10,
+    });
 
-    expect(await db.set.count({ where: { sessionId: session.id } })).toBe(0);
+    await db.gymEquipment.delete({ where: { id: equipment.id } });
+    const deleted = await createSet(
+      request(session.id, {
+        exerciseId: exercise.id,
+        gymEquipmentId: equipment.id,
+        setNumber: 3,
+        weight: 15,
+        reps: 12,
+        rir: 1,
+      }),
+      params(session.id),
+    );
+    expect(deleted.status).toBe(201);
+    expect(await deleted.json()).toMatchObject({
+      gymEquipmentId: null,
+      equipmentNameSnapshot: null,
+      weight: 15,
+      reps: 12,
+      rir: 1,
+    });
+
+    expect(await db.set.count({ where: { sessionId: session.id } })).toBe(3);
   });
 });

@@ -181,9 +181,6 @@ async function seedFullUser(email: string) {
             exerciseId: bench.id,
             gymEquipmentId: equipment.id,
             equipmentNameSnapshot: 'Competition bench station',
-            selectedLoadKg: 100,
-            selectedLoadMultiplierSnapshot: null,
-            nominalResistanceKg: null,
             equipmentLoadSnapshot: {
               version: 1,
               equipmentType: 'BARBELL',
@@ -361,9 +358,6 @@ describe('GET /api/backup - export completeness (issue #168)', () => {
     expect(benchSet).toMatchObject({
       gymEquipmentName: 'Competition bench station',
       equipmentNameSnapshot: 'Competition bench station',
-      selectedLoadKg: 100,
-      selectedLoadMultiplierSnapshot: null,
-      nominalResistanceKg: null,
       equipmentLoadSnapshot: {
         version: 1,
         equipmentType: 'BARBELL',
@@ -426,6 +420,22 @@ describe('POST /api/backup - restore round trip (issue #168)', () => {
     // Ownership-scoped: user A's data is untouched, user B owns a full copy.
     expect(await countsFor(userA.id)).toEqual(countsA);
     expect(await countsFor(userB.id)).toEqual(countsA);
+
+    // JSON null convention is preserved by restore: a set with no equipment
+    // snapshot stores JSON null, not SQL NULL, matching the normal set writer.
+    const [restoredNullState] = await db.$queryRaw<
+      Array<{ isDbNull: boolean; isJsonNull: boolean }>
+    >`
+      SELECT
+        s."equipmentLoadSnapshot" IS NULL AS "isDbNull",
+        s."equipmentLoadSnapshot" = 'null'::jsonb AS "isJsonNull"
+      FROM "Set" s
+      JOIN "Session" sess ON sess."id" = s."sessionId"
+      JOIN "Exercise" e ON e."id" = s."exerciseId"
+      WHERE sess."userId" = ${userB.id} AND e."name" = 'Running'
+      LIMIT 1
+    `;
+    expect(restoredNullState).toEqual({ isDbNull: false, isJsonNull: true });
 
     // The goal was re-linked to user B's own copy of the exercise.
     const goalB = await db.exerciseGoal.findFirst({

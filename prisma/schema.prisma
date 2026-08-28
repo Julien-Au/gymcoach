@@ -344,9 +344,6 @@ model Set {
   gymEquipmentId                 String?
   gymEquipment                   GymEquipment? @relation(fields: [gymEquipmentId], references: [id], onDelete: SetNull)
   equipmentNameSnapshot          String?
-  selectedLoadKg                 Float?
-  selectedLoadMultiplierSnapshot Float?
-  nominalResistanceKg            Float?
   equipmentLoadSnapshot          Json?
   setNumber                      Int
   weight                         Float
@@ -377,7 +374,6 @@ model Set {
   completedAt                    DateTime      @default(now())
 
   @@index([exerciseId, completedAt])
-  @@index([gymEquipmentId, completedAt])
 }
 
 // Per-exercise target goal (issue #90): a concrete "weight x reps" the user

@@ -1,4 +1,3 @@
-import { ApiError } from '@/lib/api';
 import { Prisma } from '@/prisma/generated/client';
 
 type EquipmentReader = Pick<Prisma.TransactionClient, 'gymEquipment'>;
@@ -6,9 +5,6 @@ type EquipmentReader = Pick<Prisma.TransactionClient, 'gymEquipment'>;
 export interface SetEquipmentSnapshot {
   gymEquipmentId: string | null;
   equipmentNameSnapshot: string | null;
-  selectedLoadKg: number | null;
-  selectedLoadMultiplierSnapshot: number | null;
-  nominalResistanceKg: number | null;
   equipmentLoadSnapshot: Prisma.InputJsonValue | typeof Prisma.JsonNull;
 }
 
@@ -19,7 +15,6 @@ export async function resolveSetEquipmentSnapshot(
     sessionGymId: string | null;
     exerciseId: string;
     gymEquipmentId?: string | null;
-    selectedLoadKg: number;
   },
 ): Promise<SetEquipmentSnapshot> {
   if (!input.gymEquipmentId) return emptySetEquipmentSnapshot();
@@ -40,14 +35,13 @@ export async function resolveSetEquipmentSnapshot(
       weightOptions: true,
     },
   });
-  if (!equipment) {
-    throw new ApiError(400, 'Equipment is not available for this exercise.');
-  }
-  if (!input.sessionGymId || equipment.gymId !== input.sessionGymId) {
-    throw new ApiError(400, 'Equipment must belong to the gym frozen on this session.');
+  // Equipment is optional decoration on a training set. A stale/deleted,
+  // unlinked, foreign, or wrong-gym reference must never make the actual
+  // weight/reps/RIR fail to record. Drop the reference and preserve the set.
+  if (!equipment || !input.sessionGymId || equipment.gymId !== input.sessionGymId) {
+    return emptySetEquipmentSnapshot();
   }
 
-  const selectedLoadKg = round(input.selectedLoadKg);
   const snapshot = {
     version: 1,
     equipmentType: equipment.equipmentType,
@@ -59,9 +53,6 @@ export async function resolveSetEquipmentSnapshot(
   return {
     gymEquipmentId: equipment.id,
     equipmentNameSnapshot: equipment.name,
-    selectedLoadKg,
-    selectedLoadMultiplierSnapshot: null,
-    nominalResistanceKg: null,
     equipmentLoadSnapshot: snapshot,
   };
 }
@@ -70,13 +61,6 @@ export function emptySetEquipmentSnapshot(): SetEquipmentSnapshot {
   return {
     gymEquipmentId: null,
     equipmentNameSnapshot: null,
-    selectedLoadKg: null,
-    selectedLoadMultiplierSnapshot: null,
-    nominalResistanceKg: null,
     equipmentLoadSnapshot: Prisma.JsonNull,
   };
-}
-
-function round(value: number): number {
-  return Math.round(value * 100) / 100;
 }
