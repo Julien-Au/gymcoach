@@ -395,10 +395,13 @@ describe('GET /api/backup - export completeness (issue #168)', () => {
       })),
     });
     actAs(user.id);
+    const materializeGyms = vi.spyOn(db.gym, 'findMany');
 
     const response = await getBackup();
 
     expect(response.status).toBe(413);
+    expect(materializeGyms).not.toHaveBeenCalled();
+    materializeGyms.mockRestore();
     expect(await response.json()).toEqual({
       error:
         'This backup is larger than the maximum restorable backup size. Reduce uploaded gym equipment images and try again.',
