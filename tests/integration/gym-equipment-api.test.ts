@@ -166,11 +166,61 @@ describe('gym equipment REST API', () => {
     expect(foreignLinkResponse.status).toBe(400);
     expect(await db.gymEquipment.count({ where: { gymId: owner.gym.id } })).toBe(0);
 
+    const privateEquipment = await db.gymEquipment.create({
+      data: {
+        gymId: owner.gym.id,
+        name: 'Owner-only station',
+        equipmentType: 'MACHINE',
+        imageData: PNG,
+        imageMimeType: 'image/png',
+      },
+    });
+
     mockUserId.mockResolvedValue(other.user.id);
     const foreignGymResponse = await listEquipment(
       request(`http://test.local/api/gyms/${owner.gym.id}/equipment`),
       params(owner.gym.id),
     );
     expect(foreignGymResponse.status).toBe(404);
+
+    const foreignUpdateResponse = await updateEquipment(
+      request(`http://test.local/api/gym-equipment/${privateEquipment.id}`, 'PUT', {
+        name: 'Hacked station',
+        equipmentType: 'MACHINE',
+      }),
+      params(privateEquipment.id),
+    );
+    expect(foreignUpdateResponse.status).toBe(404);
+
+    const foreignDeleteResponse = await deleteEquipment(
+      request(`http://test.local/api/gym-equipment/${privateEquipment.id}`, 'DELETE'),
+      params(privateEquipment.id),
+    );
+    expect(foreignDeleteResponse.status).toBe(404);
+
+    const foreignGetImageResponse = await getImage(
+      request(`http://test.local/api/gym-equipment/${privateEquipment.id}/image`),
+      params(privateEquipment.id),
+    );
+    expect(foreignGetImageResponse.status).toBe(404);
+
+    const foreignSetImageResponse = await setImage(
+      request(`http://test.local/api/gym-equipment/${privateEquipment.id}/image`, 'PUT', {
+        clear: true,
+      }),
+      params(privateEquipment.id),
+    );
+    expect(foreignSetImageResponse.status).toBe(404);
+
+    const foreignDeleteImageResponse = await deleteImage(
+      request(`http://test.local/api/gym-equipment/${privateEquipment.id}/image`, 'DELETE'),
+      params(privateEquipment.id),
+    );
+    expect(foreignDeleteImageResponse.status).toBe(404);
+
+    const preserved = await db.gymEquipment.findUnique({ where: { id: privateEquipment.id } });
+    expect(preserved?.name).toBe('Owner-only station');
+    expect(preserved?.imageMimeType).toBe('image/png');
+    expect(preserved?.imageData?.byteLength).toBe(PNG.byteLength);
   });
 });
