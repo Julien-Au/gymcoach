@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import {
@@ -22,6 +23,11 @@ import {
 import { MAX_SUPERSET_GROUP, MIN_SUPERSET_GROUP } from '@/lib/supersets';
 import { sorenessSchema } from '@/lib/schemas/readiness';
 import { gymWeightListSchema } from '@/lib/schemas/gym';
+import {
+  GYM_EQUIPMENT_IMAGE_MIME_TYPES,
+  MAX_GYM_EQUIPMENT_PER_GYM,
+  decodeGymEquipmentImage,
+} from '@/lib/gym-equipment';
 
 // ============================================================
 // Backup / Import JSON (LOT 11, completed by issue #168)
@@ -43,6 +49,8 @@ import { gymWeightListSchema } from '@/lib/schemas/gym';
 //   usesBodyweight.
 // - Program / Workout / ProgramExercise: all user content incl supersetGroup.
 // - Session / Set: all user content incl durationSec, distanceM, avgHr.
+// - Saved Gym profiles plus physical GymEquipment, equipment-to-exercise links,
+//   and uploaded/external equipment images.
 // - CoachSession, ExerciseGoal, BodyweightEntry, ReadinessCheckin,
 //   Conversation / Message: all user content.
 //
@@ -53,17 +61,29 @@ import { gymWeightListSchema } from '@/lib/schemas/gym';
 // - Program.createdAt / Program.updatedAt and Exercise.createdAt (server-side
 //   bookkeeping with no user-facing meaning; reset to the import time).
 
-const VERSION = 3;
+const VERSION = 4;
 
 // Hard cap on the import body size, enforced while reading the stream (the
 // Content-Length header is attacker-controlled). Generous: a decade of daily
 // training exports to a few MB.
 const MAX_BACKUP_BYTES = 50 * 1024 * 1024;
+const BACKUP_TOO_LARGE_MESSAGE =
+  'This backup is larger than the maximum restorable backup size. Reduce uploaded gym equipment images and try again.';
 
 // GET /api/backup: returns an exportable JSON.
 export async function GET() {
   try {
     const userId = await requireApiUserId();
+
+    const [imageBudget] = await db.$queryRaw<Array<{ encodedBytes: bigint }>>`
+      SELECT COALESCE(SUM(4 * CEIL(OCTET_LENGTH(e."imageData")::numeric / 3)), 0)::bigint AS "encodedBytes"
+      FROM "GymEquipment" e
+      INNER JOIN "Gym" g ON g.id = e."gymId"
+      WHERE g."userId" = ${userId} AND e."imageData" IS NOT NULL
+    `;
+    if ((imageBudget?.encodedBytes ?? 0n) >= BigInt(MAX_BACKUP_BYTES)) {
+      throw new ApiError(413, BACKUP_TOO_LARGE_MESSAGE);
+    }
 
     const [
       user,
@@ -139,6 +159,10 @@ export async function GET() {
         where: { userId },
         orderBy: { createdAt: 'asc' },
         include: {
+          equipment: {
+            orderBy: { name: 'asc' },
+            include: { exerciseLinks: { include: { exercise: { select: { name: true } } } } },
+          },
           exerciseConfigs: { include: { exercise: { select: { name: true } } } },
         },
       }),
@@ -176,6 +200,19 @@ export async function GET() {
         dumbbellWeights: gym.dumbbellWeights,
         plateWeights: gym.plateWeights,
         barWeights: gym.barWeights,
+        equipment: gym.equipment.map((item) => ({
+          name: item.name,
+          equipmentType: item.equipmentType,
+          description: item.description,
+          manufacturer: item.manufacturer,
+          modelName: item.modelName,
+          quantity: item.quantity,
+          weightOptions: item.weightOptions,
+          imageUrl: item.imageUrl,
+          imageMimeType: item.imageMimeType,
+          imageBase64: item.imageData ? Buffer.from(item.imageData).toString('base64') : null,
+          exerciseNames: item.exerciseLinks.map((link) => link.exercise.name),
+        })),
         exerciseConfigs: gym.exerciseConfigs.map((config) => ({
           exerciseName: config.exercise.name,
           isAvailable: config.isAvailable,
@@ -274,7 +311,11 @@ export async function GET() {
     };
 
     const filename = `gymcoach-backup-${new Date().toISOString().slice(0, 10)}.json`;
-    return new NextResponse(JSON.stringify(dump, null, 2), {
+    const serialized = JSON.stringify(dump, null, 2);
+    if (Buffer.byteLength(serialized, 'utf8') > MAX_BACKUP_BYTES) {
+      throw new ApiError(413, BACKUP_TOO_LARGE_MESSAGE);
+    }
+    return new NextResponse(serialized, {
       headers: {
         'Content-Type': 'application/json; charset=utf-8',
         'Content-Disposition': `attachment; filename="${filename}"`,
@@ -448,6 +489,32 @@ const importSchema = z.object({
         dumbbellWeights: gymWeightListSchema,
         plateWeights: gymWeightListSchema,
         barWeights: gymWeightListSchema,
+        equipment: z
+          .array(
+            z.object({
+              name: z.string().trim().min(1).max(120),
+              equipmentType: z.nativeEnum(EquipmentType),
+              description: z.string().max(4000).nullable().optional(),
+              manufacturer: z.string().max(120).nullable().optional(),
+              modelName: z.string().max(120).nullable().optional(),
+              quantity: z.number().int().min(1).max(100),
+              weightOptions: gymWeightListSchema,
+              imageUrl: z
+                .string()
+                .url()
+                .max(2048)
+                .nullable()
+                .optional()
+                .refine((value) => value == null || value.startsWith('https://'), {
+                  message: 'Equipment image URL must use HTTPS.',
+                }),
+              imageMimeType: z.enum(GYM_EQUIPMENT_IMAGE_MIME_TYPES).nullable().optional(),
+              imageBase64: z.string().max(7_100_000).nullable().optional(),
+              exerciseNames: z.array(z.string().max(120)).max(100),
+            }),
+          )
+          .max(MAX_GYM_EQUIPMENT_PER_GYM)
+          .optional(),
         exerciseConfigs: z
           .array(
             z.object({
@@ -531,6 +598,35 @@ export async function POST(req: Request) {
     const { payload } = await parseJsonBody(req, importBodySchema, {
       maxBytes: MAX_BACKUP_BYTES,
     });
+
+    // Validate and decode equipment images before taking purge locks so a
+    // malformed or hand-edited backup fails before any replacement work starts.
+    const preparedEquipmentByGymName = new Map<
+      string,
+      Array<{
+        item: NonNullable<NonNullable<(typeof payload.gyms)>[number]['equipment']>[number];
+        decoded: ReturnType<typeof decodeGymEquipmentImage> | null;
+      }>
+    >();
+    const seenGymNames = new Set<string>();
+    for (const gym of payload.gyms ?? []) {
+      if (seenGymNames.has(gym.name)) continue;
+      seenGymNames.add(gym.name);
+      const seenEquipmentNames = new Set<string>();
+      const prepared = [] as NonNullable<ReturnType<typeof preparedEquipmentByGymName.get>>;
+      for (const item of gym.equipment ?? []) {
+        const equipmentNameKey = item.name.toLocaleLowerCase('en-US');
+        if (seenEquipmentNames.has(equipmentNameKey)) {
+          throw new ApiError(400, `Duplicate gym equipment name in backup: ${item.name}`);
+        }
+        seenEquipmentNames.add(equipmentNameKey);
+        const decoded = item.imageBase64
+          ? decodeGymEquipmentImage(item.imageBase64, item.imageMimeType ?? undefined)
+          : null;
+        prepared.push({ item, decoded });
+      }
+      preparedEquipmentByGymName.set(gym.name, prepared);
+    }
 
     await db.$transaction(
       async (tx) => {
@@ -619,6 +715,42 @@ export async function POST(req: Request) {
               exerciseConfigs: { createMany: { data: configs } },
             },
           });
+          const preparedEquipment = preparedEquipmentByGymName.get(gym.name) ?? [];
+          const createdEquipment =
+            preparedEquipment.length > 0
+              ? await tx.gymEquipment.createManyAndReturn({
+                  data: preparedEquipment.map(({ item, decoded }) => ({
+                    gymId: created.id,
+                    name: item.name,
+                    equipmentType: item.equipmentType,
+                    description: item.description ?? null,
+                    manufacturer: item.manufacturer ?? null,
+                    modelName: item.modelName ?? null,
+                    quantity: item.quantity,
+                    weightOptions: item.weightOptions,
+                    imageUrl: decoded ? null : (item.imageUrl ?? null),
+                    imageData: decoded?.bytes,
+                    imageMimeType: decoded?.mimeType ?? null,
+                  })),
+                  select: { id: true, name: true },
+                })
+              : [];
+          const equipmentIdByName = new Map(createdEquipment.map((item) => [item.name, item.id]));
+          const equipmentExerciseLinks = preparedEquipment.flatMap(({ item }) => {
+            const equipmentId = equipmentIdByName.get(item.name);
+            if (!equipmentId) return [];
+            return [
+              ...new Set(
+                item.exerciseNames.flatMap((name) => {
+                  const exerciseId = exerciseIdByName.get(name);
+                  return exerciseId ? [exerciseId] : [];
+                }),
+              ),
+            ].map((exerciseId) => ({ equipmentId, exerciseId }));
+          });
+          if (equipmentExerciseLinks.length > 0) {
+            await tx.gymEquipmentExercise.createMany({ data: equipmentExerciseLinks });
+          }
           gymIdByName.set(gym.name, created.id);
         }
         const activeGymId = payload.profile?.activeGymName

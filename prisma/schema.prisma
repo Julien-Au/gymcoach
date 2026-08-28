@@ -122,26 +122,27 @@ model Message {
 }
 
 model Exercise {
-  id               String              @id @default(cuid())
-  userId           String
-  user             User                @relation(fields: [userId], references: [id])
-  name             String
-  muscleGroup      MuscleGroup
-  category         ExerciseCategory
-  defaultRestSec   Int                 @default(90)
-  notes            String?
+  id                String                 @id @default(cuid())
+  userId            String
+  user              User                   @relation(fields: [userId], references: [id])
+  name              String
+  muscleGroup       MuscleGroup
+  category          ExerciseCategory
+  defaultRestSec    Int                    @default(90)
+  notes             String?
   // For bodyweight exercises (pull-ups, dips, push-ups...): the effective
   // tonnage includes User.bodyweight. Set.weight remains the added load (0 by
   // default, always >= 0 - the input schemas clamp it; negative loads for
   // assistance machines are deliberately not supported, see issue #118).
-  usesBodyweight   Boolean             @default(false)
+  usesBodyweight    Boolean                @default(false)
   // Determines which saved-gym inventory constrains suggested loads.
-  equipmentType    EquipmentType       @default(OTHER)
-  createdAt        DateTime            @default(now())
-  programExercises ProgramExercise[]
-  sets             Set[]
-  goals            ExerciseGoal[]
-  gymConfigs       GymExerciseConfig[]
+  equipmentType     EquipmentType          @default(OTHER)
+  createdAt         DateTime               @default(now())
+  programExercises  ProgramExercise[]
+  sets              Set[]
+  goals             ExerciseGoal[]
+  gymConfigs        GymExerciseConfig[]
+  gymEquipmentLinks GymEquipmentExercise[]
 
   @@unique([userId, name])
 }
@@ -280,6 +281,7 @@ model Gym {
   activeForUsers  User[]              @relation("ActiveGym")
   sessions        Session[]
   exerciseConfigs GymExerciseConfig[]
+  equipment       GymEquipment[]
 
   @@unique([userId, name])
   @@index([userId, updatedAt])
@@ -297,6 +299,38 @@ model GymExerciseConfig {
   weightOptions Float[]  @default([])
 
   @@unique([gymId, exerciseId])
+  @@index([exerciseId])
+}
+
+model GymEquipment {
+  id            String                 @id @default(cuid())
+  gymId         String
+  gym           Gym                    @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  name          String
+  equipmentType EquipmentType
+  description   String?
+  manufacturer  String?
+  modelName     String?
+  quantity      Int                    @default(1)
+  weightOptions Float[]                @default([])
+  imageUrl      String?
+  imageData     Bytes?
+  imageMimeType String?
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+  exerciseLinks GymEquipmentExercise[]
+
+  @@unique([gymId, name])
+  @@index([gymId, equipmentType])
+}
+
+model GymEquipmentExercise {
+  equipmentId String
+  equipment   GymEquipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  exerciseId  String
+  exercise    Exercise     @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+
+  @@id([equipmentId, exerciseId])
   @@index([exerciseId])
 }
 
