@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { gymEquipmentImageSchema, gymEquipmentUpsertSchema } from './gym-equipment';
 
 describe('gym equipment schemas', () => {
-  it('normalizes a complete equipment input', () => {
+  it('normalizes a complete equipment input without inventing omitted update fields', () => {
     const parsed = gymEquipmentUpsertSchema.parse({
       name: '  Cable station  ',
       equipmentType: 'CABLE',
@@ -16,8 +16,17 @@ describe('gym equipment schemas', () => {
       quantity: 2,
       weightOptions: [10, 20],
       exerciseIds: ['exercise-1'],
-      markExercisesAvailable: true,
     });
+    expect(parsed.markExercisesAvailable).toBeUndefined();
+
+    const minimal = gymEquipmentUpsertSchema.parse({
+      name: 'Cable station',
+      equipmentType: 'CABLE',
+    });
+    expect(minimal.quantity).toBeUndefined();
+    expect(minimal.weightOptions).toBeUndefined();
+    expect(minimal.exerciseIds).toBeUndefined();
+    expect(minimal.markExercisesAvailable).toBeUndefined();
   });
 
   it('requires exactly one safe equipment image source', () => {

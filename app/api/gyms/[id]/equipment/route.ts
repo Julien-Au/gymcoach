@@ -23,7 +23,7 @@ export async function POST(req: Request, props: Params) {
     const { id } = await props.params;
     const input = await parseJsonBody(req, gymEquipmentUpsertSchema);
     const saved = await upsertOwnedGymEquipment(userId, id, input);
-    return NextResponse.json(saved, { status: 201 });
+    return NextResponse.json(saved, { status: saved.created ? 201 : 200 });
   } catch (err) {
     return handleApiError(err);
   }

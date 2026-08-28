@@ -6,6 +6,7 @@ import type { EquipmentType } from '@/lib/prisma-client';
 export const GYM_EQUIPMENT_IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
 export type GymEquipmentImageMimeType = (typeof GYM_EQUIPMENT_IMAGE_MIME_TYPES)[number];
 export const MAX_GYM_EQUIPMENT_IMAGE_BYTES = 5 * 1024 * 1024;
+export const MAX_GYM_EQUIPMENT_PER_GYM = 1000;
 
 export interface UpsertGymEquipmentInput {
   equipmentId?: string;
@@ -109,6 +110,16 @@ export async function upsertOwnedGymEquipment(
         },
       });
   if (input.equipmentId && !current) throw new ApiError(404, 'Gym equipment not found.');
+  const created = current == null;
+  if (created) {
+    const equipmentCount = await db.gymEquipment.count({ where: { gymId } });
+    if (equipmentCount >= MAX_GYM_EQUIPMENT_PER_GYM) {
+      throw new ApiError(
+        400,
+        'A gym can contain at most ' + MAX_GYM_EQUIPMENT_PER_GYM + ' physical equipment items.',
+      );
+    }
+  }
 
   const exerciseIds =
     requestedExerciseIds ?? current?.exerciseLinks.map((link) => link.exerciseId) ?? [];
@@ -208,7 +219,7 @@ export async function upsertOwnedGymEquipment(
       exerciseEquipmentType: exercise.equipmentType,
     }));
 
-  return { equipment: saved, mismatchedExercises };
+  return { equipment: saved, mismatchedExercises, created };
 }
 
 export async function deleteOwnedGymEquipment(userId: string, equipmentId: string) {
@@ -258,14 +269,15 @@ export async function setOwnedGymEquipmentImage(
     throw new ApiError(400, 'Choose exactly one image action: clear, imageUrl, or imageBase64.');
   }
 
+  const decoded = input.imageBase64
+    ? decodeGymEquipmentImage(input.imageBase64, input.mimeType)
+    : null;
+
   const data = input.clear
     ? { imageUrl: null, imageData: null, imageMimeType: null }
     : input.imageUrl
       ? { imageUrl: input.imageUrl, imageData: null, imageMimeType: null }
-      : (() => {
-          const decoded = decodeGymEquipmentImage(input.imageBase64!, input.mimeType);
-          return { imageUrl: null, imageData: decoded.bytes, imageMimeType: decoded.mimeType };
-        })();
+      : { imageUrl: null, imageData: decoded!.bytes, imageMimeType: decoded!.mimeType };
 
   return db.gymEquipment.update({
     where: { id: equipment.id },

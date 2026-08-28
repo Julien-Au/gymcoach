@@ -11,10 +11,10 @@ export const gymEquipmentUpsertSchema = z.object({
   description: z.string().trim().max(4000).nullable().optional(),
   manufacturer: z.string().trim().max(120).nullable().optional(),
   modelName: z.string().trim().max(120).nullable().optional(),
-  quantity: z.number().int().min(1).max(100).default(1),
-  weightOptions: gymWeightListSchema.default([]),
-  exerciseIds: z.array(databaseIdSchema).max(100).default([]),
-  markExercisesAvailable: z.boolean().default(true),
+  quantity: z.number().int().min(1).max(100).optional(),
+  weightOptions: gymWeightListSchema.optional(),
+  exerciseIds: z.array(databaseIdSchema).max(100).optional(),
+  markExercisesAvailable: z.boolean().optional(),
 });
 
 const maximumBase64Length = 7_100_000;
