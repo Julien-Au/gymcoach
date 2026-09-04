@@ -424,6 +424,43 @@ describe('route ownership: nested creation and activation routes', () => {
     expect(await db.set.count({ where: { sessionId: session.id } })).toBe(1);
   });
 
+  it("saves a set but never attaches someone else's equipment to it", async () => {
+    const { b, exerciseB, gym } = await seed();
+    // Worst case on purpose: the stranger's session sits on the owner's gym
+    // and the owner's equipment is linked to the stranger's exercise (states
+    // the app never creates), so only the `gym: { userId }` scope in
+    // lib/set-equipment.ts stands between the caller and the foreign row.
+    // Equipment is optional decoration, so the set is saved (201) with the
+    // reference degraded to null rather than rejected (issue #313, #326).
+    const foreignEquipment = await db.gymEquipment.create({
+      data: {
+        gymId: gym.id,
+        name: 'Owner leg press',
+        equipmentType: 'MACHINE',
+        weightOptions: [50, 100],
+        exerciseLinks: { create: { exerciseId: exerciseB.id } },
+      },
+    });
+    const sessionB = await db.session.create({ data: { userId: b.id, gymId: gym.id } });
+    actAs(b.id);
+    const res = await addSet(
+      jsonReq('POST', {
+        exerciseId: exerciseB.id,
+        gymEquipmentId: foreignEquipment.id,
+        setNumber: 1,
+        weight: 100,
+        reps: 5,
+      }),
+      idParams(sessionB.id),
+    );
+    expect(res.status).toBe(201);
+    const created = await res.json();
+    expect(created.gymEquipmentId).toBeNull();
+    expect(created.equipmentNameSnapshot).toBeNull();
+    expect(created.equipmentLoadSnapshot).toBeNull();
+    expect(await db.set.count({ where: { gymEquipmentId: foreignEquipment.id } })).toBe(0);
+  });
+
   it("returns 404 when a stranger activates someone else's gym and keeps their setting", async () => {
     const { b, gym } = await seed();
     actAs(b.id);

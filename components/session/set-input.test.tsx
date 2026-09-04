@@ -458,6 +458,40 @@ describe('SetInput AI parse', () => {
     expect(screen.getByRole('combobox')).toHaveValue('machine-1');
   });
 
+  it('clears a selected machine the gym no longer offers (issue #326)', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    const props = {
+      programExercise: pe,
+      existingSets: [],
+      lastPerformance: undefined,
+      readiness: null,
+      deloadActive: false,
+      unit: 'KG' as const,
+      onSubmit,
+    };
+    const { rerender } = render(
+      <SetInput
+        {...props}
+        equipmentOptions={[
+          { id: 'machine-1', name: 'Hammer Strength Squat' },
+          { id: 'machine-2', name: 'Plate-loaded Squat' },
+        ]}
+      />,
+    );
+    await user.selectOptions(screen.getByRole('combobox'), 'machine-1');
+    expect(screen.getByRole('combobox')).toHaveValue('machine-1');
+
+    // The runner withdraws the item once the server dropped it from a set.
+    rerender(
+      <SetInput {...props} equipmentOptions={[{ id: 'machine-2', name: 'Plate-loaded Squat' }]} />,
+    );
+
+    expect(screen.getByRole('combobox')).toHaveValue('');
+    await user.click(screen.getByRole('button', { name: /log the set/i }));
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ gymEquipmentId: null }));
+  });
+
   it('ignores a cardio parse on a strength exercise (wrong shape)', async () => {
     const user = userEvent.setup();
     stubFetch({ kind: 'cardio', durationSec: 1500 });

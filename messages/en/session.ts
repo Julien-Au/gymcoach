@@ -26,6 +26,8 @@ export const session = {
   setDeleteError: 'Could not delete the set.',
   finished: 'Session finished.',
   finishError: 'Could not finish the session.',
+  equipmentDropped:
+    'Set saved, but the equipment was not attached: it is no longer available in this gym.',
   rest: {
     title: 'Rest',
     seconds: 's',

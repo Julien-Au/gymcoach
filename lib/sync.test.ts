@@ -8,7 +8,7 @@ vi.mock('@/lib/indexeddb', async (importOriginal) => {
   return { ...actual, getDB: mockGetDB };
 });
 
-import { flushPendingSets } from '@/lib/sync';
+import { flushPendingSets, onEquipmentDropped } from '@/lib/sync';
 
 function pendingSet(): PendingSet {
   return {
@@ -29,6 +29,22 @@ function pendingSet(): PendingSet {
     syncedAt: null,
     attempts: 0,
     lastError: null,
+  };
+}
+
+// Minimal Dexie table stand-in: one queued item, patched in place by update().
+function fakeTable(item: PendingSet) {
+  return {
+    where: vi.fn(() => ({
+      anyOf: vi.fn(() => ({
+        sortBy: vi.fn(async () => [item]),
+        count: vi.fn(async () => (item.status === 'synced' ? 0 : 1)),
+      })),
+    })),
+    update: vi.fn(async (_id: string, patch: Partial<PendingSet>) => {
+      Object.assign(item, patch);
+      return 1;
+    }),
   };
 }
 
@@ -91,6 +107,79 @@ describe('offline set sync', () => {
     expect(item.status).toBe('synced');
     expect(item.serverId).toBe('server-set-1');
     expect(updates.at(-1)).toMatchObject({ status: 'synced', serverId: 'server-set-1' });
-    expect(result).toEqual({ flushed: 1, failed: 0, pending: 0 });
+    // The retry recorded the set without its equipment: that is a dropped
+    // reference like any other, so it is cleared locally and reported.
+    expect(item.gymEquipmentId).toBeNull();
+    expect(result).toEqual({
+      flushed: 1,
+      failed: 0,
+      pending: 0,
+      droppedEquipment: [
+        { localId: 'local-1', sessionId: 'session-1', gymEquipmentId: 'stale-equipment' },
+      ],
+    });
+  });
+
+  it('clears and reports an equipment reference the server recorded as null (issue #326)', async () => {
+    const item = pendingSet();
+    mockGetDB.mockReturnValue({ pendingSets: fakeTable(item) });
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(JSON.stringify({ id: 'server-set-2', gymEquipmentId: null }), {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+    const listener = vi.fn();
+    const unsubscribe = onEquipmentDropped(listener);
+
+    const result = await flushPendingSets();
+    unsubscribe();
+
+    expect(item.status).toBe('synced');
+    expect(item.gymEquipmentId).toBeNull();
+    expect(result.droppedEquipment).toEqual([
+      { localId: 'local-1', sessionId: 'session-1', gymEquipmentId: 'stale-equipment' },
+    ]);
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(listener).toHaveBeenCalledWith(result.droppedEquipment);
+  });
+
+  it('keeps an equipment reference the server attached and stays silent', async () => {
+    const item = pendingSet();
+    mockGetDB.mockReturnValue({ pendingSets: fakeTable(item) });
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(JSON.stringify({ id: 'server-set-3', gymEquipmentId: 'stale-equipment' }), {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+    const listener = vi.fn();
+    const unsubscribe = onEquipmentDropped(listener);
+
+    const result = await flushPendingSets();
+    unsubscribe();
+
+    expect(item.gymEquipmentId).toBe('stale-equipment');
+    expect(result.droppedEquipment).toEqual([]);
+    expect(listener).not.toHaveBeenCalled();
+  });
+
+  it('does not report a set that never carried an equipment reference', async () => {
+    const item = { ...pendingSet(), gymEquipmentId: null };
+    mockGetDB.mockReturnValue({ pendingSets: fakeTable(item) });
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(JSON.stringify({ id: 'server-set-4', gymEquipmentId: null }), {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+    const listener = vi.fn();
+    const unsubscribe = onEquipmentDropped(listener);
+
+    const result = await flushPendingSets();
+    unsubscribe();
+
+    expect(result.droppedEquipment).toEqual([]);
+    expect(listener).not.toHaveBeenCalled();
   });
 });

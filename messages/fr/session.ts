@@ -29,6 +29,8 @@ export const session = {
   setDeleteError: 'Impossible de supprimer la série.',
   finished: 'Séance terminée.',
   finishError: 'Impossible de terminer la séance.',
+  equipmentDropped:
+    'Série enregistrée, mais le matériel n’a pas été associé : il n’est plus disponible dans cette salle.',
   rest: {
     title: 'Repos',
     seconds: 's',
