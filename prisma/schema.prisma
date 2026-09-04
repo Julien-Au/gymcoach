@@ -374,6 +374,11 @@ model Set {
   completedAt                    DateTime      @default(now())
 
   @@index([exerciseId, completedAt])
+  // Leading on gymEquipmentId so the FK referential action (ON DELETE SET
+  // NULL, executed by Postgres since relationMode is unset) can locate the
+  // referencing rows without a full scan when equipment or a gym is deleted;
+  // completedAt also serves per-equipment history queries (issue #325).
+  @@index([gymEquipmentId, completedAt])
 }
 
 // Per-exercise target goal (issue #90): a concrete "weight x reps" the user
