@@ -15,6 +15,13 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 
+// Message key under common.language for each locale's translated name.
+const localeMessageKeys = {
+  en: 'english',
+  fr: 'french',
+  ru: 'russian',
+} as const satisfies Record<Locale, string>;
+
 export function LanguageSelector({ showLabel = false }: { showLabel?: boolean }) {
   const locale = useLocale();
   const t = useTranslations('common.language');
@@ -50,7 +57,7 @@ export function LanguageSelector({ showLabel = false }: { showLabel?: boolean })
         {locales.map((item) => (
           <DropdownMenuItem key={item} onSelect={() => changeLocale(item)}>
             <Check className={cn('mr-2 size-4', item !== locale && 'invisible')} />
-            {item === 'en' ? t('english') : t('russian')}
+            {t(localeMessageKeys[item])}
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>

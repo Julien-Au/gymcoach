@@ -11,6 +11,10 @@ describe('exercise name localization', () => {
     expect(getExerciseDisplayName('Bench Press', 'ru')).toBe('Жим лёжа');
   });
 
+  it('translates a recognized exercise into French', () => {
+    expect(getExerciseDisplayName('Bench Press', 'fr')).toBe('Développé couché');
+  });
+
   it('keeps English and unknown custom names unchanged', () => {
     expect(getExerciseDisplayName('Bench Press', 'en')).toBe('Bench Press');
     expect(getExerciseDisplayName('Шея зад · Misc', 'ru')).toBe('Шея зад · Misc');
@@ -24,6 +28,25 @@ describe('exercise name localization', () => {
     const missing = EXERCISE_CATALOG.map((exercise) => exercise.name).filter(
       (name) => getExerciseDisplayName(name, 'ru') === name,
     );
+    expect(missing).toEqual([]);
+  });
+
+  it('covers every built-in catalog exercise in French', () => {
+    const missing = EXERCISE_CATALOG.map((exercise) => exercise.name).filter(
+      (name) => getExerciseDisplayName(name, 'fr') === name,
+    );
+    expect(missing).toEqual([]);
+  });
+
+  it('covers every exercise used by built-in program templates in French', () => {
+    const names = new Set(
+      programTemplates.flatMap((template) =>
+        template.program.workouts.flatMap((workout) =>
+          workout.exercises.map((exercise) => exercise.name),
+        ),
+      ),
+    );
+    const missing = [...names].filter((name) => getExerciseDisplayName(name, 'fr') === name);
     expect(missing).toEqual([]);
   });
 

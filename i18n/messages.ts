@@ -5,6 +5,7 @@ type AppMessages = typeof englishMessages;
 
 const loaders = {
   en: () => import('@/messages/en').then((module) => module.default),
+  fr: () => import('@/messages/fr').then((module) => module.default),
   ru: () => import('@/messages/ru').then((module) => module.default),
 } satisfies Record<Locale, () => Promise<AppMessages>>;
 

@@ -11,6 +11,7 @@ import {
 import { getExerciseDisplayName } from '@/i18n/exercise-names';
 import { defaultLocale, isLocale, type Locale } from '@/i18n/config';
 import englishMessages from '@/messages/en';
+import frenchMessages from '@/messages/fr';
 import russianMessages from '@/messages/ru';
 
 // How far back to look when judging stalled lifts and all-time records for the
@@ -58,6 +59,7 @@ export type HomeInsightTranslator = (
 
 const messageCatalogs = {
   en: englishMessages,
+  fr: frenchMessages,
   ru: russianMessages,
 } satisfies Record<Locale, typeof englishMessages>;
 
