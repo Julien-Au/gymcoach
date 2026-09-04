@@ -57,14 +57,18 @@ const config: Config = {
         sm: 'calc(var(--radius) - 4px)',
       },
       minHeight: {
-        // Bouton "tap" minimum imposé par la spec UX (mains poudreuses)
+        // Minimum tap target, deliberately 4rem (64px) rather than the usual
+        // 44px: these are pressed mid-set with gloved or chalky hands. The size
+        // has a cost worth knowing — three tap targets in a card's trailing
+        // column is what starved the exercise name at 400px (#330, #336), so
+        // widen the row or drop a control rather than shrinking this.
         tap: '4rem',
       },
       minWidth: {
         tap: '4rem',
       },
       fontSize: {
-        // Pour le compteur de chrono géant
+        // For the oversized rest-timer readout.
         timer: ['6rem', { lineHeight: '1', fontWeight: '700' }],
       },
     },
