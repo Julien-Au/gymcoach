@@ -40,7 +40,13 @@ import {
   SUPERSET_TRANSITION_REST_SEC,
 } from '@/lib/supersets';
 import { isReadinessAutoRegulationEnabled } from '@/lib/preferences';
-import { bindAutoSync, flushPendingSets, onEquipmentDropped, queueSet } from '@/lib/sync';
+import {
+  bindAutoSync,
+  drainDroppedEquipment,
+  flushPendingSets,
+  onEquipmentDropped,
+  queueSet,
+} from '@/lib/sync';
 import { hydrateFromServerSets } from '@/lib/sync-hydration';
 import { ExerciseCard } from '@/components/session/exercise-card';
 import { SetsList } from '@/components/session/sets-list';
@@ -169,13 +175,23 @@ export function SessionRunner({
     // The flush runs in the background, so a dropped equipment reference is
     // reported here rather than returned to handleValidate. The set itself is
     // saved; the user only learns that the machine was not recorded.
-    const cleanupDropped = onEquipmentDropped((dropped) => {
-      const mine = dropped.filter((entry) => entry.sessionId === session.id);
+    //
+    // Read from IndexedDB rather than from the broadcast payload, so a drop
+    // discovered while this component was not mounted is still shown (#337).
+    // Draining clears, so the mount call and the signal below cannot both
+    // report the same set.
+    const showDropped = async () => {
+      const mine = await drainDroppedEquipment(session.id);
       if (mine.length === 0) return;
       setDroppedEquipmentIds((prev) => [
         ...new Set([...prev, ...mine.map((entry) => entry.gymEquipmentId)]),
       ]);
       toast.warning(t('equipmentDropped'));
+    };
+    // On mount: whatever a flush found while nobody was listening.
+    void showDropped();
+    const cleanupDropped = onEquipmentDropped(() => {
+      void showDropped();
     });
     return () => {
       void releaseWakeLock();
