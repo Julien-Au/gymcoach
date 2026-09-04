@@ -59,8 +59,18 @@ Format per entry: trigger/evidence, the lesson (actionable), and **Status** = `g
   and `--json authorAssociation` all failed as unknown.
 - **Lesson:** prefer `gh api` (e.g. labels, `author_association`) and two-step flows
   (`gh issue comment` then `gh issue close`); do not assume the newest `gh` surface.
-- **Status:** accepted risk - operational quirk of this environment, not worth encoding in a
-  product skill; recorded here so future runs do not rediscover it.
+- **Reinforced 2026-09-04, and it is worse than "the flag is missing":** `gh pr checks <n>
+  --watch` on this machine's `gh` 2.4.0 prints `unknown flag: --watch` and **exits 0**. A
+  missing flag that fails loudly is an inconvenience; one that fails silently with a success
+  status is a gate that can be read as green without a single check having been resolved -
+  exactly the shape of failure the charter cares about. The general rule: for any `gh` call
+  whose answer is a verdict, decide on the *parsed output* (`--json`), never on the exit
+  status.
+- **Status:** graduated -> `ship-pr` step 2 now says to poll
+  `gh pr view <n> --json statusCheckRollup` (or `gh pr checks <n>` in a loop) instead of
+  `--watch`, and to decide on the check conclusions rather than on an exit code. The broader
+  "this environment's `gh` is old, prefer `gh api` and two-step flows" part stays an accepted
+  operational risk, recorded here so future runs do not rediscover it.
 
 ### L6 - Prisma's generated `Set` model type shadows the global `Set`
 - **Trigger:** the consistency-card lib (#71) needed a `Set<string>` of distinct trained days,
@@ -230,6 +240,11 @@ Format per entry: trigger/evidence, the lesson (actionable), and **Status** = `g
   concurrent dev/ship ticks get isolated `git worktree`s; without isolation, serialize
   same-checkout ticks. Recovery when a commit still lands on `main`: revert forward (never
   force-push shared history), then re-ship via a proper PR.
+  **Confirmed in production 2026-09-04:** three dev ticks ran concurrently in
+  `../gymcoach-wt-<n>` worktrees off the same base, on file-disjoint issues - three PRs, zero
+  conflicts, three green first-pass CI runs, no `main` breach, with the L16 `flock`
+  serializing the three `--full` gates unprompted. Now written into `06-orchestration.md` as
+  the confirmed parallel-dev pattern rather than a contingency.
 
 ### L16 - Isolated worktrees are not enough: the shared test Postgres (:5434) and dev port (:3031) also need a lock
 - **Trigger:** 2026-07-22 batch. Two loop sessions ran `bash scripts/verify.sh --full` at the
@@ -341,3 +356,23 @@ Format per entry: trigger/evidence, the lesson (actionable), and **Status** = `g
   right, and why) written into the issue rather than the index quietly re-added. The general rule
   is a standing review-practice rule; it also stands as the first concrete evidence that the
   advisory third-party lens earns the slot the policy gives it.
+
+### L21 - A tick must never end its turn waiting on a background process
+- **Trigger:** 2026-09-04, the three-worktree parallel batch. Two of the three dev ticks
+  backgrounded a prerequisite (`npm ci`, `next start`) and then ended the turn saying they
+  were waiting to be notified when it finished. Nothing notifies them: a subagent tick is not
+  re-woken by a background job completing, so both sat done-but-unfinished until the
+  orchestrator noticed and resumed them. Both then completed normally - the work was never
+  wrong, only stalled, which is exactly why it is easy to miss.
+- **Lesson:** "start it in the background and wait" is a pattern borrowed from an interactive
+  session, where a human is still at the keyboard to react. Inside a loop tick there is no
+  such observer, so a backgrounded prerequisite converts an autonomous tick into one that
+  needs a babysitter - it spends orchestrator attention, the scarce resource the loop exists
+  to save. Anything a tick NEEDS before it can continue runs synchronously (raise the tool
+  timeout rather than backgrounding it); anything that must run detached, such as a dev
+  server, is polled until it answers. Not to be confused with L3: L3 says stop at the PR and
+  do not block on CI, which is a deliberate hand-off to another tick. This is the opposite
+  failure - stopping mid-task with nothing on the other side of the wait.
+- **Status:** graduated -> `implement-issue` step 5 (green-gate) now states it outright: run
+  bootstrap and the gate synchronously, never end the turn waiting on a background process,
+  poll a server until it answers.

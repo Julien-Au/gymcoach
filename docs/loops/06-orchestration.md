@@ -116,3 +116,17 @@ reverted forward, re-shipped as PR #279).
 - **If a commit still lands on `main`, revert forward** (a revert commit restoring `main`'s
   content), never `git push --force` shared history (it is denied anyway), then re-ship the
   work through a proper PR.
+
+**Confirmed pattern (2026-09-04): worktree-per-tick is the way to run dev ticks in
+parallel.** Three dev ticks ran at once, each in its own `../gymcoach-wt-<issue>` worktree
+branched from the same base, on issues chosen to be file-disjoint. Result: three PRs, zero
+merge conflicts, three green first-pass CI runs, no `main` breach. The two pieces that make
+it work are both already above - a worktree per tick for the git-state race (L15), and the
+shared-infra `flock` for the test Postgres and dev port (L16), which serialized the three
+`--full` gates without anyone coordinating them. So the recipe is: pick file-disjoint issues
+(step 4's same-file serialization still applies - it decides *what* may run in parallel,
+worktrees only decide *where*), `git worktree add ../gymcoach-wt-<n>` per tick, `npm ci` +
+`npm rebuild bcrypt` + `prisma migrate deploy` in each (L4), let the ticks stop at the PR
+(L3), and ship them one at a time. Clean up with `git worktree remove` after the merge -
+and note that `gh pr merge --delete-branch` exits 1 after a successful merge while the
+branch is still checked out in a worktree (see the `ship-pr` skill, step 5).

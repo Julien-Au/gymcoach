@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- French as a third interface language: the whole UI is now available in
+  English, French and Russian, picked in Settings, with an unknown locale still
+  falling back to English.
 - Physical gym equipment inventory: each saved gym can now hold the concrete
   stations and items you actually train on (name, type, description,
   manufacturer, model, quantity, item-specific weight options), linked to the
@@ -377,6 +380,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The logger no longer stays silent when the equipment you picked was not
+  recorded. A set whose equipment reference had gone stale by the time it
+  reached the server (the item was deleted, unlinked from the exercise, or
+  belongs to another gym) is still saved, with the equipment simply dropped -
+  but nothing said so, and the picker kept offering the same stale machine for
+  the next set. Sets now come back through the background sync with that signal
+  attached: the session shows a non-blocking warning, withdraws the dropped item
+  from the picker, and clears a selection the picker no longer offers.
+- The exercise catalog is readable at phone width again. Each card now leads
+  with a fixed technique thumbnail (or a muted placeholder when the exercise has
+  no media), the exercise name takes the remaining width and wraps to two lines
+  instead of truncating mid-word, the equipment badge became a compact label
+  that shares one line with the rest time, and edit/delete moved to their own
+  row on narrow screens.
+- Deleting a piece of gym equipment, deleting a gym, or restoring a backup no
+  longer scans the whole set table once per equipment item. `Set.gymEquipmentId`
+  is the referencing side of a foreign key with `ON DELETE SET NULL`, and
+  Postgres does not index that side on its own, so the composite index it needs
+  is back.
 - An authenticated `GET /mcp` no longer hangs forever. The endpoint serves the
   MCP Streamable HTTP transport statelessly, so there is no event stream for a
   GET to attach to and the response was never written or closed; unauthenticated

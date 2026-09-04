@@ -58,7 +58,14 @@ for repo conventions; this skill assumes them.
 5. **Green-gate (self-verify).** Run `bash scripts/verify.sh`. (In a fresh checkout or git
    worktree, first `npm ci` - worktrees do not share `node_modules` - then `npm rebuild
    bcrypt` if its native binding is missing, and `prisma migrate deploy` against the test
-   Postgres on :5434 before the integration/E2E tiers. Lesson L4.) If it fails:
+   Postgres on :5434 before the integration/E2E tiers. Lesson L4.)
+   **Run bootstrap and the gate synchronously - never end the turn waiting on a background
+   process.** A tick is not re-woken when a backgrounded `npm ci`, `npm run build` or
+   `next start` finishes: the turn simply ends and the orchestrator has to resume it, which
+   is what happened to two of the three dev ticks on 2026-09-04 (lesson L21). Give the call
+   a long timeout instead of backgrounding it, and when a server is genuinely needed, poll
+   it until it answers rather than reporting "waiting for the background job".
+   If it fails:
    - Read the failing step (acknowledge what it actually says), fix the cause, re-run.
    - **Fix the code, never the test** (CLAUDE.md): never delete/skip a test, loosen an
      assertion, or silence an error to get green - that is a defect, not a fix.
