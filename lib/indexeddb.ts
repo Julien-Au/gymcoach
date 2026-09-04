@@ -49,6 +49,16 @@ export interface PendingSet {
   // Counter of failed attempts (for possible backoff).
   attempts: number;
   lastError: string | null;
+  // Set when the server dropped this set's equipment reference and the user has
+  // not been told yet (issue #337). Holds the id that was dropped, since
+  // `gymEquipmentId` is nulled at the same moment.
+  //
+  // Persisted rather than only broadcast: a flush can complete with no
+  // SessionRunner mounted — `sync-bootstrap` binds auto-sync app-wide, so one
+  // fires at startup on any page — and a notice delivered to no listener was
+  // gone for good. Cleared by `drainDroppedEquipment` once it has been shown.
+  // Optional, so rows written before this field stay valid.
+  equipmentDroppedNotice?: string | null;
 }
 
 class GymCoachDB extends Dexie {

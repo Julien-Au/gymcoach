@@ -8,7 +8,7 @@ vi.mock('@/lib/indexeddb', async (importOriginal) => {
   return { ...actual, getDB: mockGetDB };
 });
 
-import { flushPendingSets, onEquipmentDropped } from '@/lib/sync';
+import { drainDroppedEquipment, flushPendingSets, onEquipmentDropped } from '@/lib/sync';
 
 function pendingSet(): PendingSet {
   return {
@@ -33,12 +33,19 @@ function pendingSet(): PendingSet {
 }
 
 // Minimal Dexie table stand-in: one queued item, patched in place by update().
+// `where(index)` answers for the two queries sync.ts makes — `status.anyOf` for
+// the flush, and `sessionId.equals` for the drain.
 function fakeTable(item: PendingSet) {
   return {
-    where: vi.fn(() => ({
+    where: vi.fn((index: string) => ({
       anyOf: vi.fn(() => ({
         sortBy: vi.fn(async () => [item]),
         count: vi.fn(async () => (item.status === 'synced' ? 0 : 1)),
+      })),
+      equals: vi.fn((value: string) => ({
+        toArray: vi.fn(async () =>
+          index === 'sessionId' && item.sessionId === value ? [item] : [],
+        ),
       })),
     })),
     update: vi.fn(async (_id: string, patch: Partial<PendingSet>) => {
@@ -181,5 +188,83 @@ describe('offline set sync', () => {
 
     expect(result.droppedEquipment).toEqual([]);
     expect(listener).not.toHaveBeenCalled();
+  });
+});
+
+// Issue #337: the notice was broadcast to live subscribers only, so a flush
+// that completed with no SessionRunner mounted told nobody and was gone.
+describe('dropped equipment survives a flush nobody was listening to', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
+  });
+
+  async function flushWithDropAndNoListener(item: PendingSet) {
+    mockGetDB.mockReturnValue({ pendingSets: fakeTable(item) });
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(JSON.stringify({ id: 'server-set-5', gymEquipmentId: null }), {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+    // Deliberately no `onEquipmentDropped` subscriber: this is the reported
+    // path — log a set offline, close the app, reopen on the dashboard, where
+    // `sync-bootstrap` flushes with no SessionRunner mounted.
+    return flushPendingSets();
+  }
+
+  it('records the drop on the set rather than only announcing it', async () => {
+    const item = pendingSet();
+    await flushWithDropAndNoListener(item);
+
+    expect(item.gymEquipmentId).toBeNull();
+    expect(item.equipmentDroppedNotice).toBe('stale-equipment');
+  });
+
+  it('hands the drop to a runner that mounts afterwards', async () => {
+    const item = pendingSet();
+    await flushWithDropAndNoListener(item);
+
+    // What SessionRunner does on mount.
+    expect(await drainDroppedEquipment('session-1')).toEqual([
+      { localId: 'local-1', sessionId: 'session-1', gymEquipmentId: 'stale-equipment' },
+    ]);
+  });
+
+  it('shows it exactly once — a second drain is empty', async () => {
+    const item = pendingSet();
+    await flushWithDropAndNoListener(item);
+
+    await drainDroppedEquipment('session-1');
+
+    // The mount drain and the broadcast-triggered drain both run in
+    // SessionRunner; clearing is what stops them reporting the same set twice.
+    expect(await drainDroppedEquipment('session-1')).toEqual([]);
+    expect(item.equipmentDroppedNotice).toBeNull();
+  });
+
+  it('does not hand one session the drops of another', async () => {
+    const item = pendingSet();
+    await flushWithDropAndNoListener(item);
+
+    expect(await drainDroppedEquipment('another-session')).toEqual([]);
+    // And the notice is still there for the session it belongs to.
+    expect(item.equipmentDroppedNotice).toBe('stale-equipment');
+  });
+
+  it('returns nothing when a set synced with its equipment intact', async () => {
+    const item = pendingSet();
+    mockGetDB.mockReturnValue({ pendingSets: fakeTable(item) });
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(JSON.stringify({ id: 'server-set-6', gymEquipmentId: 'stale-equipment' }), {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+
+    await flushPendingSets();
+
+    expect(item.equipmentDroppedNotice).toBeUndefined();
+    expect(await drainDroppedEquipment('session-1')).toEqual([]);
   });
 });
