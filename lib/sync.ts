@@ -17,6 +17,31 @@ export interface FlushResult {
   flushed: number;
   failed: number;
   pending: number;
+  // Sets the server recorded WITHOUT the equipment reference that was sent
+  // (issue #326): the item was deleted, unlinked, belongs to another gym or
+  // another user. The set itself is saved; only the decoration was dropped.
+  droppedEquipment: DroppedEquipment[];
+}
+
+export interface DroppedEquipment {
+  localId: string;
+  sessionId: string;
+  gymEquipmentId: string;
+}
+
+type DroppedEquipmentListener = (dropped: DroppedEquipment[]) => void;
+
+const droppedEquipmentListeners = new Set<DroppedEquipmentListener>();
+
+// Subscribe to equipment references the server dropped while flushing. The
+// flush runs in the background (queueSet does not await it), so the session
+// UI cannot read the result directly; it listens here instead. Returns the
+// unsubscribe function.
+export function onEquipmentDropped(listener: DroppedEquipmentListener): () => void {
+  droppedEquipmentListeners.add(listener);
+  return () => {
+    droppedEquipmentListeners.delete(listener);
+  };
 }
 
 let inFlight: Promise<FlushResult> | null = null;
@@ -41,6 +66,7 @@ async function doFlush(): Promise<FlushResult> {
 
   let flushed = 0;
   let failed = 0;
+  const droppedEquipment: DroppedEquipment[] = [];
 
   for (const item of pending) {
     if (!navigator.onLine) {
@@ -93,13 +119,27 @@ async function doFlush(): Promise<FlushResult> {
         continue;
       }
 
-      const created = (await res.json()) as { id: string };
+      const created = (await res.json()) as { id: string; gymEquipmentId?: string | null };
+      // The server degrades a stale/foreign equipment reference to null rather
+      // than rejecting the set (issue #313). Mirror that on the local record so
+      // the next set does not pre-select a machine that was never attached, and
+      // report it so the UI can tell the user (issue #326).
+      const sentEquipmentId = payload.gymEquipmentId;
+      const equipmentDropped = sentEquipmentId !== null && !created.gymEquipmentId;
       await db.pendingSets.update(item.localId, {
         status: 'synced',
         serverId: created.id,
         syncedAt: Date.now(),
         lastError: null,
+        ...(equipmentDropped ? { gymEquipmentId: null } : {}),
       });
+      if (equipmentDropped) {
+        droppedEquipment.push({
+          localId: item.localId,
+          sessionId: item.sessionId,
+          gymEquipmentId: sentEquipmentId,
+        });
+      }
       flushed += 1;
     } catch (err) {
       // Network error (offline, timeout): we keep 'pending' to retry later.
@@ -113,7 +153,12 @@ async function doFlush(): Promise<FlushResult> {
   }
 
   const remaining = await db.pendingSets.where('status').anyOf(['pending', 'failed']).count();
-  return { flushed, failed, pending: remaining };
+  if (droppedEquipment.length > 0) {
+    for (const listener of droppedEquipmentListeners) {
+      listener(droppedEquipment);
+    }
+  }
+  return { flushed, failed, pending: remaining, droppedEquipment };
 }
 
 // Helper: adds a set to the queue (status pending) and triggers a flush.

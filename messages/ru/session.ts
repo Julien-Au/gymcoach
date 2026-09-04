@@ -29,6 +29,8 @@ export const session = {
   setDeleteError: 'Не удалось удалить подход.',
   finished: 'Тренировка завершена.',
   finishError: 'Не удалось завершить тренировку.',
+  equipmentDropped:
+    'Подход сохранён, но тренажёр не привязан: он больше недоступен в этом зале.',
   rest: {
     title: 'Отдых',
     seconds: 'с',

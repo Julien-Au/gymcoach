@@ -142,6 +142,14 @@ export function SetInput({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [programExercise.id, existingSets.length]);
 
+  // A selected machine the gym no longer offers (issue #326: the server dropped
+  // it from a saved set and the runner withdrew it) must not be resent.
+  useEffect(() => {
+    if (gymEquipmentId && !equipmentOptions.some((equipment) => equipment.id === gymEquipmentId)) {
+      setGymEquipmentId('');
+    }
+  }, [equipmentOptions, gymEquipmentId]);
+
   const incrementKg = weightIncrement(programExercise.exercise.category);
   // Increment shown in the user's unit (clean plate jumps), applied to the
   // kg-stored weight. The form value stays in kg; only display/input convert.

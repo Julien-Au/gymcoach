@@ -40,7 +40,7 @@ import {
   SUPERSET_TRANSITION_REST_SEC,
 } from '@/lib/supersets';
 import { isReadinessAutoRegulationEnabled } from '@/lib/preferences';
-import { bindAutoSync, flushPendingSets, queueSet } from '@/lib/sync';
+import { bindAutoSync, flushPendingSets, onEquipmentDropped, queueSet } from '@/lib/sync';
 import { hydrateFromServerSets } from '@/lib/sync-hydration';
 import { ExerciseCard } from '@/components/session/exercise-card';
 import { SetsList } from '@/components/session/sets-list';
@@ -151,6 +151,11 @@ export function SessionRunner({
   // the suggestion falls back to pure programmed progression (pre-#55 behavior).
   const effectiveReadiness = readinessForSuggestion(readiness, autoRegulate);
 
+  // Equipment ids the server refused to attach during this session (issue
+  // #326): the item was deleted, unlinked or moved. They are withdrawn from the
+  // picker so the next set does not resend a reference that will be dropped.
+  const [droppedEquipmentIds, setDroppedEquipmentIds] = useState<string[]>([]);
+
   // Hydrate IndexedDB with the server sets, then enable auto-sync.
   useEffect(() => {
     setAutoRegulate(isReadinessAutoRegulationEnabled());
@@ -161,10 +166,22 @@ export function SessionRunner({
     void acquireWakeLock();
     const cleanupVisibility = bindWakeLockToVisibility();
     const cleanupSync = bindAutoSync();
+    // The flush runs in the background, so a dropped equipment reference is
+    // reported here rather than returned to handleValidate. The set itself is
+    // saved; the user only learns that the machine was not recorded.
+    const cleanupDropped = onEquipmentDropped((dropped) => {
+      const mine = dropped.filter((entry) => entry.sessionId === session.id);
+      if (mine.length === 0) return;
+      setDroppedEquipmentIds((prev) => [
+        ...new Set([...prev, ...mine.map((entry) => entry.gymEquipmentId)]),
+      ]);
+      toast.warning(t('equipmentDropped'));
+    });
     return () => {
       void releaseWakeLock();
       cleanupVisibility();
       cleanupSync();
+      cleanupDropped();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -534,8 +551,10 @@ export function SessionRunner({
             recommendation={currentRecommendation}
             returnRecommendation={currentReturnRecommendation}
             loadConstraints={loadConstraintsFor(currentTarget)}
-            equipmentOptions={(session.gym?.equipment ?? []).filter((item) =>
-              item.exerciseLinks.some((link) => link.exerciseId === currentPE.exerciseId),
+            equipmentOptions={(session.gym?.equipment ?? []).filter(
+              (item) =>
+                !droppedEquipmentIds.includes(item.id) &&
+                item.exerciseLinks.some((link) => link.exerciseId === currentPE.exerciseId),
             )}
             onSubmit={handleValidate}
           />
