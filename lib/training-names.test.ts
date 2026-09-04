@@ -24,6 +24,19 @@ describe('getTrainingDisplayName', () => {
     expect(getTrainingDisplayName('New plan · 11 weeks', 'ru')).toBe('Новый план · 11 недель');
   });
 
+  it('localizes imported names into French with the right week plurals', () => {
+    expect(getTrainingDisplayName('Day 3 · Week 5 · New plan', 'fr')).toBe(
+      'Jour 3 · Semaine 5 · Nouveau plan',
+    );
+    expect(getTrainingDisplayName('New plan · 1 week (2026-04-23)', 'fr')).toBe(
+      'Nouveau plan · 1 semaine (2026-04-23)',
+    );
+    expect(getTrainingDisplayName('New plan · 2 weeks', 'fr')).toBe('Nouveau plan · 2 semaines');
+    expect(getTrainingDisplayName('Full Body · Day 1 · Full Body Hybrid', 'fr')).toBe(
+      'Corps entier · Jour 1 · Hybride corps entier',
+    );
+  });
+
   it('localizes common imported split names', () => {
     expect(getTrainingDisplayName('Full Body · Day 1 · Full Body Hybrid', 'ru')).toBe(
       'Всё тело · День 1 · Гибридная программа на всё тело',

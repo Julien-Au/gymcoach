@@ -65,6 +65,7 @@ export const common = {
     change: 'Change language',
     description: 'Choose the language used by the GymCoach interface.',
     english: 'English',
+    french: 'French',
     russian: 'Russian',
   },
   theme: {

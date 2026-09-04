@@ -2,6 +2,7 @@ import { createTranslator } from 'next-intl';
 import { describe, expect, it } from 'vitest';
 import { isLocale, locales } from '@/i18n/config';
 import englishMessages from '@/messages/en';
+import frenchMessages from '@/messages/fr';
 import russianMessages from '@/messages/ru';
 
 function messageKeys(value: unknown, prefix = ''): string[] {
@@ -15,8 +16,9 @@ function messageKeys(value: unknown, prefix = ''): string[] {
 
 describe('i18n configuration', () => {
   it('recognizes only supported locales', () => {
-    expect(locales).toEqual(['en', 'ru']);
+    expect(locales).toEqual(['en', 'fr', 'ru']);
     expect(isLocale('en')).toBe(true);
+    expect(isLocale('fr')).toBe(true);
     expect(isLocale('ru')).toBe(true);
     expect(isLocale('de')).toBe(false);
     expect(isLocale(undefined)).toBe(false);
@@ -24,6 +26,7 @@ describe('i18n configuration', () => {
 
   it('keeps every locale dictionary structurally complete', () => {
     expect(messageKeys(russianMessages).sort()).toEqual(messageKeys(englishMessages).sort());
+    expect(messageKeys(frenchMessages).sort()).toEqual(messageKeys(englishMessages).sort());
   });
 
   it('uses Russian plural categories', () => {
@@ -35,5 +38,15 @@ describe('i18n configuration', () => {
     expect(t('navigation.settings')).toBe('Настройки');
     expect(t('progress.measurements.sites.armLeft')).toBe('Плечо (левое)');
     expect(t('progress.dashboard.frequency', { count: 3 })).toBe('3 раза/нед.');
+  });
+
+  it('uses French plural categories', () => {
+    const t = createTranslator({ locale: 'fr', messages: frenchMessages });
+
+    expect(t('common.counts.sets', { count: 1 })).toBe('1 série');
+    expect(t('common.counts.sets', { count: 3 })).toBe('3 séries');
+    expect(t('navigation.settings')).toBe('Réglages');
+    expect(t('progress.measurements.sites.armLeft')).toBe('Bras (gauche)');
+    expect(t('progress.dashboard.frequency', { count: 3 })).toBe('3x/semaine');
   });
 });
