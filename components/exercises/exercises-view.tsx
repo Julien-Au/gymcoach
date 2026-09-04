@@ -121,31 +121,41 @@ function ExerciseRow({ exercise, onEdit }: { exercise: Exercise; onEdit: () => v
   const exerciseName = useExerciseName();
   const displayName = exerciseName(exercise.name);
 
+  // Mobile-first card (issue #330). Every tap target is 64px (the `tap` token),
+  // so three of them in a trailing column would leave the name ~150px at 400px
+  // wide and truncate it first. Instead: a fixed 64px technique slot leads the
+  // row, the name takes the remaining width and may wrap to two lines, the
+  // equipment label is compact plain text, and edit/delete sit on their own
+  // full-width row below (inline again from `sm`).
   return (
     <Card>
-      <CardContent className="flex items-start justify-between gap-3 p-3">
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium">{displayName}</p>
-          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+      <CardContent className="flex flex-wrap items-start gap-x-3 gap-y-1 p-3 sm:flex-nowrap">
+        <ExerciseMediaDialog
+          exerciseName={exercise.name}
+          displayName={displayName}
+          equipmentType={exercise.equipmentType}
+          compact
+        />
+        <div className="min-w-0 flex-1 basis-40 py-0.5">
+          <p className="line-clamp-2 text-sm font-medium leading-snug">{displayName}</p>
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
             <Badge variant="secondary">
               {t(`categories.${exerciseCategoryMessageKeys[exercise.category]}`)}
             </Badge>
-            <Badge variant="outline">
-              {t(`equipmentTypes.${equipmentTypeMessageKeys[exercise.equipmentType]}`)}
-            </Badge>
-            <span>{t('restSeconds', { seconds: exercise.defaultRestSec })}</span>
+            {/* One non-wrapping unit, so the separator never orphans at a line end. */}
+            <span className="whitespace-nowrap">
+              <span>
+                {t(`equipmentTypesShort.${equipmentTypeMessageKeys[exercise.equipmentType]}`)}
+              </span>
+              <span aria-hidden="true"> &middot; </span>
+              <span>{t('restSeconds', { seconds: exercise.defaultRestSec })}</span>
+            </span>
           </div>
           {exercise.notes && (
-            <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">{exercise.notes}</p>
+            <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{exercise.notes}</p>
           )}
         </div>
-        <div className="flex flex-shrink-0 items-center gap-1">
-          <ExerciseMediaDialog
-            exerciseName={exercise.name}
-            displayName={displayName}
-            equipmentType={exercise.equipmentType}
-            compact
-          />
+        <div className="-mb-2 -mr-2 -mt-4 flex w-full shrink-0 items-center justify-end sm:-mt-2 sm:w-auto">
           <Button
             variant="ghost"
             size="icon"

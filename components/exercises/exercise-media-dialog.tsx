@@ -61,15 +61,34 @@ export function ExerciseMediaDialog({
     <Dialog open={open} onOpenChange={changeOpen}>
       <DialogTrigger asChild>
         {compact ? (
+          // A fixed 64px slot whether or not media exists, so catalog cards
+          // share one leading column and one row height (issue #330). With
+          // media the start frame is the thumbnail; without it the slot holds
+          // a muted play icon at the same size.
           <Button
             type="button"
-            variant="ghost"
-            size="icon"
-            className="min-h-tap min-w-tap"
+            variant="outline"
+            className="relative size-16 min-h-tap min-w-tap shrink-0 overflow-hidden p-0"
             aria-label={t('open', { name: displayName })}
             title={t('button')}
           >
-            <CirclePlay className="size-4" />
+            {media ? (
+              <>
+                <Image
+                  src={media.frames[0]}
+                  alt=""
+                  fill
+                  unoptimized
+                  sizes="64px"
+                  className="object-cover"
+                />
+                <span className="absolute bottom-0.5 right-0.5 rounded-full bg-background/80 p-0.5">
+                  <CirclePlay className="size-4" />
+                </span>
+              </>
+            ) : (
+              <CirclePlay className="size-4 text-muted-foreground" />
+            )}
           </Button>
         ) : (
           <Button
