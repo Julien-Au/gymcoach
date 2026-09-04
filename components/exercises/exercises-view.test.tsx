@@ -74,3 +74,49 @@ describe('ExercisesView search (issue #238)', () => {
     expect(screen.queryByLabelText('Search exercises by name')).not.toBeInTheDocument();
   });
 });
+
+describe('ExercisesView catalog card at mobile width (issue #330)', () => {
+  it('renders the full name in a wrapping (not truncating) element', () => {
+    render(
+      <ExercisesView
+        exercises={[exercise({ id: 'e1', name: 'Incline dumbbell bench press with a pause' })]}
+      />,
+    );
+    const name = screen.getByText('Incline dumbbell bench press with a pause');
+    expect(name).toHaveClass('line-clamp-2');
+    expect(name).not.toHaveClass('truncate');
+  });
+
+  it('labels the equipment with the compact form, not the long badge text', () => {
+    render(<ExercisesView exercises={[exercise({ id: 'e1', equipmentType: 'OTHER' })]} />);
+    // Equipment and rest form one non-wrapping unit, so the separator cannot orphan.
+    const label = screen.getByText('Any equipment');
+    expect(label.parentElement).toHaveClass('whitespace-nowrap');
+    expect(label.parentElement).toHaveTextContent('Any equipment · rest 120s');
+    expect(screen.queryByText('Other / unrestricted')).not.toBeInTheDocument();
+  });
+
+  it('gives every card the same fixed-size technique slot, with or without media', () => {
+    render(
+      <ExercisesView
+        exercises={[
+          exercise({ id: 'e1', name: 'Barbell Bench Press' }),
+          exercise({ id: 'e2', name: 'Future custom movement' }),
+        ]}
+      />,
+    );
+    const withMedia = screen.getByRole('button', { name: 'View technique for Barbell Bench Press' });
+    const withoutMedia = screen.getByRole('button', {
+      name: 'View technique for Future custom movement',
+    });
+    for (const slot of [withMedia, withoutMedia]) {
+      expect(slot).toHaveClass('size-16');
+      expect(slot).toHaveClass('min-h-tap');
+      expect(slot).toHaveClass('min-w-tap');
+    }
+    // The slot shows the start frame when the catalog knows the exercise and
+    // stays the same size (icon only) when it does not.
+    expect(withMedia.querySelector('img')).not.toBeNull();
+    expect(withoutMedia.querySelector('img')).toBeNull();
+  });
+});

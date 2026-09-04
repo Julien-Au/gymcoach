@@ -87,4 +87,13 @@ export const exercises = {
     cardio: 'Matériel cardio',
     other: 'Autre / sans contrainte',
   },
+  equipmentTypesShort: {
+    dumbbell: 'Haltères',
+    barbell: 'Barre',
+    machine: 'Machine',
+    cable: 'Poulie',
+    bodyweight: 'Poids de corps',
+    cardio: 'Machine cardio',
+    other: 'Tout matériel',
+  },
 } satisfies MessageShape<typeof english>;

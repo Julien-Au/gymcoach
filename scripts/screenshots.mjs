@@ -62,6 +62,10 @@ await assertHealthy('after sign in');
 
 for (const [path, name, opts] of shots) {
   await page.goto(`${base}${path}`, { waitUntil: 'networkidle' });
+  // Park the pointer: after the sign-in click it rests wherever the button
+  // was, and at 400px that lands on a card control, painting its hover state
+  // into the capture (that is how #330 got its "large grey box").
+  await page.mouse.move(0, 0);
   await page.waitForTimeout(1500);
   await assertHealthy(`page ${path}`);
   if (opts?.openOn) {

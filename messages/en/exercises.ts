@@ -83,4 +83,15 @@ export const exercises = {
     cardio: 'Cardio equipment',
     other: 'Other / unrestricted',
   },
+  // Compact forms for the catalog card, where the label shares a line with
+  // the category and rest time at mobile width (issue #330).
+  equipmentTypesShort: {
+    dumbbell: 'Dumbbells',
+    barbell: 'Barbell',
+    machine: 'Machine',
+    cable: 'Cable',
+    bodyweight: 'Bodyweight',
+    cardio: 'Cardio machine',
+    other: 'Any equipment',
+  },
 };

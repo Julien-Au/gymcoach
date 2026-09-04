@@ -86,4 +86,13 @@ export const exercises = {
     cardio: 'Кардиооборудование',
     other: 'Другое / без ограничений',
   },
+  equipmentTypesShort: {
+    dumbbell: 'Гантели',
+    barbell: 'Штанга',
+    machine: 'Тренажёр',
+    cable: 'Блок',
+    bodyweight: 'Свой вес',
+    cardio: 'Кардиотренажёр',
+    other: 'Любое оборудование',
+  },
 } satisfies MessageShape<typeof english>;
