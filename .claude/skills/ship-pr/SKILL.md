@@ -42,8 +42,14 @@ changes on.
    Also skip if: draft, `state != OPEN`, `reviewDecision == CHANGES_REQUESTED`, or not
    targeting `main`. Report why it was skipped.
 
-2. **Watch CI.** `gh pr checks <n> --watch` (blocks until checks settle), or poll
-   `gh pr checks <n>`. Three outcomes:
+2. **Watch CI.** `gh pr checks <n> --watch` blocks until the checks settle - but do not
+   rely on it: this environment's `gh` is 2.4.0 and has no `--watch`, so it prints
+   `unknown flag: --watch` and **exits 0**, which reads as "all green" to anything that
+   checks the exit status (lesson L5). **Poll instead:**
+   `gh pr view <n> --json statusCheckRollup` (or `gh pr checks <n>` in a loop) until every
+   check has a conclusion, and decide on the conclusions themselves, never on an exit
+   code. Resolve them against the head SHA you are about to merge, not against the PR
+   (lesson L19). Three outcomes:
    - **All green** -> go to step 4 (review).
    - **Some red** -> step 3 (fix).
    - **Stuck pending** for an unreasonable time -> stop, report; do not merge.
@@ -86,6 +92,11 @@ changes on.
    commit for stacks, no `--delete-branch` on a fork, and the SHA pin makes a push race
    between review and merge fail closed). Confirm it merged
    (`gh pr view <n> --json state,mergedAt`).
+   **`--delete-branch` fails after a successful merge when the branch is checked out in a
+   worktree**: `gh` cannot delete a branch that some working tree still has checked out, so
+   it exits 1 *after* the merge landed - the PR is merged and the remote branch survives.
+   Never re-run the merge on that exit code. Confirm the merge, then clean up by hand:
+   `git push origin --delete <branch>` and `git worktree remove <path>`.
 
 6. **Report.** PR -> merged (with the merge commit), or skipped/blocked with the reason.
 

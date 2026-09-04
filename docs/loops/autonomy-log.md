@@ -2249,3 +2249,147 @@ ran on Fable per the model-routing directive; all reviews and this write-up ran 
 (tell the user when an equipment selection was not recorded), #320 (browsable exercise library),
 #300-#304 (the rest of the "make it pop" ideas), and the demo-media re-shoot, still the oldest debt
 in the repo and now further behind: the session logger grew an equipment picker this wave.
+
+
+## 2026-09-04 - three dev ticks in parallel worktrees (#334/#335/#336), and an external design proposal answered inside the tick (#331)
+
+**What ran.** Three loop-authored dev ticks in parallel, one `git worktree` each, on three
+file-disjoint issues left over from the previous wave: #325 (the FK index the 08-27 review
+had wrongly told a contributor to delete), #326 (the equipment selection that could be
+dropped silently) and #330 (the exercise catalog card at phone width). Each PR got an
+independent Opus skeptic review before merge - the author never grades its own homework -
+and each was squash-merged on green CI. Alongside them, one external design proposal (#331)
+was vetted and answered, and its one loop-adoptable piece was filed as #333. Triage and
+ideate did not run. Earlier the same day the operator's own French-locale branch merged
+(#332), which is why this write-up also touches the localization lines in the README and
+the CHANGELOG.
+
+**Three ticks, three worktrees, zero coordination.** This is the first batch run as
+deliberate parallel dev work, and it is worth recording as a success because the two
+controls that make it safe were both already in place and neither needed attention during
+the run. Each tick got `../gymcoach-wt-<n>` off the same base (L15: a git checkout is
+single-writer state), and the three `--full` gates serialized themselves on the machine-wide
+`flock` added by #298 (L16: worktrees fix the git race, not the shared test Postgres and dev
+port). Result: three PRs, zero merge conflicts, three green first-pass CI runs, no `main`
+breach. The one thing the orchestrator still owns is the choice of issues - the same-file
+serialization rule decides *what* may run in parallel; worktrees only decide *where*. Now
+written into `06-orchestration.md` as the confirmed pattern rather than a contingency.
+
+**The index the loop had told a contributor to delete (#325 -> #334).** The 08-27 review of
+SHAREN's #313 called `Set_gymEquipmentId_completedAt_idx` reader-less, and SHAREN removed it
+on that basis; the advisory CodeRabbit lens had the mechanism right where the loop's own
+review had it wrong (lesson L20). The reader is the referential action: the FK is
+`ON DELETE SET NULL` with `relationMode` unset, so Postgres itself locates the referencing
+`Set` rows on every equipment deletion - a single delete, a gym delete cascading to its
+equipment, and a backup restore, which cascades across every equipment row the user owns -
+and Postgres does not index the referencing side of a foreign key. The restoring migration
+is guarded with `IF NOT EXISTS`, and the reason is itself the interesting part: the original
+index was removed by editing an already-applied migration in place, so a database that
+applied the pre-review version already has the index while a fresh one does not. Editing an
+applied migration leaves exactly this kind of split-brain behind; the guard is the cost of
+that, paid once.
+
+**The silent drop, and why the fix had to live in the sync layer (#326 -> #335).** Since
+#313 a set whose equipment reference has gone stale is saved with `gymEquipmentId` null
+rather than being rejected - the right call, because rejecting it destroys an offline-logged
+set. But it was silent: the picker kept the machine selected and pre-selected it again for
+the next set. The interesting constraint is that the set POST is fire-and-forget through
+IndexedDB and `flushPendingSets`, so the server's answer is only ever observed inside
+`lib/sync.ts`, in the background, with no component on the stack. There is no return value
+to check and nowhere to `await`. The fix is therefore a subscription rather than a return
+path: sync nulls the local record, reports it in `FlushResult.droppedEquipment` and notifies
+`onEquipmentDropped` subscribers; the session runner subscribes, filters by the current
+session id, shows a non-blocking warning toast and withdraws the option; set-input clears a
+selection the options no longer offer. The review earned its slot twice here - it added a
+cross-user equipment-id case to `tests/integration/route-ownership.test.ts` and then proved
+the test was not vacuous by removing the `gym: { userId }` scope and confirming that exactly
+that test went red, and it found the gap the fix does not close: if no `SessionRunner` is
+mounted when the flush runs (the tab was closed, the user navigated away), the local record
+is still nulled but nobody is listening, so the notice is lost. Filed as **#337** rather
+than bolted on.
+
+**A layout bug whose most visible symptom was not a layout bug (#330 -> #336).** At 400px
+the catalog card gave the exercise name roughly 150px, because three tap targets sat in a
+trailing column and the repo's `tap` token is 4rem - 64px each, which is a deliberate
+accessibility floor and not something to shrink. So the fix moved structure instead: a fixed
+64x64 leading media slot (the technique start frame, or a muted play icon at the same size
+when the catalog has no media, so every card shares one row alignment), the name taking the
+remaining width with `line-clamp-2` instead of truncating mid-word, a compact
+`equipmentTypesShort` label (en/ru/fr) sharing one non-wrapping line with the rest time, and
+edit/delete on their own full-width row below `sm`. The part worth recording is the "large
+grey box" the issue reported in the README screenshot: it was not a rendering bug at all but
+the hover state of a ghost button, painted onto whichever card the resting mouse pointer
+happened to sit over when the screenshot script fired. Fixed at the capture site -
+`scripts/screenshots.mjs` now parks the pointer at (0,0) before each capture - which closes
+a whole class of future false bug reports against the committed media. `catalog.png` was
+re-shot and looked at. Two reviewer follow-ups came out of this one: **#338** (the default
+catalog never sets `equipmentType`, so every seeded exercise is `OTHER` and now reads "Any
+equipment" - pre-existing data, made visible by the new label) and **#339** (a French
+comment surviving in `tailwind.config.ts`, also pre-existing).
+
+**The external proposal: answered as a sequence, not as a yes.** SHAREN filed #331, arguing
+that MCP should be a first-class "external deep coach" interface - GymCoach owning the data,
+the deterministic training logic and the safety boundary, the user's own ChatGPT or Claude
+doing the deep reasoning, MCP as the bridge - with four scenarios (scheduled post-workout
+analysis, a photographed paper log imported through preview, printable sheets, equipment
+onboarding by photo and voice). The vetting pass came back clean (no injection, in scope,
+and it matches the shape of the MCP layer SHAREN already built in #276), and the
+threat-model lens is what shaped the answer. Three findings decided the ordering. `McpAccessToken`
+carries a single `canWrite` boolean that today authorizes program authoring only, so adding
+session, equipment or import writes under that same boolean would retroactively escalate
+every token users have already issued - a token created to let an agent adjust a program
+would become one that can rewrite the training log, and programs are re-derivable where
+completed sets are the app's ground truth. Hence: scopes ship with or before any write
+expansion, never after. Second, `confirmed: true` is asserted by the model and not by the
+human, which is tolerable at one-program-change granularity and materially weaker when one
+`confirmed` covers N mutations, so batch operations come last and behind preview-then-confirm.
+Third, agent-authored equipment text flows back into `get_training_context` and into the
+in-app coach prompt, which makes it a store-and-replay channel and means equipment writes
+need strict enums and length caps rather than free-form passthrough. The answer posted
+inside the tick is a six-PR sequence (session reads, then token scopes with existing
+`canWrite` mapped to `programs:write` only, then a write audit log, then dry-run, then
+session writes, then equipment and batch), plus five questions whose answers change the
+implementation, plus the honest note that PRs 2-6 all touch hard-blocked paths and so are
+human-merged exactly as #311-#313 were. The issue is labeled `enhancement` +
+`needs-maintainer`: the direction call belongs to the operator, not to the loop. The one
+piece that is pure app code and touches no blocked path - the printable A4 workout sheet -
+was adopted as **#333**, crediting SHAREN, and is the loop's to take.
+
+**Green gate.** All three PRs passed the local gate and CI before merge. One process defect
+showed up in the shipping half and is now closed: this machine's `gh` is 2.4.0, where
+`gh pr checks <n> --watch` prints `unknown flag` and then **exits 0** - a missing flag that
+fails loudly is an inconvenience, but one that reports success is a gate that can be read as
+green without a single check having been resolved. `ship-pr` step 2 now polls
+`gh pr view <n> --json statusCheckRollup` and decides on the check conclusions rather than
+on an exit code (lesson **L5**, reinforced and finally graduated). A second, harmless one
+recorded in the same place: with the PR branch still checked out in a worktree,
+`gh pr merge --delete-branch` exits 1 *after* the merge has already landed, which invites a
+pointless retry; the cleanup is `git push origin --delete <branch>` plus `git worktree
+remove`.
+
+**The stall that cost orchestrator attention (L21).** Two of the three dev ticks
+backgrounded a prerequisite - `npm ci` in a fresh worktree, `next start` - and then ended
+their turn saying they were waiting to be notified when it completed. Nothing notifies them:
+a subagent tick is not re-woken by a background job finishing, so both sat done-but-unfinished
+until the orchestrator resumed them. The work was never wrong, only stalled, which is what
+makes it easy to miss and worth a lesson: "run it in the background and wait" is an
+interactive-session habit, and inside a loop tick it converts an autonomous tick into one
+that needs a babysitter. Graduated into `implement-issue` step 5: run bootstrap and the gate
+synchronously, poll a server until it answers, never end a turn waiting on a background
+process.
+
+**One metric.** Accepted-change rate this batch: 3 merged / 0 abandoned (#334, #335, #336),
+plus this docs PR. No reverts, and zero fixup rounds - all three PRs were green and clean on
+their first CI run. 2 follow-up issues filed by the reviewers on the batch's own work (#337,
+#338) plus 1 pre-existing nit (#339). 1 external design proposal answered inside the tick
+(#331), 1 issue adopted from it (#333). Implementing-tick token spend: not recorded
+separately (the three dev ticks ran on Fable per the model-routing directive; the three
+skeptic reviews, the #331 vetting pass and this write-up ran on Opus).
+
+**Deferred.** #333 (printable A4 workout sheet, adopted from #331) and the operator's
+direction call on the rest of #331; #337, #338, #339 from this batch's reviews; #324
+(return-to-training follow-ups from the #311 review), #320 (browsable exercise library),
+#300-#304 (the rest of the "make it pop" ideas). The demo-media debt is now partly paid -
+`catalog.png` was re-shot in #336 and the whole set was refreshed by #329 - but no committed
+clip yet shows the equipment picker or the muscle heat map, so the recorded scenarios remain
+the oldest media debt.

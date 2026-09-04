@@ -439,3 +439,62 @@ app). The re-shoot is now the highest-value media debt: `progress.png` predates 
 AND the heat map, and no committed clip shows either. Next media tick should seed a couple of
 demo progress photos in `scripts/seed-demo-history.ts`, re-shoot the progress page, and re-record
 the progress scenario in one pass.
+
+## 2026-09-04 - three parallel dev ticks: FK index (#334), dropped-equipment notice (#335), catalog card (#336)
+
+Merged since the last digest: **#332** (French locale, the operator's own branch), **#334**
+(closes #325), **#335** (closes #326) and **#336** (closes #330). The last three are
+loop-authored, ran as three parallel worktree ticks, and each passed CI on its first run plus
+an independent skeptic review. Read these first:
+
+1. **#334 - the only schema change in the batch.** `gh pr diff 334`. A migration ranks top by
+   rule, and this one has a wrinkle worth your eyes: it restores an index that a previous
+   review told a contributor to delete (lesson L20), and it does so with `CREATE INDEX IF NOT
+   EXISTS` because the original index was removed by editing an already-applied migration in
+   place - so a database that applied the pre-review version still has the index while a fresh
+   one does not. Check that you agree the guard is warranted here rather than a habit worth
+   spreading: the general rule in this repo is still that an applied migration is immutable.
+   The index itself is `[gymEquipmentId, completedAt]` on `Set`, and its reader is Postgres
+   executing `ON DELETE SET NULL`, not any application query.
+2. **#335 - core behavior on the offline path, plus one ownership test.** `gh pr diff 335`.
+   Read `lib/sync.ts` first: the set POST is fire-and-forget through IndexedDB, so the
+   server's "your equipment reference was dropped" answer can only be observed inside the
+   background flush, and the fix is a subscriber (`onEquipmentDropped`) rather than a return
+   value. Two things to check: that the local record is nulled on that path (otherwise the
+   next set re-sends a stale id), and that the session-runner subscription filters by session
+   id so a flush belonging to an older session cannot toast into the current one. The
+   integration case added to `tests/integration/route-ownership.test.ts` is the security-
+   relevant line - it pins the `gym: { userId }` scope on the equipment lookup, and the
+   reviewer verified it fails when the scope is removed. Known gap, filed as **#337**, not a
+   regression: with no `SessionRunner` mounted at flush time the record is still nulled but
+   the user is never told.
+3. **#336 - additive UI, ranks last, but read the screenshot-script change.** `gh pr diff
+   336`. The card layout itself is presentation only (a 64x64 leading media slot,
+   `line-clamp-2` on the name, a compact `equipmentTypesShort` label in en/ru/fr, actions on
+   their own row below `sm`). The one line with reach beyond this PR is in
+   `scripts/screenshots.mjs`: the pointer is now parked before each capture, because the
+   "large grey box" the issue reported in the README was a ghost button's hover state under
+   the resting mouse. That is a fix to the committed-media pipeline, so it affects every
+   future shot.
+
+**Skim:** #332 (a third message catalog, mechanically parallel to the existing two) and this
+write-up (CHANGELOG Added/Fixed, the README feature/roadmap/credits lines, lessons L5 and L15
+updated plus new L21, the `ship-pr` and `implement-issue` skill edits, the confirmed
+parallel-dev pattern in `06-orchestration.md`, autonomy-log).
+
+**Also worth ten minutes, and it is not a diff:** the answer posted on **#331** (SHAREN's
+proposal to make MCP a first-class external-coach interface). It commits the project to an
+ordering - token scopes before any write expansion, because `McpAccessToken.canWrite` is a
+single boolean and widening what it authorizes would retroactively escalate every token
+already issued. That is a design call with a security consequence, the issue is labeled
+`needs-maintainer`, and it is yours to confirm or overrule before anyone writes PR 2.
+
+**Carry forward:** #337, #338 (every seeded exercise is `equipmentType: OTHER`, so the new
+label reads "Any equipment" everywhere) and #339 (a French comment in `tailwind.config.ts`)
+came out of this batch's reviews and are unimplemented. #333 (printable A4 sheet, adopted
+from #331), #324, #320 and #300-#304 still stand.
+
+**Media note:** `catalog.png` was re-shot in #336 and inspected, and #329 refreshed the rest,
+so the static screenshots are current. The recorded clips are not: none of them shows the
+equipment picker or the muscle heat map, which makes the scenario re-record the oldest media
+debt in the repo.

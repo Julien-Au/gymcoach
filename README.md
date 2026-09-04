@@ -82,10 +82,12 @@ on your own key - all self-hosted.
 - **Your actual gym, not a generic one** - describe the concrete stations and
   items you train on (type, manufacturer, model, quantity, item-specific weight
   options, an optional photo), link them to the exercises they serve, and the
-  equipment you used is recorded on every set you log.
-- **Quality-of-life** - kilograms or pounds per user, an interface in English or
-  Russian (extensible message catalogs), multi-user with strict per-user data
-  isolation, and an installable PWA with offline logging.
+  equipment you used is recorded on every set you log. If a selection cannot be
+  recorded (the item was deleted or unlinked while you trained), the set is
+  still saved and the logger says so instead of dropping it silently.
+- **Quality-of-life** - kilograms or pounds per user, an interface in English,
+  French or Russian (extensible message catalogs), multi-user with strict
+  per-user data isolation, and an installable PWA with offline logging.
 
 ### Track progress
 
@@ -372,7 +374,8 @@ than CI reaching in to a small VPS.
 - [x] Free-text (AI-parsed) set logging (opt-in "Parse with AI" fills the set
       form from plain language; you confirm before it logs)
 - [x] Progress photos (local-only upload with side-by-side compare)
-- [x] Interface localization (English and Russian, extensible message catalogs)
+- [x] Interface localization (English, French and Russian, extensible message
+      catalogs)
 - [x] Muscle heat map (body silhouettes tinted by weekly volume vs MEV/MRV)
 - [x] Physical gym equipment inventory, with the equipment used recorded on
       each logged set
@@ -395,7 +398,10 @@ Notable changes are tracked in the [CHANGELOG](CHANGELOG.md).
   (#276). Along the way they also found and fixed a latent `.gitignore` bug
   that shadowed an API route in fresh clones. Then a second series:
   return-to-training calibration (#311), the physical gym equipment inventory
-  (#312) and the equipment recorded on each logged set (#313).
+  (#312) and the equipment recorded on each logged set (#313). They also
+  proposed making MCP a first-class "external deep coach" interface (#331); the
+  sequencing is answered on that issue, and its one web-app-only piece is
+  tracked as #333.
 - [@mvnixon](https://github.com/mvnixon) - reported the `GET /mcp` hang that
   stopped MCP clients probing with GET from connecting at all (#314), and
   made the case for publishing the production image so self-hosters can pull
