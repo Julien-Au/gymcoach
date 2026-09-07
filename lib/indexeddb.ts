@@ -54,8 +54,8 @@ export interface PendingSet {
   // `gymEquipmentId` is nulled at the same moment.
   //
   // Persisted rather than only broadcast: a flush can complete with no
-  // SessionRunner mounted — `sync-bootstrap` binds auto-sync app-wide, so one
-  // fires at startup on any page — and a notice delivered to no listener was
+  // SessionRunner mounted (`sync-bootstrap` binds auto-sync app-wide, so one
+  // fires at startup on any page) and a notice delivered to no listener was
   // gone for good. Cleared by `drainDroppedEquipment` once it has been shown.
   // Optional, so rows written before this field stay valid.
   equipmentDroppedNotice?: string | null;

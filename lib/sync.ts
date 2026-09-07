@@ -193,8 +193,8 @@ export async function queueSet(
 //
 // This is the single consumer of a drop. `onEquipmentDropped` stays a *signal*
 // that something changed rather than the payload itself, because a flush can
-// finish while no SessionRunner is mounted — log a set offline, close the app,
-// reopen on the dashboard — and a broadcast with no listener was lost. Draining
+// finish while no SessionRunner is mounted (log a set offline, close the app,
+// reopen on the dashboard) and a broadcast with no listener was lost. Draining
 // on mount picks up exactly those, and draining on the signal covers the live
 // in-session case, with the clear making the two paths idempotent rather than
 // double-reporting.
@@ -202,28 +202,37 @@ export async function queueSet(
 // It also removes the ordering dependency in `SessionRunner`, where
 // `bindAutoSync()` runs just before `onEquipmentDropped` registers and was only
 // safe because `flushPendingSets` happens to suspend at its first `await`.
+//
+// Read and clear happen in one `rw` transaction, and each row is claimed by the
+// cursor that nulls it, so "exactly once" holds against a concurrent drain
+// rather than only against a sequential one. Two drains do overlap in practice:
+// `reactStrictMode` fires the mount effect twice in development, and in
+// production a broadcast can land while the mount drain is mid-await. Whichever
+// transaction runs second sees the field already null and returns nothing.
 export async function drainDroppedEquipment(sessionId: string): Promise<DroppedEquipment[]> {
   const db = getDB();
-  const rows = await db.pendingSets.where('sessionId').equals(sessionId).toArray();
-  const dropped = rows.filter((row) => row.equipmentDroppedNotice != null);
-
-  // Read out before clearing. `toArray()` hands back copies under Dexie, so
-  // mapping afterwards would happen to work — but it reads the field this call
-  // is about to null, which is only correct by accident of the driver.
-  const notices: DroppedEquipment[] = dropped.map((row) => ({
-    localId: row.localId,
-    sessionId: row.sessionId,
-    gymEquipmentId: row.equipmentDroppedNotice as string,
-  }));
-
-  // Cleared before returning: a caller that throws while rendering the notice
-  // loses it, which is the same failure as today, whereas clearing afterwards
-  // could show it twice on a re-entrant drain.
-  await Promise.all(
-    dropped.map((row) => db.pendingSets.update(row.localId, { equipmentDroppedNotice: null })),
-  );
-
-  return notices;
+  return db.transaction('rw', db.pendingSets, async () => {
+    const notices: DroppedEquipment[] = [];
+    // `modify` reads and writes each row through one cursor, so the row is read
+    // out and nulled without a window in between. It writes the whole record
+    // where the previous version patched one key, which is safe only because
+    // the value it writes back is the one this transaction just read: an
+    // `update()` from the flush path runs in its own `rw` transaction on the
+    // same store, and those cannot interleave with this one.
+    await db.pendingSets
+      .where('sessionId')
+      .equals(sessionId)
+      .modify((row) => {
+        if (row.equipmentDroppedNotice == null) return;
+        notices.push({
+          localId: row.localId,
+          sessionId: row.sessionId,
+          gymEquipmentId: row.equipmentDroppedNotice,
+        });
+        row.equipmentDroppedNotice = null;
+      });
+    return notices;
+  });
 }
 
 // Deletes synced sets older than `maxAgeMs` to keep Dexie lightweight.
