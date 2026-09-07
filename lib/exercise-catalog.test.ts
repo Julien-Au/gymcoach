@@ -21,7 +21,7 @@ describe('EXERCISE_CATALOG', () => {
   });
 
   // Issue #338: `CatalogExercise` had no `equipmentType`, so every seeded
-  // exercise fell to the Prisma default of OTHER — barbell, dumbbell, cable and
+  // exercise fell to the Prisma default of OTHER: barbell, dumbbell, cable and
   // machine work all read as "Any equipment", and `gymWeightOptions` snapped
   // none of it to a bar or a stack.
   it('every entry declares an explicit, valid equipment type', () => {
@@ -45,18 +45,28 @@ describe('EXERCISE_CATALOG', () => {
 
   it('the equipment named in an exercise name is the equipment it is typed as', () => {
     const byName: [RegExp, EquipmentType][] = [
-      [/^Barbell /i, EquipmentType.BARBELL],
-      [/^Dumbbell /i, EquipmentType.DUMBBELL],
-      [/^Cable /i, EquipmentType.CABLE],
-      [/^Machine /i, EquipmentType.MACHINE],
+      [/\bbarbell/i, EquipmentType.BARBELL],
+      [/\bdumbbell/i, EquipmentType.DUMBBELL],
+      [/\bcable/i, EquipmentType.CABLE],
+      [/\bmachine/i, EquipmentType.MACHINE],
     ];
+    let pinned = 0;
     for (const e of EXERCISE_CATALOG) {
-      for (const [pattern, expected] of byName) {
-        if (pattern.test(e.name)) {
-          expect(e.equipmentType, `${e.name} should be ${expected}`).toBe(expected);
-        }
-      }
+      // Cardio names its machine ('Rowing machine') and is pinned to CARDIO by
+      // the test below; matching it here would only contradict that one.
+      if (e.category === ExerciseCategory.CARDIO) continue;
+      // A parenthesised aside names the alternative, not the exercise. Without
+      // stripping it, 'Barbell hip thrust (or machine)' and 'Pec deck (or cable
+      // fly)' both read as two pieces of equipment and either answer is wrong.
+      const bare = e.name.replace(/\([^)]*\)/g, ' ');
+      const named = byName.filter(([pattern]) => pattern.test(bare));
+      if (named.length !== 1) continue;
+      pinned += 1;
+      expect(e.equipmentType, `${e.name} should be ${named[0][1]}`).toBe(named[0][1]);
     }
+    // The loop is skippable by construction, so count what it actually checked:
+    // a regex that stopped matching would otherwise leave this green and empty.
+    expect(pinned).toBeGreaterThanOrEqual(29);
   });
 
   it('cardio entries are typed CARDIO', () => {
