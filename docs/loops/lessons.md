@@ -376,3 +376,20 @@ Format per entry: trigger/evidence, the lesson (actionable), and **Status** = `g
 - **Status:** graduated -> `implement-issue` step 5 (green-gate) now states it outright: run
   bootstrap and the gate synchronously, never end the turn waiting on a background process,
   poll a server until it answers.
+
+### L22 - This host's `gh` 2.4.0 has no `--match-head-commit` and no `jq`: pin merges through the REST endpoint
+- **Trigger:** 2026-09-07, merging shaurya703's #341-#343 on the operator's in-session
+  authorization. The policy and the `ship-pr` skill say `gh pr merge --match-head-commit <sha>`,
+  and this machine's gh (2.4.0, Ubuntu's packaged build) does not know the flag. The box also has
+  no `jq` binary, so a `| jq` pipeline written from memory fails before it reaches GitHub. Same
+  family as L5 (an old CLI on the operator's host), met one step later in the pipeline: at the
+  merge, where a workaround chosen in a hurry is the one most likely to drop the SHA pin.
+- **Lesson:** the pin is a property of the API, not of the flag.
+  `gh api -X PUT repos/<owner>/<repo>/pulls/<n>/merge -f sha=<head> -f merge_method=<squash|merge>`
+  is the same fail-closed merge on any gh version: GitHub refuses it (409) if the head no longer
+  matches `sha`. For filtering, `gh api ... --jq '<filter>'` evaluates the filter inside gh with no
+  `jq` on PATH. Prefer the endpoint over upgrading the CLI mid-tick: the upgrade is a host change
+  nobody reviewed, the endpoint is a documented contract.
+- **Status:** graduated -> the REST fallback now sits in one sentence beside the
+  `--match-head-commit` instruction in `10-external-contributions.md` (pass 3) and in `ship-pr`
+  (steps 1 and 5).

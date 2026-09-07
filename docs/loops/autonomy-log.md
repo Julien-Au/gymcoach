@@ -2393,3 +2393,116 @@ direction call on the rest of #331; #337, #338, #339 from this batch's reviews; 
 `catalog.png` was re-shot in #336 and the whole set was refreshed by #329 - but no committed
 clip yet shows the equipment picker or the muscle heat map, so the recorded scenarios remain
 the oldest media debt.
+
+
+## 2026-09-07 - the first unvetted-tier wave: shaurya703's #341/#342/#343 merged on the operator's in-session authorization, two review rounds each, and one defect only CI saw
+
+**What ran.** A new contributor, @shaurya703, opened three fork PRs on the morning of
+2026-09-04, each closing a follow-up the loop's own reviewers had filed the day before: #341
+for #338 (the default catalog never set `equipmentType`, so every seeded exercise read "Any
+equipment"), #342 for #337 (a dropped-equipment notice lost when no session screen is
+mounted at flush time), #343 for #339 (the French comments in `tailwind.config.ts`). The
+author is on no list, so this is the first time the unvetted-tier path of
+`10-external-contributions.md` ran end to end on real code: the loop does the review labor,
+a human owns the merge. The README thanks and the CHANGELOG credit for #342/#343 landed in
+#344 the same morning as the merges; this entry's PR adds the #341 credit, the `catalog.png`
+re-shoot the #341 review took on itself, and one CLI lesson. Triage and ideate did not run.
+
+**The vetting sequence, as actually run.** Pass 1 (mechanical) on 09-04: the three PRs touch
+disjoint files, all three were cut from the current `main`, and only #343 sits on a
+hard-block path (`tailwind.config.ts` is executable config) - and that one is comments only,
+confirmed hunk by hunk. Pass 2: four independent Opus lenses, security and correctness,
+read-only on the pinned SHA with the diff as data. Security came back clean on all three:
+counts reconciled on #341 (55 entries, 55 new lines, an import and an interface field,
+nothing else touched), no new egress or storage access on #342 and the drain shown to patch
+exactly one key so it can never return a set to the flush selection (the invariant #313
+taught), nothing but comments on #343. Correctness asked for the same thing on all three:
+em-dashes - one in #341, one in #343, eight in #342 including a test title. Nothing in lint
+catches them, so all three would have merged green while breaking an explicit CONTRIBUTING
+rule; a reviewer is the only gate for that one, and it held. Correctness also found the real
+defect of the wave, on #342: read-then-clear was not atomic, so two overlapping drains -
+which `reactStrictMode` produces on every dev mount, and a flush broadcast landing during
+the mount drain produces in production - both read the row before either nulled it, and the
+toast showed twice. A duplicate toast, not data loss, but exactly-once was the PR's thesis,
+so it blocked. On #341 the review offered an optional widening of the name pin and took the
+`catalog.png` re-shoot on itself, since it needs a seeded running app the contributor cannot
+produce. Zero local execution of contributor code, per the L18 execution gate: CI was the
+only thing that ran it, with the first-contributor workflow runs approved by hand as each
+SHA landed. Pass 3 on 09-07: check runs resolved against the current head SHA rather than
+the PR (L19), and each merge pinned to that SHA.
+
+**The human step.** Unvetted-tier PRs are never merged by the loop on its own. The operator
+authorized merging these three in-session, before the verdicts went out, and the verdicts
+said so in the open ("once the hyphen is pushed and CI is green on the new SHA, this gets
+merged"), so the contributor knew the bar and who had set it. That authorization is the
+human merge step the policy requires, and it was scoped: these three PRs, on green CI, after
+the fixups. It does not promote the author - the vetted list is a human-granted edit to the
+policy file, and it did not change this wave.
+
+**One round on #342 and #343, two on #341 - and what CI caught that review did not.** #343:
+one push, the dash replaced by a full stop, merged. #342: one push with the dashes gone and
+the drain rewritten to run inside a single Dexie `rw` transaction with `modify()`, which
+closes the window for every caller rather than for the one component; a fresh re-review lens
+checked that against Dexie's `Collection.modify` source rather than its docs, confirmed the
+whole-record put cannot interleave with a flush-path `update()` because IndexedDB serialises
+readwrite transactions on one store, and passed it with two non-blocking nits. #341 took
+two. The first push dropped the dash and widened the pin, and CI's typecheck went red on it:
+the repo compiles with `noUncheckedIndexedAccess`, so `named[0]` is `T | undefined` even
+after a length check, and a `tsc --noEmit` run outside the repo's tsconfig does not see
+that. Every test passed on that same SHA, and four review lenses plus a re-read of the diff
+did not flag it either, because a reviewer reads the types the code implies while the
+compiler reads the ones the config imposes. The second push narrowed once and destructured;
+green; merged. The sentence worth keeping: CI is not the tiebreaker after review, it is a
+lens with a different input, and a strictness flag the repo turns on is exactly the kind of
+thing only that lens can see.
+
+**The contributor corrected the reviewers, and was right.** The #341 verdict pitched the
+wider pin as roughly 40 names "with no false positive we could find". The contributor found
+three in the current names - a pec deck whose aside mentions cables, a barbell hip thrust
+whose aside mentions a machine, and a rowing machine that is cardio - all of one shape, an
+equipment word that is not the exercise's own equipment, and encoded the fix as two rules
+that now document the naming convention: a parenthesised aside names the alternative and is
+stripped before matching, and cardio is skipped because another test already pins it. That
+lands at 29 pinned names with a floor on the count, so a regex that quietly stops matching
+cannot leave the test green and empty. On #342 the contributor flagged the thing the
+reviewer's own security argument had leaned on: after the transaction rewrite `modify()`
+writes the whole record, so "partial patch cannot clobber" no longer holds and the safety
+rests on transaction serialisation instead; the comment in the code was rewritten to say the
+actual reason. Unprompted, the same PR reported that its first concurrency test had passed
+against the unfixed drain because the fake resolved reads in the same tick, and made the fake
+yield so that red-first was real. Recorded because the policy's bet is that review labor
+produces fixes rather than churn, and this wave's evidence is that a careful contributor
+produces better review than the reviewer on the points they touch. Every round was answered
+within hours.
+
+**The merge mechanics, and a lesson.** The three merges were pinned to their head SHAs
+through `PUT /repos/{owner}/{repo}/pulls/{n}/merge` with `sha`, not through
+`gh pr merge --match-head-commit`, because this host's gh is 2.4.0 and does not know the
+flag - the same old-CLI family as L5, met one step later. The endpoint is the same
+fail-closed contract (GitHub refuses when the head has moved), so the policy does not change;
+the REST form now sits in one sentence beside the flag in `10-external-contributions.md` and
+in `ship-pr`, together with the corollary that this box has no `jq` and `gh --jq` is the
+substitute (**L22**).
+
+**Green gate.** CI green on every pinned SHA before each merge (#343 on `2203921`, #342 on
+`dbb52b1`, #341 on `68cf687`); no local gate on any of them, deliberately. This PR passed
+the local gate. The re-shot `catalog.png` was captured against an isolated Postgres and app
+port (never the shared :5434 / :3031), then looked at: the first cards now read Barbell,
+Dumbbells and Machine beside the rest time, where every one of them said "Any equipment".
+
+**One metric.** Accepted-change rate this wave: 3 external PRs merged / 0 abandoned (#341,
+#342, #343), plus #344 and this docs PR from the loop. No reverts. Fixup rounds: 2 on #341,
+1 on #342, 1 on #343, every one re-reviewed against a freshly pinned SHA. 0 local executions
+of contributor code. 5 review lenses (the mechanical pass plus four independent Opus lenses)
++ 1 re-review (#342 after the transaction rewrite). 1 defect caught by CI alone (the #341
+typecheck). 2 reviewer claims corrected by the contributor. README thanks in #344.
+Implementing-tick token spend: not applicable, no loop-authored code this wave (reviews and
+the write-ups ran on Opus; this close-out tick, docs and a screenshot, ran on Fable).
+
+**Deferred.** The two non-blocking nits from the #342 re-review (`return false` from the
+`modify` callback to skip the no-op puts, and a `.catch` on the fire-and-forget mount drain),
+offered to the contributor as a follow-up and not filed; #333 (printable A4 workout sheet)
+and the operator's direction call on the rest of #331; #324 (return-to-training follow-ups),
+#320 (browsable exercise library), #300-#304 (the rest of the "make it pop" ideas). The
+demo clips still show neither the equipment picker nor the muscle heat map, which remains
+the oldest media debt.

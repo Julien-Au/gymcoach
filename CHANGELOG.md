@@ -380,6 +380,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Every exercise in the default catalog now carries its equipment type. The
+  seeded catalog never set `equipmentType`, so all 55 entries were `OTHER`: the
+  logger's load rounding could not pick the barbell, dumbbell or stack branch
+  for them, and the catalog card read "Any equipment" (#338). Newly registered
+  and demo-seeded users now get typed entries (Barbell, Dumbbell, Cable,
+  Machine, Bodyweight, Cardio) with the matching load rounding and labels;
+  existing rows are not migrated. Community contribution by @shaurya703 (#341).
 - A dropped-equipment notice no longer gets lost when the sync completes with
   no session screen open. The notice is written to the queued set itself and
   drained, exactly once, by the next session screen that mounts, so logging a

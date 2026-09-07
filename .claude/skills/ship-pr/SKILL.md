@@ -34,7 +34,9 @@ changes on.
      hard-block path gate, no file overlap with another PR handled this run, multi-lens
      adversarial review with structured verdicts, green CI on the SHA recorded before
      review, then `gh pr merge --match-head-commit <sha>` (merge commit, not squash, for
-     stacked fork PRs). Local gate runs and fixups are permitted at this tier only.
+     stacked fork PRs; on a `gh` without that flag, such as this host's 2.4.0, the same pin
+     is `gh api -X PUT repos/<owner>/<repo>/pulls/<n>/merge -f sha=<sha> -f merge_method=merge`).
+     Local gate runs and fixups are permitted at this tier only.
    - Anyone else: do NOT auto-merge and do NOT execute their code locally (CI is the only
      executor - no `verify.sh`, no `npm ci` on their branch, even in a worktree). Run the
      read-only review of step 4 (diff as data), post the structured verdict as a PR
@@ -90,7 +92,9 @@ changes on.
    `gh pr merge <n> --squash --delete-branch`. Vetted-contributor fork PRs:
    `gh pr merge <n> --merge --match-head-commit <sha-recorded-before-review>` (merge
    commit for stacks, no `--delete-branch` on a fork, and the SHA pin makes a push race
-   between review and merge fail closed). Confirm it merged
+   between review and merge fail closed; without the flag, `gh api -X PUT
+   repos/<owner>/<repo>/pulls/<n>/merge -f sha=<sha> -f merge_method=merge` is the same pin,
+   and `gh api ... --jq` replaces a `jq` binary this host does not have). Confirm it merged
    (`gh pr view <n> --json state,mergedAt`).
    **`--delete-branch` fails after a successful merge when the branch is checked out in a
    worktree**: `gh` cannot delete a branch that some working tree still has checked out, so
