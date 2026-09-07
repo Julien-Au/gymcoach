@@ -59,7 +59,7 @@ const config: Config = {
       minHeight: {
         // Minimum tap target, deliberately 4rem (64px) rather than the usual
         // 44px: these are pressed mid-set with gloved or chalky hands. The size
-        // has a cost worth knowing — three tap targets in a card's trailing
+        // has a cost worth knowing. Three tap targets in a card's trailing
         // column is what starved the exercise name at 400px (#330, #336), so
         // widen the row or drop a control rather than shrinking this.
         tap: '4rem',
