@@ -60,9 +60,11 @@ describe('EXERCISE_CATALOG', () => {
       // fly)' both read as two pieces of equipment and either answer is wrong.
       const bare = e.name.replace(/\([^)]*\)/g, ' ');
       const named = byName.filter(([pattern]) => pattern.test(bare));
-      if (named.length !== 1) continue;
+      const only = named.length === 1 ? named[0] : undefined;
+      if (!only) continue;
+      const [, expected] = only;
       pinned += 1;
-      expect(e.equipmentType, `${e.name} should be ${named[0][1]}`).toBe(named[0][1]);
+      expect(e.equipmentType, `${e.name} should be ${expected}`).toBe(expected);
     }
     // The loop is skippable by construction, so count what it actually checked:
     // a regex that stopped matching would otherwise leave this green and empty.
