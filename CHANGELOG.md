@@ -380,6 +380,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A dropped-equipment notice no longer gets lost when the sync completes with
+  no session screen open. The notice is written to the queued set itself and
+  drained, exactly once, by the next session screen that mounts, so logging a
+  set offline, closing the app and reopening it later still tells you the
+  machine was not recorded. Community contribution by @shaurya703 (#342).
+- The two remaining French comments in the Tailwind config are in English, and
+  the 64px tap-target token now documents why it is that size and what it
+  costs. Community contribution by @shaurya703 (#343).
 - The logger no longer stays silent when the equipment you picked was not
   recorded. A set whose equipment reference had gone stale by the time it
   reached the server (the item was deleted, unlinked from the exercise, or

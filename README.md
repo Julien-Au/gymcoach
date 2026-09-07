@@ -402,6 +402,9 @@ Notable changes are tracked in the [CHANGELOG](CHANGELOG.md).
   proposed making MCP a first-class "external deep coach" interface (#331); the
   sequencing is answered on that issue, and its one web-app-only piece is
   tracked as #333.
+- [@shaurya703](https://github.com/shaurya703) - picked up three of the loop's
+  own follow-up issues within hours of their filing and turned each into a
+  clean PR, including the persisted dropped-equipment notice (#342).
 - [@mvnixon](https://github.com/mvnixon) - reported the `GET /mcp` hang that
   stopped MCP clients probing with GET from connecting at all (#314), and
   made the case for publishing the production image so self-hosters can pull
