@@ -87,9 +87,11 @@ export async function getReturnToTrainingRecommendations({
         // lookup preserves knowledge of arbitrarily old real exercise history,
         // while only the newest sessions needed by the anchor algorithm are
         // loaded with their sets: every session inside the recent exact window
-        // (capped at one per day of that window) plus the long-term pool. The
-        // cap applies to the long-term pool only, so several recent sessions
-        // cannot starve the long-term anchor below its robust minimum.
+        // (up to RETURN_RECENT_SESSION_LIMIT of them) plus the long-term pool.
+        // The read fetches both budgets together and splits below, so a few
+        // recent sessions no longer displace long-term anchors; more recent
+        // sessions than the recent budget still squeeze the long-term pool,
+        // which is accepted (see RETURN_RECENT_SESSION_LIMIT).
         const [latestSet, sessions] = await Promise.all([
           db.set.findFirst({
             where: {

@@ -27,9 +27,10 @@ export const RETURN_MODERATE_GAP_DAYS = 84;
 export const RETURN_EXTENDED_GAP_DAYS = 168;
 export const RETURN_LONG_TERM_ANCHOR_SESSION_LIMIT = 8;
 // How many sessions inside the recent exact window the history builder loads
-// on top of the long-term pool: one per day of the window. A lifter who logs
-// the same exercise more than once a day for two weeks would start squeezing
-// the long-term pool, which is accepted (see return-to-training-history.ts).
+// on top of the long-term pool: about one per day of the window (the window
+// spans day buckets 0..14, so the budget is one short of that). A lifter who
+// logs the same exercise more often than that squeezes the long-term pool,
+// which is accepted (see return-to-training-history.ts).
 export const RETURN_RECENT_SESSION_LIMIT = RETURN_RECENT_EXACT_SESSION_DAYS;
 export const RETURN_ROBUST_ANCHOR_MIN_SESSIONS = 3;
 export const RETURN_ESTABLISHED_ANCHOR_BLOCK_SESSIONS = 3;
