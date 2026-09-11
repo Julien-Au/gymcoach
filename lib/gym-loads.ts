@@ -36,6 +36,10 @@ export function gymWeightOptions(
   }
 }
 
+// Progression-side snapping. Built on the same option list as the
+// return-to-training helpers below so the two never disagree on what a gym
+// can load: OTHER equipment with configured weight options snaps like a
+// machine, and the barbell ceiling is the shared one from gymWeightOptions.
 export function constrainGymWeight(
   targetWeight: number,
   referenceWeight: number,
@@ -45,32 +49,9 @@ export function constrainGymWeight(
     return round(targetWeight);
   }
 
-  let options: number[] = [];
-  switch (constraints.equipmentType) {
-    case 'DUMBBELL':
-      options = constraints.dumbbellWeights ?? [];
-      break;
-    case 'BARBELL':
-      options = constructibleBarbellWeights(
-        constraints.barWeights ?? [],
-        constraints.plateWeights ?? [],
-        Math.max(targetWeight, referenceWeight),
-      );
-      break;
-    case 'MACHINE':
-    case 'CABLE':
-      options = constraints.weightOptions ?? [];
-      break;
-    case 'BODYWEIGHT':
-    case 'CARDIO':
-      return round(targetWeight);
-    default:
-      break;
-  }
-
-  const normalized = uniquePositive(options);
-  if (normalized.length === 0) return round(targetWeight);
-  return selectDirectionalWeight(normalized, targetWeight, referenceWeight);
+  const options = gymWeightOptions(constraints, Math.max(targetWeight, referenceWeight));
+  if (options.length === 0) return round(targetWeight);
+  return selectDirectionalWeight(options, targetWeight, referenceWeight);
 }
 
 export function constrainGymWeightAtOrBelow(

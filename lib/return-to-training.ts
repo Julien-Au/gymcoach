@@ -26,6 +26,11 @@ export const RETURN_RECENT_EXACT_SESSION_DAYS = 14;
 export const RETURN_MODERATE_GAP_DAYS = 84;
 export const RETURN_EXTENDED_GAP_DAYS = 168;
 export const RETURN_LONG_TERM_ANCHOR_SESSION_LIMIT = 8;
+// How many sessions inside the recent exact window the history builder loads
+// on top of the long-term pool: one per day of the window. A lifter who logs
+// the same exercise more than once a day for two weeks would start squeezing
+// the long-term pool, which is accepted (see return-to-training-history.ts).
+export const RETURN_RECENT_SESSION_LIMIT = RETURN_RECENT_EXACT_SESSION_DAYS;
 export const RETURN_ROBUST_ANCHOR_MIN_SESSIONS = 3;
 export const RETURN_ESTABLISHED_ANCHOR_BLOCK_SESSIONS = 3;
 export const RETURN_ESTABLISHED_HISTORY_FLOOR_RATIO = 0.85;
@@ -54,7 +59,6 @@ export interface ReturnTrainingHistory {
   recentMuscleSets: number;
   baselineMuscleSetsPer28Days: number;
   exerciseSessions: ReturnHistorySession[];
-  nonComparableExerciseSessions?: number;
 }
 
 export interface ReturnRecommendation {
@@ -75,7 +79,6 @@ export interface ReturnRecommendation {
   historySessionCount: number;
   recentHistorySessionCount: number;
   longTermHistorySessionCount: number;
-  nonComparableHistorySessionCount: number;
   historyBasis: ReturnHistoryBasis;
   confidence: ReturnConfidence;
 }
@@ -122,7 +125,6 @@ export function calculateReturnRecommendation({
     now,
     returnGapDays,
     bodyweight,
-    nonComparableHistorySessionCount: history.nonComparableExerciseSessions ?? 0,
   });
   const mode = resolveReturnMode(programExercise.exercise.category, returnGapDays, muscleGapDays);
   if (mode === 'normal') {
@@ -275,7 +277,6 @@ interface HistoricalCapacityEvidence {
     | 'historySessionCount'
     | 'recentHistorySessionCount'
     | 'longTermHistorySessionCount'
-    | 'nonComparableHistorySessionCount'
     | 'historyBasis'
     | 'confidence'
   >;
@@ -287,14 +288,12 @@ function historicalCapacityEvidence({
   now,
   returnGapDays,
   bodyweight,
-  nonComparableHistorySessionCount,
 }: {
   programExercise: ReturnProgramExercise;
   sessions: ReturnHistorySession[];
   now: Date;
   returnGapDays: number | null;
   bodyweight: number | null;
-  nonComparableHistorySessionCount: number;
 }): HistoricalCapacityEvidence {
   const estimates = sessions
     .map((session) => {
@@ -314,12 +313,8 @@ function historicalCapacityEvidence({
     })
     .filter((value): value is SessionCapacityEvidence => value != null)
     .sort((left, right) => right.performedAt.getTime() - left.performedAt.getTime());
-  const recent = estimates.filter(
-    (item) => daysSince(item.performedAt, now)! <= RETURN_RECENT_EXACT_SESSION_DAYS,
-  );
-  const longTerm = estimates.filter(
-    (item) => daysSince(item.performedAt, now)! > RETURN_RECENT_EXACT_SESSION_DAYS,
-  );
+  const recent = estimates.filter((item) => isRecentReturnSession(item.performedAt, now));
+  const longTerm = estimates.filter((item) => !isRecentReturnSession(item.performedAt, now));
   const anchorPool = (longTerm.length > 0 ? longTerm : estimates).slice(
     0,
     RETURN_LONG_TERM_ANCHOR_SESSION_LIMIT,
@@ -385,7 +380,7 @@ function historicalCapacityEvidence({
         : 'low';
   if (sparseHistoryRequiresCalibration) confidence = 'low';
   const rirComplete = estimates.length > 0 && estimates.every((item) => item.hasRecordedRIR);
-  if (!rirComplete || nonComparableHistorySessionCount > 0) {
+  if (!rirComplete) {
     confidence = confidence === 'high' ? 'medium' : 'low';
   }
   const gapPenalty =
@@ -402,7 +397,6 @@ function historicalCapacityEvidence({
       historySessionCount: estimates.length,
       recentHistorySessionCount: recent.length,
       longTermHistorySessionCount: longTerm.length,
-      nonComparableHistorySessionCount,
       historyBasis,
       confidence,
     },
@@ -537,6 +531,12 @@ function fallbackCalibrationLoad(
   if (loadConstraints?.isAvailable === false) return null;
   const options = gymWeightOptions(loadConstraints, 0);
   return options[0] ?? null;
+}
+
+// The single definition of the "recent exact" window, shared with the history
+// builder so the database read and the anchor split cannot drift apart.
+export function isRecentReturnSession(performedAt: Date, now: Date): boolean {
+  return daysSince(performedAt, now)! <= RETURN_RECENT_EXACT_SESSION_DAYS;
 }
 
 function daysSince(value: Date | null, now: Date): number | null {

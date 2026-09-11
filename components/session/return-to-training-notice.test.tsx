@@ -21,7 +21,6 @@ const recommendation: ReturnRecommendation = {
   historySessionCount: 4,
   recentHistorySessionCount: 1,
   longTermHistorySessionCount: 3,
-  nonComparableHistorySessionCount: 0,
   historyBasis: 'recent-and-long-term',
   confidence: 'medium',
 };

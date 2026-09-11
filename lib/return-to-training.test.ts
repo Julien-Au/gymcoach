@@ -554,27 +554,6 @@ describe('return-to-training recommendations', () => {
     expect(result.suggestedWeight).not.toBeNull();
   });
 
-  it('never uses non-comparable equipment sessions as an exact load anchor', () => {
-    const result = calculateReturnRecommendation({
-      programExercise,
-      history: history({
-        exerciseLastPerformedAt: null,
-        exerciseSessions: [],
-        nonComparableExerciseSessions: 4,
-      }),
-      now,
-      loadConstraints: olympDumbbells,
-    });
-
-    expect(result).toMatchObject({
-      historyBasis: 'none',
-      confidence: 'low',
-      nonComparableHistorySessionCount: 4,
-      weightCeiling: null,
-      suggestedWeight: null,
-    });
-  });
-
   it('returns identical output for identical long-history input', () => {
     const input = {
       programExercise,

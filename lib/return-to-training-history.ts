@@ -10,8 +10,10 @@ import type { GymLoadConstraints } from '@/lib/gym-loads';
 import {
   BASELINE_MUSCLE_VOLUME_DAYS,
   calculateReturnRecommendation,
+  isRecentReturnSession,
   RECENT_MUSCLE_VOLUME_DAYS,
   RETURN_LONG_TERM_ANCHOR_SESSION_LIMIT,
+  RETURN_RECENT_SESSION_LIMIT,
   type ReturnHistorySession,
   type ReturnRecommendation,
   type ReturnTrainingHistory,
@@ -84,7 +86,10 @@ export async function getReturnToTrainingRecommendations({
         // Both queries are bounded in what they return. The indexed latest-set
         // lookup preserves knowledge of arbitrarily old real exercise history,
         // while only the newest sessions needed by the anchor algorithm are
-        // loaded with their sets.
+        // loaded with their sets: every session inside the recent exact window
+        // (capped at one per day of that window) plus the long-term pool. The
+        // cap applies to the long-term pool only, so several recent sessions
+        // cannot starve the long-term anchor below its robust minimum.
         const [latestSet, sessions] = await Promise.all([
           db.set.findFirst({
             where: {
@@ -103,7 +108,7 @@ export async function getReturnToTrainingRecommendations({
               sets: { some: workingSetFilter },
             },
             orderBy: { startedAt: 'desc' },
-            take: RETURN_LONG_TERM_ANCHOR_SESSION_LIMIT,
+            take: RETURN_LONG_TERM_ANCHOR_SESSION_LIMIT + RETURN_RECENT_SESSION_LIMIT,
             select: {
               id: true,
               startedAt: true,
@@ -122,9 +127,15 @@ export async function getReturnToTrainingRecommendations({
           }),
         ]);
 
+        const recentSessions = sessions.filter((session) =>
+          isRecentReturnSession(session.startedAt, now),
+        );
+        const longTermSessions = sessions
+          .filter((session) => !isRecentReturnSession(session.startedAt, now))
+          .slice(0, RETURN_LONG_TERM_ANCHOR_SESSION_LIMIT);
         const history: BoundedExerciseHistory = {
           lastPerformedAt: latestSet?.session.startedAt ?? null,
-          sessions: sessions.map((session) => ({
+          sessions: [...recentSessions, ...longTermSessions].map((session) => ({
             sessionId: session.id,
             performedAt: session.startedAt,
             sets: session.sets.map(({ weight, reps, rir, isDropSet }) => ({
