@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { z } from 'zod';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { db } from '@/lib/db';
 import { requireSession } from '@/lib/auth';
@@ -10,6 +11,8 @@ import { PrintSheetToolbar } from '@/components/programs/print-sheet-toolbar';
 
 // Printable A4 workout sheet (issue #333). One page per workout; `?workout=<id>`
 // narrows the sheet to a single session of the program.
+
+const workoutParamSchema = z.string().trim().min(1);
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -44,11 +47,15 @@ export default async function ProgramPrintPage(props: Props) {
   ]);
   if (!program || !user) notFound();
 
-  const requested = Array.isArray(searchParams.workout)
+  // `?workout=<id>` narrows the sheet to one workout. Anything that is not a
+  // non-empty id (including an empty `?workout=`) is a 404, same as an unknown id.
+  const raw = Array.isArray(searchParams.workout)
     ? searchParams.workout[0]
     : searchParams.workout;
+  const requested = raw === undefined ? undefined : workoutParamSchema.safeParse(raw);
+  if (requested && !requested.success) notFound();
   const workouts = requested
-    ? program.workouts.filter((w) => w.id === requested)
+    ? program.workouts.filter((w) => w.id === requested.data)
     : program.workouts;
   if (requested && workouts.length === 0) notFound();
 

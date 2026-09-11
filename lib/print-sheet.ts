@@ -74,7 +74,7 @@ export function buildPrintSheet(exercises: PrintSheetExerciseInput[]): PrintShee
     notes: pe.notes,
     cells: buildSetCells(pe.targetSets),
   }));
-  const maxSets = rows.reduce((max, row) => Math.max(max, row.cells.length / 3), 0);
+  const maxSets = rows.reduce((max, row) => Math.max(max, row.cells.length / PRINT_SHEET_CELL_KINDS.length), 0);
   const cellCount = rows.reduce((sum, row) => sum + row.cells.length, 0);
   return { rows, maxSets, cellCount };
 }

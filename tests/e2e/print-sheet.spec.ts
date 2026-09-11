@@ -91,4 +91,8 @@ test('the print route renders a seeded program as fillable sheets', async ({ pag
   // An unknown workout id is a 404, not an empty sheet.
   const missing = await page.goto(`/programs/${program.id}/print?workout=nope`);
   expect(missing?.status()).toBe(404);
+
+  // So is an empty `?workout=`: it never silently widens to the whole program.
+  const empty = await page.goto(`/programs/${program.id}/print?workout=`);
+  expect(empty?.status()).toBe(404);
 });
