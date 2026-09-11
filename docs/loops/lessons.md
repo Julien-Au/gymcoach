@@ -52,7 +52,8 @@ Format per entry: trigger/evidence, the lesson (actionable), and **Status** = `g
 - **Lesson:** in any fresh checkout/worktree, run `npm ci` first (worktrees do not share
   `node_modules`), `npm rebuild bcrypt` if the native binding is missing, and
   `prisma migrate deploy` against the test Postgres on :5434 before integration/E2E.
-- **Status:** graduated -> `implement-issue` and `ship-pr` operational notes.
+- **Status:** graduated -> `implement-issue` and `ship-pr` operational notes. Extended by
+  **L23**: the migrated-DB half is not about the checkout at all, it is about the container.
 
 ### L5 - This environment's `gh` is an older build; some flags do not exist
 - **Trigger:** `gh label`, `gh issue close --reason/--comment`, `gh run rerun --failed/--job`,
@@ -393,3 +394,47 @@ Format per entry: trigger/evidence, the lesson (actionable), and **Status** = `g
 - **Status:** graduated -> the REST fallback now sits in one sentence beside the
   `--match-head-commit` instruction in `10-external-contributions.md` (pass 3) and in `ship-pr`
   (steps 1 and 5).
+
+### L23 - `verify.sh --full` never migrates the test database, so a just-started container reds the gate
+- **Trigger:** 2026-09-11, the first `--full` run on #346. Docker Desktop is off by default on
+  the operator's box and was started mid-run, so the test Postgres on :5434 came up empty; the
+  integration tier died with `relation "Message" does not exist`. Nothing was wrong with the
+  code, and the error names a table nobody had touched, which is exactly what makes it read as
+  a regression for a minute.
+- **Lesson:** `scripts/verify.sh` runs the integration and E2E tiers against whatever schema the
+  container already holds - it does not run `prisma migrate deploy` itself - and the test
+  container keeps its data in tmpfs, so it is empty again after every stop. L4 said this for a
+  fresh worktree; the checkout was never the variable. Any fresh **or restarted** container needs
+  the migrations applied once before `--full`:
+  `DATABASE_URL=postgresql://gymcoach_test:gymcoach_test@localhost:5434/gymcoach_test npx prisma migrate deploy`.
+- **Status:** graduated -> a paragraph in `CLAUDE.md`'s green-gate section and in
+  `implement-issue` step 5, both with the command, and L4 now points here.
+
+### L24 - Switching branches leaves stale `.next/types` stubs, and the gate typechecks before it builds
+- **Trigger:** 2026-09-11, the first gate run on the #347 branch failed typecheck on route type
+  stubs for `app/(print)/...` - a route group that exists only on the #346 branch, whose build
+  had generated them into the shared `.next/types`. The gate's own order makes this bite: it
+  typechecks, and only then builds, so the step that would have regenerated the stubs never runs.
+- **Lesson:** `.next` is build state shared across branches, not source. When typecheck fails on
+  `.next/types` for a route that does not exist on the current branch, the failure is stale build
+  output: run `npm run build` on the current branch to regenerate the stubs, then re-run the gate
+  (`rm -rf` is denied by settings, and is not needed). Read the failing path before reading the
+  message - a type error about a file you never wrote is a state problem, not a code problem.
+- **Status:** graduated -> a one-line rule in `implement-issue` step 5.
+
+### L25 - "READY with findings" is not "merge as is"
+- **Trigger:** 2026-09-11. Three independent Opus reviews across #346 and #347 all returned
+  READY, and all three carried non-blocking findings. Taken at face value the verdict says merge;
+  taken seriously it says the cheap ones are worth a fixup first. On #346 that meant an empty
+  `?workout=` becoming a 404, `maxSets` derived from the cell-kind list rather than a second
+  literal `3`, and `SyncBootstrap` mounted in the print layout so the "active on all protected
+  routes" invariant stayed true. On #347 it meant rewriting a pool comment that promised a
+  guarantee the code does not give, and adding a red-first integration test on the one comeback
+  case the reviewer had proven reachable - verified failing against the old read before the fix.
+- **Lesson:** the verdict grades the diff as shippable, not as finished. Fix the findings whose
+  cost is a few minutes, red-first where a test is involved, re-run the gate, and pin the merge
+  to the new SHA. Everything left unfixed becomes an explicit decision: written down as accepted
+  (cell height at ~6mm is tight for handwriting; the `@media print` block is app-wide) or filed
+  as its own issue (**#348**, from the loads lens). An unfixed finding that is neither is the
+  actual failure mode - it just evaporates when the session ends.
+- **Status:** graduated -> a bullet in `07-autonomy.md`'s subagent challenge protocol.

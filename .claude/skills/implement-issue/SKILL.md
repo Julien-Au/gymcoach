@@ -59,6 +59,15 @@ for repo conventions; this skill assumes them.
    worktree, first `npm ci` - worktrees do not share `node_modules` - then `npm rebuild
    bcrypt` if its native binding is missing, and `prisma migrate deploy` against the test
    Postgres on :5434 before the integration/E2E tiers. Lesson L4.)
+   **`verify.sh --full` never migrates the test database**, and the test Postgres keeps its
+   data in tmpfs, so any freshly started or restarted container reds the integration tier
+   with `relation "Message" does not exist`. After
+   `docker compose -f docker-compose.test.yml up -d`, run once (lesson L23):
+   `DATABASE_URL=postgresql://gymcoach_test:gymcoach_test@localhost:5434/gymcoach_test npx prisma migrate deploy`.
+   **If typecheck fails on `.next/types` stubs for a route that does not exist on your
+   branch**, the stale stubs are from the previous branch's build and `verify.sh` typechecks
+   before it builds: run `npm run build` on the current branch to regenerate them, then
+   re-run the gate (lesson L24; `rm -rf` is denied by settings).
    **Run bootstrap and the gate synchronously - never end the turn waiting on a background
    process.** A tick is not re-woken when a backgrounded `npm ci`, `npm run build` or
    `next start` finishes: the turn simply ends and the orchestrator has to resume it, which

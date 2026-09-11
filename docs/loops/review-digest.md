@@ -498,3 +498,54 @@ from #331), #324, #320 and #300-#304 still stand.
 so the static screenshots are current. The recorded clips are not: none of them shows the
 equipment picker or the muscle heat map, which makes the scenario re-record the oldest media
 debt in the repo.
+
+---
+
+## 2026-09-11 - return-to-training follow-ups (#347) and the printable A4 sheet (#346)
+
+Two merges: one change to the numbers the app tells you to lift, one new authenticated
+route. Read them in that order - the second is additive UI, the first is core behavior.
+
+1. **#347 - the return-to-training history read and load snapping (core behavior).**
+   `gh pr diff 347`. Three things worth your eyes, in `lib/return-to-training-history.ts`
+   and `lib/gym-loads.ts`. (a) The session read now takes
+   `RETURN_LONG_TERM_ANCHOR_SESSION_LIMIT + RETURN_RECENT_SESSION_LIMIT` (8 + 14) rows and
+   splits them by the recent-window predicate instead of taking 8 and hoping none of them
+   are recent. The reviewer's derivation is the part to check, because it shrinks the claim:
+   in any non-normal return mode at most one recent session exists, so the real gain is
+   7 -> 8 long-term anchors, not a rescue from below the robust minimum of 3 - the case the
+   issue feared was unreachable. What IS reachable, and is now pinned by a red-first
+   integration test, is the comeback session displacing the oldest anchor. (b)
+   `constrainGymWeight` is rebuilt on `gymWeightOptions`, so an `OTHER`-typed exercise with
+   saved weight options now snaps to them in the ordinary progression path (the
+   return-session ceiling already did) and the barbell ceiling is shared. Check that you
+   agree with the blast radius: `OTHER` is the DEFAULT equipment type in this repo, which is
+   why the same review filed **#348**. (c) The removed `nonComparableExerciseSessions` field
+   was never populated by any caller, and the test that asserted on it hand-fed the value -
+   worth one look to confirm it really was dead rather than a wiring bug.
+2. **#346 - a new authenticated route (additive, but it is a route).** `gh pr diff 346`.
+   The sheet builder (`lib/print-sheet.ts`) and the component are pure presentation, so the
+   lines that matter are in `app/(print)/programs/[id]/print/page.tsx`: the program query is
+   scoped `where: { id, userId: session.userId }` behind `requireSession()`, the `?workout=`
+   parameter is Zod-parsed and anything that is not a non-empty id (including an empty
+   value) is a 404, and the workout filter runs on the already-owner-scoped program rather
+   than on a second lookup. The new `app/(print)` route group has its own layout, which is
+   why `SyncBootstrap` is mounted there: the invariant is that it is live on every protected
+   route, and a new route group silently opts out of it otherwise.
+
+**Skim:** the i18n additions (`programs.print` in en/fr/ru, structurally pinned by the
+existing catalog test), the `@media print` block in `globals.css` - noting that it is
+app-wide, not scoped to the print route group, which is accepted for now - and this
+write-up.
+
+**Carry forward:** **#348** (OTHER-typed exercises inherit a linked item's stack through
+`useItemWeights`, so a short inherited list can make the session stepper's `+` a dead
+button) is the one issue this batch created. Still standing: #320, #300-#304, and the MCP
+half of #331 (`needs-maintainer`). The rest of the previous wave's carry-forward (#337,
+#338, #339) closed with #341-#343.
+
+**Media note:** `docs/screenshots/print-sheet.png` was added this batch (a real print
+capture of the seeded "Lower A" workout, looked at before committing). The recorded clips
+are unchanged and now lag three shipped features - the equipment picker, the muscle heat
+map and the print sheet - which is the oldest debt in the repo.
+
