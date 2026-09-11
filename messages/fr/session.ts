@@ -57,7 +57,6 @@ export const session = {
       'La dernière séance est récente, mais elle suivait une coupure de {days} jours, donc la calibration de reprise reste active.',
     muscleReintro:
       'Le muscle principal n’a aucune série effective enregistrée depuis plus de six semaines. Le volume et l’effort sont réduits pour cette séance.',
-
     targets: 'Séries aujourd’hui : {sets}. RIR cible : {rir}.',
     startWeight: 'Charge de départ prudente : {weight}.',
     bodyweightStart: 'Commencez au poids de corps, sans charge ajoutée.',

@@ -112,7 +112,6 @@ describe('SetInput first working set', () => {
           historySessionCount: 3,
           recentHistorySessionCount: 0,
           longTermHistorySessionCount: 3,
-          nonComparableHistorySessionCount: 0,
           historyBasis: 'long-term-exact',
           confidence: 'medium',
         }}

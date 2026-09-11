@@ -196,4 +196,129 @@ describe('return-to-training history builder', () => {
       historySessionCount: RETURN_LONG_TERM_ANCHOR_SESSION_LIMIT,
     });
   });
+
+  it('keeps the full long-term pool when several recent sessions precede an old gap', async () => {
+    // Issue #324: the session read used to cap the whole pool, so a lifter
+    // with a handful of sessions in the last two weeks lost long-term anchors
+    // to them. This shape resolves to normal mode (the recent sessions are
+    // dense), so it pins the split itself: every recent session is kept and
+    // the long-term pool is still full.
+    const user = await db.user.create({
+      data: { email: 'return-history-split-' + Date.now() + '@test.dev', passwordHash: 'x' },
+    });
+    const exercise = await db.exercise.create({
+      data: {
+        userId: user.id,
+        name: 'Split Pool Row',
+        muscleGroup: 'BACK_THICKNESS',
+        category: 'COMPOUND',
+        equipmentType: 'CABLE',
+      },
+    });
+    const recentAges = [2, 5, 8, 11, 13, 14];
+    const longTermAges = Array.from(
+      { length: RETURN_LONG_TERM_ANCHOR_SESSION_LIMIT + 2 },
+      (_, index) => 100 + index * 7,
+    );
+    for (const age of [...recentAges, ...longTermAges]) {
+      const session = await db.session.create({
+        data: { userId: user.id, startedAt: daysAgo(age), finishedAt: finishedAt(age) },
+      });
+      await db.set.create({
+        data: {
+          sessionId: session.id,
+          exerciseId: exercise.id,
+          setNumber: 1,
+          weight: 40,
+          reps: 8,
+          rir: 2,
+          completedAt: daysAgo(age),
+        },
+      });
+    }
+
+    const recommendations = await getReturnToTrainingRecommendations({
+      userId: user.id,
+      programExercises: [
+        {
+          id: 'pe-split',
+          exerciseId: exercise.id,
+          targetSets: 4,
+          targetRepsMin: 8,
+          targetRIR: 2,
+          exercise,
+        },
+      ],
+      excludeSessionId: null,
+      now,
+    });
+
+    expect(recommendations['pe-split']).toMatchObject({
+      recentHistorySessionCount: recentAges.length,
+      longTermHistorySessionCount: RETURN_LONG_TERM_ANCHOR_SESSION_LIMIT,
+      historySessionCount: recentAges.length + RETURN_LONG_TERM_ANCHOR_SESSION_LIMIT,
+    });
+  });
+
+  it('anchors an exercise reintroduction on the full long-term pool after one comeback session', async () => {
+    // The reachable shape the split improves: one session just after a long
+    // gap keeps the exercise in reintro mode (the prior gap is preserved), and
+    // the anchor pool must still hold every long-term session. The old read
+    // spent one of the eight slots on the comeback session.
+    const user = await db.user.create({
+      data: { email: 'return-history-comeback-' + Date.now() + '@test.dev', passwordHash: 'x' },
+    });
+    const exercise = await db.exercise.create({
+      data: {
+        userId: user.id,
+        name: 'Comeback Press',
+        muscleGroup: 'CHEST',
+        category: 'COMPOUND',
+        equipmentType: 'MACHINE',
+      },
+    });
+    const comebackAge = 2;
+    const longTermAges = Array.from(
+      { length: RETURN_LONG_TERM_ANCHOR_SESSION_LIMIT },
+      (_, index) => 100 + index * 7,
+    );
+    for (const age of [comebackAge, ...longTermAges]) {
+      const session = await db.session.create({
+        data: { userId: user.id, startedAt: daysAgo(age), finishedAt: finishedAt(age) },
+      });
+      await db.set.create({
+        data: {
+          sessionId: session.id,
+          exerciseId: exercise.id,
+          setNumber: 1,
+          weight: 60,
+          reps: 8,
+          rir: 2,
+          completedAt: daysAgo(age),
+        },
+      });
+    }
+
+    const recommendations = await getReturnToTrainingRecommendations({
+      userId: user.id,
+      programExercises: [
+        {
+          id: 'pe-comeback',
+          exerciseId: exercise.id,
+          targetSets: 3,
+          targetRepsMin: 8,
+          targetRIR: 2,
+          exercise,
+        },
+      ],
+      excludeSessionId: null,
+      now,
+    });
+
+    expect(recommendations['pe-comeback']).toMatchObject({
+      mode: 'exercise-reintro',
+      recentHistorySessionCount: 1,
+      longTermHistorySessionCount: RETURN_LONG_TERM_ANCHOR_SESSION_LIMIT,
+    });
+  });
 });
