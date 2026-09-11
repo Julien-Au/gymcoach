@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { ChevronLeft, Plus } from 'lucide-react';
+import { ChevronLeft, Plus, Printer } from 'lucide-react';
 import type { Exercise, Program, ProgramExercise, Workout } from '@/lib/prisma-client';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -92,6 +92,12 @@ export function ProgramDetailView({ program, catalog }: Props) {
             className="min-h-tap"
           >
             {common('actions.edit')}
+          </Button>
+          <Button asChild variant="outline" size="sm" className="min-h-tap">
+            <Link href={`/programs/${program.id}/print`}>
+              <Printer className="size-4" />
+              <span className="ml-2">{t('print.action')}</span>
+            </Link>
           </Button>
           <ProgramDeleteButton programId={program.id} programName={trainingName(program.name)} />
         </CardContent>

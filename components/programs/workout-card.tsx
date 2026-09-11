@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { MoreHorizontal, Plus, Pencil, Trash2 } from 'lucide-react';
+import { MoreHorizontal, Plus, Pencil, Printer, Trash2 } from 'lucide-react';
 import type { Exercise, ProgramExercise, Workout } from '@/lib/prisma-client';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -43,6 +43,7 @@ interface Props {
 export function WorkoutCard({ workout, catalog }: Props) {
   const t = useTranslations('programs.workout');
   const exerciseT = useTranslations('programs.exercise');
+  const printT = useTranslations('programs.print');
   const common = useTranslations('common');
   const trainingName = useTrainingName();
   const router = useRouter();
@@ -153,6 +154,14 @@ export function WorkoutCard({ workout, catalog }: Props) {
               <DropdownMenuItem onSelect={() => setEditOpen(true)}>
                 <Pencil className="mr-2 size-4" />
                 {common('actions.edit')}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() =>
+                  router.push(`/programs/${workout.programId}/print?workout=${workout.id}`)
+                }
+              >
+                <Printer className="mr-2 size-4" />
+                {printT('action')}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
