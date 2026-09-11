@@ -59,3 +59,16 @@
     -webkit-font-smoothing: antialiased;
   }
 }
+
+/* Printable sheets (issue #333): A4 portrait, black on white, no app chrome. */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
+  }
+  html,
+  body {
+    background: white !important;
+    color: black !important;
+  }
+}
