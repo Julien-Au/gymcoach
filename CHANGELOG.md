@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Printable A4 workout sheet: a "Print sheet" button on a program page, and a
+  "Print sheet" item in each workout's menu, open a chrome-free page that
+  prints one A4 portrait sheet per workout. Each sheet lists the exercises in
+  superset presentation order (with the A1/A2 labels), their plan line, rest,
+  tempo and planned notes, a blank notes line, and an empty weight / reps / RIR
+  cell for every planned set, so a session can be filled in by hand at the gym
+  and re-entered later. The weight cell is labelled with your display unit,
+  `?workout=<id>` narrows the sheet to a single session, and the on-screen
+  toolbar does not print. Adopted from the direction proposal by @SHAREN
+  (#331), re-derived as #333.
 - French as a third interface language: the whole UI is now available in
   English, French and Russian, picked in Settings, with an unknown locale still
   falling back to English.
@@ -321,6 +331,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Return-to-training now loads its recent and long-term history windows on
+  separate budgets. The read fetches the long-term anchor pool (8 sessions) plus
+  the recent window (up to 14 sessions) and splits them, so sessions logged
+  since a comeback no longer take anchor slots away from the older history the
+  conservative opening load is derived from. Same suggestions for a normal
+  training history; more anchors for a lifter coming back. (#324)
+- Load snapping now reads one option list everywhere. An exercise with the
+  default `OTHER` equipment type and saved weight options snaps to them in the
+  ordinary progression path, exactly as the return-session ceiling already did,
+  and both share the same barbell plate-math ceiling. (#324)
+
 - Opened the project to outside contributors with a published security-vetting
   process. `docs/loops/10-external-contributions.md` is now the single source of
   truth for how external issues and pull requests are handled: three trust tiers
@@ -377,6 +398,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and secret-exfiltration attempts. Documented in the autonomy charter and
   `CLAUDE.md`, with the loop's `curl`/`wget` denied in the harness config as
   defense in depth.
+
+### Removed
+
+- Internal cleanup in the return-to-training recommender: the
+  `nonComparableExerciseSessions` input and the `nonComparableHistorySessionCount`
+  output were never populated by any caller, so they and the test that hand-fed
+  them a value were removed. No user-visible behavior change. (#324)
 
 ### Fixed
 

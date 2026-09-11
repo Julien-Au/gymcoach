@@ -168,6 +168,12 @@ non-trivial:
   actually-work) rather than one generic reviewer.
 - A real finding is treated like a red gate: fix the cause, re-verify, then re-challenge.
   Cosmetic nits do not block.
+- **"READY with findings" is not "merge as is".** A verdict that ships usually still carries
+  non-blocking findings; the cheap ones (a comment that overpromises, a missing test on a
+  case the reviewer proved reachable, a constant derived twice) get fixed in a fixup commit
+  before the merge, red-first where a test is involved, and the merge is then pinned to the
+  new SHA. What is left unfixed is stated out loud - in the PR and in the log - as accepted,
+  or filed as its own issue.
 - The reviewing subagent must be **independent** of the one that wrote the code - never let
   the author grade its own homework.
 - **If no independent reviewer can be spawned** (e.g. the subagent-spawning tool is

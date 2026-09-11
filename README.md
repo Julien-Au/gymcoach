@@ -142,6 +142,10 @@ on your own key - all self-hosted.
   and editable like any program.
 - **Exercise catalog** - searchable by name, on top of your custom exercises and
   muscle-group grouping.
+- **Printable workout sheet** - print (or save as PDF) a clean A4 sheet per
+  workout with empty weight / reps / RIR cells for every planned set, fill it in
+  by hand at the gym, and re-enter it later
+  ([example](docs/screenshots/print-sheet.png)).
 
 ### Your data, your server
 
@@ -380,6 +384,7 @@ than CI reaching in to a small VPS.
 - [x] Physical gym equipment inventory, with the equipment used recorded on
       each logged set
 - [x] Return-to-training calibration after a long layoff
+- [x] Printable A4 workout sheet (blank weight / reps / RIR cells)
 
 ## Contributing
 

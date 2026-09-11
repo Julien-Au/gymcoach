@@ -2506,3 +2506,110 @@ and the operator's direction call on the rest of #331; #324 (return-to-training 
 #320 (browsable exercise library), #300-#304 (the rest of the "make it pop" ideas). The
 demo clips still show neither the equipment picker nor the muscle heat map, which remains
 the oldest media debt.
+
+## 2026-09-11 - the printable A4 sheet (#333 -> #346) and the return-to-training follow-ups (#324 -> #347), plus three lessons about the gate
+
+**What ran.** Two loop-authored dev ticks on Fable, serialized on one checkout, each
+reviewed by independent Opus lenses before merge and squash-merged on green CI pinned to
+its head SHA. #333 (printable A4 workout sheet, adopted from @SHAREN's #331 proposal in the
+previous wave) shipped as **#346** on `aa0e78f`; #324 (the follow-ups the #311 review left
+behind) shipped as **#347** on `6724ec7`. The loads lens on #347 found something outside
+its diff and it was filed rather than bolted on: **#348**. Triage and ideate did not run.
+Two feature merges plus this docs PR is the 3-merge cap for the run.
+
+**Why these two, in this order.** #333 was the piece of an external design proposal the
+policy allows the loop to adopt on its own - a pure web-app feature on no hard-block path -
+and it had been carried forward for a week. #324 was the loop's own review debt: findings
+from the #311 review that were filed instead of fixed, which is exactly the kind of issue
+that quietly never gets done. Doing the feature first and the debt second was deliberate;
+the debt ticket is the one that changes the numbers the app tells a user to lift, so it got
+the fresher reviewers and the longer look.
+
+**The sheet (#346).** A new `app/(print)` route group with a chrome-free layout, a pure
+builder in `lib/print-sheet.ts` (rows in superset presentation order with the A1/A2 labels,
+`targetSets x 3` empty cells - weight in the user's own unit, reps, RIR - plus a blank notes
+line), a "Print sheet" button on the program page and a per-workout menu item, `@page` A4
+portrait and black-on-white under `@media print`, strings in en/fr/ru, and unit, component
+and E2E tests. Product calls taken without a human: the whole program prints by default at
+one page per workout and `?workout=<id>` narrows to one session; the weight cell is labelled
+with the display unit (kg / lb) rather than a translated word; the sheet renders black on
+white **on screen too**, so the browser preview is the paper. One acceptance criterion could
+not be met as written - the issue asked for a screenshot of the print preview in the PR body,
+and `gh` on this host has no image hosting path - so the capture was produced, looked at, and
+delivered to the operator instead; it is committed in this PR as
+`docs/screenshots/print-sheet.png`, which is the durable version of that criterion.
+
+**The follow-ups (#347).** Three things, all from the #311 review. The dead
+`nonComparableExerciseSessions` input and its `nonComparableHistorySessionCount` output were
+removed together with the test that hand-fed them a value - no caller ever populated either.
+`constrainGymWeight` was rebuilt on `gymWeightOptions`, so `OTHER` equipment with saved
+weight options now snaps like a machine (which `constrainGymWeightAtOrBelow` already did) and
+the barbell ceiling is one shared expression, proven output-neutral. And the history read now
+fetches the long-term anchor budget (8) plus the recent budget (14) and splits them, so a
+comeback session can no longer take a long-term anchor's slot.
+
+**The reviewer shrank the headline claim, and that is the useful part.** The issue feared
+that recent sessions could push the long-term pool below the robust-anchor minimum of 3. The
+algorithm lens derived that this is unreachable: in any non-normal return mode at most one
+recent session exists by construction, so the real effect of the change is 7 -> 8 anchors,
+not a rescue. The fix is still right and still shipped - but the log records the corrected
+claim, not the one the issue was written on. The reachable case (the comeback session
+displacing the oldest anchor) is now pinned by an integration test that was verified red
+against the old read before the new one landed.
+
+**What was challenged, by which lenses.** #346: one Opus skeptic with three lenses
+(correctness, security/ownership, does-it-actually-work-on-paper), verdict READY with
+non-blocking findings. #347: two independent Opus reviews, one on the algorithm and one on
+loads plus repo conventions, both READY non-blocking. Five lens-passes, zero blocking
+findings, three issues-worth of fixups - which is the pattern this run wrote down as **L25**:
+*"READY with findings" is not "merge as is"*. On #346 the fixups were an empty `?workout=`
+becoming a 404 through the Zod parse (it had fallen through to "print everything"), `maxSets`
+derived from the cell-kind list instead of a second literal `3`, `SyncBootstrap` mounted in
+the new print layout so the "live on every protected route" invariant survives a new route
+group, and the E2E extended to cover them. On #347 they were honest pool comments (the first
+one promised a guarantee the code does not give), the red-first integration test above, and a
+dropped assertion that only restated a constant. Each fixup was a commit before the merge and
+the merge was pinned to the resulting SHA, not to the reviewed one.
+
+**Three lessons, all about the gate rather than the code.** **L23:** `verify.sh --full` never
+runs `prisma migrate deploy`. Docker Desktop is off by default on the operator's box and was
+started mid-run, so the tmpfs test Postgres came up empty and the integration tier died with
+`relation "Message" does not exist` - an error naming a table nobody had touched. L4 already
+said "migrate the test DB", but it said it about fresh worktrees; the checkout was never the
+variable, the container is. Graduated into `CLAUDE.md`'s green-gate section and
+`implement-issue` step 5, with the command. **L24:** the first gate run on the #347 branch
+failed typecheck on `.next/types` stubs for `app/(print)/...`, a route group that exists only
+on the #346 branch - `.next` is build state shared across branches, and the gate typechecks
+*before* it builds, so the step that would regenerate the stubs never runs. `npm run build` on
+the current branch fixes it (`rm -rf` is denied by settings). Graduated into
+`implement-issue` step 5. **L25** is above, graduated into the charter's subagent challenge
+protocol.
+
+**Merge mechanics.** Both merges went through
+`PUT /repos/{owner}/{repo}/pulls/{n}/merge` with `sha=`, per L22 - this host's gh 2.4.0 has no
+`--match-head-commit` - after resolving the check runs against the current head SHA rather
+than the PR summary (L19). CI green on `aa0e78f` and `6724ec7` respectively; both local gates
+green before the push.
+
+**One metric.** Accepted-change rate: 2 loop-authored PRs merged / 0 abandoned / 0 reverted,
+plus this docs PR as the third merge of the cap. Fixup rounds: 1 on each PR, both re-verified
+on a fresh SHA. 1 issue filed out of review (#348). Implementing-tick token spend: about 135k
+on #346 and about 140k on #347, both on Fable; the three reviews cost about 97k, 100k and
+103k on Opus. So roughly 275k of implementation bought by roughly 300k of review - review is
+now the more expensive half of a feature merge, which is a deliberate trade while the loop
+merges its own code unsupervised, and a number worth watching if it keeps growing.
+
+**Deferred.** **#348** (OTHER is the default equipment type and `lib/gym-equipment.ts` copies a
+linked item's stack onto every linked exercise regardless of that exercise's own type, so the
+new snapping reaches further than a kettlebell rack and a short inherited list can make the
+session stepper's `+` a dead button) - filed, not fixed, because the fix is a product call
+about inheritance rather than a bug fix. Accepted for now on #346: the cell height is about
+6mm, which is tight for handwriting, and the `@media print` block in `globals.css` is
+app-wide rather than scoped to the print route group - both known, neither worth a second PR
+this run. Still with the operator: the MCP half of #331 (`needs-maintainer`), #320, and
+#300-#304. **Media debt:** the recorded clips now lag three shipped features - they show
+neither the equipment picker, nor the muscle heat map, nor the print sheet. That is past the
+~3-batch staleness cap in the `write-up` skill and is the first thing the next content tick
+should spend its time on; the static screenshots are current, with `print-sheet.png` added
+here.
+
