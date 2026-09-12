@@ -74,6 +74,6 @@ test('a lifter can import a TCX activity as a cardio session', async ({ page }) 
   // the heart-rate-over-time chart built from the trackpoints (issue #259).
   await page.getByRole('link', { name: /Running/ }).click();
   await expect(page.getByRole('heading', { name: 'Running' })).toBeVisible();
-  await expect(page.getByText('152 bpm')).toBeVisible();
+  await expect(page.getByRole('cell', { name: '152 bpm' })).toBeVisible();
   await expect(page.getByTestId('activity-track-chart')).toBeVisible();
 });

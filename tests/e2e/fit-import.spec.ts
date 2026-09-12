@@ -55,7 +55,7 @@ test('a lifter can import multiple FIT activities at once', async ({ page }) => 
 
   await page.goto('/history?month=2025-12&day=2025-12-01');
   await expect(page.getByRole('heading', { name: /December 1, 2025/i })).toBeVisible();
-  await expect(page.getByText('Biking')).toBeVisible();
+  await expect(page.getByText('Cycling')).toBeVisible();
 
   // The records run (April 10) shows a heart-rate-over-time chart (#254).
   await page.goto('/history?month=2026-04&day=2026-04-10');
