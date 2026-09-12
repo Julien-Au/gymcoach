@@ -21,6 +21,14 @@ export const history = {
     clear: 'Сбросить',
     csvTitle: 'Скачать CSV подходов с учётом активных фильтров',
   },
+  calendar: {
+    previousMonth: 'Предыдущий месяц',
+    nextMonth: 'Следующий месяц',
+    today: 'Сегодня',
+    workoutCount:
+      '{count, plural, one {# тренировка} few {# тренировки} many {# тренировок} other {# тренировки}}',
+    noSessions: 'В этот день завершённых тренировок нет.',
+  },
   detail: {
     downloadTcx: 'Скачать .tcx',
     sets: 'Подходы',

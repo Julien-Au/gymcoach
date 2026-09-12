@@ -49,12 +49,17 @@ test('a lifter can import multiple FIT activities at once', async ({ page }) => 
   await page.getByRole('button', { name: /import 3 sessions/i }).click();
   await expect(page.getByTestId('import-preview')).not.toBeVisible();
 
-  await page.goto('/history');
-  await expect(page.getByText('March 15, 2026')).toBeVisible();
-  await expect(page.getByText('December 01, 2025')).toBeVisible();
+  await page.goto('/history?month=2026-03&day=2026-03-15');
+  await expect(page.getByRole('heading', { name: /March 15, 2026/i })).toBeVisible();
+  await expect(page.getByText('Running')).toBeVisible();
+
+  await page.goto('/history?month=2025-12&day=2025-12-01');
+  await expect(page.getByRole('heading', { name: /December 1, 2025/i })).toBeVisible();
+  await expect(page.getByText('Cycling')).toBeVisible();
 
   // The records run (April 10) shows a heart-rate-over-time chart (#254).
-  await page.getByRole('link', { name: /April 10, 2026/ }).click();
+  await page.goto('/history?month=2026-04&day=2026-04-10');
+  await page.getByRole('link', { name: /Running/ }).click();
   await expect(page.getByRole('heading', { name: 'Running' })).toBeVisible();
   await expect(page.getByTestId('activity-track-chart')).toBeVisible();
 });
