@@ -18,6 +18,13 @@ export const history = {
     clear: 'Clear',
     csvTitle: 'Download the CSV of sets for the active filters',
   },
+  calendar: {
+    previousMonth: 'Previous month',
+    nextMonth: 'Next month',
+    today: 'Today',
+    workoutCount: '{count, plural, one {# workout} other {# workouts}}',
+    noSessions: 'No completed workouts on this date.',
+  },
   detail: {
     downloadTcx: 'Download .tcx',
     sets: 'Sets',
