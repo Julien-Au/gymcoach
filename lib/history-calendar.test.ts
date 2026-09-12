@@ -11,7 +11,7 @@ import {
 
 describe('history calendar helpers', () => {
   it('parses, formats and shifts month keys across year boundaries', () => {
-    expect(parseMonthKey('2026-09', new Date('2000-01-01T00:00:00Z'))).toEqual({
+    expect(parseMonthKey('2026-09', new Date('2000-01-01T00:00:00Z'), 'UTC')).toEqual({
       year: 2026,
       monthIndex: 8,
     });
@@ -43,9 +43,21 @@ describe('history calendar helpers', () => {
     expect(dateKeyInTimeZone(instant, 'America/Los_Angeles')).toBe('2026-08-31');
   });
 
-  it('validates calendar day keys without accepting partial values', () => {
+  it('validates real calendar day keys including leap years', () => {
     expect(isDateKey('2026-09-12')).toBe(true);
+    expect(isDateKey('2024-02-29')).toBe(true);
+    expect(isDateKey('2026-02-29')).toBe(false);
+    expect(isDateKey('2026-13-01')).toBe(false);
+    expect(isDateKey('2026-04-31')).toBe(false);
     expect(isDateKey('2026-9-12')).toBe(false);
     expect(isDateKey(undefined)).toBe(false);
+  });
+
+  it('uses the explicit timezone for the fallback month', () => {
+    const fallback = new Date('2026-09-01T00:30:00.000Z');
+    expect(parseMonthKey(undefined, fallback, 'America/Los_Angeles')).toEqual({
+      year: 2026,
+      monthIndex: 7,
+    });
   });
 });

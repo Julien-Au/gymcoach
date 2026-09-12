@@ -36,9 +36,16 @@ interface Props {
   initialDay?: string;
   sessions: HistoryCalendarSession[];
   selectedProgramId?: string;
+  timeZone: string;
 }
 
-export function HistoryCalendar({ monthKey, initialDay, sessions, selectedProgramId }: Props) {
+export function HistoryCalendar({
+  monthKey,
+  initialDay,
+  sessions,
+  selectedProgramId,
+  timeZone,
+}: Props) {
   const t = useTranslations('history.calendar');
   const common = useTranslations('common');
   const locale = useLocale();
@@ -51,12 +58,12 @@ export function HistoryCalendar({ monthKey, initialDay, sessions, selectedProgra
   const month = useMemo(() => parseMonthKey(monthKey), [monthKey]);
   const weekStartsOn: 0 | 1 = locale.toLowerCase().startsWith('ru') ? 1 : 0;
   const cells = useMemo(() => buildMonthGrid(month, weekStartsOn), [month, weekStartsOn]);
-  const todayKey = dateKeyInTimeZone(new Date());
+  const todayKey = dateKeyInTimeZone(new Date(), timeZone);
 
   const sessionsByDate = useMemo(() => {
     const grouped = new Map<string, HistoryCalendarSession[]>();
     for (const session of sessions) {
-      const dateKey = dateKeyInTimeZone(session.startedAt);
+      const dateKey = dateKeyInTimeZone(session.startedAt, timeZone);
       if (!dateKey.startsWith(`${monthKey}-`)) continue;
       const daySessions = grouped.get(dateKey) ?? [];
       daySessions.push(session);
@@ -66,7 +73,7 @@ export function HistoryCalendar({ monthKey, initialDay, sessions, selectedProgra
       daySessions.sort((a, b) => a.startedAt.localeCompare(b.startedAt));
     }
     return grouped;
-  }, [monthKey, sessions]);
+  }, [monthKey, sessions, timeZone]);
 
   const defaultDate = useMemo(() => {
     if (isDateKey(initialDay) && initialDay.startsWith(`${monthKey}-`)) return initialDay;
@@ -108,9 +115,7 @@ export function HistoryCalendar({ monthKey, initialDay, sessions, selectedProgra
   }
 
   function goToToday() {
-    const now = new Date();
-    const targetMonth = formatMonthKey({ year: now.getFullYear(), monthIndex: now.getMonth() });
-    updateLocation(targetMonth, todayKey);
+    updateLocation(todayKey.slice(0, 7), todayKey);
   }
 
   function updateLocation(nextMonth: string, day: string | undefined) {
@@ -170,12 +175,11 @@ export function HistoryCalendar({ monthKey, initialDay, sessions, selectedProgra
             </Button>
           </div>
 
-          <div className="grid grid-cols-7 text-center" role="grid" aria-label={monthLabel}>
+          <div className="grid grid-cols-7 text-center" aria-label={monthLabel}>
             {weekdayLabels.map((label, index) => (
               <div
                 key={`${label}-${index}`}
                 className="pb-2 text-xs font-medium uppercase text-muted-foreground"
-                role="columnheader"
               >
                 {label}
               </div>
@@ -202,9 +206,8 @@ export function HistoryCalendar({ monthKey, initialDay, sessions, selectedProgra
                 <button
                   key={cell.dateKey}
                   type="button"
-                  role="gridcell"
                   aria-label={accessibleLabel}
-                  aria-selected={isSelected}
+                  aria-pressed={isSelected}
                   onClick={() => selectDay(cell.dateKey!)}
                   className={cn(
                     'relative flex aspect-square min-h-11 flex-col items-center justify-center rounded-lg border border-transparent text-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',

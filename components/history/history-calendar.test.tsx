@@ -17,7 +17,7 @@ vi.mock('next/navigation', () => ({
 const sessions: HistoryCalendarSession[] = [
   {
     id: 'session-1',
-    startedAt: '2026-09-12T10:30:00.000Z',
+    startedAt: new Date(2026, 8, 12, 10, 30).toISOString(),
     title: 'Upper body',
     programName: 'Strength',
     workingSets: 4,
@@ -29,7 +29,7 @@ const sessions: HistoryCalendarSession[] = [
   },
   {
     id: 'session-2',
-    startedAt: '2026-09-12T16:00:00.000Z',
+    startedAt: new Date(2026, 8, 12, 16, 0).toISOString(),
     title: 'Evening session',
     programName: null,
     workingSets: 3,
@@ -50,11 +50,16 @@ describe('HistoryCalendar', () => {
 
   it('marks workout days and lists sessions for the selected date', () => {
     render(
-      <HistoryCalendar monthKey="2026-09" initialDay="2026-09-12" sessions={sessions} />,
+      <HistoryCalendar
+        monthKey="2026-09"
+        initialDay="2026-09-12"
+        sessions={sessions}
+        timeZone={Intl.DateTimeFormat().resolvedOptions().timeZone}
+      />,
     );
 
-    const day = screen.getByRole('gridcell', { name: /12.*2 workouts/i });
-    expect(day).toHaveAttribute('aria-selected', 'true');
+    const day = screen.getByRole('button', { name: /12.*2 workouts/i });
+    expect(day).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByText('Upper body')).toBeInTheDocument();
     expect(screen.getByText('Evening session')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Upper body/i })).toHaveAttribute(
@@ -66,10 +71,15 @@ describe('HistoryCalendar', () => {
   it('updates the selected day in place without navigating away', () => {
     const replaceState = vi.spyOn(window.history, 'replaceState');
     render(
-      <HistoryCalendar monthKey="2026-09" initialDay="2026-09-12" sessions={sessions} />,
+      <HistoryCalendar
+        monthKey="2026-09"
+        initialDay="2026-09-12"
+        sessions={sessions}
+        timeZone={Intl.DateTimeFormat().resolvedOptions().timeZone}
+      />,
     );
 
-    fireEvent.click(screen.getByRole('gridcell', { name: /13/ }));
+    fireEvent.click(screen.getByRole('button', { name: /13/ }));
 
     expect(screen.getByText('No completed workouts on this date.')).toBeInTheDocument();
     expect(replaceState).toHaveBeenLastCalledWith(null, '', '/history?month=2026-09&day=2026-09-13');
@@ -84,6 +94,7 @@ describe('HistoryCalendar', () => {
         initialDay="2026-09-12"
         sessions={sessions}
         selectedProgramId="program-1"
+        timeZone={Intl.DateTimeFormat().resolvedOptions().timeZone}
       />,
     );
 

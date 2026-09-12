@@ -1,4 +1,4 @@
-import { getLocale, getTranslations } from 'next-intl/server';
+import { getLocale, getTimeZone, getTranslations } from 'next-intl/server';
 import { CalendarDays } from 'lucide-react';
 import { db } from '@/lib/db';
 import { requireSession } from '@/lib/auth';
@@ -24,9 +24,10 @@ interface SearchParams {
 export default async function HistoryPage(props: { searchParams: Promise<SearchParams> }) {
   const t = await getTranslations('history');
   const locale = await getLocale();
+  const timeZone = await getTimeZone();
   const searchParams = await props.searchParams;
   const auth = await requireSession();
-  const month = parseMonthKey(searchParams.month);
+  const month = parseMonthKey(searchParams.month, new Date(), timeZone);
   const monthKey = formatMonthKey(month);
   const monthRange = getMonthQueryRange(month);
   const programFilter = searchParams.programId ? { programId: searchParams.programId } : {};
@@ -158,6 +159,7 @@ export default async function HistoryPage(props: { searchParams: Promise<SearchP
             initialDay={searchParams.day}
             sessions={calendarSessions}
             selectedProgramId={searchParams.programId}
+            timeZone={timeZone}
           />
         )}
       </div>

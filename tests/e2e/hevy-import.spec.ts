@@ -56,7 +56,7 @@ test('a lifter can preview and confirm a Hevy CSV import', async ({ page }) => {
   await page.getByRole('button', { name: /confirm import/i }).click();
   await expect(page.getByTestId('import-preview')).not.toBeVisible();
 
-  await page.goto('/history');
-  await expect(page.getByText('May 02, 2026')).toBeVisible();
+  await page.goto('/history?month=2026-05&day=2026-05-02');
+  await expect(page.getByRole('heading', { name: /May 2, 2026/i })).toBeVisible();
   await expect(page.getByText('2 sets')).toBeVisible();
 });

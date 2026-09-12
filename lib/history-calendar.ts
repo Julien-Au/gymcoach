@@ -16,7 +16,11 @@ export function formatMonthKey(month: CalendarMonth): string {
   return `${month.year}-${String(month.monthIndex + 1).padStart(2, '0')}`;
 }
 
-export function parseMonthKey(value: string | undefined, fallback = new Date()): CalendarMonth {
+export function parseMonthKey(
+  value: string | undefined,
+  fallback = new Date(),
+  timeZone?: string,
+): CalendarMonth {
   const match = value?.match(MONTH_PATTERN);
   if (match) {
     const year = Number(match[1]);
@@ -26,7 +30,11 @@ export function parseMonthKey(value: string | undefined, fallback = new Date()):
     }
   }
 
-  return { year: fallback.getFullYear(), monthIndex: fallback.getMonth() };
+  const fallbackDateKey = dateKeyInTimeZone(fallback, timeZone);
+  return {
+    year: Number(fallbackDateKey.slice(0, 4)),
+    monthIndex: Number(fallbackDateKey.slice(5, 7)) - 1,
+  };
 }
 
 export function shiftCalendarMonth(month: CalendarMonth, delta: number): CalendarMonth {
@@ -89,5 +97,11 @@ export function dateKeyInTimeZone(value: Date | string, timeZone?: string): stri
 }
 
 export function isDateKey(value: string | undefined): value is string {
-  return Boolean(value && DATE_KEY_PATTERN.test(value));
+  if (!value || !DATE_KEY_PATTERN.test(value)) return false;
+  const year = Number(value.slice(0, 4));
+  const month = Number(value.slice(5, 7));
+  const day = Number(value.slice(8, 10));
+  if (year < 1970 || year > 9999 || month < 1 || month > 12 || day < 1) return false;
+  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  return day <= daysInMonth;
 }
