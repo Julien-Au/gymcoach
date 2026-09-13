@@ -219,6 +219,35 @@ describe('offline set sync', () => {
     expect(result.droppedEquipment).toEqual([]);
     expect(listener).not.toHaveBeenCalled();
   });
+
+  it('patches an existing server set instead of posting a duplicate', async () => {
+    const item: PendingSet = {
+      ...pendingSet(),
+      serverId: 'server-1',
+      syncedAt: 1,
+      weight: 95,
+      reps: 9,
+      rir: 1,
+    };
+    mockGetDB.mockReturnValue(fakeDB(item));
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(JSON.stringify({ id: 'server-1' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+
+    await flushPendingSets();
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith('/api/sets/server-1', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ weight: 95, reps: 9, rir: 1 }),
+    });
+    expect(item.status).toBe('synced');
+    expect(item.serverId).toBe('server-1');
+  });
 });
 
 // Issue #337: the notice was broadcast to live subscribers only, so a flush
