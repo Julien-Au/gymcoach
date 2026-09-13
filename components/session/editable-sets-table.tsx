@@ -17,6 +17,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface Props {
   programExercise: ProgramExercise & { exercise: Exercise };
@@ -289,20 +296,23 @@ export function EditableSetsTable({
           >
             {inputT('equipment')}
           </label>
-          <select
-            id="inline-gym-equipment"
-            value={gymEquipmentId}
+          <Select
+            value={gymEquipmentId || 'none'}
             disabled={disabled}
-            onChange={(event) => setGymEquipmentId(event.target.value)}
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            onValueChange={(value) => setGymEquipmentId(value === 'none' ? '' : value)}
           >
-            <option value="">{inputT('equipmentNone')}</option>
-            {equipmentOptions.map((equipment) => (
-              <option key={equipment.id} value={equipment.id}>
-                {equipment.name}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger id="inline-gym-equipment" className="h-10">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">{inputT('equipmentNone')}</SelectItem>
+              {equipmentOptions.map((equipment) => (
+                <SelectItem key={equipment.id} value={equipment.id}>
+                  {equipment.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       )}
       <div data-testid="editable-sets-scroll" className="overflow-x-auto overscroll-x-contain">
@@ -363,25 +373,28 @@ export function EditableSetsTable({
                 >
                   {rowDraft.reps}
                 </button>
-                <select
-                  aria-label={t('rir', { number: set.setNumber })}
-                  value={rowDraft.rir ?? ''}
+                <Select
+                  value={rowDraft.rir == null ? 'none' : String(rowDraft.rir)}
                   disabled={disabled || isUpdating}
-                  onChange={(event) =>
-                    updateEditingRir(
-                      set,
-                      event.target.value === '' ? null : Number(event.target.value),
-                    )
+                  onValueChange={(value) =>
+                    updateEditingRir(set, value === 'none' ? null : Number(value))
                   }
-                  className="h-9 rounded-md border border-transparent bg-transparent text-center"
                 >
-                  <option value="">-</option>
-                  {[0, 1, 2, 3, 4, 5].map((value) => (
-                    <option key={value} value={value}>
-                      {value}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger
+                    aria-label={t('rir', { number: set.setNumber })}
+                    className="h-9 border-transparent bg-transparent px-2 text-center [&>svg]:hidden"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">-</SelectItem>
+                    {[0, 1, 2, 3, 4, 5].map((value) => (
+                      <SelectItem key={value} value={String(value)}>
+                        {value}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <span className="text-muted-foreground">
                   {formatWeight(estimate1RM(rowDraft.weight, rowDraft.reps), unit, {
                     decimals: 1,
@@ -457,25 +470,31 @@ export function EditableSetsTable({
             >
               {draft.reps}
             </button>
-            <select
-              aria-label={t('rir', { number: currentNumber })}
-              value={draft.rir ?? ''}
-              onChange={(event) => {
+            <Select
+              value={draft.rir == null ? 'none' : String(draft.rir)}
+              onValueChange={(value) => {
                 setDraft((current) => ({
                   ...current,
-                  rir: event.target.value === '' ? null : Number(event.target.value),
+                  rir: value === 'none' ? null : Number(value),
                 }));
                 setAppliedRecommendationKey(null);
               }}
-              className="h-11 rounded-md border border-input bg-background px-1 text-center text-base font-semibold"
             >
-              <option value="">-</option>
-              {[0, 1, 2, 3, 4, 5].map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger
+                aria-label={t('rir', { number: currentNumber })}
+                className="h-11 px-2 text-center text-base font-semibold [&>svg]:hidden"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">-</SelectItem>
+                {[0, 1, 2, 3, 4, 5].map((value) => (
+                  <SelectItem key={value} value={String(value)}>
+                    {value}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <span className="text-center text-sm font-medium tabular-nums text-muted-foreground">
               {rmValue > 0
                 ? formatWeight(rmValue, unit, { decimals: 1, group: false, locale })

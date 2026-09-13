@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import userEvent from '@testing-library/user-event';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { EditableSetsTable } from './editable-sets-table';
 import type { PendingSet } from '@/lib/indexeddb';
 import type { IntraSetRecommendation } from '@/lib/intra-set-autoregulation';
@@ -14,8 +15,16 @@ const programExercise = {
   exercise: { id: 'exercise-1', name: 'Squat', category: 'COMPOUND' },
 } as never;
 
+beforeAll(() => {
+  HTMLElement.prototype.hasPointerCapture = () => false;
+  HTMLElement.prototype.setPointerCapture = () => undefined;
+  HTMLElement.prototype.releasePointerCapture = () => undefined;
+  HTMLElement.prototype.scrollIntoView = () => undefined;
+});
+
 describe('EditableSetsTable', () => {
   it('edits and confirms the active set row through value pickers', async () => {
+    const user = userEvent.setup();
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     render(
       <EditableSetsTable
@@ -38,9 +47,8 @@ describe('EditableSetsTable', () => {
     fireEvent.click(screen.getByRole('button', { name: /repetitions/i }));
     fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '10' } });
     fireEvent.click(screen.getByRole('button', { name: /apply value/i }));
-    fireEvent.change(screen.getByRole('combobox', { name: /reps in reserve/i }), {
-      target: { value: '1' },
-    });
+    await user.click(screen.getByRole('combobox', { name: /reps in reserve/i }));
+    await user.click(screen.getByRole('option', { name: '1' }));
 
     expect(screen.getByText('133.3 kg')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /confirm set 1/i }));
@@ -61,6 +69,7 @@ describe('EditableSetsTable', () => {
   });
 
   it('submits the selected gym equipment and carries it to the next set', async () => {
+    const user = userEvent.setup();
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     const firstSet = {
       localId: 'local-equipment-1',
@@ -100,10 +109,9 @@ describe('EditableSetsTable', () => {
       />,
     );
 
-    expect(screen.getByRole('combobox', { name: /equipment/i })).toHaveValue('machine-1');
-    fireEvent.change(screen.getByRole('combobox', { name: /equipment/i }), {
-      target: { value: 'machine-2' },
-    });
+    expect(screen.getByRole('combobox', { name: /equipment/i })).toHaveTextContent('Hack Squat');
+    await user.click(screen.getByRole('combobox', { name: /equipment/i }));
+    await user.click(screen.getByRole('option', { name: 'Pendulum Squat' }));
     fireEvent.click(screen.getByRole('button', { name: /confirm set 2/i }));
 
     await waitFor(() =>
@@ -337,7 +345,7 @@ describe('EditableSetsTable', () => {
     fireEvent.click(applyRecommendation);
     expect(screen.getByRole('button', { name: /set 2 weight/i })).toHaveTextContent('75');
     expect(screen.getByRole('button', { name: /set 2 repetitions/i })).toHaveTextContent('10');
-    expect(screen.getByRole('combobox', { name: /set 2 reps in reserve/i })).toHaveValue('1');
+    expect(screen.getByRole('combobox', { name: /set 2 reps in reserve/i })).toHaveTextContent('1');
     expect(screen.queryByTestId('set-recommendation-dot')).not.toBeInTheDocument();
     expect(applyRecommendation).toBeDisabled();
 
@@ -379,6 +387,7 @@ describe('EditableSetsTable', () => {
   });
 
   it('autosaves edits to a completed set and keeps the row stable on failure', async () => {
+    const user = userEvent.setup();
     const completedSet = {
       localId: 'local-edit',
       sessionId: 'session-1',
@@ -427,14 +436,13 @@ describe('EditableSetsTable', () => {
         onUpdateSet={failedUpdate}
       />,
     );
-    fireEvent.change(screen.getAllByRole('combobox', { name: /set 2 reps in reserve/i })[0]!, {
-      target: { value: '1' },
-    });
+    await user.click(screen.getAllByRole('combobox', { name: /set 2 reps in reserve/i })[0]!);
+    await user.click(screen.getByRole('option', { name: '1' }));
     await waitFor(() => expect(failedUpdate).toHaveBeenCalled());
     await waitFor(() =>
-      expect(screen.getAllByRole('combobox', { name: /set 2 reps in reserve/i })[0]).toHaveValue(
-        '2',
-      ),
+      expect(
+        screen.getAllByRole('combobox', { name: /set 2 reps in reserve/i })[0],
+      ).toHaveTextContent('2'),
     );
   });
 });
