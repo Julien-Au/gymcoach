@@ -10,10 +10,12 @@ import { liveSessionGymInclude } from '@/lib/session-gym-selection';
 
 interface Props {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ exerciseId?: string }>;
 }
 
 export default async function SessionRunPage(props: Props) {
   const params = await props.params;
+  const searchParams = await props.searchParams;
   const auth = await requireSession();
 
   const session = await db.session.findFirst({
@@ -83,6 +85,7 @@ export default async function SessionRunPage(props: Props) {
       readiness={readiness}
       deloadActive={deloadActive}
       unit={user?.unit ?? 'KG'}
+      initialExerciseId={searchParams.exerciseId}
     />
   );
 }

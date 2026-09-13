@@ -18,6 +18,7 @@ export const session = {
     'Выбранный инвентарь закрепится за тренировкой, даже если позже переключить активный зал.',
   noExercises: 'В этой тренировке нет упражнений.',
   exerciseProgress: 'Упражнение {current}/{total} · {name}',
+  exerciseStripLabel: 'Упражнения тренировки',
   superset: 'Суперсет {label}',
   deloadWeek: 'Неделя разгрузки',
   quit: 'Выйти без завершения',

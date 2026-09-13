@@ -63,6 +63,30 @@ function renderCard(readiness: ReadinessSignal | null, deloadActive = false) {
   );
 }
 
+describe('ExerciseCard mobile title layout', () => {
+  it('keeps a long exercise title on one horizontally scrollable line', () => {
+    const longName = 'An exceptionally long incline dumbbell press exercise name';
+    const longExercise = { ...exo, name: longName };
+    const longProgramExercise = { ...pe, exercise: longExercise };
+
+    render(
+      <ExerciseCard
+        programExercise={longProgramExercise}
+        lastPerformance={lastPerf}
+        readiness={null}
+        deloadActive={false}
+        unit="KG"
+      />,
+    );
+
+    expect(screen.getByTestId('exercise-title-scroll')).toHaveClass('overflow-x-auto');
+    expect(screen.getByRole('heading', { level: 2, name: longName })).toHaveClass(
+      'w-max',
+      'whitespace-nowrap',
+    );
+  });
+});
+
 describe('ExerciseCard readiness explainer', () => {
   it('shows no readiness note when there is no check-in (unchanged UI)', () => {
     renderCard(null);

@@ -15,6 +15,7 @@ export const session = {
     'The selected inventory stays attached to this workout even if you switch gyms later.',
   noExercises: 'No exercises in this session.',
   exerciseProgress: 'Exercise {current}/{total} · {name}',
+  exerciseStripLabel: 'Workout exercises',
   superset: 'Superset {label}',
   deloadWeek: 'Deload week',
   quit: 'Quit without finishing',

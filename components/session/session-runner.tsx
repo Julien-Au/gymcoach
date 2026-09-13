@@ -54,10 +54,16 @@ import { SetInput } from '@/components/session/set-input';
 import { RestTimer } from '@/components/session/rest-timer';
 import { SessionSummary } from '@/components/session/session-summary';
 import { ReturnToTrainingNotice } from '@/components/session/return-to-training-notice';
+import { SessionExerciseStrip } from '@/components/session/session-exercise-strip';
 import { useExerciseName } from '@/components/shared/use-exercise-name';
 import { useTrainingName } from '@/components/shared/use-training-name';
 import type { GymLoadConstraints } from '@/lib/gym-loads';
 import type { ReturnRecommendation } from '@/lib/return-to-training';
+import {
+  exerciseDetailPath,
+  selectedExerciseIndex,
+  sessionExercisePath,
+} from '@/lib/session-exercise-navigation';
 
 export interface SerializedLastPerformance {
   sessionStartedAt: string;
@@ -97,6 +103,7 @@ type SessionRunnerProps = {
   // step down and the runner shows a "Deload week" badge.
   deloadActive: boolean;
   unit: WeightUnit;
+  initialExerciseId?: string;
 };
 
 type Mode =
@@ -111,6 +118,7 @@ export function SessionRunner({
   readiness,
   deloadActive,
   unit,
+  initialExerciseId,
 }: SessionRunnerProps) {
   const t = useTranslations('session');
   const exerciseName = useExerciseName();
@@ -141,8 +149,9 @@ export function SessionRunner({
     [effectiveProgramExercises],
   );
 
+  const initialExerciseIndex = selectedExerciseIndex(programExercises, initialExerciseId);
   const [hydrated, setHydrated] = useState(false);
-  const [currentIdx, setCurrentIdx] = useState(0);
+  const [currentIdx, setCurrentIdx] = useState(initialExerciseIndex);
   const [mode, setMode] = useState<Mode>({ kind: 'input' });
   const [closing, setClosing] = useState(false);
   // Readiness auto-regulation can be turned off in settings (issue #61). The
@@ -310,6 +319,15 @@ export function SessionRunner({
     return count;
   }, [effectiveProgramExercises, setsByExercise]);
 
+  const completedExerciseIds = useMemo(() => {
+    const completed = new Set<string>();
+    for (const pe of effectiveProgramExercises) {
+      const done = setsByExercise.get(pe.exerciseId)?.filter((s) => !s.isWarmup).length ?? 0;
+      if (done >= pe.targetSets) completed.add(pe.exerciseId);
+    }
+    return completed;
+  }, [effectiveProgramExercises, setsByExercise]);
+
   const progressPct =
     programExercises.length === 0
       ? 0
@@ -417,17 +435,28 @@ export function SessionRunner({
     }
   }
 
+  function selectExercise(index: number) {
+    const next = programExercises[index];
+    if (!next) return;
+    setCurrentIdx(index);
+    window.history.replaceState(
+      window.history.state,
+      '',
+      sessionExercisePath(session.id, next.exerciseId),
+    );
+  }
+
   function handleRestEnd() {
     vibrate(VIBRATION_PATTERNS.restEnd);
     if (mode.kind === 'rest' && mode.nextExerciseIdx != null) {
-      setCurrentIdx(mode.nextExerciseIdx);
+      selectExercise(mode.nextExerciseIdx);
     }
     setMode({ kind: 'input' });
   }
 
   function handleSkipRest() {
     if (mode.kind === 'rest' && mode.nextExerciseIdx != null) {
-      setCurrentIdx(mode.nextExerciseIdx);
+      selectExercise(mode.nextExerciseIdx);
     }
     setMode({ kind: 'input' });
   }
@@ -438,7 +467,7 @@ export function SessionRunner({
   }
 
   function goPrev() {
-    setCurrentIdx((i) => Math.max(0, i - 1));
+    selectExercise(Math.max(0, currentIdx - 1));
     setMode({ kind: 'input' });
   }
   // Next is linear for standalone exercises (unchanged) and cycles within a
@@ -450,7 +479,7 @@ export function SessionRunner({
   const navNextIdx = nextNavIndex(supersetView, currentIdx, remainingNow);
   function goNext() {
     if (navNextIdx == null) return;
-    setCurrentIdx(navNextIdx);
+    selectExercise(navNextIdx);
     setMode({ kind: 'input' });
   }
 
@@ -530,6 +559,20 @@ export function SessionRunner({
           </Button>
         </div>
         <Progress value={progressPct} className="mt-2 h-1.5" />
+        <SessionExerciseStrip
+          exercises={programExercises}
+          currentIndex={currentIdx}
+          completedExerciseIds={completedExerciseIds}
+          disabled={mode.kind !== 'input'}
+          onSelect={(index) => {
+            selectExercise(index);
+            setMode({ kind: 'input' });
+          }}
+          onOpen={(exerciseId) => {
+            const returnTo = sessionExercisePath(session.id, exerciseId);
+            router.push(exerciseDetailPath(exerciseId, returnTo));
+          }}
+        />
       </div>
 
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 py-4">

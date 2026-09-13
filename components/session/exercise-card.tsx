@@ -118,9 +118,16 @@ export function ExerciseCard({
     : null;
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <h2 className="text-2xl font-bold tracking-tight">{exerciseName(exo.name)}</h2>
+    <Card className="min-w-0">
+      <CardHeader className="min-w-0 pb-3">
+        <div
+          data-testid="exercise-title-scroll"
+          className="max-w-full overflow-x-auto overscroll-x-contain pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          <h2 className="w-max min-w-full whitespace-nowrap text-xl font-bold tracking-tight sm:text-2xl">
+            {exerciseName(exo.name)}
+          </h2>
+        </div>
         <div className="mt-1 flex flex-wrap gap-1.5">
           <Badge variant="secondary">
             {exerciseT(`muscleGroups.${muscleGroupMessageKeys[exo.muscleGroup]}`)}

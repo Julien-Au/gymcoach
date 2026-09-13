@@ -18,6 +18,7 @@ export const session = {
     'L’inventaire sélectionné reste attaché à cette séance même si vous changez de salle ensuite.',
   noExercises: 'Aucun exercice dans cette séance.',
   exerciseProgress: 'Exercice {current}/{total} · {name}',
+  exerciseStripLabel: 'Exercices de la séance',
   superset: 'Superset {label}',
   deloadWeek: 'Semaine de décharge',
   quit: 'Quitter sans terminer',
