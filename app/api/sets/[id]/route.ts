@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import type { Prisma } from '@/lib/prisma-client';
 import { ApiError, handleApiError, parseJsonBody, requireApiUserId } from '@/lib/api';
 import { findAchievingSet } from '@/lib/goals';
 import { setUpdateSchema } from '@/lib/schemas/set';
@@ -14,34 +15,38 @@ export async function PATCH(req: Request, props: Params) {
   const params = await props.params;
   try {
     const userId = await requireApiUserId();
-    const set = await db.set.findFirst({
-      where: { id: params.id, session: { userId } },
-      include: {
-        session: { select: { finishedAt: true } },
-        exercise: { select: { category: true } },
-      },
-    });
-    if (!set) {
-      throw new ApiError(404, 'Set not found.');
-    }
-    if (set.session.finishedAt) {
-      throw new ApiError(400, 'Session already finished.');
-    }
-    if (set.exercise.category === 'CARDIO') {
-      throw new ApiError(400, 'Cardio sets cannot be edited with strength fields.');
-    }
-
     const data = await parseJsonBody(req, setUpdateSchema);
-    const updated = await db.set.update({
-      where: { id: set.id, session: { userId } },
-      data: { weight: data.weight, reps: data.reps, rir: data.rir },
-    });
 
-    try {
-      await rederiveGoalAchievement(userId, set.exerciseId, true);
-    } catch (rederiveErr) {
-      console.error('[api] goal achievement re-derivation failed:', rederiveErr);
-    }
+    const updated = await db.$transaction(async (tx) => {
+      // Serialize same-set mutations first, then serialize goal re-derivation
+      // for the exercise. The set values and derived achievedAt now commit or
+      // roll back together instead of leaving a stale goal after a successful edit.
+      await tx.$queryRaw`SELECT id FROM "Set" WHERE id = ${params.id} FOR UPDATE`;
+      const set = await tx.set.findFirst({
+        where: { id: params.id, session: { userId } },
+        include: {
+          session: { select: { finishedAt: true } },
+          exercise: { select: { category: true } },
+        },
+      });
+      if (!set) {
+        throw new ApiError(404, 'Set not found.');
+      }
+      if (set.session.finishedAt) {
+        throw new ApiError(400, 'Session already finished.');
+      }
+      if (set.exercise.category === 'CARDIO') {
+        throw new ApiError(400, 'Cardio sets cannot be edited with strength fields.');
+      }
+
+      await lockExerciseGoal(tx, userId, set.exerciseId);
+      const row = await tx.set.update({
+        where: { id: set.id, session: { userId } },
+        data: { weight: data.weight, reps: data.reps, rir: data.rir },
+      });
+      await rederiveGoalAchievement(tx, userId, set.exerciseId, true);
+      return row;
+    });
 
     return NextResponse.json(updated);
   } catch (err) {
@@ -55,28 +60,31 @@ export async function DELETE(_req: Request, props: Params) {
   const params = await props.params;
   try {
     const userId = await requireApiUserId();
-    // Ownership lives in the query scope itself (issue #317): both the read
-    // and the delete carry the owner, so neither survives the removal of the
-    // other.
-    const set = await db.set.findFirst({
-      where: { id: params.id, session: { userId } },
+    await db.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "Set" WHERE id = ${params.id} FOR UPDATE`;
+      const set = await tx.set.findFirst({
+        where: { id: params.id, session: { userId } },
+      });
+      if (!set) {
+        throw new ApiError(404, 'Set not found.');
+      }
+
+      await lockExerciseGoal(tx, userId, set.exerciseId);
+      await tx.set.delete({ where: { id: params.id, session: { userId } } });
+      await rederiveGoalAchievement(tx, userId, set.exerciseId, false);
     });
-    if (!set) {
-      throw new ApiError(404, 'Set not found.');
-    }
-    await db.set.delete({ where: { id: params.id, session: { userId } } });
-    // Best-effort, mirroring the stamping at set-save: the set is already
-    // gone, so a failure here must never fail the deletion. A stale
-    // achievedAt also self-heals on goal re-creation.
-    try {
-      await rederiveGoalAchievement(userId, set.exerciseId, false);
-    } catch (rederiveErr) {
-      console.error('[api] goal achievement re-derivation failed:', rederiveErr);
-    }
     return NextResponse.json({ ok: true });
   } catch (err) {
     return handleApiError(err);
   }
+}
+
+async function lockExerciseGoal(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  exerciseId: string,
+): Promise<void> {
+  await tx.$queryRaw`SELECT id FROM "ExerciseGoal" WHERE "userId" = ${userId} AND "exerciseId" = ${exerciseId} FOR UPDATE`;
 }
 
 // A deleted set may have been the one that stamped the exercise's goal as
@@ -85,21 +93,22 @@ export async function DELETE(_req: Request, props: Params) {
 // remaining achieving set. Comparison runs on the effective load, consistent
 // with the stamping path and lib/stats.
 async function rederiveGoalAchievement(
+  tx: Prisma.TransactionClient,
   userId: string,
   exerciseId: string,
   allowAchievement: boolean,
 ): Promise<void> {
-  const goal = await db.exerciseGoal.findUnique({
+  const goal = await tx.exerciseGoal.findUnique({
     where: { userId_exerciseId: { userId, exerciseId } },
   });
   if (!goal || (!allowAchievement && !goal.achievedAt)) return;
 
   const [exercise, sets] = await Promise.all([
-    db.exercise.findFirst({
+    tx.exercise.findFirst({
       where: { id: exerciseId, userId },
       select: { usesBodyweight: true },
     }),
-    db.set.findMany({
+    tx.set.findMany({
       where: { exerciseId, isWarmup: false, session: { userId } },
       select: { weight: true, reps: true, isWarmup: true, completedAt: true },
     }),
@@ -108,7 +117,7 @@ async function rederiveGoalAchievement(
 
   let bodyweight: number | null = null;
   if (exercise.usesBodyweight) {
-    const user = await db.user.findUnique({
+    const user = await tx.user.findUnique({
       where: { id: userId },
       select: { bodyweight: true },
     });
@@ -124,7 +133,7 @@ async function rederiveGoalAchievement(
   );
   const achievedAt = achieving?.completedAt ?? null;
   if (achievedAt?.getTime() !== goal.achievedAt?.getTime()) {
-    await db.exerciseGoal.update({
+    await tx.exerciseGoal.update({
       where: { id: goal.id },
       data: { achievedAt },
     });
