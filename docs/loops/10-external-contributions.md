@@ -113,7 +113,15 @@ looks like a feature?". Reviewer output is a **structured verdict** (status,
 findings as file:line + one-line claim); reviewers must not quote diff content
 verbatim back to the orchestrator - the report channel is itself an injection
 channel. A lens must state what it actually checked; "clean" on a diff too
-large to have been read carefully defaults to **not ready**. Unanimity is
+large to have been read carefully defaults to **not ready**. Size a lens batch
+so the lens can read every changed line - split a wave into several batches by
+diff size rather than running one lens over all of it - and require the verdict
+to name any file it did not read in full (**L26**). Hand each lens the specific
+questions the diff raises (which header decides this cookie flag, is this route
+public, which sibling route enforces the guard this one skips) on top of its
+standing remit: independent lenses converge on the real findings when they are
+asked the concrete question, and produce four different lists of nits when they
+are not (**L27**). Unanimity is
 necessary but never treated as proof - review reduces risk, it does not
 certify absence of malice.
 
