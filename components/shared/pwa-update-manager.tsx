@@ -6,7 +6,15 @@ export function isServiceWorkerUpdate(previousController: ServiceWorker | null):
   return previousController !== null;
 }
 
-export function PwaUpdateManager() {
+interface Props {
+  reloadPage?: () => void;
+}
+
+function reloadCurrentPage() {
+  window.location.reload();
+}
+
+export function PwaUpdateManager({ reloadPage = reloadCurrentPage }: Props = {}) {
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
 
@@ -22,7 +30,7 @@ export function PwaUpdateManager() {
       }
 
       reloading = true;
-      window.location.reload();
+      reloadPage();
     }
 
     function handleControllerChange() {
@@ -70,7 +78,7 @@ export function PwaUpdateManager() {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('online', handleOnline);
     };
-  }, []);
+  }, [reloadPage]);
 
   return null;
 }
