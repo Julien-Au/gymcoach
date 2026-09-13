@@ -17,7 +17,7 @@ export async function PATCH(req: Request, props: Params) {
     const userId = await requireApiUserId();
     const data = await parseJsonBody(req, setUpdateSchema);
 
-    const updated = await db.$transaction(async (tx) => {
+    const updated = await runSerializableSetTransaction(async (tx) => {
       // Serialize same-set mutations first, then serialize goal re-derivation
       // for the exercise. The set values and derived achievedAt now commit or
       // roll back together instead of leaving a stale goal after a successful edit.
@@ -60,7 +60,7 @@ export async function DELETE(_req: Request, props: Params) {
   const params = await props.params;
   try {
     const userId = await requireApiUserId();
-    await db.$transaction(async (tx) => {
+    await runSerializableSetTransaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM "Set" WHERE id = ${params.id} FOR UPDATE`;
       const set = await tx.set.findFirst({
         where: { id: params.id, session: { userId } },
@@ -77,6 +77,24 @@ export async function DELETE(_req: Request, props: Params) {
   } catch (err) {
     return handleApiError(err);
   }
+}
+
+const MAX_SERIALIZABLE_ATTEMPTS = 3;
+
+async function runSerializableSetTransaction<T>(
+  operation: (tx: Prisma.TransactionClient) => Promise<T>,
+): Promise<T> {
+  for (let attempt = 1; attempt <= MAX_SERIALIZABLE_ATTEMPTS; attempt += 1) {
+    try {
+      return await db.$transaction(operation, { isolationLevel: 'Serializable' });
+    } catch (err) {
+      const isWriteConflict =
+        typeof err === 'object' && err !== null && 'code' in err && err.code === 'P2034';
+      if (!isWriteConflict || attempt === MAX_SERIALIZABLE_ATTEMPTS) throw err;
+    }
+  }
+
+  throw new Error('Serializable set transaction retry exhausted.');
 }
 
 async function lockExerciseGoal(
