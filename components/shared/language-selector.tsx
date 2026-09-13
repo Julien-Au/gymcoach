@@ -1,10 +1,9 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { useTransition } from 'react';
 import { Check, Languages } from 'lucide-react';
-import { setUserLocale } from '@/i18n/actions';
+import { toast } from 'sonner';
 import { localeLabels, locales, type Locale } from '@/i18n/config';
 import { Button } from '@/components/ui/button';
 import {
@@ -25,19 +24,38 @@ const localeMessageKeys = {
 export function LanguageSelector({ showLabel = false }: { showLabel?: boolean }) {
   const locale = useLocale();
   const t = useTranslations('common.language');
-  const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   function changeLocale(nextLocale: Locale) {
     if (nextLocale === locale) return;
 
-    startTransition(async () => {
-      await setUserLocale(nextLocale);
-      if ('caches' in window) {
-        await window.caches.delete('pages');
-      }
-      router.refresh();
+    startTransition(() => {
+      void applyLocale(nextLocale);
     });
+  }
+
+  async function applyLocale(nextLocale: Locale) {
+    try {
+      const response = await fetch('/api/locale', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ locale: nextLocale }),
+      });
+      if (!response.ok) throw new Error('Could not update locale.');
+
+      if ('caches' in window) {
+        const cacheNames = await window.caches.keys();
+        await Promise.all(
+          cacheNames
+            .filter((name) => name === 'start-url' || name.startsWith('pages'))
+            .map((name) => window.caches.delete(name)),
+        );
+      }
+
+      window.location.reload();
+    } catch {
+      toast.error(t('error'));
+    }
   }
 
   return (
