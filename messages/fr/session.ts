@@ -27,6 +27,7 @@ export const session = {
   finish: 'Terminer',
   setDeleted: 'Série supprimée.',
   setUpdated: 'Série mise à jour',
+  setUpdateQueued: 'Modification enregistrée localement et mise en attente de synchronisation',
   setUpdateError: 'Impossible de mettre à jour la série',
   setDeleteError: 'Impossible de supprimer la série.',
   finished: 'Séance terminée.',

@@ -24,6 +24,7 @@ export const session = {
   finish: 'Finish',
   setDeleted: 'Set deleted.',
   setUpdated: 'Set updated',
+  setUpdateQueued: 'Set update saved locally and queued for sync',
   setUpdateError: 'Could not update set',
   setDeleteError: 'Could not delete the set.',
   finished: 'Session finished.',

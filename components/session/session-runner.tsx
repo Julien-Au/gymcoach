@@ -45,6 +45,7 @@ import {
   drainDroppedEquipment,
   flushPendingSets,
   onEquipmentDropped,
+  pendingSetUpdateState,
   queueSet,
 } from '@/lib/sync';
 import { hydrateFromServerSets } from '@/lib/sync-hydration';
@@ -409,11 +410,21 @@ export function SessionRunner({
       });
       await flushPendingSets();
       const persisted = await db.pendingSets.get(set.localId);
-      if (persisted?.status === 'failed') {
-        await db.pendingSets.update(set.localId, original);
-        throw new Error(persisted.lastError ?? 'set update rejected');
+      const updateState = pendingSetUpdateState(persisted);
+      if (updateState === 'missing') {
+        throw new Error('set disappeared after update');
       }
-      toast.success(t('setUpdated'));
+      if (updateState === 'failed') {
+        await db.pendingSets.update(set.localId, original);
+        throw new Error(persisted?.lastError ?? 'set update rejected');
+      }
+      if (updateState === 'synced') {
+        toast.success(t('setUpdated'));
+      } else {
+        // A transient HTTP/network failure deliberately leaves the edit in the
+        // local retry queue. Do not claim remote persistence until it syncs.
+        toast.warning(t('setUpdateQueued'));
+      }
     } catch (error) {
       toast.error(t('setUpdateError'));
       throw error;

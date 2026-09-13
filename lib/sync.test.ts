@@ -8,7 +8,12 @@ vi.mock('@/lib/indexeddb', async (importOriginal) => {
   return { ...actual, getDB: mockGetDB };
 });
 
-import { drainDroppedEquipment, flushPendingSets, onEquipmentDropped } from '@/lib/sync';
+import {
+  drainDroppedEquipment,
+  flushPendingSets,
+  onEquipmentDropped,
+  pendingSetUpdateState,
+} from '@/lib/sync';
 
 function pendingSet(): PendingSet {
   return {
@@ -84,6 +89,16 @@ function fakeDB(item: PendingSet) {
     }),
   };
 }
+
+describe('pendingSetUpdateState', () => {
+  it('distinguishes remote persistence from queued and fatal states', () => {
+    expect(pendingSetUpdateState(undefined)).toBe('missing');
+    expect(pendingSetUpdateState({ ...pendingSet(), status: 'failed' })).toBe('failed');
+    expect(pendingSetUpdateState({ ...pendingSet(), status: 'synced' })).toBe('synced');
+    expect(pendingSetUpdateState({ ...pendingSet(), status: 'pending' })).toBe('queued');
+    expect(pendingSetUpdateState({ ...pendingSet(), status: 'syncing' })).toBe('queued');
+  });
+});
 
 describe('offline set sync', () => {
   beforeEach(() => {

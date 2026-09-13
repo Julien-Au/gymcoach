@@ -13,6 +13,15 @@
 
 import { getDB, type PendingSet } from '@/lib/indexeddb';
 
+export type PendingSetUpdateState = 'missing' | 'failed' | 'synced' | 'queued';
+
+export function pendingSetUpdateState(set: PendingSet | undefined): PendingSetUpdateState {
+  if (!set) return 'missing';
+  if (set.status === 'failed') return 'failed';
+  if (set.status === 'synced') return 'synced';
+  return 'queued';
+}
+
 export interface FlushResult {
   flushed: number;
   failed: number;

@@ -27,6 +27,7 @@ export const session = {
   finish: 'Завершить',
   setDeleted: 'Подход удалён.',
   setUpdated: 'Подход обновлён',
+  setUpdateQueued: 'Изменение сохранено локально и ожидает синхронизации',
   setUpdateError: 'Не удалось обновить подход',
   setDeleteError: 'Не удалось удалить подход.',
   finished: 'Тренировка завершена.',
