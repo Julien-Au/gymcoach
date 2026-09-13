@@ -70,6 +70,7 @@ export const common = {
     english: 'Anglais',
     french: 'Français',
     russian: 'Russe',
+    error: 'Impossible de changer la langue.',
   },
   theme: {
     dark: 'Sombre',
