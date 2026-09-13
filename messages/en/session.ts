@@ -174,6 +174,7 @@ export const session = {
     reps: 'Set {number} repetitions',
     rir: 'Set {number} reps in reserve',
     confirm: 'Confirm set {number}',
+    applyRecommendation: 'Apply recommendation to set {number}',
     delete: 'Delete set {number}',
     chooseWeight: 'Choose weight ({unit})',
     chooseReps: 'Choose repetitions',

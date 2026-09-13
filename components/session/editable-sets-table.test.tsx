@@ -1,6 +1,8 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { EditableSetsTable } from './editable-sets-table';
+import type { PendingSet } from '@/lib/indexeddb';
+import type { IntraSetRecommendation } from '@/lib/intra-set-autoregulation';
 
 const programExercise = {
   id: 'pe-1',
@@ -123,6 +125,103 @@ describe('EditableSetsTable', () => {
     expect(screen.getByRole('button', { name: /weight/i })).toHaveTextContent('27.25');
     expect(screen.getByRole('button', { name: /repetitions/i })).toHaveTextContent('12');
     expect(screen.getAllByText('25').length).toBeGreaterThan(0);
+  });
+
+  it('applies the next-set recommendation on demand and restores it after manual changes', async () => {
+    const completedSet: PendingSet = {
+      localId: 'local-recommendation-1',
+      sessionId: 'session-1',
+      exerciseId: 'exercise-1',
+      setNumber: 1,
+      weight: 80,
+      reps: 8,
+      rir: 2,
+      notes: null,
+      isWarmup: false,
+      isDropSet: false,
+      status: 'synced',
+      serverId: 'server-recommendation-1',
+      syncedAt: 1,
+      attempts: 0,
+      lastError: null,
+      createdAt: 1,
+    };
+    const recommendation: IntraSetRecommendation = {
+      mode: 'PRESERVE_RIR',
+      weight: 75,
+      reps: 10,
+      rir: 1,
+      reason: 'reduce-load',
+      predictedRepsAtSameLoad: 7,
+      fatigueLoss: 1,
+      confidence: 'medium',
+    };
+
+    const view = render(
+      <EditableSetsTable
+        programExercise={programExercise}
+        sets={[completedSet]}
+        lastPerformance={undefined}
+        readiness={null}
+        deloadActive={false}
+        unit="KG"
+        recommendation={recommendation}
+        onSubmit={vi.fn()}
+        onDeleteSet={vi.fn()}
+        onUpdateSet={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    const applyRecommendation = screen.getByRole('button', {
+      name: /apply recommendation to set 2/i,
+    });
+    expect(screen.getByTestId('set-recommendation-dot')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /set 2 weight/i })).toHaveTextContent('80');
+
+    fireEvent.click(applyRecommendation);
+    expect(screen.getByRole('button', { name: /set 2 weight/i })).toHaveTextContent('75');
+    expect(screen.getByRole('button', { name: /set 2 repetitions/i })).toHaveTextContent('10');
+    expect(screen.getByRole('combobox', { name: /set 2 reps in reserve/i })).toHaveValue('1');
+    expect(screen.queryByTestId('set-recommendation-dot')).not.toBeInTheDocument();
+    expect(applyRecommendation).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('button', { name: /set 2 weight/i }));
+    fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '77.5' } });
+    fireEvent.click(screen.getByRole('button', { name: /apply value/i }));
+    expect(screen.getByTestId('set-recommendation-dot')).toBeInTheDocument();
+    expect(applyRecommendation).toBeEnabled();
+
+    const completedSet2 = {
+      ...completedSet,
+      localId: 'local-recommendation-2',
+      setNumber: 2,
+      weight: 77.5,
+      reps: 9,
+      rir: 1,
+      createdAt: 2,
+    } as never;
+    view.rerender(
+      <EditableSetsTable
+        programExercise={programExercise}
+        sets={[completedSet, completedSet2]}
+        lastPerformance={undefined}
+        readiness={null}
+        deloadActive={false}
+        unit="KG"
+        recommendation={{ ...recommendation, weight: 72.5, reps: 9, rir: 2 }}
+        onSubmit={vi.fn()}
+        onDeleteSet={vi.fn()}
+        onUpdateSet={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: /apply recommendation to set 3/i }),
+      ).toBeEnabled(),
+    );
+    expect(screen.getByRole('button', { name: /set 3 weight/i })).toHaveTextContent('77.5');
+    expect(screen.getByTestId('set-recommendation-dot')).toBeInTheDocument();
   });
 
   it('autosaves edits to a completed set and keeps the row stable on failure', async () => {

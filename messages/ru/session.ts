@@ -177,6 +177,7 @@ export const session = {
     reps: 'Повторения подхода {number}',
     rir: 'Повторы в запасе для подхода {number}',
     confirm: 'Подтвердить подход {number}',
+    applyRecommendation: 'Применить рекомендацию к подходу {number}',
     delete: 'Удалить подход {number}',
     chooseWeight: 'Выберите вес ({unit})',
     chooseReps: 'Выберите повторения',
