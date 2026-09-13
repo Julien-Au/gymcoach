@@ -177,6 +177,10 @@ export const session = {
     rir: 'Повторы в запасе для подхода {number}',
     confirm: 'Подтвердить подход {number}',
     delete: 'Удалить подход {number}',
+    chooseWeight: 'Выберите вес ({unit})',
+    chooseReps: 'Выберите повторения',
+    applyValue: 'Применить значение',
+    repsShort: 'повт.',
   },
   exerciseCard: {
     notAvailable: 'Нет в этом зале',

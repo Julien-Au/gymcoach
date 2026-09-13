@@ -173,6 +173,10 @@ export const session = {
     rir: 'Set {number} reps in reserve',
     confirm: 'Confirm set {number}',
     delete: 'Delete set {number}',
+    chooseWeight: 'Choose weight ({unit})',
+    chooseReps: 'Choose repetitions',
+    applyValue: 'Apply value',
+    repsShort: 'reps',
   },
   exerciseCard: {
     notAvailable: 'Not available in this gym',

@@ -8,12 +8,13 @@ import type { PendingSet } from '@/lib/indexeddb';
 import type { SerializedLastPerformance } from '@/components/session/session-runner';
 import type { IntraSetRecommendation } from '@/lib/intra-set-autoregulation';
 import type { GymLoadConstraints } from '@/lib/gym-loads';
-import { constrainGymWeight } from '@/lib/gym-loads';
+import { constrainGymWeight, gymWeightOptions } from '@/lib/gym-loads';
 import { suggestNextWeight, type ReadinessSignal } from '@/lib/progression';
 import { estimate1RM } from '@/lib/stats';
 import { formatWeight, fromDisplayWeight, roundWeight, toDisplayWeight } from '@/lib/units';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 
 interface Props {
   programExercise: ProgramExercise & { exercise: Exercise };
@@ -61,7 +62,13 @@ function initialDraft(
     };
   }
 
-  const lastWorking = sets.filter((set) => !set.isWarmup).at(-1);
+  const workingSets = sets.filter((set) => !set.isWarmup);
+  const previousRow = lastPerformance?.sets[workingSets.length];
+  if (previousRow) {
+    return { weight: previousRow.weight, reps: previousRow.reps, rir: previousRow.rir };
+  }
+
+  const lastWorking = workingSets.at(-1);
   if (lastWorking) {
     return { weight: lastWorking.weight, reps: lastWorking.reps, rir: lastWorking.rir };
   }
@@ -118,6 +125,8 @@ export function EditableSetsTable({
     ),
   );
   const [submitting, setSubmitting] = useState(false);
+  const [picker, setPicker] = useState<'weight' | 'reps' | null>(null);
+  const [manualValue, setManualValue] = useState('');
 
   const workingSets = useMemo(() => sets.filter((set) => !set.isWarmup), [sets]);
   const currentNumber = workingSets.length + 1;
@@ -125,6 +134,31 @@ export function EditableSetsTable({
   const displayWeight =
     unit === 'LB' ? roundWeight(toDisplayWeight(draft.weight, unit), 1) : draft.weight;
   const rmValue = estimate1RM(draft.weight, draft.reps);
+  const availableWeights = useMemo(() => {
+    const constrained = gymWeightOptions(loadConstraints, draft.weight);
+    if (constrained.length > 0) return constrained;
+    const step = programExercise.exercise.category === 'ISOLATION' ? 1 : 2.5;
+    return Array.from({ length: 81 }, (_, index) => +(index * step).toFixed(2));
+  }, [draft.weight, loadConstraints, programExercise.exercise.category]);
+  const repOptions = useMemo(() => Array.from({ length: 30 }, (_, index) => index + 1), []);
+
+  function openPicker(kind: 'weight' | 'reps') {
+    setPicker(kind);
+    setManualValue(
+      kind === 'weight'
+        ? String(unit === 'LB' ? roundWeight(toDisplayWeight(draft.weight, unit), 1) : draft.weight)
+        : String(draft.reps),
+    );
+  }
+
+  function chooseValue(value: number) {
+    setDraft((current) =>
+      picker === 'weight'
+        ? { ...current, weight: fromDisplayWeight(value, unit) }
+        : { ...current, reps: Math.max(1, Math.round(value)) },
+    );
+    setPicker(null);
+  }
 
   async function confirmRow() {
     if (disabled || submitting || draft.reps <= 0 || draft.weight < 0) return;
@@ -191,35 +225,22 @@ export function EditableSetsTable({
 
           <div className="grid grid-cols-[2.5rem_minmax(5rem,1fr)_4.5rem_4rem_5rem_3.25rem] items-center gap-1 border-b border-border bg-primary/5 px-2 py-2">
             <span className="text-center text-sm font-semibold text-primary">{currentNumber}</span>
-            <Input
+            <button
+              type="button"
+              onClick={() => openPicker('weight')}
               aria-label={t('weight', { number: currentNumber, unit })}
-              type="number"
-              inputMode="decimal"
-              step="0.1"
-              min="0"
-              value={displayWeight}
-              onChange={(event) =>
-                setDraft((current) => ({
-                  ...current,
-                  weight: fromDisplayWeight(Number(event.target.value) || 0, unit),
-                }))
-              }
-              className="h-11 px-2 text-center text-base font-semibold tabular-nums"
-            />
-            <Input
+              className="h-11 rounded-md border border-input bg-background px-2 text-center text-base font-semibold tabular-nums"
+            >
+              {displayWeight}
+            </button>
+            <button
+              type="button"
+              onClick={() => openPicker('reps')}
               aria-label={t('reps', { number: currentNumber })}
-              type="number"
-              inputMode="numeric"
-              min="1"
-              value={draft.reps}
-              onChange={(event) =>
-                setDraft((current) => ({
-                  ...current,
-                  reps: Math.max(0, Number.parseInt(event.target.value, 10) || 0),
-                }))
-              }
-              className="h-11 px-1 text-center text-base font-semibold tabular-nums"
-            />
+              className="h-11 rounded-md border border-input bg-background px-1 text-center text-base font-semibold tabular-nums"
+            >
+              {draft.reps}
+            </button>
             <select
               aria-label={t('rir', { number: currentNumber })}
               value={draft.rir ?? ''}
@@ -259,21 +280,94 @@ export function EditableSetsTable({
             </Button>
           </div>
 
-          {Array.from({ length: Math.max(0, totalRows - currentNumber) }, (_, index) => (
-            <div
-              key={`upcoming-${currentNumber + index + 1}`}
-              className="grid grid-cols-[2.5rem_minmax(5rem,1fr)_4.5rem_4rem_5rem_3.25rem] items-center gap-1 border-b border-border px-2 py-3 text-center text-sm text-muted-foreground last:border-b-0"
-            >
-              <span>{currentNumber + index + 1}</span>
-              <span>–</span>
-              <span>–</span>
-              <span>–</span>
-              <span>–</span>
-              <span />
-            </div>
-          ))}
+          {Array.from({ length: Math.max(0, totalRows - currentNumber) }, (_, index) => {
+            const rowNumber = currentNumber + index + 1;
+            const previous = lastPerformance?.sets[rowNumber - 1];
+            return (
+              <div
+                key={`upcoming-${rowNumber}`}
+                className="grid grid-cols-[2.5rem_minmax(5rem,1fr)_4.5rem_4rem_5rem_3.25rem] items-center gap-1 border-b border-border px-2 py-3 text-center text-sm text-muted-foreground last:border-b-0"
+              >
+                <span>{rowNumber}</span>
+                <span>
+                  {previous
+                    ? formatWeight(previous.weight, unit, {
+                        decimals: 2,
+                        group: false,
+                        locale,
+                        withUnit: false,
+                      })
+                    : '–'}
+                </span>
+                <span>{previous?.reps ?? '–'}</span>
+                <span>{previous?.rir ?? '–'}</span>
+                <span>
+                  {previous
+                    ? formatWeight(estimate1RM(previous.weight, previous.reps), unit, {
+                        decimals: 1,
+                        group: false,
+                        locale,
+                      })
+                    : '–'}
+                </span>
+                <span />
+              </div>
+            );
+          })}
         </div>
       </div>
+
+      <Dialog open={picker != null} onOpenChange={(open) => !open && setPicker(null)}>
+        <DialogContent aria-describedby={undefined} className="bottom-0 left-0 top-auto max-h-[82vh] w-full max-w-none translate-x-0 translate-y-0 gap-3 rounded-t-lg border-x-0 border-b-0 p-4 sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-lg sm:border">
+          <DialogTitle>
+            {picker === 'weight' ? t('chooseWeight', { unit }) : t('chooseReps')}
+          </DialogTitle>
+          <div className="flex gap-2">
+            <Input
+              autoFocus
+              type="number"
+              inputMode={picker === 'weight' ? 'decimal' : 'numeric'}
+              step={picker === 'weight' ? '0.1' : '1'}
+              min="0"
+              value={manualValue}
+              onChange={(event) => setManualValue(event.target.value)}
+              className="h-12 text-center text-xl font-semibold tabular-nums"
+            />
+            <Button
+              type="button"
+              size="icon"
+              className="size-12 shrink-0"
+              onClick={() => chooseValue(Number(manualValue) || 0)}
+              aria-label={t('applyValue')}
+            >
+              <Check className="size-6" />
+            </Button>
+          </div>
+          <div className="max-h-[55vh] space-y-2 overflow-y-auto overscroll-contain py-1">
+            {(picker === 'weight' ? availableWeights : repOptions).map((value) => {
+              const shown =
+                picker === 'weight'
+                  ? unit === 'LB'
+                    ? roundWeight(toDisplayWeight(value, unit), 1)
+                    : value
+                  : value;
+              const selected = picker === 'weight' ? value === draft.weight : value === draft.reps;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => chooseValue(shown)}
+                  className={`flex h-16 w-full items-center justify-center rounded-md border text-xl font-semibold tabular-nums ${
+                    selected ? 'border-primary bg-primary/10' : 'border-border bg-muted/40'
+                  }`}
+                >
+                  {shown} {picker === 'weight' ? unit.toLowerCase() : t('repsShort')}
+                </button>
+              );
+            })}
+          </div>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

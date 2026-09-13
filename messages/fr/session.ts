@@ -179,6 +179,10 @@ export const session = {
     rir: 'Répétitions en réserve de la série {number}',
     confirm: 'Valider la série {number}',
     delete: 'Supprimer la série {number}',
+    chooseWeight: 'Choisir la charge ({unit})',
+    chooseReps: 'Choisir les répétitions',
+    applyValue: 'Appliquer la valeur',
+    repsShort: 'reps',
   },
   exerciseCard: {
     notAvailable: 'Indisponible dans cette salle',

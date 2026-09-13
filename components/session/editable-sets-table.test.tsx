@@ -13,7 +13,7 @@ const programExercise = {
 } as never;
 
 describe('EditableSetsTable', () => {
-  it('edits and confirms the active set row', async () => {
+  it('edits and confirms the active set row through value pickers', async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     render(
       <EditableSetsTable
@@ -28,12 +28,13 @@ describe('EditableSetsTable', () => {
       />,
     );
 
-    fireEvent.change(screen.getByRole('spinbutton', { name: /weight/i }), {
-      target: { value: '100' },
-    });
-    fireEvent.change(screen.getByRole('spinbutton', { name: /repetitions/i }), {
-      target: { value: '10' },
-    });
+    fireEvent.click(screen.getByRole('button', { name: /weight/i }));
+    fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '100' } });
+    fireEvent.click(screen.getByRole('button', { name: /apply value/i }));
+
+    fireEvent.click(screen.getByRole('button', { name: /repetitions/i }));
+    fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '10' } });
+    fireEvent.click(screen.getByRole('button', { name: /apply value/i }));
     fireEvent.change(screen.getByRole('combobox', { name: /reps in reserve/i }), {
       target: { value: '1' },
     });
@@ -87,9 +88,38 @@ describe('EditableSetsTable', () => {
       />,
     );
 
-    expect(screen.getByText('80')).toBeInTheDocument();
+    expect(screen.getAllByText('80')).toHaveLength(2);
     fireEvent.click(screen.getByRole('button', { name: /delete set 3/i }));
     expect(onDeleteSet).toHaveBeenCalledWith(completedSet);
+  });
+
+  it('prefills active and upcoming rows from matching previous-session sets', () => {
+    render(
+      <EditableSetsTable
+        programExercise={programExercise}
+        sets={[]}
+        lastPerformance={{
+          sessionStartedAt: '2026-07-01T10:00:00.000Z',
+          sets: [
+            { weight: 27.25, reps: 12, rir: 2 },
+            { weight: 27.25, reps: 10, rir: 1 },
+            { weight: 25, reps: 9, rir: 0 },
+          ],
+          maxWeight: 27.25,
+          repsAtMaxWeight: 12,
+          cardio: null,
+        }}
+        readiness={null}
+        deloadActive={false}
+        unit="KG"
+        onSubmit={vi.fn()}
+        onDeleteSet={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: /weight/i })).toHaveTextContent('27.25');
+    expect(screen.getByRole('button', { name: /repetitions/i })).toHaveTextContent('12');
+    expect(screen.getAllByText('25').length).toBeGreaterThan(0);
   });
 
 });
