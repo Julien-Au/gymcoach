@@ -658,7 +658,6 @@ export function SessionRunner({
             readiness={effectiveReadiness}
             deloadActive={deloadActive}
             unit={unit}
-            recommendation={currentRecommendation}
             returnRecommendation={currentReturnRecommendation}
             loadConstraints={loadConstraintsFor(currentTarget)}
             equipmentOptions={(session.gym?.equipment ?? []).filter(
