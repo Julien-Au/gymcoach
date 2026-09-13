@@ -15,6 +15,7 @@ interface Props {
   currentIndex: number;
   completedExerciseIds: ReadonlySet<string>;
   onSelect: (index: number) => void;
+  onOpen: (exerciseId: string) => void;
   disabled?: boolean;
 }
 
@@ -34,6 +35,7 @@ export function SessionExerciseStrip({
   currentIndex,
   completedExerciseIds,
   onSelect,
+  onOpen,
   disabled = false,
 }: Props) {
   const exerciseName = useExerciseName();
@@ -67,12 +69,17 @@ export function SessionExerciseStrip({
               key={programExercise.id}
               ref={isCurrent ? currentRef : undefined}
               type="button"
-              onClick={() => onSelect(index)}
-              disabled={disabled}
+              onClick={() => {
+                if (isCurrent) onOpen(programExercise.exerciseId);
+                else if (!disabled) onSelect(index);
+              }}
+              aria-disabled={!isCurrent && disabled}
               aria-label={`${index + 1}. ${displayName}`}
               aria-current={isCurrent ? 'step' : undefined}
               title={displayName}
-              className="group relative shrink-0 disabled:cursor-not-allowed disabled:opacity-60"
+              className={`group relative shrink-0 transition-opacity ${
+                isCurrent ? 'opacity-100' : 'opacity-45 hover:opacity-75'
+              } ${!isCurrent && disabled ? 'cursor-not-allowed' : ''}`}
             >
               <span
                 className={`relative block h-14 w-[4.5rem] overflow-hidden rounded-md border bg-muted transition-colors sm:h-16 sm:w-20 ${

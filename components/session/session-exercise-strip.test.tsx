@@ -34,12 +34,14 @@ const exercises = [
 describe('SessionExerciseStrip', () => {
   it('shows media, completion state, fallback initials, and selects an exercise', () => {
     const onSelect = vi.fn();
+    const onOpen = vi.fn();
     render(
       <SessionExerciseStrip
         exercises={exercises}
         currentIndex={0}
         completedExerciseIds={new Set(['exercise-1'])}
         onSelect={onSelect}
+        onOpen={onOpen}
       />,
     );
 
@@ -53,8 +55,15 @@ describe('SessionExerciseStrip', () => {
       'step',
     );
 
-    fireEvent.click(screen.getByRole('button', { name: '2. Custom Rear Delt Raise' }));
+    const active = screen.getByRole('button', { name: '1. Squats · Barbell' });
+    const inactive = screen.getByRole('button', { name: '2. Custom Rear Delt Raise' });
+    expect(active).toHaveClass('opacity-100');
+    expect(inactive).toHaveClass('opacity-45');
+
+    fireEvent.click(inactive);
     expect(onSelect).toHaveBeenCalledWith(1);
+    fireEvent.click(active);
+    expect(onOpen).toHaveBeenCalledWith('exercise-1');
   });
 
   it('connects adjacent superset exercises and leaves standalone exercises unmarked', () => {
@@ -64,6 +73,7 @@ describe('SessionExerciseStrip', () => {
         currentIndex={0}
         completedExerciseIds={new Set()}
         onSelect={vi.fn()}
+        onOpen={vi.fn()}
       />,
     );
 
