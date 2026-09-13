@@ -186,6 +186,7 @@ export const session = {
     rir: 'Répétitions en réserve de la série {number}',
     confirm: 'Valider la série {number}',
     applyRecommendation: 'Appliquer la recommandation à la série {number}',
+    undo: 'Annuler la série {number}',
     delete: 'Supprimer la série {number}',
     chooseWeight: 'Choisir la charge ({unit})',
     chooseReps: 'Choisir les répétitions',

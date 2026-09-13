@@ -59,8 +59,8 @@ describe('EditableSetsTable', () => {
     );
   });
 
-  it('uses persisted set numbers for completed rows and delete labels', () => {
-    const onDeleteSet = vi.fn();
+  it('uses persisted set numbers and exposes undo only for the latest completed set', () => {
+    const onDeleteSet = vi.fn().mockResolvedValue(true);
     const completedSet = {
       localId: 'local-1',
       sessionId: 'session-1',
@@ -77,11 +77,18 @@ describe('EditableSetsTable', () => {
       status: 'synced',
       createdAt: 1,
     } as never;
+    const latestSet = {
+      ...(completedSet as PendingSet),
+      localId: 'local-2',
+      setNumber: 4,
+      weight: 82.5,
+      createdAt: 2,
+    } as PendingSet;
 
     render(
       <EditableSetsTable
         programExercise={programExercise}
-        sets={[completedSet]}
+        sets={[completedSet, latestSet]}
         lastPerformance={undefined}
         readiness={null}
         deloadActive={false}
@@ -92,9 +99,10 @@ describe('EditableSetsTable', () => {
       />,
     );
 
-    expect(screen.getAllByText('80')).toHaveLength(2);
-    fireEvent.click(screen.getByRole('button', { name: /delete set 3/i }));
-    expect(onDeleteSet).toHaveBeenCalledWith(completedSet);
+    expect(screen.getByRole('button', { name: /delete set 3/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /undo set 3/i })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /undo set 4/i }));
+    expect(onDeleteSet).toHaveBeenCalledWith(latestSet);
   });
 
   it('prefills active and upcoming rows from matching previous-session sets', () => {

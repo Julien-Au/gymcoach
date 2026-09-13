@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Check, Loader2, Trash2 } from 'lucide-react';
+import { Check, Loader2, RotateCcw, Trash2 } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import type { Exercise, ProgramExercise, WeightUnit } from '@/lib/prisma-client';
 import type { PendingSet } from '@/lib/indexeddb';
@@ -36,7 +36,7 @@ interface Props {
     isDropSet: false;
     notes: null;
   }) => Promise<void>;
-  onDeleteSet: (set: PendingSet) => void;
+  onDeleteSet: (set: PendingSet) => Promise<boolean | void> | boolean | void;
   onUpdateSet: (set: PendingSet, values: DraftSet) => Promise<void>;
 }
 
@@ -116,6 +116,7 @@ export function EditableSetsTable({
   const [manualValue, setManualValue] = useState('');
   const [appliedRecommendationKey, setAppliedRecommendationKey] = useState<string | null>(null);
   const workingSets = useMemo(() => sets.filter((set) => !set.isWarmup), [sets]);
+  const latestWorkingSetId = workingSets.at(-1)?.localId ?? null;
 
   useEffect(() => {
     setDraft(
@@ -319,11 +320,19 @@ export function EditableSetsTable({
                       type="button"
                       variant="ghost"
                       size="icon"
-                      onClick={() => onDeleteSet(set)}
-                      aria-label={t('delete', { number: set.setNumber })}
+                      onClick={() => void onDeleteSet(set)}
+                      aria-label={
+                        set.localId === latestWorkingSetId
+                          ? t('undo', { number: set.setNumber })
+                          : t('delete', { number: set.setNumber })
+                      }
                       className="size-9 text-muted-foreground hover:text-destructive"
                     >
-                      <Trash2 className="size-4" />
+                      {set.localId === latestWorkingSetId ? (
+                        <RotateCcw className="size-4" />
+                      ) : (
+                        <Trash2 className="size-4" />
+                      )}
                     </Button>
                   )}
                 </span>

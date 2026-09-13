@@ -418,19 +418,31 @@ export function SessionRunner({
     }
   }
 
-  async function handleDeleteSet(set: PendingSet) {
+  async function handleDeleteSet(set: PendingSet): Promise<boolean> {
     const db = getDB();
-    // If already synced: API DELETE call, then local removal.
-    // If not yet synced: local removal only.
-    if (set.serverId) {
-      const res = await fetch(`/api/sets/${set.serverId}`, { method: 'DELETE' });
-      if (!res.ok && res.status !== 404) {
-        toast.error(t('setDeleteError'));
-        return;
+    try {
+      let current = (await db.pendingSets.get(set.localId)) ?? set;
+      if (!current.serverId && (current.status === 'pending' || current.status === 'syncing')) {
+        await flushPendingSets();
+        current = (await db.pendingSets.get(set.localId)) ?? current;
       }
+
+      // Once a server id exists, delete the persisted row first. A failed
+      // request leaves the local row intact so undo never loses data silently.
+      if (current.serverId) {
+        const res = await fetch(`/api/sets/${current.serverId}`, { method: 'DELETE' });
+        if (!res.ok && res.status !== 404) {
+          toast.error(t('setDeleteError'));
+          return false;
+        }
+      }
+      await db.pendingSets.delete(current.localId);
+      toast.success(t('setDeleted'));
+      return true;
+    } catch {
+      toast.error(t('setDeleteError'));
+      return false;
     }
-    await db.pendingSets.delete(set.localId);
-    toast.success(t('setDeleted'));
   }
 
   async function handleFinishSession() {
