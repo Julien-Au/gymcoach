@@ -85,12 +85,13 @@ async function doFlush(): Promise<FlushResult> {
     await db.pendingSets.update(item.localId, { status: 'syncing' });
 
     try {
-      const updatesExistingSet = item.serverId != null;
+      const existingServerId = item.serverId;
+      const updatesExistingSet = existingServerId != null;
       let res: Response;
       let sentEquipmentId: string | null = null;
 
-      if (updatesExistingSet) {
-        res = await fetch(`/api/sets/${item.serverId}`, {
+      if (existingServerId != null) {
+        res = await fetch(`/api/sets/${encodeURIComponent(existingServerId)}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ weight: item.weight, reps: item.reps, rir: item.rir }),
@@ -157,11 +158,11 @@ async function doFlush(): Promise<FlushResult> {
           ? { gymEquipmentId: null, equipmentDroppedNotice: sentEquipmentId }
           : {}),
       });
-      if (equipmentDropped) {
+      if (equipmentDropped && sentEquipmentId !== null) {
         droppedEquipment.push({
           localId: item.localId,
           sessionId: item.sessionId,
-          gymEquipmentId: sentEquipmentId!,
+          gymEquipmentId: sentEquipmentId,
         });
       }
       flushed += 1;

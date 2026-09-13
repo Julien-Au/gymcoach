@@ -238,7 +238,7 @@ describe('offline set sync', () => {
   it('patches an existing server set instead of posting a duplicate', async () => {
     const item: PendingSet = {
       ...pendingSet(),
-      serverId: 'server-1',
+      serverId: 'server/1',
       syncedAt: 1,
       weight: 95,
       reps: 9,
@@ -255,7 +255,7 @@ describe('offline set sync', () => {
     await flushPendingSets();
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock).toHaveBeenCalledWith('/api/sets/server-1', {
+    expect(fetchMock).toHaveBeenCalledWith('/api/sets/server%2F1', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ weight: 95, reps: 9, rir: 1 }),
