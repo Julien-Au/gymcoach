@@ -59,6 +59,39 @@ describe('EditableSetsTable', () => {
     );
   });
 
+  it('keeps canonical kg values when selecting a displayed lb option', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(
+      <EditableSetsTable
+        programExercise={programExercise}
+        sets={[]}
+        lastPerformance={{
+          sessionStartedAt: '2026-07-01T10:00:00.000Z',
+          sets: [{ weight: 100, reps: 10, rir: 2 }],
+          maxWeight: 100,
+          repsAtMaxWeight: 10,
+          cardio: null,
+        }}
+        readiness={null}
+        deloadActive={false}
+        unit="LB"
+        onSubmit={onSubmit}
+        onDeleteSet={vi.fn()}
+        onUpdateSet={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /weight/i }));
+    fireEvent.click(screen.getByRole('button', { name: /220\.5 lb/i }));
+    fireEvent.click(screen.getByRole('button', { name: /confirm set 1/i }));
+
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ weight: 100, reps: 10, rir: 2 }),
+      ),
+    );
+  });
+
   it('keeps the table horizontally scrollable at narrow widths with touch-sized active controls', () => {
     render(
       <EditableSetsTable
@@ -310,6 +343,8 @@ describe('EditableSetsTable', () => {
       target: { value: '1' },
     });
     await waitFor(() => expect(failedUpdate).toHaveBeenCalled());
-    expect(screen.getAllByRole('button', { name: /set 2 weight/i })[0]).toHaveTextContent('80');
+    await waitFor(() =>
+      expect(screen.getAllByRole('combobox', { name: /set 2 reps in reserve/i })[0]).toHaveValue('2'),
+    );
   });
 });

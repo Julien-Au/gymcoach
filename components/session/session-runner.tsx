@@ -385,9 +385,10 @@ export function SessionRunner({
   ) {
     const db = getDB();
     try {
-      const current = (await db.pendingSets.get(set.localId)) ?? set;
+      let current = (await db.pendingSets.get(set.localId)) ?? set;
       if (!current.serverId && current.status === 'syncing') {
         await flushPendingSets();
+        current = (await db.pendingSets.get(set.localId)) ?? current;
       }
       const original = {
         weight: current.weight,
@@ -396,6 +397,7 @@ export function SessionRunner({
         status: current.status,
         attempts: current.attempts,
         lastError: current.lastError,
+        serverId: current.serverId,
       };
       await db.pendingSets.update(set.localId, {
         weight: values.weight,

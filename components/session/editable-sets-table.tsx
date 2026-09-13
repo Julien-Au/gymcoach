@@ -176,10 +176,10 @@ export function EditableSetsTable({
     );
   }
 
-  function chooseValue(value: number) {
+  function chooseValue(value: number, canonicalWeight?: number) {
     const updateDraft = (current: DraftSet): DraftSet =>
       picker === 'weight'
-        ? { ...current, weight: fromDisplayWeight(value, unit) }
+        ? { ...current, weight: canonicalWeight ?? fromDisplayWeight(value, unit) }
         : { ...current, reps: Math.max(1, Math.round(value)) };
     if (editingSet) {
       const nextDraft = updateDraft(editingSet.draft);
@@ -298,7 +298,7 @@ export function EditableSetsTable({
                   }
                   className="h-9 rounded-md border border-transparent bg-transparent text-center"
                 >
-                  <option value="">–</option>
+                  <option value="">-</option>
                   {[0, 1, 2, 3, 4, 5].map((value) => (
                     <option key={value} value={value}>
                       {value}
@@ -390,7 +390,7 @@ export function EditableSetsTable({
               }}
               className="h-11 rounded-md border border-input bg-background px-1 text-center text-base font-semibold"
             >
-              <option value="">–</option>
+              <option value="">-</option>
               {[0, 1, 2, 3, 4, 5].map((value) => (
                 <option key={value} value={value}>
                   {value}
@@ -400,7 +400,7 @@ export function EditableSetsTable({
             <span className="text-center text-sm font-medium tabular-nums text-muted-foreground">
               {rmValue > 0
                 ? formatWeight(rmValue, unit, { decimals: 1, group: false, locale })
-                : '–'}
+                : '-'}
             </span>
             <Button
               type="button"
@@ -435,10 +435,10 @@ export function EditableSetsTable({
                         locale,
                         withUnit: false,
                       })
-                    : '–'}
+                    : '-'}
                 </span>
-                <span>{previous?.reps ?? '–'}</span>
-                <span>{previous?.rir ?? '–'}</span>
+                <span>{previous?.reps ?? '-'}</span>
+                <span>{previous?.rir ?? '-'}</span>
                 <span>
                   {previous
                     ? formatWeight(estimate1RM(previous.weight, previous.reps), unit, {
@@ -446,7 +446,7 @@ export function EditableSetsTable({
                         group: false,
                         locale,
                       })
-                    : '–'}
+                    : '-'}
                 </span>
                 <span />
               </div>
@@ -492,12 +492,14 @@ export function EditableSetsTable({
                     ? roundWeight(toDisplayWeight(value, unit), 1)
                     : value
                   : value;
-              const selected = picker === 'weight' ? value === draft.weight : value === draft.reps;
+              const activeDraft = editingSet?.draft ?? draft;
+              const selected =
+                picker === 'weight' ? value === activeDraft.weight : value === activeDraft.reps;
               return (
                 <button
                   key={value}
                   type="button"
-                  onClick={() => chooseValue(shown)}
+                  onClick={() => chooseValue(shown, picker === 'weight' ? value : undefined)}
                   className={`flex h-16 w-full items-center justify-center rounded-md border text-xl font-semibold tabular-nums ${
                     selected ? 'border-primary bg-primary/10' : 'border-border bg-muted/40'
                   }`}

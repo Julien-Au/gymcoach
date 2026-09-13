@@ -16,19 +16,29 @@ export async function PATCH(req: Request, props: Params) {
     const userId = await requireApiUserId();
     const set = await db.set.findFirst({
       where: { id: params.id, session: { userId } },
+      include: {
+        session: { select: { finishedAt: true } },
+        exercise: { select: { category: true } },
+      },
     });
     if (!set) {
       throw new ApiError(404, 'Set not found.');
+    }
+    if (set.session.finishedAt) {
+      throw new ApiError(400, 'Session already finished.');
+    }
+    if (set.exercise.category === 'CARDIO') {
+      throw new ApiError(400, 'Cardio sets cannot be edited with strength fields.');
     }
 
     const data = await parseJsonBody(req, setUpdateSchema);
     const updated = await db.set.update({
       where: { id: set.id, session: { userId } },
-      data: { weight: data.weight, reps: data.reps, rir: data.rir ?? null },
+      data: { weight: data.weight, reps: data.reps, rir: data.rir },
     });
 
     try {
-      await rederiveGoalAchievement(userId, set.exerciseId);
+      await rederiveGoalAchievement(userId, set.exerciseId, true);
     } catch (rederiveErr) {
       console.error('[api] goal achievement re-derivation failed:', rederiveErr);
     }
@@ -59,7 +69,7 @@ export async function DELETE(_req: Request, props: Params) {
     // gone, so a failure here must never fail the deletion. A stale
     // achievedAt also self-heals on goal re-creation.
     try {
-      await rederiveGoalAchievement(userId, set.exerciseId);
+      await rederiveGoalAchievement(userId, set.exerciseId, false);
     } catch (rederiveErr) {
       console.error('[api] goal achievement re-derivation failed:', rederiveErr);
     }
@@ -77,15 +87,16 @@ export async function DELETE(_req: Request, props: Params) {
 async function rederiveGoalAchievement(
   userId: string,
   exerciseId: string,
+  allowAchievement: boolean,
 ): Promise<void> {
   const goal = await db.exerciseGoal.findUnique({
     where: { userId_exerciseId: { userId, exerciseId } },
   });
-  if (!goal) return;
+  if (!goal || (!allowAchievement && !goal.achievedAt)) return;
 
   const [exercise, sets] = await Promise.all([
-    db.exercise.findUnique({
-      where: { id: exerciseId },
+    db.exercise.findFirst({
+      where: { id: exerciseId, userId },
       select: { usesBodyweight: true },
     }),
     db.set.findMany({
