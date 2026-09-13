@@ -634,6 +634,7 @@ export function SessionRunner({
             unit={unit}
             recommendation={currentRecommendation}
             loadConstraints={loadConstraintsFor(currentTarget)}
+            priorSets={lastPerf?.sets}
             equipmentOptions={(session.gym?.equipment ?? []).filter(
               (item) =>
                 !droppedEquipmentIds.includes(item.id) &&

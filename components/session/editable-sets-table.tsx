@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Check, Loader2, RotateCcw, Trash2 } from 'lucide-react';
+import { Check, Loader2, RotateCcw, Trash2, Trophy } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import type { Exercise, ProgramExercise, WeightUnit } from '@/lib/prisma-client';
 import type { PendingSet } from '@/lib/indexeddb';
@@ -12,7 +12,9 @@ import { constrainGymWeight, gymWeightOptions } from '@/lib/gym-loads';
 import { suggestNextWeight, type ReadinessSignal } from '@/lib/progression';
 import { estimate1RM } from '@/lib/stats';
 import { formatWeight, fromDisplayWeight, roundWeight, toDisplayWeight } from '@/lib/units';
+import { detectPRs, type PRType } from '@/lib/records';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 
@@ -26,6 +28,7 @@ interface Props {
   recommendation?: IntraSetRecommendation | null;
   loadConstraints?: GymLoadConstraints | null;
   equipmentOptions?: { id: string; name: string }[];
+  priorSets?: { weight: number; reps: number }[];
   disabled?: boolean;
   onSubmit: (values: {
     weight: number;
@@ -102,6 +105,7 @@ export function EditableSetsTable({
   recommendation = null,
   loadConstraints = null,
   equipmentOptions = [],
+  priorSets = [],
   disabled = false,
   onSubmit,
   onDeleteSet,
@@ -122,10 +126,29 @@ export function EditableSetsTable({
   const [gymEquipmentId, setGymEquipmentId] = useState('');
   const workingSets = useMemo(() => sets.filter((set) => !set.isWarmup), [sets]);
   const latestWorkingSetId = workingSets.at(-1)?.localId ?? null;
+  const prT = useTranslations('session.setsList');
+  const prBaseline = useMemo(
+    () => priorSets.map((set) => ({ ...set, isWarmup: false })),
+    [priorSets],
+  );
+
+  function prsFor(set: PendingSet, index: number): PRType[] {
+    const earlierThisSession = workingSets
+      .slice(0, index)
+      .map((row) => ({ weight: row.weight, reps: row.reps, isWarmup: false }));
+    return detectPRs(set, [...prBaseline, ...earlierThisSession]);
+  }
 
   useEffect(() => {
     setDraft(
-      initialDraft(programExercise, sets, lastPerformance, readiness, deloadActive, loadConstraints),
+      initialDraft(
+        programExercise,
+        sets,
+        lastPerformance,
+        readiness,
+        deloadActive,
+        loadConstraints,
+      ),
     );
     setEditingSet(null);
     setPicker(null);
@@ -293,7 +316,7 @@ export function EditableSetsTable({
             <span aria-hidden />
           </div>
 
-          {workingSets.map((set) => {
+          {workingSets.map((set, setIndex) => {
             const isEditing = editingSet?.set.localId === set.localId;
             const rowDraft = isEditing
               ? editingSet.draft
@@ -305,20 +328,32 @@ export function EditableSetsTable({
                 className="grid grid-cols-[2.5rem_minmax(5rem,1fr)_4.5rem_4rem_5rem_3.25rem] items-center gap-1 border-b border-border px-2 py-2 text-center text-sm tabular-nums"
               >
                 <span className="text-muted-foreground">{set.setNumber}</span>
-                <button
-                  type="button"
-                  disabled={disabled || isUpdating}
-                  onClick={() => openPicker('weight', set)}
-                  aria-label={t('weight', { number: set.setNumber, unit })}
-                  className="h-9 rounded-md border border-transparent bg-transparent font-medium hover:bg-muted/40"
-                >
-                  {formatWeight(rowDraft.weight, unit, {
-                    decimals: 2,
-                    group: false,
-                    locale,
-                    withUnit: false,
-                  })}
-                </button>
+                <div className="flex min-w-0 flex-col items-center gap-1">
+                  <button
+                    type="button"
+                    disabled={disabled || isUpdating}
+                    onClick={() => openPicker('weight', set)}
+                    aria-label={t('weight', { number: set.setNumber, unit })}
+                    className="h-9 rounded-md border border-transparent bg-transparent font-medium hover:bg-muted/40"
+                  >
+                    {formatWeight(rowDraft.weight, unit, {
+                      decimals: 2,
+                      group: false,
+                      locale,
+                      withUnit: false,
+                    })}
+                  </button>
+                  {prsFor(set, setIndex).map((pr) => (
+                    <Badge
+                      key={pr}
+                      className="gap-1 px-1.5 text-[0.625rem]"
+                      title={prT(pr === 'weight' ? 'weightPrTitle' : 'oneRmPrTitle')}
+                    >
+                      <Trophy className="size-2.5" />
+                      {prT(pr === 'weight' ? 'weightPr' : 'oneRmPr')}
+                    </Badge>
+                  ))}
+                </div>
                 <button
                   type="button"
                   disabled={disabled || isUpdating}
@@ -402,7 +437,9 @@ export function EditableSetsTable({
                 )}
               </button>
             ) : (
-              <span className="text-center text-sm font-semibold text-primary">{currentNumber}</span>
+              <span className="text-center text-sm font-semibold text-primary">
+                {currentNumber}
+              </span>
             )}
             <button
               type="button"

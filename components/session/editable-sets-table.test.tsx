@@ -216,6 +216,43 @@ describe('EditableSetsTable', () => {
     expect(onDeleteSet).toHaveBeenCalledWith(latestSet);
   });
 
+  it('keeps live strength PR badges when the inline table replaces SetsList', () => {
+    const completedSet = {
+      localId: 'local-pr-1',
+      sessionId: 'session-1',
+      exerciseId: 'exercise-1',
+      setNumber: 1,
+      weight: 80,
+      reps: 8,
+      rir: 2,
+      durationSec: null,
+      distanceM: null,
+      notes: null,
+      isWarmup: false,
+      isDropSet: false,
+      status: 'synced',
+      createdAt: 1,
+    } as PendingSet;
+
+    render(
+      <EditableSetsTable
+        programExercise={programExercise}
+        sets={[completedSet]}
+        priorSets={[{ weight: 70, reps: 8 }]}
+        lastPerformance={undefined}
+        readiness={null}
+        deloadActive={false}
+        unit="KG"
+        onSubmit={vi.fn()}
+        onDeleteSet={vi.fn()}
+        onUpdateSet={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    expect(screen.getByText('Weight PR')).toBeInTheDocument();
+    expect(screen.getByText('e1RM PR')).toBeInTheDocument();
+  });
+
   it('prefills active and upcoming rows from matching previous-session sets', () => {
     render(
       <EditableSetsTable
@@ -335,9 +372,7 @@ describe('EditableSetsTable', () => {
     );
 
     await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: /apply recommendation to set 3/i }),
-      ).toBeEnabled(),
+      expect(screen.getByRole('button', { name: /apply recommendation to set 3/i })).toBeEnabled(),
     );
     expect(screen.getByRole('button', { name: /set 3 weight/i })).toHaveTextContent('77.5');
     expect(screen.getByTestId('set-recommendation-dot')).toBeInTheDocument();
@@ -397,7 +432,9 @@ describe('EditableSetsTable', () => {
     });
     await waitFor(() => expect(failedUpdate).toHaveBeenCalled());
     await waitFor(() =>
-      expect(screen.getAllByRole('combobox', { name: /set 2 reps in reserve/i })[0]).toHaveValue('2'),
+      expect(screen.getAllByRole('combobox', { name: /set 2 reps in reserve/i })[0]).toHaveValue(
+        '2',
+      ),
     );
   });
 });
