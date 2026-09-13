@@ -3,6 +3,7 @@ import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages, getTranslations } from 'next-intl/server';
 import { Toaster } from '@/components/ui/sonner';
 import { ThemeProvider } from '@/components/shared/theme-provider';
+import { PwaUpdateManager } from '@/components/shared/pwa-update-manager';
 import './globals.css';
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -47,6 +48,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className="min-h-screen bg-background font-sans text-foreground antialiased">
         <NextIntlClientProvider messages={messages}>
           <ThemeProvider>
+            <PwaUpdateManager />
             {children}
             <Toaster richColors position="top-center" />
           </ThemeProvider>
