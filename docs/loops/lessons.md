@@ -438,3 +438,33 @@ Format per entry: trigger/evidence, the lesson (actionable), and **Status** = `g
   as its own issue (**#348**, from the loads lens). An unfixed finding that is neither is the
   actual failure mode - it just evaporates when the session ends.
 - **Status:** graduated -> a bullet in `07-autonomy.md`'s subagent challenge protocol.
+
+### L26 - Size a review-lens batch so the lens can read every changed line, and make it say when it did not
+- **Trigger:** 2026-09-13, the seven-PR SHAREN wave. The four policy lenses were run twice
+  rather than once: one batch over the four small PRs (#350, #352, #353, #354), one over the
+  three large ones (#351, #355, #356). Batched that way, every lens was able to state that it
+  had read the changed lines in full, which is what pass 2 requires before a CLEAN verdict; the
+  one lens that resolved a file by targeted grep instead of a full read said so explicitly. Run
+  as a single seven-PR sweep, the same four lenses would have had roughly 2,300 changed lines
+  each and no honest way to make that claim.
+- **Lesson:** the unit of a lens run is not "the PRs in this wave", it is "a diff this lens can
+  actually read". Split by size, and require the verdict to name any file it did not read in
+  full. A lens that cannot say it read the diff has not produced a CLEAN verdict, it has
+  produced an absence of findings, and the two are not the same.
+- **Status:** graduated -> a sentence in `10-external-contributions.md` pass 2.
+
+### L27 - Give a lens the specific questions the diff raises, not a generic checklist
+- **Trigger:** same wave. The four lenses on #353 each received the concrete questions the diff
+  poses - which header decides the cookie flag, is the new route public, does the repo already
+  have a documented rule for this, which sibling route enforces the guard this one skips - and
+  all four landed independently on the same two majors (a `Secure` flag derived from
+  `x-forwarded-proto` against the env-driven rule in `lib/auth.ts:71-84`, and an unvalidated
+  body on a public POST). Convergence from independent lenses is the signal that a finding is
+  real; a generic "look for security issues" prompt does not produce it, it produces four
+  different lists of plausible nits.
+- **Lesson:** when dispatching pass 2, pull the questions out of the diff first and hand each
+  lens the ones in its remit, in addition to its standing remit. The orchestrator has read the
+  file list and the repo; the lens has only the diff. Spending a minute turning "review this"
+  into "this route sets a cookie from a header - what does the repo already say about that?"
+  is what makes independent verdicts comparable.
+- **Status:** graduated -> a sentence in `10-external-contributions.md` pass 2.
