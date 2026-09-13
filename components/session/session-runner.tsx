@@ -50,6 +50,7 @@ import {
 import { hydrateFromServerSets } from '@/lib/sync-hydration';
 import { ExerciseCard } from '@/components/session/exercise-card';
 import { SetsList } from '@/components/session/sets-list';
+import { EditableSetsTable } from '@/components/session/editable-sets-table';
 import { SetInput } from '@/components/session/set-input';
 import { RestTimer } from '@/components/session/rest-timer';
 import { SessionSummary } from '@/components/session/session-summary';
@@ -548,14 +549,33 @@ export function SessionRunner({
           usesBodyweight={currentTarget.exercise.usesBodyweight}
         />
 
-        <SetsList
-          programExercise={currentTarget}
-          sets={currentSets}
-          isInputActive={mode.kind === 'input'}
-          onDeleteSet={handleDeleteSet}
-          priorSets={lastPerf?.sets}
-        />
+        {currentPE.exercise.category === 'CARDIO' ? (
+          <SetsList
+            programExercise={currentTarget}
+            sets={currentSets}
+            isInputActive={mode.kind === 'input'}
+            onDeleteSet={handleDeleteSet}
+            priorSets={lastPerf?.sets}
+          />
+        ) : (
+          <EditableSetsTable
+            programExercise={currentTarget}
+            sets={currentSets}
+            lastPerformance={lastPerf}
+            readiness={effectiveReadiness}
+            deloadActive={deloadActive}
+            unit={unit}
+            recommendation={currentRecommendation}
+            loadConstraints={loadConstraintsFor(currentTarget)}
+            disabled={!hydrated || mode.kind !== 'input'}
+            onSubmit={handleValidate}
+            onDeleteSet={handleDeleteSet}
+          />
+        )}
 
+        {/* Keep the full logger available while the inline table is introduced:
+            strength users still retain warmup/drop-set, notes, AI parsing and
+            equipment selection; cardio continues to use this as its only input. */}
         {!hydrated ? null : mode.kind === 'input' ? (
           <SetInput
             programExercise={currentTarget}
