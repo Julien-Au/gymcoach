@@ -37,6 +37,7 @@ interface Props {
     notes: null;
   }) => Promise<void>;
   onDeleteSet: (set: PendingSet) => void;
+  onUpdateSet: (set: PendingSet, values: DraftSet) => Promise<void>;
 }
 
 interface DraftSet {
@@ -110,6 +111,7 @@ export function EditableSetsTable({
   disabled = false,
   onSubmit,
   onDeleteSet,
+  onUpdateSet,
 }: Props) {
   const t = useTranslations('session.editableSets');
   const locale = useLocale();
@@ -125,6 +127,8 @@ export function EditableSetsTable({
     ),
   );
   const [submitting, setSubmitting] = useState(false);
+  const [editingSet, setEditingSet] = useState<{ set: PendingSet; draft: DraftSet } | null>(null);
+  const [updatingSetId, setUpdatingSetId] = useState<string | null>(null);
   const [picker, setPicker] = useState<'weight' | 'reps' | null>(null);
   const [manualValue, setManualValue] = useState('');
 
@@ -142,22 +146,67 @@ export function EditableSetsTable({
   }, [draft.weight, loadConstraints, programExercise.exercise.category]);
   const repOptions = useMemo(() => Array.from({ length: 30 }, (_, index) => index + 1), []);
 
-  function openPicker(kind: 'weight' | 'reps') {
+  function openPicker(kind: 'weight' | 'reps', set?: PendingSet) {
+    const source = set
+      ? editingSet?.set.localId === set.localId
+        ? editingSet.draft
+        : { weight: set.weight, reps: set.reps, rir: set.rir }
+      : draft;
+    if (set && editingSet?.set.localId !== set.localId) {
+      setEditingSet({ set, draft: source });
+    } else if (!set) {
+      setEditingSet(null);
+    }
     setPicker(kind);
     setManualValue(
       kind === 'weight'
-        ? String(unit === 'LB' ? roundWeight(toDisplayWeight(draft.weight, unit), 1) : draft.weight)
-        : String(draft.reps),
+        ? String(
+            unit === 'LB' ? roundWeight(toDisplayWeight(source.weight, unit), 1) : source.weight,
+          )
+        : String(source.reps),
     );
   }
 
   function chooseValue(value: number) {
-    setDraft((current) =>
+    const updateDraft = (current: DraftSet): DraftSet =>
       picker === 'weight'
         ? { ...current, weight: fromDisplayWeight(value, unit) }
-        : { ...current, reps: Math.max(1, Math.round(value)) },
-    );
+        : { ...current, reps: Math.max(1, Math.round(value)) };
+    if (editingSet) {
+      const nextDraft = updateDraft(editingSet.draft);
+      setPicker(null);
+      void persistEditedSet(editingSet.set, nextDraft);
+      return;
+    }
+    setDraft(updateDraft);
     setPicker(null);
+  }
+
+  async function persistEditedSet(set: PendingSet, nextDraft: DraftSet) {
+    if (disabled || updatingSetId === set.localId || nextDraft.reps <= 0 || nextDraft.weight < 0)
+      return;
+    const normalized = {
+      ...nextDraft,
+      weight: constrainGymWeight(nextDraft.weight, nextDraft.weight, loadConstraints),
+    };
+    setEditingSet({ set, draft: normalized });
+    setUpdatingSetId(set.localId);
+    try {
+      await onUpdateSet(set, normalized);
+      setEditingSet(null);
+    } catch {
+      setEditingSet(null);
+    } finally {
+      setUpdatingSetId(null);
+    }
+  }
+
+  function updateEditingRir(set: PendingSet, rir: number | null) {
+    const current =
+      editingSet?.set.localId === set.localId
+        ? editingSet.draft
+        : { weight: set.weight, reps: set.reps, rir: set.rir };
+    void persistEditedSet(set, { ...current, rir });
   }
 
   async function confirmRow() {
@@ -192,36 +241,86 @@ export function EditableSetsTable({
             <span aria-hidden />
           </div>
 
-          {workingSets.map((set) => (
-            <div
-              key={set.localId}
-              className="grid grid-cols-[2.5rem_minmax(5rem,1fr)_4.5rem_4rem_5rem_3.25rem] items-center gap-1 border-b border-border px-2 py-2 text-center text-sm tabular-nums"
-            >
-              <span className="text-muted-foreground">{set.setNumber}</span>
-              <span className="font-medium">
-                {formatWeight(set.weight, unit, { decimals: 2, group: false, locale, withUnit: false })}
-              </span>
-              <span className="font-medium">{set.reps}</span>
-              <span>{set.rir ?? '–'}</span>
-              <span className="text-muted-foreground">
-                {formatWeight(estimate1RM(set.weight, set.reps), unit, {
-                  decimals: 1,
-                  group: false,
-                  locale,
-                })}
-              </span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={() => onDeleteSet(set)}
-                aria-label={t('delete', { number: set.setNumber })}
-                className="size-9 text-muted-foreground hover:text-destructive"
+          {workingSets.map((set) => {
+            const isEditing = editingSet?.set.localId === set.localId;
+            const rowDraft = isEditing
+              ? editingSet.draft
+              : { weight: set.weight, reps: set.reps, rir: set.rir };
+            const isUpdating = updatingSetId === set.localId;
+            return (
+              <div
+                key={set.localId}
+                className="grid grid-cols-[2.5rem_minmax(5rem,1fr)_4.5rem_4rem_5rem_3.25rem] items-center gap-1 border-b border-border px-2 py-2 text-center text-sm tabular-nums"
               >
-                <Trash2 className="size-4" />
-              </Button>
-            </div>
-          ))}
+                <span className="text-muted-foreground">{set.setNumber}</span>
+                <button
+                  type="button"
+                  disabled={disabled || isUpdating}
+                  onClick={() => openPicker('weight', set)}
+                  aria-label={t('weight', { number: set.setNumber, unit })}
+                  className="h-9 rounded-md border border-transparent bg-transparent font-medium hover:bg-muted/40"
+                >
+                  {formatWeight(rowDraft.weight, unit, {
+                    decimals: 2,
+                    group: false,
+                    locale,
+                    withUnit: false,
+                  })}
+                </button>
+                <button
+                  type="button"
+                  disabled={disabled || isUpdating}
+                  onClick={() => openPicker('reps', set)}
+                  aria-label={t('reps', { number: set.setNumber })}
+                  className="h-9 rounded-md border border-transparent bg-transparent font-medium hover:bg-muted/40"
+                >
+                  {rowDraft.reps}
+                </button>
+                <select
+                  aria-label={t('rir', { number: set.setNumber })}
+                  value={rowDraft.rir ?? ''}
+                  disabled={disabled || isUpdating}
+                  onChange={(event) =>
+                    updateEditingRir(
+                      set,
+                      event.target.value === '' ? null : Number(event.target.value),
+                    )
+                  }
+                  className="h-9 rounded-md border border-transparent bg-transparent text-center"
+                >
+                  <option value="">–</option>
+                  {[0, 1, 2, 3, 4, 5].map((value) => (
+                    <option key={value} value={value}>
+                      {value}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-muted-foreground">
+                  {formatWeight(estimate1RM(rowDraft.weight, rowDraft.reps), unit, {
+                    decimals: 1,
+                    group: false,
+                    locale,
+                  })}
+                </span>
+                <span className="flex items-center justify-center">
+                  {isUpdating ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onDeleteSet(set)}
+                      aria-label={t('delete', { number: set.setNumber })}
+                      className="size-9 text-muted-foreground hover:text-destructive"
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  )}
+                </span>
+              </div>
+            );
+          })}
 
           <div className="grid grid-cols-[2.5rem_minmax(5rem,1fr)_4.5rem_4rem_5rem_3.25rem] items-center gap-1 border-b border-border bg-primary/5 px-2 py-2">
             <span className="text-center text-sm font-semibold text-primary">{currentNumber}</span>
@@ -318,7 +417,10 @@ export function EditableSetsTable({
       </div>
 
       <Dialog open={picker != null} onOpenChange={(open) => !open && setPicker(null)}>
-        <DialogContent aria-describedby={undefined} className="bottom-0 left-0 top-auto max-h-[82vh] w-full max-w-none translate-x-0 translate-y-0 gap-3 rounded-t-lg border-x-0 border-b-0 p-4 sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-lg sm:border">
+        <DialogContent
+          aria-describedby={undefined}
+          className="bottom-0 left-0 top-auto max-h-[82vh] w-full max-w-none translate-x-0 translate-y-0 gap-3 rounded-t-lg border-x-0 border-b-0 p-4 sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-lg sm:border"
+        >
           <DialogTitle>
             {picker === 'weight' ? t('chooseWeight', { unit }) : t('chooseReps')}
           </DialogTitle>

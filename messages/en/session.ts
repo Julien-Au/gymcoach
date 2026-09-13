@@ -23,6 +23,8 @@ export const session = {
   next: 'Next',
   finish: 'Finish',
   setDeleted: 'Set deleted.',
+  setUpdated: 'Set updated',
+  setUpdateError: 'Could not update set',
   setDeleteError: 'Could not delete the set.',
   finished: 'Session finished.',
   finishError: 'Could not finish the session.',

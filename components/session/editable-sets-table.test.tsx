@@ -25,6 +25,7 @@ describe('EditableSetsTable', () => {
         unit="KG"
         onSubmit={onSubmit}
         onDeleteSet={vi.fn()}
+        onUpdateSet={vi.fn().mockResolvedValue(undefined)}
       />,
     );
 
@@ -85,6 +86,7 @@ describe('EditableSetsTable', () => {
         unit="KG"
         onSubmit={vi.fn()}
         onDeleteSet={onDeleteSet}
+        onUpdateSet={vi.fn().mockResolvedValue(undefined)}
       />,
     );
 
@@ -114,6 +116,7 @@ describe('EditableSetsTable', () => {
         unit="KG"
         onSubmit={vi.fn()}
         onDeleteSet={vi.fn()}
+        onUpdateSet={vi.fn().mockResolvedValue(undefined)}
       />,
     );
 
@@ -122,4 +125,59 @@ describe('EditableSetsTable', () => {
     expect(screen.getAllByText('25').length).toBeGreaterThan(0);
   });
 
+  it('autosaves edits to a completed set and keeps the row stable on failure', async () => {
+    const completedSet = {
+      localId: 'local-edit',
+      sessionId: 'session-1',
+      exerciseId: 'exercise-1',
+      setNumber: 2,
+      weight: 80,
+      reps: 8,
+      rir: 2,
+      status: 'synced',
+      serverId: 'server-1',
+      createdAt: 1,
+    } as never;
+    const onUpdateSet = vi.fn().mockResolvedValue(undefined);
+    const { rerender } = render(
+      <EditableSetsTable
+        programExercise={programExercise}
+        sets={[completedSet]}
+        lastPerformance={undefined}
+        readiness={null}
+        deloadActive={false}
+        unit="KG"
+        onSubmit={vi.fn()}
+        onDeleteSet={vi.fn()}
+        onUpdateSet={onUpdateSet}
+      />,
+    );
+
+    fireEvent.click(screen.getAllByRole('button', { name: /set 2 weight/i })[0]!);
+    fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '85' } });
+    fireEvent.click(screen.getByRole('button', { name: /apply value/i }));
+    await waitFor(() =>
+      expect(onUpdateSet).toHaveBeenCalledWith(completedSet, { weight: 85, reps: 8, rir: 2 }),
+    );
+
+    const failedUpdate = vi.fn().mockRejectedValue(new Error('save failed'));
+    rerender(
+      <EditableSetsTable
+        programExercise={programExercise}
+        sets={[completedSet]}
+        lastPerformance={undefined}
+        readiness={null}
+        deloadActive={false}
+        unit="KG"
+        onSubmit={vi.fn()}
+        onDeleteSet={vi.fn()}
+        onUpdateSet={failedUpdate}
+      />,
+    );
+    fireEvent.change(screen.getAllByRole('combobox', { name: /set 2 reps in reserve/i })[0]!, {
+      target: { value: '1' },
+    });
+    await waitFor(() => expect(failedUpdate).toHaveBeenCalled());
+    expect(screen.getAllByRole('button', { name: /set 2 weight/i })[0]).toHaveTextContent('80');
+  });
 });

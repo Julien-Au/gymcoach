@@ -379,6 +379,45 @@ export function SessionRunner({
     });
   }
 
+  async function handleUpdateSet(
+    set: PendingSet,
+    values: { weight: number; reps: number; rir: number | null },
+  ) {
+    const db = getDB();
+    try {
+      const current = (await db.pendingSets.get(set.localId)) ?? set;
+      if (!current.serverId && current.status === 'syncing') {
+        await flushPendingSets();
+      }
+      const original = {
+        weight: current.weight,
+        reps: current.reps,
+        rir: current.rir,
+        status: current.status,
+        attempts: current.attempts,
+        lastError: current.lastError,
+      };
+      await db.pendingSets.update(set.localId, {
+        weight: values.weight,
+        reps: values.reps,
+        rir: values.rir,
+        status: 'pending',
+        attempts: 0,
+        lastError: null,
+      });
+      await flushPendingSets();
+      const persisted = await db.pendingSets.get(set.localId);
+      if (persisted?.status === 'failed') {
+        await db.pendingSets.update(set.localId, original);
+        throw new Error(persisted.lastError ?? 'set update rejected');
+      }
+      toast.success(t('setUpdated'));
+    } catch (error) {
+      toast.error(t('setUpdateError'));
+      throw error;
+    }
+  }
+
   async function handleDeleteSet(set: PendingSet) {
     const db = getDB();
     // If already synced: API DELETE call, then local removal.
@@ -446,7 +485,10 @@ export function SessionRunner({
   // superset group before advancing past it (issue #146).
   const remainingNow = (pe: ProgramExerciseWithExercise) => {
     const target = effectiveProgramExerciseById.get(pe.id) ?? pe;
-    return target.targetSets - (setsByExercise.get(pe.exerciseId)?.filter((s) => !s.isWarmup).length ?? 0);
+    return (
+      target.targetSets -
+      (setsByExercise.get(pe.exerciseId)?.filter((s) => !s.isWarmup).length ?? 0)
+    );
   };
   const navNextIdx = nextNavIndex(supersetView, currentIdx, remainingNow);
   function goNext() {
@@ -570,6 +612,7 @@ export function SessionRunner({
             disabled={!hydrated || mode.kind !== 'input'}
             onSubmit={handleValidate}
             onDeleteSet={handleDeleteSet}
+            onUpdateSet={handleUpdateSet}
           />
         )}
 
