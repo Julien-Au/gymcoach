@@ -59,6 +59,31 @@ describe('EditableSetsTable', () => {
     );
   });
 
+  it('keeps the table horizontally scrollable at narrow widths with touch-sized active controls', () => {
+    render(
+      <EditableSetsTable
+        programExercise={programExercise}
+        sets={[]}
+        lastPerformance={undefined}
+        readiness={null}
+        deloadActive={false}
+        unit="KG"
+        onSubmit={vi.fn()}
+        onDeleteSet={vi.fn()}
+        onUpdateSet={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    expect(screen.getByTestId('editable-sets-scroll')).toHaveClass(
+      'overflow-x-auto',
+      'overscroll-x-contain',
+    );
+    expect(screen.getByTestId('editable-sets-grid')).toHaveClass('min-w-[31rem]');
+    expect(screen.getByRole('button', { name: /set 1 weight/i })).toHaveClass('h-11');
+    expect(screen.getByRole('button', { name: /set 1 repetitions/i })).toHaveClass('h-11');
+    expect(screen.getByRole('button', { name: /confirm set 1/i })).toHaveClass('size-11');
+  });
+
   it('uses persisted set numbers and exposes undo only for the latest completed set', () => {
     const onDeleteSet = vi.fn().mockResolvedValue(true);
     const completedSet = {
