@@ -177,11 +177,16 @@ export default async function ExerciseDetailPage({ params, searchParams }: Props
                     <span>1RM</span>
                     {session.sets
                       .sort((a, b) => a.setNumber - b.setNumber)
-                      .map((set, index) => (
+                      .map((set) => (
                         <div key={set.id} className="contents text-foreground">
-                          <span>{index + 1}</span>
+                          <span>{set.setNumber}</span>
                           <span>
-                            {formatWeight(set.weight, unit, { decimals: 2, group: false, locale })}
+                            {formatWeight(set.weight, unit, {
+                              decimals: 2,
+                              group: false,
+                              locale,
+                              withUnit: false,
+                            })}
                           </span>
                           <span>{set.reps}</span>
                           <span>

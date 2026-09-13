@@ -49,6 +49,7 @@ export function SessionExerciseStrip({
   return (
     <div
       className="-mx-4 mt-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      role="group"
       aria-label={t('exerciseStripLabel')}
     >
       <div className="flex w-max gap-2">
@@ -74,7 +75,7 @@ export function SessionExerciseStrip({
                 else if (!disabled) onSelect(index);
               }}
               aria-disabled={!isCurrent && disabled}
-              aria-label={`${index + 1}. ${displayName}`}
+              aria-label={`${index + 1}. ${displayName}${isComplete ? ` · ${t('exerciseCompleted')}` : ''}`}
               aria-current={isCurrent ? 'step' : undefined}
               title={displayName}
               className={`group relative shrink-0 transition-opacity ${

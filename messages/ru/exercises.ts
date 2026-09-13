@@ -60,7 +60,7 @@ export const exercises = {
     information: 'Информация об упражнении',
     muscle: 'Основная мышечная группа',
     equipment: 'Оборудование',
-    defaultRest: 'Обычный отдых',
+    defaultRest: 'Отдых по умолчанию',
     seconds: 'с',
     history: 'История тренировок',
     openChart: 'График прогресса',

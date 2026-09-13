@@ -50,12 +50,13 @@ describe('SessionExerciseStrip', () => {
       expect.stringContaining('Barbell_Squat'),
     );
     expect(screen.getByText('CRD')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '1. Squats · Barbell' })).toHaveAttribute(
+    expect(screen.getByRole('group', { name: 'Workout exercises' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '1. Squats · Barbell · Completed' })).toHaveAttribute(
       'aria-current',
       'step',
     );
 
-    const active = screen.getByRole('button', { name: '1. Squats · Barbell' });
+    const active = screen.getByRole('button', { name: '1. Squats · Barbell · Completed' });
     const inactive = screen.getByRole('button', { name: '2. Custom Rear Delt Raise' });
     expect(active).toHaveClass('opacity-100');
     expect(inactive).toHaveClass('opacity-45');
