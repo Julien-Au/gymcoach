@@ -387,7 +387,7 @@ export function SessionRunner({
     const db = getDB();
     try {
       let current = (await db.pendingSets.get(set.localId)) ?? set;
-      if (!current.serverId && current.status === 'syncing') {
+      if (current.status === 'syncing') {
         await flushPendingSets();
         current = (await db.pendingSets.get(set.localId)) ?? current;
       }
@@ -443,7 +443,9 @@ export function SessionRunner({
       // Once a server id exists, delete the persisted row first. A failed
       // request leaves the local row intact so undo never loses data silently.
       if (current.serverId) {
-        const res = await fetch(`/api/sets/${encodeURIComponent(current.serverId)}`, { method: 'DELETE' });
+        const res = await fetch(`/api/sets/${encodeURIComponent(current.serverId)}`, {
+          method: 'DELETE',
+        });
         if (!res.ok && res.status !== 404) {
           toast.error(t('setDeleteError'));
           return false;

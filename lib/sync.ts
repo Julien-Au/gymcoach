@@ -87,6 +87,7 @@ async function doFlush(): Promise<FlushResult> {
     try {
       const existingServerId = item.serverId;
       const updatesExistingSet = existingServerId != null;
+      const sentPatch = { weight: item.weight, reps: item.reps, rir: item.rir };
       let res: Response;
       let sentEquipmentId: string | null = null;
 
@@ -94,7 +95,7 @@ async function doFlush(): Promise<FlushResult> {
         res = await fetch(`/api/sets/${encodeURIComponent(existingServerId)}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ weight: item.weight, reps: item.reps, rir: item.rir }),
+          body: JSON.stringify(sentPatch),
         });
       } else {
         const payload = {
@@ -147,17 +148,40 @@ async function doFlush(): Promise<FlushResult> {
       // existing row preserves the equipment reference already stored server-side.
       const equipmentDropped =
         !updatesExistingSet && sentEquipmentId !== null && !saved.gymEquipmentId;
-      await db.pendingSets.update(item.localId, {
-        status: 'synced',
-        serverId: saved.id,
-        syncedAt: Date.now(),
-        lastError: null,
-        // Written before the broadcast below, so a listener that drains
-        // immediately still finds the record it is being told about.
-        ...(equipmentDropped
-          ? { gymEquipmentId: null, equipmentDroppedNotice: sentEquipmentId }
-          : {}),
-      });
+
+      if (updatesExistingSet) {
+        // A newer local edit may land while this PATCH is in flight. Compare
+        // the current row and update its status inside one IndexedDB write
+        // transaction so another edit cannot slip between the check and the
+        // status write. Newer values stay pending for the next flush.
+        await db.transaction('rw', db.pendingSets, async () => {
+          const latest = await db.pendingSets.get(item.localId);
+          const patchStillCurrent =
+            latest != null &&
+            latest.serverId === existingServerId &&
+            latest.weight === sentPatch.weight &&
+            latest.reps === sentPatch.reps &&
+            latest.rir === sentPatch.rir;
+          await db.pendingSets.update(
+            item.localId,
+            patchStillCurrent
+              ? { status: 'synced', serverId: saved.id, syncedAt: Date.now(), lastError: null }
+              : { status: 'pending', serverId: saved.id, lastError: null },
+          );
+        });
+      } else {
+        await db.pendingSets.update(item.localId, {
+          status: 'synced',
+          serverId: saved.id,
+          syncedAt: Date.now(),
+          lastError: null,
+          // Written before the broadcast below, so a listener that drains
+          // immediately still finds the record it is being told about.
+          ...(equipmentDropped
+            ? { gymEquipmentId: null, equipmentDroppedNotice: sentEquipmentId }
+            : {}),
+        });
+      }
       if (equipmentDropped && sentEquipmentId !== null) {
         droppedEquipment.push({
           localId: item.localId,

@@ -21,7 +21,7 @@ export async function PATCH(req: Request, props: Params) {
       // Serialize same-set mutations first, then serialize goal re-derivation
       // for the exercise. The set values and derived achievedAt now commit or
       // roll back together instead of leaving a stale goal after a successful edit.
-      await tx.$queryRaw`SELECT id FROM "Set" WHERE id = ${params.id} FOR UPDATE`;
+      await tx.$queryRaw`SELECT "Set".id FROM "Set" JOIN "Session" ON "Session".id = "Set"."sessionId" WHERE "Set".id = ${params.id} AND "Session"."userId" = ${userId} FOR UPDATE OF "Set"`;
       const set = await tx.set.findFirst({
         where: { id: params.id, session: { userId } },
         include: {
@@ -61,7 +61,7 @@ export async function DELETE(_req: Request, props: Params) {
   try {
     const userId = await requireApiUserId();
     await runSerializableSetTransaction(async (tx) => {
-      await tx.$queryRaw`SELECT id FROM "Set" WHERE id = ${params.id} FOR UPDATE`;
+      await tx.$queryRaw`SELECT "Set".id FROM "Set" JOIN "Session" ON "Session".id = "Set"."sessionId" WHERE "Set".id = ${params.id} AND "Session"."userId" = ${userId} FOR UPDATE OF "Set"`;
       const set = await tx.set.findFirst({
         where: { id: params.id, session: { userId } },
       });

@@ -54,6 +54,7 @@ function fakeDB(item: PendingSet) {
   const matching = (index: string, value: string) =>
     index === 'sessionId' && item.sessionId === value ? [item] : [];
   const table = {
+    get: vi.fn(async (id: string) => (id === item.localId ? item : undefined)),
     where: vi.fn((index: string) => ({
       anyOf: vi.fn(() => ({
         sortBy: vi.fn(async () => [item]),
@@ -262,6 +263,40 @@ describe('offline set sync', () => {
     });
     expect(item.status).toBe('synced');
     expect(item.serverId).toBe('server-1');
+  });
+
+  it('keeps a newer local edit pending when an older PATCH completes', async () => {
+    const item: PendingSet = {
+      ...pendingSet(),
+      serverId: 'server-1',
+      syncedAt: 1,
+      weight: 95,
+      reps: 9,
+      rir: 1,
+    };
+    mockGetDB.mockReturnValue(fakeDB(item));
+    vi.spyOn(globalThis, 'fetch').mockImplementationOnce(async () => {
+      // Simulate a second local edit landing while the first PATCH is in flight.
+      item.weight = 97.5;
+      item.reps = 8;
+      item.rir = 0;
+      item.status = 'pending';
+      return new Response(JSON.stringify({ id: 'server-1' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    });
+
+    const result = await flushPendingSets();
+
+    expect(item).toMatchObject({
+      weight: 97.5,
+      reps: 8,
+      rir: 0,
+      status: 'pending',
+      serverId: 'server-1',
+    });
+    expect(result).toMatchObject({ flushed: 1, pending: 1 });
   });
 });
 
