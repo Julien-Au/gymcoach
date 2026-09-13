@@ -623,6 +623,11 @@ export function SessionRunner({
             unit={unit}
             recommendation={currentRecommendation}
             loadConstraints={loadConstraintsFor(currentTarget)}
+            equipmentOptions={(session.gym?.equipment ?? []).filter(
+              (item) =>
+                !droppedEquipmentIds.includes(item.id) &&
+                item.exerciseLinks.some((link) => link.exerciseId === currentPE.exerciseId),
+            )}
             disabled={!hydrated || mode.kind !== 'input'}
             onSubmit={handleValidate}
             onDeleteSet={handleDeleteSet}

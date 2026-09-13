@@ -55,10 +55,63 @@ describe('EditableSetsTable', () => {
         isWarmup: false,
         isDropSet: false,
         notes: null,
+        gymEquipmentId: null,
       }),
     );
   });
 
+  it('submits the selected gym equipment and carries it to the next set', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    const firstSet = {
+      localId: 'local-equipment-1',
+      sessionId: 'session-1',
+      exerciseId: 'exercise-1',
+      gymEquipmentId: 'machine-1',
+      setNumber: 1,
+      weight: 80,
+      reps: 8,
+      rir: 2,
+      notes: null,
+      isWarmup: false,
+      isDropSet: false,
+      status: 'synced',
+      serverId: 'server-equipment-1',
+      syncedAt: 1,
+      attempts: 0,
+      lastError: null,
+      createdAt: 1,
+    } as PendingSet;
+
+    render(
+      <EditableSetsTable
+        programExercise={programExercise}
+        sets={[firstSet]}
+        lastPerformance={undefined}
+        readiness={null}
+        deloadActive={false}
+        unit="KG"
+        equipmentOptions={[
+          { id: 'machine-1', name: 'Hack Squat' },
+          { id: 'machine-2', name: 'Pendulum Squat' },
+        ]}
+        onSubmit={onSubmit}
+        onDeleteSet={vi.fn()}
+        onUpdateSet={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    expect(screen.getByRole('combobox', { name: /equipment/i })).toHaveValue('machine-1');
+    fireEvent.change(screen.getByRole('combobox', { name: /equipment/i }), {
+      target: { value: 'machine-2' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /confirm set 2/i }));
+
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ gymEquipmentId: 'machine-2' }),
+      ),
+    );
+  });
   it('keeps canonical kg values when selecting a displayed lb option', async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     render(

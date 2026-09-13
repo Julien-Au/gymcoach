@@ -25,6 +25,7 @@ interface Props {
   unit: WeightUnit;
   recommendation?: IntraSetRecommendation | null;
   loadConstraints?: GymLoadConstraints | null;
+  equipmentOptions?: { id: string; name: string }[];
   disabled?: boolean;
   onSubmit: (values: {
     weight: number;
@@ -35,6 +36,7 @@ interface Props {
     isWarmup: false;
     isDropSet: false;
     notes: null;
+    gymEquipmentId?: string | null;
   }) => Promise<void>;
   onDeleteSet: (set: PendingSet) => Promise<boolean | void> | boolean | void;
   onUpdateSet: (set: PendingSet, values: DraftSet) => Promise<void>;
@@ -99,12 +101,14 @@ export function EditableSetsTable({
   unit,
   recommendation = null,
   loadConstraints = null,
+  equipmentOptions = [],
   disabled = false,
   onSubmit,
   onDeleteSet,
   onUpdateSet,
 }: Props) {
   const t = useTranslations('session.editableSets');
+  const inputT = useTranslations('session.input');
   const locale = useLocale();
   const [draft, setDraft] = useState<DraftSet>(() =>
     initialDraft(programExercise, sets, lastPerformance, readiness, deloadActive, loadConstraints),
@@ -115,6 +119,7 @@ export function EditableSetsTable({
   const [picker, setPicker] = useState<'weight' | 'reps' | null>(null);
   const [manualValue, setManualValue] = useState('');
   const [appliedRecommendationKey, setAppliedRecommendationKey] = useState<string | null>(null);
+  const [gymEquipmentId, setGymEquipmentId] = useState('');
   const workingSets = useMemo(() => sets.filter((set) => !set.isWarmup), [sets]);
   const latestWorkingSetId = workingSets.at(-1)?.localId ?? null;
 
@@ -125,9 +130,21 @@ export function EditableSetsTable({
     setEditingSet(null);
     setPicker(null);
     setAppliedRecommendationKey(null);
+    const recentEquipmentId = workingSets.at(-1)?.gymEquipmentId ?? '';
+    setGymEquipmentId(
+      equipmentOptions.some((equipment) => equipment.id === recentEquipmentId)
+        ? recentEquipmentId
+        : '',
+    );
     // Re-seed when the active exercise or logged working-set count changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [programExercise.id, workingSets.length]);
+
+  useEffect(() => {
+    if (gymEquipmentId && !equipmentOptions.some((equipment) => equipment.id === gymEquipmentId)) {
+      setGymEquipmentId('');
+    }
+  }, [equipmentOptions, gymEquipmentId]);
 
   const currentNumber = workingSets.length + 1;
   const totalRows = Math.max(programExercise.targetSets, currentNumber);
@@ -232,6 +249,7 @@ export function EditableSetsTable({
         isWarmup: false,
         isDropSet: false,
         notes: null,
+        gymEquipmentId: gymEquipmentId || null,
       });
     } finally {
       setSubmitting(false);
@@ -240,6 +258,30 @@ export function EditableSetsTable({
 
   return (
     <section className="overflow-hidden rounded-md border border-border">
+      {equipmentOptions.length > 0 && (
+        <div className="border-b border-border px-3 py-2">
+          <label
+            htmlFor="inline-gym-equipment"
+            className="mb-1 block text-xs uppercase tracking-wide text-muted-foreground"
+          >
+            {inputT('equipment')}
+          </label>
+          <select
+            id="inline-gym-equipment"
+            value={gymEquipmentId}
+            disabled={disabled}
+            onChange={(event) => setGymEquipmentId(event.target.value)}
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          >
+            <option value="">{inputT('equipmentNone')}</option>
+            {equipmentOptions.map((equipment) => (
+              <option key={equipment.id} value={equipment.id}>
+                {equipment.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
       <div data-testid="editable-sets-scroll" className="overflow-x-auto overscroll-x-contain">
         <div data-testid="editable-sets-grid" className="min-w-[31rem]">
           <div className="grid grid-cols-[2.5rem_minmax(5rem,1fr)_4.5rem_4rem_5rem_3.25rem] items-center gap-1 border-b border-border bg-muted/30 px-2 py-2 text-center text-[0.6875rem] font-medium uppercase text-muted-foreground">
