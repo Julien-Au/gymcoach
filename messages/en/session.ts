@@ -167,6 +167,13 @@ export const session = {
     weightPrTitle: 'Heaviest load since your last session',
     oneRmPrTitle: 'Best estimated 1RM since your last session',
   },
+  editableSets: {
+    weight: 'Set {number} weight in {unit}',
+    reps: 'Set {number} repetitions',
+    rir: 'Set {number} reps in reserve',
+    confirm: 'Confirm set {number}',
+    delete: 'Delete set {number}',
+  },
   exerciseCard: {
     notAvailable: 'Not available in this gym',
     cardioPrescription: '{sets, plural, one {# set} other {# sets}} · Rest {seconds}s',

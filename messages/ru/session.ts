@@ -171,6 +171,13 @@ export const session = {
     weightPrTitle: 'Самый большой вес относительно прошлой тренировки',
     oneRmPrTitle: 'Лучший расчётный 1ПМ относительно прошлой тренировки',
   },
+  editableSets: {
+    weight: 'Вес подхода {number} в {unit}',
+    reps: 'Повторения подхода {number}',
+    rir: 'Повторы в запасе для подхода {number}',
+    confirm: 'Подтвердить подход {number}',
+    delete: 'Удалить подход {number}',
+  },
   exerciseCard: {
     notAvailable: 'Нет в этом зале',
     cardioPrescription:

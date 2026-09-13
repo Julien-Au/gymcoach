@@ -173,6 +173,13 @@ export const session = {
     weightPrTitle: 'Charge la plus lourde depuis votre dernière séance',
     oneRmPrTitle: 'Meilleur 1RM estimé depuis votre dernière séance',
   },
+  editableSets: {
+    weight: 'Charge de la série {number} en {unit}',
+    reps: 'Répétitions de la série {number}',
+    rir: 'Répétitions en réserve de la série {number}',
+    confirm: 'Valider la série {number}',
+    delete: 'Supprimer la série {number}',
+  },
   exerciseCard: {
     notAvailable: 'Indisponible dans cette salle',
     cardioPrescription: '{sets, plural, one {# série} other {# séries}} · Repos {seconds} s',
