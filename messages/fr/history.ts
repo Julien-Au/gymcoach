@@ -16,10 +16,15 @@ export const history = {
     title: 'Filtres :',
     program: 'Programme',
     allPrograms: 'Tous les programmes',
-    month: 'Mois',
-    allMonths: 'Tous les mois',
     clear: 'Effacer',
     csvTitle: 'Télécharger le CSV des séries pour les filtres actifs',
+  },
+  calendar: {
+    previousMonth: 'Mois précédent',
+    nextMonth: 'Mois suivant',
+    today: 'Aujourd’hui',
+    workoutCount: '{count, plural, one {# séance} other {# séances}}',
+    noSessions: 'Aucune séance terminée à cette date.',
   },
   detail: {
     downloadTcx: 'Télécharger le .tcx',

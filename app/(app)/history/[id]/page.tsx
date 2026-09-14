@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getFormatter, getLocale, getTranslations } from 'next-intl/server';
+import { getFormatter, getLocale, getTimeZone, getTranslations } from 'next-intl/server';
 import { ArrowLeft, Calendar, Clock, Download, Dumbbell } from 'lucide-react';
 import { db } from '@/lib/db';
 import { requireSession } from '@/lib/auth';
@@ -23,9 +23,24 @@ import { ActivityTrackChart } from '@/components/history/activity-track-chart';
 import { TrackDecoupling } from '@/components/history/track-decoupling';
 import { getExerciseDisplayName } from '@/i18n/exercise-names';
 import { getTrainingDisplayName } from '@/i18n/training-names';
+import { resolveCalendarTimeZone } from '@/lib/history-calendar';
 
 interface Params {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ month?: string; day?: string; programId?: string; tz?: string }>;
+}
+
+// The calendar links here with the month, day, program filter and the
+// lifter's zone; the back link returns to that exact view and the date badge
+// is formatted in that zone (review of #351).
+function buildBackHref(params: { month?: string; day?: string; programId?: string; tz?: string }) {
+  const query = new URLSearchParams();
+  for (const key of ['month', 'day', 'programId', 'tz'] as const) {
+    const value = params[key];
+    if (value) query.set(key, value);
+  }
+  const qs = query.toString();
+  return qs ? `/history?${qs}` : '/history';
 }
 
 export default async function HistorySessionPage(props: Params) {
@@ -35,6 +50,8 @@ export default async function HistorySessionPage(props: Params) {
   const locale = await getLocale();
   const format = await getFormatter();
   const params = await props.params;
+  const searchParams = await props.searchParams;
+  const timeZone = resolveCalendarTimeZone(searchParams.tz, await getTimeZone());
   const auth = await requireSession();
 
   const [session, user] = await Promise.all([
@@ -115,7 +132,7 @@ export default async function HistorySessionPage(props: Params) {
       <div className="mx-auto flex max-w-2xl flex-col gap-4">
         <div className="flex items-center justify-between gap-2">
           <Button asChild variant="ghost" size="sm" className="-ml-2">
-            <Link href="/history">
+            <Link href={buildBackHref(searchParams)}>
               <ArrowLeft className="size-4" />
               <span className="ml-1">{t('title')}</span>
             </Link>
@@ -160,6 +177,7 @@ export default async function HistorySessionPage(props: Params) {
                   year: 'numeric',
                   hour: '2-digit',
                   minute: '2-digit',
+                  timeZone,
                 })}
               </Badge>
               {durationMin != null && (
