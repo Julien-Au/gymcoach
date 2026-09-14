@@ -101,8 +101,9 @@ export const session = {
       'Remplit les champs ci-dessous pour relecture ; aucune série n’est jamais enregistrée automatiquement.',
     parseError: 'Analyse impossible. Essayez le format court (ex. 100x8@9).',
     duration: 'Durée (mm:ss)',
-    durationExample: 'ex. 12:30',
-    durationError: 'Format attendu : mm:ss (ex. 12:30), h:mm:ss, ou minutes seules.',
+    durationExample: 'ex. 12:30 ou 12.30',
+    durationError:
+      'Format attendu : mm:ss (ex. 12:30 ou 12.30 au clavier numérique), h:mm:ss, ou minutes seules.',
     distance: 'Distance (km, facultatif)',
     distanceExample: 'ex. 2,5',
     distanceError: 'Saisissez une distance entre 0 et 1000 km.',

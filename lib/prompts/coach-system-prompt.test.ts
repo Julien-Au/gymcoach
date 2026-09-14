@@ -109,5 +109,9 @@ describe('program generation prompt positioning', () => {
   it('frames the program as a user-controlled, editable draft', () => {
     expect(PROGRAM_GEN_SYSTEM_PROMPT).toMatch(/draft/i);
     expect(PROGRAM_GEN_SYSTEM_PROMPT).toMatch(/Honor any structure.*the user states/i);
+    // Cardio exercises are one continuous effort, not N sets (colleague
+    // feedback: the generator prescribed "2 sets of bike").
+    expect(PROGRAM_GEN_SYSTEM_PROMPT).toMatch(/COMPOUND, ISOLATION, CARDIO/);
+    expect(PROGRAM_GEN_SYSTEM_PROMPT).toMatch(/one continuous effort is ONE set/i);
   });
 });

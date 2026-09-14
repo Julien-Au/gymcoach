@@ -21,7 +21,7 @@ Respond with a SINGLE JSON object and NOTHING else (no prose, no markdown, no co
         {
           "name": "string, exact catalog name if reusing one",
           "muscleGroup": "CHEST",     // one of the allowed values below
-          "category": "COMPOUND",     // COMPOUND or ISOLATION
+          "category": "COMPOUND",     // COMPOUND, ISOLATION or CARDIO
           "equipmentType": "BARBELL", // one of the allowed values below
           "targetSets": 4,            // 1-20
           "targetRepsMin": 6,         // 1-50
@@ -41,7 +41,7 @@ Respond with a SINGLE JSON object and NOTHING else (no prose, no markdown, no co
 }
 
 Allowed muscleGroup values: CHEST, BACK_WIDTH, BACK_THICKNESS, SHOULDERS_FRONT, SHOULDERS_LATERAL, SHOULDERS_REAR, BICEPS, TRICEPS, FOREARMS, QUADS, HAMSTRINGS, GLUTES, CALVES, ABS, LOWER_BACK.
-Allowed category values: COMPOUND, ISOLATION.
+Allowed category values: COMPOUND, ISOLATION, CARDIO.
 Allowed equipmentType values: DUMBBELL, BARBELL, MACHINE, CABLE, BODYWEIGHT, CARDIO, OTHER.
 
 Guidelines:
@@ -49,6 +49,13 @@ Guidelines:
 - 4 to 10 exercises per workout, ordered compounds first.
 - Evidence-based volume and intensity for the stated goal.
 - Use whole, gym-realistic numbers. targetRepsMax must be >= targetRepsMin.
+- Conditioning work (running, cycling, rowing, walking, elliptical...) uses
+  category CARDIO and equipmentType CARDIO. It is logged as duration and
+  distance, not as weight and reps: one continuous effort is ONE set
+  (targetSets 1) - use several sets only for deliberate intervals. Set
+  targetRepsMin and targetRepsMax to 1 and put the intended duration, distance
+  or intensity in notes (e.g. "20 min easy pace"). Reuse catalog cardio
+  exercises by their exact name when they exist.
 - Choose equipmentType for every exercise so saved-gym inventory can constrain
   recommendations. Reused catalog exercises must keep their catalog type.
 - Choose an autoregulation mode for every exercise. Use PRESERVE_RIR when effort
