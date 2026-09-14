@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useTrainingName } from '@/components/shared/use-training-name';
+import { buildHistoryCsvHref } from '@/lib/history-calendar';
 
 interface Props {
   programs: { id: string; name: string }[];
@@ -73,17 +74,11 @@ export function HistoryFilters({ programs, selectedProgramId, selectedMonth }: P
       )}
 
       <Button variant="outline" size="sm" asChild className="ml-auto" title={t('csvTitle')}>
-        <a href={buildCsvHref(selectedProgramId, selectedMonth)} download>
+        <a href={buildHistoryCsvHref(selectedProgramId)} download>
           <Download className="size-4" />
           <span className="ml-1">CSV</span>
         </a>
       </Button>
     </div>
   );
-}
-
-function buildCsvHref(programId: string | undefined, month: string): string {
-  const params = new URLSearchParams({ month });
-  if (programId) params.set('programId', programId);
-  return `/api/history/csv?${params.toString()}`;
 }

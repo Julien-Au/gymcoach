@@ -16,8 +16,6 @@ export const history = {
     title: 'Фильтры:',
     program: 'Программа',
     allPrograms: 'Все программы',
-    month: 'Месяц',
-    allMonths: 'Все месяцы',
     clear: 'Сбросить',
     csvTitle: 'Скачать CSV подходов с учётом активных фильтров',
   },

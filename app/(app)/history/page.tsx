@@ -13,19 +13,25 @@ import {
 } from '@/components/history/history-calendar';
 import { getExerciseDisplayName } from '@/i18n/exercise-names';
 import { getTrainingDisplayName } from '@/i18n/training-names';
-import { formatMonthKey, getMonthQueryRange, parseMonthKey } from '@/lib/history-calendar';
+import {
+  formatMonthKey,
+  getMonthQueryRange,
+  parseMonthKey,
+  resolveCalendarTimeZone,
+} from '@/lib/history-calendar';
 
 interface SearchParams {
   programId?: string;
   month?: string;
   day?: string;
+  tz?: string;
 }
 
 export default async function HistoryPage(props: { searchParams: Promise<SearchParams> }) {
   const t = await getTranslations('history');
   const locale = await getLocale();
-  const timeZone = await getTimeZone();
   const searchParams = await props.searchParams;
+  const timeZone = resolveCalendarTimeZone(searchParams.tz, await getTimeZone());
   const auth = await requireSession();
   const month = parseMonthKey(searchParams.month, new Date(), timeZone);
   const monthKey = formatMonthKey(month);
@@ -73,27 +79,24 @@ export default async function HistoryPage(props: { searchParams: Promise<SearchP
 
   const unit = user?.unit ?? 'KG';
   const calendarSessions: HistoryCalendarSession[] = sessions.map((session) => {
-              const enrichedSets = applyBodyweight(
+    const enrichedSets = applyBodyweight(
       session.sets.map((set) => ({
-                  weight: set.weight,
-                  reps: set.reps,
-                  isWarmup: set.isWarmup,
-                  durationSec: set.durationSec,
-                  usesBodyweight: set.exercise.usesBodyweight,
-                })),
-                user?.bodyweight,
-              );
+        weight: set.weight,
+        reps: set.reps,
+        isWarmup: set.isWarmup,
+        durationSec: set.durationSec,
+        usesBodyweight: set.exercise.usesBodyweight,
+      })),
+      user?.bodyweight,
+    );
     const working = session.sets.filter((set) => !set.isWarmup);
-              const cardioSets = working.filter(
-                (set) => set.exercise.category === 'CARDIO' && set.durationSec != null,
-              );
+    const cardioSets = working.filter(
+      (set) => set.exercise.category === 'CARDIO' && set.durationSec != null,
+    );
     const isCardio = working.length > 0 && cardioSets.length === working.length;
-              const cardioDistance = cardioSets.reduce((sum, set) => sum + (set.distanceM ?? 0), 0);
-              const cardioDurationSec = cardioSets.reduce(
-                (sum, set) => sum + (set.durationSec ?? 0),
-                0,
-              );
-              const cardioAvgHr = cardioSets.find((set) => set.avgHr != null)?.avgHr ?? null;
+    const cardioDistance = cardioSets.reduce((sum, set) => sum + (set.distanceM ?? 0), 0);
+    const cardioDurationSec = cardioSets.reduce((sum, set) => sum + (set.durationSec ?? 0), 0);
+    const cardioAvgHr = cardioSets.find((set) => set.avgHr != null)?.avgHr ?? null;
     const durationMin = session.finishedAt
       ? Math.round((session.finishedAt.getTime() - session.startedAt.getTime()) / 60000)
       : null;
@@ -106,8 +109,8 @@ export default async function HistoryPage(props: { searchParams: Promise<SearchP
       startedAt: session.startedAt.toISOString(),
       title: session.workout?.name
         ? getTrainingDisplayName(session.workout.name, locale)
-                              : isCardio
-                                ? cardioName
+        : isCardio
+          ? cardioName
           : t('freeSession'),
       programName: session.program?.name
         ? getTrainingDisplayName(session.program.name, locale)
@@ -117,12 +120,11 @@ export default async function HistoryPage(props: { searchParams: Promise<SearchP
         ? null
         : t('volumeShort', {
             weight: formatWeight(totalVolume(enrichedSets), unit, {
-                                      decimals: 0,
-                                      locale,
-                                    }),
+              decimals: 0,
+              locale,
+            }),
           }),
-      durationLabel:
-        !isCardio && durationMin != null ? t('minutes', { count: durationMin }) : null,
+      durationLabel: !isCardio && durationMin != null ? t('minutes', { count: durationMin }) : null,
       cardioDistanceLabel: isCardio && cardioDistance > 0 ? formatDistance(cardioDistance) : null,
       cardioDurationLabel:
         isCardio && (cardioDurationSec > 0 || durationMin != null)
@@ -138,7 +140,7 @@ export default async function HistoryPage(props: { searchParams: Promise<SearchP
         <div className="flex items-center gap-3">
           <CalendarDays className="size-6" />
           <h1 className="text-2xl font-bold tracking-tight">{t('title')}</h1>
-                        </div>
+        </div>
 
         <HistoryFilters
           programs={programs}

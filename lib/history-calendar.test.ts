@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildHistoryCsvHref,
   buildMonthGrid,
   dateKeyInTimeZone,
   formatMonthKey,
   getMonthQueryRange,
   isDateKey,
   parseMonthKey,
+  resolveCalendarTimeZone,
   shiftCalendarMonth,
 } from './history-calendar';
 
@@ -59,5 +61,19 @@ describe('history calendar helpers', () => {
       year: 2026,
       monthIndex: 7,
     });
+  });
+
+  it('accepts a known IANA zone from the client and falls back otherwise', () => {
+    expect(resolveCalendarTimeZone('America/Los_Angeles', 'UTC')).toBe('America/Los_Angeles');
+    expect(resolveCalendarTimeZone('Europe/Paris', 'UTC')).toBe('Europe/Paris');
+    expect(resolveCalendarTimeZone(undefined, 'Europe/Paris')).toBe('Europe/Paris');
+    expect(resolveCalendarTimeZone('', 'Europe/Paris')).toBe('Europe/Paris');
+    expect(resolveCalendarTimeZone('Mars/Olympus_Mons', 'UTC')).toBe('UTC');
+    expect(resolveCalendarTimeZone('Europe/Paris; DROP', 'UTC')).toBe('UTC');
+  });
+
+  it('exports the full history, narrowed only by the program filter', () => {
+    expect(buildHistoryCsvHref(undefined)).toBe('/api/history/csv');
+    expect(buildHistoryCsvHref('program-1')).toBe('/api/history/csv?programId=program-1');
   });
 });

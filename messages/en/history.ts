@@ -13,8 +13,6 @@ export const history = {
     title: 'Filters:',
     program: 'Program',
     allPrograms: 'All programs',
-    month: 'Month',
-    allMonths: 'All months',
     clear: 'Clear',
     csvTitle: 'Download the CSV of sets for the active filters',
   },

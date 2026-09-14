@@ -4,12 +4,13 @@ import { HistoryCalendar, type HistoryCalendarSession } from './history-calendar
 
 const navigation = vi.hoisted(() => ({
   push: vi.fn(),
+  replace: vi.fn(),
   pathname: '/history',
   query: 'month=2026-09',
 }));
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: navigation.push }),
+  useRouter: () => ({ push: navigation.push, replace: navigation.replace }),
   usePathname: () => navigation.pathname,
   useSearchParams: () => new URLSearchParams(navigation.query),
 }));
@@ -41,11 +42,14 @@ const sessions: HistoryCalendarSession[] = [
   },
 ];
 
+const browserZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
 describe('HistoryCalendar', () => {
   beforeEach(() => {
     navigation.push.mockReset();
-    navigation.query = 'month=2026-09';
-    window.history.replaceState({}, '', '/history?month=2026-09');
+    navigation.replace.mockReset();
+    navigation.query = `month=2026-09&tz=${browserZone}`;
+    window.history.replaceState({}, '', `/history?month=2026-09&tz=${browserZone}`);
   });
 
   it('marks workout days and lists sessions for the selected date', () => {
@@ -64,8 +68,42 @@ describe('HistoryCalendar', () => {
     expect(screen.getByText('Evening session')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Upper body/i })).toHaveAttribute(
       'href',
-      '/history/session-1?month=2026-09&day=2026-09-12',
+      `/history/session-1?month=2026-09&day=2026-09-12&tz=${encodeURIComponent(browserZone)}`,
     );
+    expect(navigation.replace).not.toHaveBeenCalled();
+  });
+
+  it('hands the browser timezone to the server once when the URL has none', () => {
+    navigation.query = 'month=2026-09';
+    render(
+      <HistoryCalendar
+        monthKey="2026-09"
+        initialDay="2026-09-12"
+        sessions={sessions}
+        timeZone="UTC"
+      />,
+    );
+
+    expect(navigation.replace).toHaveBeenCalledTimes(1);
+    const href = navigation.replace.mock.calls[0]?.[0] as string;
+    const params = new URLSearchParams(href.split('?')[1]);
+    expect(params.get('month')).toBe('2026-09');
+    expect(params.get('tz')).toBe(browserZone);
+  });
+
+  it('shows the filtered empty message when a program has no sessions this month', () => {
+    navigation.query = `programId=program-1&month=2026-09&tz=${browserZone}`;
+    render(
+      <HistoryCalendar
+        monthKey="2026-09"
+        sessions={[]}
+        selectedProgramId="program-1"
+        timeZone={browserZone}
+      />,
+    );
+
+    expect(screen.getByText('No finished session matches these filters.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Next month' })).toBeInTheDocument();
   });
 
   it('updates the selected day in place without navigating away', () => {
@@ -82,12 +120,16 @@ describe('HistoryCalendar', () => {
     fireEvent.click(screen.getByRole('button', { name: /13/ }));
 
     expect(screen.getByText('No completed workouts on this date.')).toBeInTheDocument();
-    expect(replaceState).toHaveBeenLastCalledWith(null, '', '/history?month=2026-09&day=2026-09-13');
+    expect(replaceState).toHaveBeenLastCalledWith(
+      null,
+      '',
+      `/history?month=2026-09&tz=${encodeURIComponent(browserZone)}&day=2026-09-13`,
+    );
     replaceState.mockRestore();
   });
 
   it('navigates between months while preserving other query filters', () => {
-    navigation.query = 'programId=program-1&month=2026-09';
+    navigation.query = `programId=program-1&month=2026-09&tz=${browserZone}`;
     render(
       <HistoryCalendar
         monthKey="2026-09"
@@ -106,6 +148,7 @@ describe('HistoryCalendar', () => {
     const params = new URLSearchParams(href.split('?')[1]);
     expect(params.get('month')).toBe('2026-10');
     expect(params.get('programId')).toBe('program-1');
+    expect(params.get('tz')).toBe(browserZone);
     expect(params.has('day')).toBe(false);
   });
 });

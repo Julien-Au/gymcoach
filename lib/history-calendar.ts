@@ -10,7 +10,30 @@ export interface CalendarDayCell {
 
 const MONTH_PATTERN = /^(\d{4})-(\d{2})$/;
 const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const TIME_ZONE_PATTERN = /^[A-Za-z0-9_+/-]{1,64}$/;
 const QUERY_PADDING_MS = 36 * 60 * 60 * 1000;
+
+// The calendar buckets sessions by the lifter's day, not the server's. The
+// client sends its IANA zone as `?tz=`; anything the runtime does not know
+// (or a missing param on the first paint) falls back to the server zone.
+export function resolveCalendarTimeZone(value: string | undefined, fallback: string): string {
+  if (!value || !TIME_ZONE_PATTERN.test(value)) return fallback;
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: value });
+    return value;
+  } catch {
+    return fallback;
+  }
+}
+
+// Full-history CSV export, narrowed only by the program filter. The month
+// shown in the calendar is a view, not an export scope (review of #351).
+export function buildHistoryCsvHref(programId: string | undefined): string {
+  const params = new URLSearchParams();
+  if (programId) params.set('programId', programId);
+  const qs = params.toString();
+  return qs ? `/api/history/csv?${qs}` : '/api/history/csv';
+}
 
 export function formatMonthKey(month: CalendarMonth): string {
   return `${month.year}-${String(month.monthIndex + 1).padStart(2, '0')}`;
@@ -42,10 +65,7 @@ export function shiftCalendarMonth(month: CalendarMonth, delta: number): Calenda
   return { year: shifted.getUTCFullYear(), monthIndex: shifted.getUTCMonth() };
 }
 
-export function buildMonthGrid(
-  month: CalendarMonth,
-  weekStartsOn: 0 | 1,
-): CalendarDayCell[] {
+export function buildMonthGrid(month: CalendarMonth, weekStartsOn: 0 | 1): CalendarDayCell[] {
   const firstWeekday = new Date(Date.UTC(month.year, month.monthIndex, 1)).getUTCDay();
   const leadingCells = (firstWeekday - weekStartsOn + 7) % 7;
   const daysInMonth = new Date(Date.UTC(month.year, month.monthIndex + 1, 0)).getUTCDate();

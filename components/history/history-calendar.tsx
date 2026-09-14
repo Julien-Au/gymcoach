@@ -47,6 +47,7 @@ export function HistoryCalendar({
   timeZone,
 }: Props) {
   const t = useTranslations('history.calendar');
+  const history = useTranslations('history');
   const common = useTranslations('common');
   const locale = useLocale();
   const format = useFormatter();
@@ -56,7 +57,11 @@ export function HistoryCalendar({
   const [isPending, startTransition] = useTransition();
 
   const month = useMemo(() => parseMonthKey(monthKey), [monthKey]);
-  const weekStartsOn: 0 | 1 = locale.toLowerCase().startsWith('ru') ? 1 : 0;
+  const weekStartsOn: 0 | 1 = MONDAY_FIRST_LOCALES.some((prefix) =>
+    locale.toLowerCase().startsWith(prefix),
+  )
+    ? 1
+    : 0;
   const cells = useMemo(() => buildMonthGrid(month, weekStartsOn), [month, weekStartsOn]);
   const todayKey = dateKeyInTimeZone(new Date(), timeZone);
 
@@ -87,27 +92,38 @@ export function HistoryCalendar({
     setSelectedDate(defaultDate);
   }, [defaultDate]);
 
+  // The server buckets days in whatever zone the URL carries (falling back to
+  // its own). On the first paint the URL has none, so hand the browser zone
+  // over once; the page re-renders with the lifter's days.
+  useEffect(() => {
+    const browserZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (!browserZone || search.get('tz') === browserZone) return;
+    const params = new URLSearchParams(search.toString());
+    params.set('tz', browserZone);
+    router.replace(`${pathname}?${params.toString()}`);
+  }, [pathname, router, search]);
+
   const selectedSessions = sessionsByDate.get(selectedDate) ?? [];
+  // Calendar labels are pure dates: build them at UTC noon and format them in
+  // UTC, so they never shift with the browser or server zone.
   const weekdayLabels = useMemo(() => {
-    const sunday = new Date(2024, 0, 7, 12);
+    const sunday = Date.UTC(2024, 0, 7, 12);
     return Array.from({ length: 7 }, (_, index) => {
       const dayOffset = (weekStartsOn + index) % 7;
-      const date = new Date(sunday);
-      date.setDate(sunday.getDate() + dayOffset);
-      return format.dateTime(date, { weekday: 'short' });
+      const date = new Date(sunday + dayOffset * 86_400_000);
+      return format.dateTime(date, { weekday: 'short', timeZone: 'UTC' });
     });
   }, [format, weekStartsOn]);
 
-  const monthLabel = format.dateTime(new Date(month.year, month.monthIndex, 1, 12), {
+  const monthLabel = format.dateTime(new Date(Date.UTC(month.year, month.monthIndex, 1, 12)), {
     month: 'long',
     year: 'numeric',
+    timeZone: 'UTC',
   });
-  const selectedDateLabel = format.dateTime(dateKeyToLocalDate(selectedDate), {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
+  const selectedDateLabel = format.dateTime(dateKeyToUtcDate(selectedDate), {
+    ...DATE_LABEL_FORMAT,
   });
+  const filteredEmpty = Boolean(selectedProgramId) && sessionsByDate.size === 0;
 
   function navigateToMonth(delta: number) {
     const target = shiftCalendarMonth(month, delta);
@@ -124,6 +140,7 @@ export function HistoryCalendar({
     if (day) params.set('day', day);
     else params.delete('day');
     if (selectedProgramId) params.set('programId', selectedProgramId);
+    params.set('tz', timeZone);
     const href = `${pathname}?${params.toString()}`;
     startTransition(() => router.push(href));
   }
@@ -132,6 +149,7 @@ export function HistoryCalendar({
     setSelectedDate(dateKey);
     const params = new URLSearchParams(window.location.search);
     params.set('day', dateKey);
+    params.set('tz', timeZone);
     window.history.replaceState(null, '', `${pathname}?${params.toString()}`);
   }
 
@@ -186,17 +204,16 @@ export function HistoryCalendar({
             ))}
             {cells.map((cell, index) => {
               if (!cell.dateKey || !cell.dayNumber) {
-                return <div key={`blank-${index}`} className="aspect-square min-h-11" aria-hidden />;
+                return (
+                  <div key={`blank-${index}`} className="aspect-square min-h-11" aria-hidden />
+                );
               }
 
               const daySessions = sessionsByDate.get(cell.dateKey) ?? [];
               const isToday = cell.dateKey === todayKey;
               const isSelected = cell.dateKey === selectedDate;
-              const dateLabel = format.dateTime(dateKeyToLocalDate(cell.dateKey), {
-                weekday: 'long',
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric',
+              const dateLabel = format.dateTime(dateKeyToUtcDate(cell.dateKey), {
+                ...DATE_LABEL_FORMAT,
               });
               const accessibleLabel = daySessions.length
                 ? `${dateLabel}, ${t('workoutCount', { count: daySessions.length })}`
@@ -234,6 +251,14 @@ export function HistoryCalendar({
         </CardContent>
       </Card>
 
+      {filteredEmpty && (
+        <Card>
+          <CardContent className="py-4 text-center text-sm text-muted-foreground">
+            {history('noFiltered')}
+          </CardContent>
+        </Card>
+      )}
+
       <section className="flex flex-col gap-2" aria-labelledby="selected-day-heading">
         <div className="flex items-center gap-2">
           <CalendarDays className="size-5 text-muted-foreground" />
@@ -253,6 +278,7 @@ export function HistoryCalendar({
             {selectedSessions.map((session) => {
               const returnParams = new URLSearchParams({ month: monthKey, day: selectedDate });
               if (selectedProgramId) returnParams.set('programId', selectedProgramId);
+              returnParams.set('tz', timeZone);
               return (
                 <li key={session.id}>
                   <Link
@@ -267,6 +293,7 @@ export function HistoryCalendar({
                             {format.dateTime(new Date(session.startedAt), {
                               hour: '2-digit',
                               minute: '2-digit',
+                              timeZone,
                             })}
                           </p>
                           <div className="mt-2 flex flex-wrap gap-1.5 text-xs">
@@ -311,10 +338,19 @@ export function HistoryCalendar({
   );
 }
 
-function dateKeyToLocalDate(dateKey: string): Date {
+const MONDAY_FIRST_LOCALES = ['ru', 'fr'];
+const DATE_LABEL_FORMAT = {
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+  timeZone: 'UTC',
+} as const;
+
+function dateKeyToUtcDate(dateKey: string): Date {
   const [year, month, day] = dateKey.split('-').map(Number);
   if (year === undefined || month === undefined || day === undefined) {
     throw new Error(`Invalid date key: ${dateKey}`);
   }
-  return new Date(year, month - 1, day, 12);
+  return new Date(Date.UTC(year, month - 1, day, 12));
 }
