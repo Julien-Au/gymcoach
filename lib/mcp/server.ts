@@ -12,6 +12,7 @@ import {
   SetAutoregulationMode,
 } from '@/lib/prisma-client';
 import type { McpPrincipal } from '@/lib/mcp/auth';
+import { previewHistoricalEquipmentBackfill } from '@/lib/mcp/historical-equipment-backfill';
 
 export const GYMCOACH_MCP_INSTRUCTIONS = `GymCoach stores the trainee's profile, gyms, equipment, programs, workout history, sets, RIR, goals and recovery signals.
 
@@ -170,6 +171,27 @@ export function createGymCoachMcpServer({ principal, baseUrl }: ServerOptions): 
         },
       });
       return result({ exercises });
+    },
+  );
+
+  server.registerTool(
+    'preview_historical_equipment_backfill',
+    {
+      title: 'Preview historical equipment backfill',
+      description:
+        'Finds owned historical sets that are missing a physical equipment assignment and returns linked equipment candidates plus prior-use evidence. This tool never writes data and suggestions are not user confirmation.',
+      inputSchema: {
+        gymId: z.string().cuid().optional(),
+        exerciseId: z.string().cuid().optional(),
+        from: z.coerce.date().optional(),
+        to: z.coerce.date().optional(),
+        limit: z.number().int().min(1).max(2000).default(500),
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false, idempotentHint: true },
+    },
+    async (input) => {
+      const preview = await previewHistoricalEquipmentBackfill(principal.userId, input);
+      return result(preview);
     },
   );
 
