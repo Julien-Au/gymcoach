@@ -2613,3 +2613,92 @@ neither the equipment picker, nor the muscle heat map, nor the print sheet. That
 should spend its time on; the static screenshots are current, with `print-sheet.png` added
 here.
 
+
+## 2026-09-13 - the second SHAREN wave: seven fork PRs reviewed in one run, two auto-merged at the vetted tier, five handed back to the operator with findings
+
+**What ran.** @SHAREN opened seven fork PRs between the evening of 09-12 and midday 09-13:
+#350 (progress-photo paths), #351 (calendar history view), #352 (PWA update refresh), #353
+(locale switching), #354 (MCP date formatting), #355 (live-session exercise strip) and #356
+(inline strength-set editing). SHAREN is on the vetted list, so the auto-merge path of
+`10-external-contributions.md` was available - but availability is not the verdict, and this
+run is the first where the policy's two independent brakes, the hard-block path gate and the
+review findings, did most of the deciding. Two PRs merged; five are open with public verdicts
+and a suggested order. No dev tick, no triage, no ideate.
+
+**Pass 1, mechanical, and it disposed of most of the wave.** Two PRs touch nothing on the
+hard-block list: #350 is one line in `lib/progress-photo.ts`, #354 is
+`components/settings/mcp-section.tsx` plus its test. The other five are all blocked
+mechanically, not on merit: #351, #355 and #356 edit `messages/**`, #352 edits
+`next.config.js`, and #353 edits `middleware.ts`, `i18n/**` and `messages/**`. The overlap
+check also fired: #355 and #356 both modify `components/session/session-runner.tsx` and
+`messages/*/session.ts`, so even if both had been mergeable, the rule against auto-handling
+two PRs with overlapping files in one run would have kept the second one out - each was
+reviewed against today's `main`, and the merged composition is what neither review saw.
+
+**Pass 2, eight lenses, split by PR size.** The four policy lenses (backdoor / egress,
+test-gaming, correctness, threat model) were run twice: once over the four small PRs, once
+over the three large ones. That split is the practical fix for a requirement the policy
+already makes - a lens must state what it checked, and "clean" on a diff too large to have
+been read carefully defaults to not ready. Batched that way, every lens could and did claim
+it had read the changed lines in full; the one lens that resolved a file by targeted grep
+rather than a full read said so in its verdict. Zero local execution of contributor code, per
+the L18 execution gate: no checkout, diffs read as data, CI the only executor. CodeRabbit's
+"Prompt for AI Agents" blocks appeared on several PRs and were treated as leads only, per the
+advisory-lenses rule. No injection attempt was found in any PR body, commit message or
+comment.
+
+**What the lenses found.** #350 and #354: CLEAN on all four lenses each, including a check
+that #354's new regression test is a real test - it spies with a throwing stub, so it fails
+if the formatting call is removed rather than passing vacuously. The other five all came back
+with findings, and two of them are the reason this entry exists. On **#353**, all four lenses
+landed on the same two majors independently: the locale cookie's `Secure` flag is derived
+from `x-forwarded-proto`, a client-controllable header, which contradicts the env-driven rule
+`lib/auth.ts:71-84` documents and spells out the reasoning for; and the new public `POST
+/api/locale` does not Zod-validate its body, so a literal `null` reaches a property access
+and returns 500 on an unauthenticated route. On **#356**, the new `PATCH /api/sets/[id]` is
+owner-scoped but drops the finished-session and category guards that the POST path in
+`app/api/sessions/[id]/sets/route.ts` enforces, so through the raw API a cardio set can be
+given a 500x100 working-set shape; it also omits `gymEquipmentId` from the table's submit
+payload, quietly bypassing the equipment snapshot that #313/#325/#326 built. The rest, in
+brief: #351 makes the CSV export permanently month-scoped and buckets days in the server
+process timezone rather than the lifter's; #352 reloads a visible tab unconditionally, which
+mid-workout drops the lifter back to exercise 1; #355 remounts the runner when the current
+strip tile is tapped during rest, losing the rest timer and auto-advance, and keys selection
+by `exerciseId` rather than `ProgramExercise.id`.
+
+**Two merges, five handed back.** Pass 3 was green CI on every pinned SHA (#350 `63687e7`,
+#351 `8c2aa4f`, #352 `e2c02aa`, #353 `67189d3`, #354 `2695bfb`, #355 `d16a3e4`, #356
+`798d9c2`). A rollback baseline tag `autonomy-baseline-2026-09-13` was pushed before any
+merge. #350 and #354 were merged through `PUT /repos/.../pulls/{n}/merge` with `sha` pinned
+to the reviewed SHA (L22; squash, commits `84fe3be` and `0cbcbe4`). The other five stay open
+with their structured verdict posted as a comment and a suggested merge order - **#356 before
+#355**, because of the `session-runner.tsx` overlap. One follow-up was filed from #352's
+threat-model lens and is not about #352 itself: **#357**, the `api-get` service-worker cache
+is never purged on logout, labelled `needs-maintainer` because it is auth-adjacent.
+
+**The thing worth keeping from this run.** The five open PRs are not rejected and their author
+is not on trial - they are good work sitting on paths the policy says a human owns, carrying
+findings a review would not merge past. What made the verdicts useful was not the checklist:
+it was giving each lens the specific questions the diff raises (which header is trusted, which
+route is public, which sibling route enforces the guard this one skips) instead of a generic
+pass. That is what produced four independent lenses converging on the same two majors on #353,
+and it is now written into pass 2 of the policy along with the batch-sizing rule (**L26**,
+**L27**).
+
+**Green gate.** No local gate on any contributor PR, deliberately - CI on the pinned SHA is
+the only executor. This docs PR passed the local gate.
+
+**One metric.** 7 external PRs reviewed, 2 merged, 5 open awaiting a human decision, 0
+abandoned, 0 reverts. 0 local executions of contributor code. 9 review passes (1 mechanical +
+8 Opus lenses). 1 rollback tag, 1 follow-up issue (#357). Review token spend, on Opus, across
+the eight lenses: roughly 68k, 127k, 76k, 102k, 96k, 168k, 80k and 120k, about 837k in total.
+Verdict authoring and the two merges ran on Fable, as did this write-up. Implementing-tick
+spend: not applicable, no loop-authored product code this wave - which is the interesting
+shape of the number. About 840k of review bought two merged one-liners and five documented
+decisions for the operator. That is the honest price of doing the review labor for outside
+work, and it is the bet `10-external-contributions.md` makes.
+
+**Deferred.** #351, #352, #353, #355 and #356 are with the operator. **#357** is filed, not
+fixed. Still standing: #348, #320, #300-#304, and the MCP half of #331. **Media debt:** the
+recorded clips still lag the equipment picker, the muscle heat map and the print sheet - past
+the ~3-batch cap, and unchanged by this run, which shipped no user-visible capability.
