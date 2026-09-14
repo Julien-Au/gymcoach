@@ -178,8 +178,14 @@ export function EditableSetsTable({
 
   const currentNumber = workingSets.length + 1;
   const totalRows = Math.max(programExercise.targetSets, currentNumber);
-  const displayWeight =
-    unit === 'LB' ? roundWeight(toDisplayWeight(draft.weight, unit), 1) : draft.weight;
+  // Same formatting as the confirmed rows, so a picked value reads identically
+  // before and after logging.
+  const displayWeight = formatWeight(draft.weight, unit, {
+    decimals: 2,
+    group: false,
+    locale,
+    withUnit: false,
+  });
   const rmValue = estimate1RM(draft.weight, draft.reps);
   const availableWeights = useMemo(() => {
     const constrained = gymWeightOptions(loadConstraints, draft.weight);
@@ -188,6 +194,18 @@ export function EditableSetsTable({
     return Array.from({ length: 81 }, (_, index) => +(index * step).toFixed(2));
   }, [draft.weight, loadConstraints, programExercise.exercise.category]);
   const repOptions = useMemo(() => Array.from({ length: 30 }, (_, index) => index + 1), []);
+  // Labels are formatted once per option list, not on every keystroke render:
+  // toLocaleString builds a formatter per call, and the picker lists 81 rows.
+  const weightLabels = useMemo(
+    () =>
+      new Map(
+        availableWeights.map((value) => [
+          value,
+          formatWeight(value, unit, { decimals: 2, group: false, locale, withUnit: false }),
+        ]),
+      ),
+    [availableWeights, unit, locale],
+  );
   const recommendationKey = recommendation
     ? `${recommendation.weight}:${recommendation.reps}:${recommendation.rir}`
     : null;
@@ -590,6 +608,8 @@ export function EditableSetsTable({
                     ? roundWeight(toDisplayWeight(value, unit), 1)
                     : value
                   : value;
+              const label =
+                picker === 'weight' ? (weightLabels.get(value) ?? String(shown)) : String(value);
               const activeDraft = editingSet?.draft ?? draft;
               const selected =
                 picker === 'weight' ? value === activeDraft.weight : value === activeDraft.reps;
@@ -602,7 +622,7 @@ export function EditableSetsTable({
                     selected ? 'border-primary bg-primary/10' : 'border-border bg-muted/40'
                   }`}
                 >
-                  {shown} {picker === 'weight' ? unit.toLowerCase() : t('repsShort')}
+                  {label} {picker === 'weight' ? unit.toLowerCase() : t('repsShort')}
                 </button>
               );
             })}

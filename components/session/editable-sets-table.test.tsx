@@ -143,7 +143,7 @@ describe('EditableSetsTable', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: /weight/i }));
-    fireEvent.click(screen.getByRole('button', { name: /220\.5 lb/i }));
+    fireEvent.click(screen.getByRole('button', { name: /220\.46 lb/i }));
     fireEvent.click(screen.getByRole('button', { name: /confirm set 1/i }));
 
     await waitFor(() =>
