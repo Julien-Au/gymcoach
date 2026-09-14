@@ -1,7 +1,7 @@
 'use client';
 
 import { useLocale, useTranslations } from 'next-intl';
-import { useTransition } from 'react';
+import { useState } from 'react';
 import { Check, Languages } from 'lucide-react';
 import { toast } from 'sonner';
 import { localeLabels, locales, type Locale } from '@/i18n/config';
@@ -24,17 +24,17 @@ const localeMessageKeys = {
 export function LanguageSelector({ showLabel = false }: { showLabel?: boolean }) {
   const locale = useLocale();
   const t = useTranslations('common.language');
-  const [isPending, startTransition] = useTransition();
+  // Explicit pending state: the trigger stays disabled for the whole request.
+  // A transition around a fire-and-forget promise would end in the same tick.
+  const [isPending, setIsPending] = useState(false);
 
   function changeLocale(nextLocale: Locale) {
-    if (nextLocale === locale) return;
-
-    startTransition(() => {
-      void applyLocale(nextLocale);
-    });
+    if (nextLocale === locale || isPending) return;
+    void applyLocale(nextLocale);
   }
 
   async function applyLocale(nextLocale: Locale) {
+    setIsPending(true);
     try {
       const response = await fetch('/api/locale', {
         method: 'POST',
@@ -54,6 +54,7 @@ export function LanguageSelector({ showLabel = false }: { showLabel?: boolean })
 
       window.location.reload();
     } catch {
+      setIsPending(false);
       toast.error(t('error'));
     }
   }

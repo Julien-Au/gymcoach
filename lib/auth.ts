@@ -71,10 +71,17 @@ export async function getCurrentUserId(): Promise<string | null> {
 // Secure by default in production. Self-hosters serving plain HTTP on a
 // trusted LAN must opt out explicitly with SESSION_COOKIE_SECURE=false;
 // deriving the default from NEXTAUTH_URL would silently drop the flag when
-// that variable is left at its example value.
-const sessionCookieSecure = process.env.SESSION_COOKIE_SECURE
-  ? process.env.SESSION_COOKIE_SECURE === 'true'
-  : process.env.NODE_ENV === 'production';
+// that variable is left at its example value. The same decision applies to
+// every cookie the app sets (the locale cookie reuses it): the flag is never
+// derived from ambient request data such as X-Forwarded-Proto, which a client
+// can send itself.
+export function cookieSecureFlag(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env.SESSION_COOKIE_SECURE
+    ? env.SESSION_COOKIE_SECURE === 'true'
+    : env.NODE_ENV === 'production';
+}
+
+const sessionCookieSecure = cookieSecureFlag();
 
 export const SESSION_COOKIE_OPTIONS = {
   httpOnly: true,
