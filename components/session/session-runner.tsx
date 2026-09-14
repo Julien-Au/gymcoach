@@ -112,7 +112,13 @@ type SessionRunnerProps = {
 
 type Mode =
   | { kind: 'input' }
-  | { kind: 'rest'; endsAt: number; totalSec: number; nextExerciseIdx: number | null }
+  | {
+      kind: 'rest';
+      endsAt: number;
+      totalSec: number;
+      nextExerciseIdx: number | null;
+      navigatedImmediately: boolean;
+    }
   | { kind: 'summary' };
 
 export function SessionRunner({
@@ -397,11 +403,18 @@ export function SessionRunner({
     const transition = isSupersetTransitionRest(supersetView, currentIdx, nextIdx);
     const restSec = transition ? SUPERSET_TRANSITION_REST_SEC : currentTarget.restSec;
 
+    // For a same-superset transition, show the next exercise immediately so
+    // the lifter can get into position while the short transition rest runs.
+    // The timer still keeps input locked until it ends or is skipped.
+    const navigatedImmediately = transition && nextIdx != null;
+    if (navigatedImmediately) selectExercise(nextIdx);
+
     setMode({
       kind: 'rest',
       endsAt: Date.now() + restSec * 1000,
       totalSec: restSec,
       nextExerciseIdx: nextIdx,
+      navigatedImmediately,
     });
   }
 
@@ -518,14 +531,14 @@ export function SessionRunner({
 
   function handleRestEnd() {
     vibrate(VIBRATION_PATTERNS.restEnd);
-    if (mode.kind === 'rest' && mode.nextExerciseIdx != null) {
+    if (mode.kind === 'rest' && !mode.navigatedImmediately && mode.nextExerciseIdx != null) {
       selectExercise(mode.nextExerciseIdx);
     }
     setMode({ kind: 'input' });
   }
 
   function handleSkipRest() {
-    if (mode.kind === 'rest' && mode.nextExerciseIdx != null) {
+    if (mode.kind === 'rest' && !mode.navigatedImmediately && mode.nextExerciseIdx != null) {
       selectExercise(mode.nextExerciseIdx);
     }
     setMode({ kind: 'input' });
@@ -590,6 +603,10 @@ export function SessionRunner({
         : currentSets.filter((set) => !set.isWarmup).length < currentTarget.targetSets
           ? currentTarget
           : null
+      : null;
+  const restNextLabel =
+    mode.kind === 'rest' && !mode.navigatedImmediately && restNextPe
+      ? exerciseName(restNextPe.exercise.name)
       : null;
   const restRecommendation =
     mode.kind === 'rest' && restNextPe ? recommendationFor(restNextPe, mode.endsAt) : null;
@@ -733,7 +750,7 @@ export function SessionRunner({
           <RestTimer
             endsAt={mode.endsAt}
             totalSec={mode.totalSec}
-            nextLabel={restNextPe ? exerciseName(restNextPe.exercise.name) : null}
+            nextLabel={restNextLabel}
             recommendation={restRecommendation}
             unit={unit}
             onEnd={handleRestEnd}
