@@ -105,7 +105,7 @@ type SessionRunnerProps = {
   // step down and the runner shows a "Deload week" badge.
   deloadActive: boolean;
   unit: WeightUnit;
-  initialExerciseId?: string;
+  initialProgramExerciseId?: string;
 };
 
 type Mode =
@@ -120,7 +120,7 @@ export function SessionRunner({
   readiness,
   deloadActive,
   unit,
-  initialExerciseId,
+  initialProgramExerciseId,
 }: SessionRunnerProps) {
   const t = useTranslations('session');
   const exerciseName = useExerciseName();
@@ -151,7 +151,7 @@ export function SessionRunner({
     [effectiveProgramExercises],
   );
 
-  const initialExerciseIndex = selectedExerciseIndex(programExercises, initialExerciseId);
+  const initialExerciseIndex = selectedExerciseIndex(programExercises, initialProgramExerciseId);
   const [hydrated, setHydrated] = useState(false);
   const [currentIdx, setCurrentIdx] = useState(initialExerciseIndex);
   const [mode, setMode] = useState<Mode>({ kind: 'input' });
@@ -321,11 +321,14 @@ export function SessionRunner({
     return count;
   }, [effectiveProgramExercises, setsByExercise]);
 
-  const completedExerciseIds = useMemo(() => {
+  // Keyed by ProgramExercise row: a workout that programs the same exercise
+  // twice shares one set pool (sets carry only exerciseId), so both rows read
+  // the same count and each is complete once the pool covers its own target.
+  const completedProgramExerciseIds = useMemo(() => {
     const completed = new Set<string>();
     for (const pe of effectiveProgramExercises) {
       const done = setsByExercise.get(pe.exerciseId)?.filter((s) => !s.isWarmup).length ?? 0;
-      if (done >= pe.targetSets) completed.add(pe.exerciseId);
+      if (done >= pe.targetSets) completed.add(pe.id);
     }
     return completed;
   }, [effectiveProgramExercises, setsByExercise]);
@@ -506,11 +509,7 @@ export function SessionRunner({
     const next = programExercises[index];
     if (!next) return;
     setCurrentIdx(index);
-    window.history.replaceState(
-      window.history.state,
-      '',
-      sessionExercisePath(session.id, next.exerciseId),
-    );
+    window.history.replaceState(window.history.state, '', sessionExercisePath(session.id, next.id));
   }
 
   function handleRestEnd() {
@@ -632,15 +631,17 @@ export function SessionRunner({
         <SessionExerciseStrip
           exercises={programExercises}
           currentIndex={currentIdx}
-          completedExerciseIds={completedExerciseIds}
+          completedProgramExerciseIds={completedProgramExerciseIds}
           disabled={mode.kind !== 'input'}
           onSelect={(index) => {
             selectExercise(index);
             setMode({ kind: 'input' });
           }}
-          onOpen={(exerciseId) => {
-            const returnTo = sessionExercisePath(session.id, exerciseId);
-            router.push(exerciseDetailPath(exerciseId, returnTo));
+          onOpen={(index) => {
+            const pe = programExercises[index];
+            if (!pe) return;
+            const returnTo = sessionExercisePath(session.id, pe.id);
+            router.push(exerciseDetailPath(pe.exerciseId, returnTo));
           }}
         />
       </div>

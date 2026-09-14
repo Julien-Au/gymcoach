@@ -13,9 +13,12 @@ type SessionExercise = ProgramExercise & { exercise: Exercise };
 interface Props {
   exercises: SessionExercise[];
   currentIndex: number;
-  completedExerciseIds: ReadonlySet<string>;
+  completedProgramExerciseIds: ReadonlySet<string>;
   onSelect: (index: number) => void;
-  onOpen: (exerciseId: string) => void;
+  onOpen: (index: number) => void;
+  // While the runner is not in input mode (rest, summary) the strip is inert:
+  // neither switching nor opening details, because opening navigates away and
+  // a remount loses the rest timer and its pending auto-advance.
   disabled?: boolean;
 }
 
@@ -33,7 +36,7 @@ function abbreviation(name: string): string {
 export function SessionExerciseStrip({
   exercises,
   currentIndex,
-  completedExerciseIds,
+  completedProgramExerciseIds,
   onSelect,
   onOpen,
   disabled = false,
@@ -57,7 +60,7 @@ export function SessionExerciseStrip({
           const displayName = exerciseName(programExercise.exercise.name);
           const media = getExerciseMedia(programExercise.exercise.name);
           const isCurrent = index === currentIndex;
-          const isComplete = completedExerciseIds.has(programExercise.exerciseId);
+          const isComplete = completedProgramExerciseIds.has(programExercise.id);
           const supersetGroup = programExercise.supersetGroup;
           const previousInGroup =
             supersetGroup != null && exercises[index - 1]?.supersetGroup === supersetGroup;
@@ -71,16 +74,17 @@ export function SessionExerciseStrip({
               ref={isCurrent ? currentRef : undefined}
               type="button"
               onClick={() => {
-                if (isCurrent) onOpen(programExercise.exerciseId);
-                else if (!disabled) onSelect(index);
+                if (disabled) return;
+                if (isCurrent) onOpen(index);
+                else onSelect(index);
               }}
-              aria-disabled={!isCurrent && disabled}
+              aria-disabled={disabled}
               aria-label={`${index + 1}. ${displayName}${isComplete ? ` · ${t('exerciseCompleted')}` : ''}`}
               aria-current={isCurrent ? 'step' : undefined}
               title={displayName}
               className={`group relative shrink-0 transition-opacity ${
                 isCurrent ? 'opacity-100' : 'opacity-45 hover:opacity-75'
-              } ${!isCurrent && disabled ? 'cursor-not-allowed' : ''}`}
+              } ${disabled ? 'cursor-not-allowed' : ''}`}
             >
               <span
                 className={`relative block h-14 w-[4.5rem] overflow-hidden rounded-md border bg-muted transition-colors sm:h-16 sm:w-20 ${

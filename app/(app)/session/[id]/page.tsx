@@ -10,7 +10,7 @@ import { liveSessionGymInclude } from '@/lib/session-gym-selection';
 
 interface Props {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ exerciseId?: string }>;
+  searchParams: Promise<{ programExerciseId?: string }>;
 }
 
 export default async function SessionRunPage(props: Props) {
@@ -85,7 +85,7 @@ export default async function SessionRunPage(props: Props) {
       readiness={readiness}
       deloadActive={deloadActive}
       unit={user?.unit ?? 'KG'}
-      initialExerciseId={searchParams.exerciseId}
+      initialProgramExerciseId={searchParams.programExerciseId}
     />
   );
 }

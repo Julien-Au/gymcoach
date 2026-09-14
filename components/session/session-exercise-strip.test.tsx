@@ -39,7 +39,7 @@ describe('SessionExerciseStrip', () => {
       <SessionExerciseStrip
         exercises={exercises}
         currentIndex={0}
-        completedExerciseIds={new Set(['exercise-1'])}
+        completedProgramExerciseIds={new Set(['pe-1'])}
         onSelect={onSelect}
         onOpen={onOpen}
       />,
@@ -64,7 +64,55 @@ describe('SessionExerciseStrip', () => {
     fireEvent.click(inactive);
     expect(onSelect).toHaveBeenCalledWith(1);
     fireEvent.click(active);
-    expect(onOpen).toHaveBeenCalledWith('exercise-1');
+    expect(onOpen).toHaveBeenCalledWith(0);
+  });
+
+  it('ignores every tap while disabled, including the current tile', () => {
+    const onSelect = vi.fn();
+    const onOpen = vi.fn();
+    render(
+      <SessionExerciseStrip
+        exercises={exercises}
+        currentIndex={0}
+        completedProgramExerciseIds={new Set()}
+        onSelect={onSelect}
+        onOpen={onOpen}
+        disabled
+      />,
+    );
+
+    const active = screen.getByRole('button', { name: '1. Squats · Barbell' });
+    const inactive = screen.getByRole('button', { name: '2. Custom Rear Delt Raise' });
+    expect(active).toHaveAttribute('aria-disabled', 'true');
+    fireEvent.click(active);
+    fireEvent.click(inactive);
+    expect(onOpen).not.toHaveBeenCalled();
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it('marks completion per program row, so a repeated exercise is tracked separately', () => {
+    const repeated = [
+      ...(exercises as unknown as Array<Record<string, unknown>>),
+      {
+        id: 'pe-4',
+        exerciseId: 'exercise-1',
+        supersetGroup: null,
+        exercise: { id: 'exercise-1', name: 'Squats · Barbell' },
+      },
+    ] as never;
+    render(
+      <SessionExerciseStrip
+        exercises={repeated}
+        currentIndex={0}
+        completedProgramExerciseIds={new Set(['pe-1'])}
+        onSelect={vi.fn()}
+        onOpen={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByRole('button', { name: '1. Squats · Barbell · Completed' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '4. Squats · Barbell' })).toBeInTheDocument();
   });
 
   it('connects adjacent superset exercises and leaves standalone exercises unmarked', () => {
@@ -72,7 +120,7 @@ describe('SessionExerciseStrip', () => {
       <SessionExerciseStrip
         exercises={exercises}
         currentIndex={0}
-        completedExerciseIds={new Set()}
+        completedProgramExerciseIds={new Set()}
         onSelect={vi.fn()}
         onOpen={vi.fn()}
       />,
