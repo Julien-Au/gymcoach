@@ -186,7 +186,20 @@ export const session = {
     applyValue: 'Apply value',
     repsShort: 'reps',
   },
+  exerciseMenu: {
+    replace: 'Replace exercise',
+    replaceDescription: 'Choose another exercise for the remaining work.',
+    searchExercises: 'Search exercises',
+    noExercises: 'No matching exercises.',
+    replaceLoggedWarning:
+      'Sets already logged in this session stay attached to the original exercise. Replace it for the remaining work?',
+    confirmReplace: 'Replace with {name}',
+    cancel: 'Cancel',
+    replaced: 'Exercise replaced.',
+    replaceError: 'Could not replace the exercise.',
+  },
   exerciseCard: {
+    actions: 'Exercise actions',
     notAvailable: 'Not available in this gym',
     cardioPrescription: '{sets, plural, one {# set} other {# sets}} · Rest {seconds}s',
     strengthPrescription:

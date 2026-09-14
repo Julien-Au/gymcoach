@@ -189,7 +189,20 @@ export const session = {
     applyValue: 'Применить значение',
     repsShort: 'повт.',
   },
+  exerciseMenu: {
+    replace: 'Заменить упражнение',
+    replaceDescription: 'Выберите другое упражнение для оставшейся части тренировки.',
+    searchExercises: 'Найти упражнения',
+    noExercises: 'Подходящих упражнений нет.',
+    replaceLoggedWarning:
+      'Уже записанные подходы останутся у исходного упражнения. Заменить упражнение для оставшейся части тренировки?',
+    confirmReplace: 'Заменить на {name}',
+    cancel: 'Отмена',
+    replaced: 'Упражнение заменено.',
+    replaceError: 'Не удалось заменить упражнение.',
+  },
   exerciseCard: {
+    actions: 'Действия с упражнением',
     notAvailable: 'Нет в этом зале',
     cardioPrescription:
       '{sets, plural, one {# подход} few {# подхода} many {# подходов} other {# подхода}} · отдых {seconds} с',

@@ -50,6 +50,7 @@ import {
 } from '@/lib/sync';
 import { hydrateFromServerSets } from '@/lib/sync-hydration';
 import { ExerciseCard } from '@/components/session/exercise-card';
+import { SessionExerciseMenu } from '@/components/session/session-exercise-menu';
 import { SetsList } from '@/components/session/sets-list';
 import { EditableSetsTable } from '@/components/session/editable-sets-table';
 import { SetInput } from '@/components/session/set-input';
@@ -106,6 +107,7 @@ type SessionRunnerProps = {
   deloadActive: boolean;
   unit: WeightUnit;
   initialProgramExerciseId?: string;
+  catalog: Exercise[];
 };
 
 type Mode =
@@ -121,6 +123,7 @@ export function SessionRunner({
   deloadActive,
   unit,
   initialProgramExerciseId,
+  catalog,
 }: SessionRunnerProps) {
   const t = useTranslations('session');
   const exerciseName = useExerciseName();
@@ -156,6 +159,7 @@ export function SessionRunner({
   const [currentIdx, setCurrentIdx] = useState(initialExerciseIndex);
   const [mode, setMode] = useState<Mode>({ kind: 'input' });
   const [closing, setClosing] = useState(false);
+  const [exerciseMenuOpen, setExerciseMenuOpen] = useState(false);
   // Readiness auto-regulation can be turned off in settings (issue #61). The
   // preference lives in localStorage, so it is read after mount; until then we
   // assume the default (on) so the first render matches the server output.
@@ -655,6 +659,18 @@ export function SessionRunner({
           unit={unit}
           gymName={session.gym?.name ?? null}
           loadConstraints={loadConstraintsFor(currentPE)}
+          onOpenMenu={mode.kind === 'input' ? () => setExerciseMenuOpen(true) : undefined}
+        />
+        <SessionExerciseMenu
+          open={exerciseMenuOpen}
+          onOpenChange={setExerciseMenuOpen}
+          programExercise={currentPE}
+          catalog={catalog}
+          loggedSetCount={currentSets.filter((set) => !set.isWarmup).length}
+          onChanged={() => {
+            setExerciseMenuOpen(false);
+            router.refresh();
+          }}
         />
         <ReturnToTrainingNotice
           recommendation={currentReturnRecommendation}

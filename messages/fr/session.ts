@@ -192,7 +192,20 @@ export const session = {
     applyValue: 'Appliquer la valeur',
     repsShort: 'reps',
   },
+  exerciseMenu: {
+    replace: 'Remplacer l’exercice',
+    replaceDescription: 'Choisissez un autre exercice pour le travail restant.',
+    searchExercises: 'Rechercher des exercices',
+    noExercises: 'Aucun exercice correspondant.',
+    replaceLoggedWarning:
+      'Les séries déjà enregistrées restent liées à l’exercice d’origine. Le remplacer pour la suite de la séance ?',
+    confirmReplace: 'Remplacer par {name}',
+    cancel: 'Annuler',
+    replaced: 'Exercice remplacé.',
+    replaceError: 'Impossible de remplacer l’exercice.',
+  },
   exerciseCard: {
+    actions: 'Actions de l’exercice',
     notAvailable: 'Indisponible dans cette salle',
     cardioPrescription: '{sets, plural, one {# série} other {# séries}} · Repos {seconds} s',
     strengthPrescription:
