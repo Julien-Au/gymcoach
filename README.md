@@ -406,7 +406,11 @@ Notable changes are tracked in the [CHANGELOG](CHANGELOG.md).
   (#312) and the equipment recorded on each logged set (#313). They also
   proposed making MCP a first-class "external deep coach" interface (#331); the
   sequencing is answered on that issue, and its one web-app-only piece is
-  tracked as #333.
+  tracked as #333. A third series followed in September: portable
+  progress-photo paths (#350) and locale-stable MCP dates (#354) are merged,
+  and five larger PRs - a calendar history view, PWA update refresh, locale
+  switching, live-session exercise navigation and inline set editing
+  (#351-#353, #355, #356) - are reviewed and waiting on a maintainer decision.
 - [@shaurya703](https://github.com/shaurya703) - picked up three of the loop's
   own follow-up issues within hours of their filing and turned each into a
   clean PR, including the persisted dropped-equipment notice (#342).
