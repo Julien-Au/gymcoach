@@ -47,6 +47,15 @@ export const setInputSchema = z.object({
 
 export type SetInput = z.infer<typeof setInputSchema>;
 
+export const setUpdateSchema = setInputSchema.pick({
+  weight: true,
+  reps: true,
+}).extend({
+  rir: z.union([z.null(), z.coerce.number().int().min(0).max(5)]),
+});
+
+export type SetUpdateInput = z.infer<typeof setUpdateSchema>;
+
 // Cross-field rule the schema alone cannot express: duration/distance are
 // accepted only on CARDIO exercises (so strength data stays clean), and a
 // cardio set requires a duration. Returns an error message or null when valid.

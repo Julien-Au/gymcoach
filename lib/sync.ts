@@ -13,6 +13,15 @@
 
 import { getDB, type PendingSet } from '@/lib/indexeddb';
 
+export type PendingSetUpdateState = 'missing' | 'failed' | 'synced' | 'queued';
+
+export function pendingSetUpdateState(set: PendingSet | undefined): PendingSetUpdateState {
+  if (!set) return 'missing';
+  if (set.status === 'failed') return 'failed';
+  if (set.status === 'synced') return 'synced';
+  return 'queued';
+}
+
 export interface FlushResult {
   flushed: number;
   failed: number;
@@ -76,32 +85,47 @@ async function doFlush(): Promise<FlushResult> {
     await db.pendingSets.update(item.localId, { status: 'syncing' });
 
     try {
-      const payload = {
-        exerciseId: item.exerciseId,
-        gymEquipmentId: item.gymEquipmentId ?? null,
-        setNumber: item.setNumber,
-        weight: item.weight,
-        reps: item.reps,
-        rir: item.rir,
-        durationSec: item.durationSec ?? null,
-        distanceM: item.distanceM ?? null,
-        notes: item.notes,
-        isWarmup: item.isWarmup,
-        isDropSet: item.isDropSet,
-      };
-      const post = (gymEquipmentId: string | null) =>
-        fetch(`/api/sessions/${item.sessionId}/sets`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...payload, gymEquipmentId }),
-        });
+      const existingServerId = item.serverId;
+      const updatesExistingSet = existingServerId != null;
+      const sentPatch = { weight: item.weight, reps: item.reps, rir: item.rir };
+      let res: Response;
+      let sentEquipmentId: string | null = null;
 
-      let res = await post(payload.gymEquipmentId);
-      // Equipment is optional metadata. If a server version rejects a stale
-      // reference with 400, retry once without it so the actual queued set is
-      // never stranded by an inventory decoration.
-      if (res.status === 400 && payload.gymEquipmentId) {
-        res = await post(null);
+      if (existingServerId != null) {
+        res = await fetch(`/api/sets/${encodeURIComponent(existingServerId)}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(sentPatch),
+        });
+      } else {
+        const payload = {
+          exerciseId: item.exerciseId,
+          gymEquipmentId: item.gymEquipmentId ?? null,
+          setNumber: item.setNumber,
+          weight: item.weight,
+          reps: item.reps,
+          rir: item.rir,
+          durationSec: item.durationSec ?? null,
+          distanceM: item.distanceM ?? null,
+          notes: item.notes,
+          isWarmup: item.isWarmup,
+          isDropSet: item.isDropSet,
+        };
+        const post = (gymEquipmentId: string | null) =>
+          fetch(`/api/sessions/${item.sessionId}/sets`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...payload, gymEquipmentId }),
+          });
+
+        sentEquipmentId = payload.gymEquipmentId;
+        res = await post(sentEquipmentId);
+        // Equipment is optional metadata. If a server version rejects a stale
+        // reference with 400, retry once without it so the actual queued set is
+        // never stranded by an inventory decoration.
+        if (res.status === 400 && sentEquipmentId) {
+          res = await post(null);
+        }
       }
 
       if (!res.ok) {
@@ -119,25 +143,46 @@ async function doFlush(): Promise<FlushResult> {
         continue;
       }
 
-      const created = (await res.json()) as { id: string; gymEquipmentId?: string | null };
-      // The server degrades a stale/foreign equipment reference to null rather
-      // than rejecting the set (issue #313). Mirror that on the local record so
-      // the next set does not pre-select a machine that was never attached, and
-      // report it so the UI can tell the user (issue #326).
-      const sentEquipmentId = payload.gymEquipmentId;
-      const equipmentDropped = sentEquipmentId !== null && !created.gymEquipmentId;
-      await db.pendingSets.update(item.localId, {
-        status: 'synced',
-        serverId: created.id,
-        syncedAt: Date.now(),
-        lastError: null,
-        // Written before the broadcast below, so a listener that drains
-        // immediately still finds the record it is being told about.
-        ...(equipmentDropped
-          ? { gymEquipmentId: null, equipmentDroppedNotice: sentEquipmentId }
-          : {}),
-      });
-      if (equipmentDropped) {
+      const saved = (await res.json()) as { id: string; gymEquipmentId?: string | null };
+      // Equipment metadata only applies when creating a new set. Editing an
+      // existing row preserves the equipment reference already stored server-side.
+      const equipmentDropped =
+        !updatesExistingSet && sentEquipmentId !== null && !saved.gymEquipmentId;
+
+      if (updatesExistingSet) {
+        // A newer local edit may land while this PATCH is in flight. Compare
+        // the current row and update its status inside one IndexedDB write
+        // transaction so another edit cannot slip between the check and the
+        // status write. Newer values stay pending for the next flush.
+        await db.transaction('rw', db.pendingSets, async () => {
+          const latest = await db.pendingSets.get(item.localId);
+          const patchStillCurrent =
+            latest != null &&
+            latest.serverId === existingServerId &&
+            latest.weight === sentPatch.weight &&
+            latest.reps === sentPatch.reps &&
+            latest.rir === sentPatch.rir;
+          await db.pendingSets.update(
+            item.localId,
+            patchStillCurrent
+              ? { status: 'synced', serverId: saved.id, syncedAt: Date.now(), lastError: null }
+              : { status: 'pending', serverId: saved.id, lastError: null },
+          );
+        });
+      } else {
+        await db.pendingSets.update(item.localId, {
+          status: 'synced',
+          serverId: saved.id,
+          syncedAt: Date.now(),
+          lastError: null,
+          // Written before the broadcast below, so a listener that drains
+          // immediately still finds the record it is being told about.
+          ...(equipmentDropped
+            ? { gymEquipmentId: null, equipmentDroppedNotice: sentEquipmentId }
+            : {}),
+        });
+      }
+      if (equipmentDropped && sentEquipmentId !== null) {
         droppedEquipment.push({
           localId: item.localId,
           sessionId: item.sessionId,

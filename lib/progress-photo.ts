@@ -80,7 +80,7 @@ export function photoRelativePath(
   photoId: string,
   mime: ProgressPhotoMime,
 ): string {
-  return path.join(userId, `${photoId}.${extensionForMime(mime)}`);
+  return path.posix.join(userId, `${photoId}.${extensionForMime(mime)}`);
 }
 
 // Real path of the deepest component of `target` that exists on disk. A path

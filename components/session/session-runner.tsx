@@ -45,11 +45,13 @@ import {
   drainDroppedEquipment,
   flushPendingSets,
   onEquipmentDropped,
+  pendingSetUpdateState,
   queueSet,
 } from '@/lib/sync';
 import { hydrateFromServerSets } from '@/lib/sync-hydration';
 import { ExerciseCard } from '@/components/session/exercise-card';
 import { SetsList } from '@/components/session/sets-list';
+import { EditableSetsTable } from '@/components/session/editable-sets-table';
 import { SetInput } from '@/components/session/set-input';
 import { RestTimer } from '@/components/session/rest-timer';
 import { SessionSummary } from '@/components/session/session-summary';
@@ -396,19 +398,84 @@ export function SessionRunner({
     });
   }
 
-  async function handleDeleteSet(set: PendingSet) {
+  async function handleUpdateSet(
+    set: PendingSet,
+    values: { weight: number; reps: number; rir: number | null },
+  ) {
     const db = getDB();
-    // If already synced: API DELETE call, then local removal.
-    // If not yet synced: local removal only.
-    if (set.serverId) {
-      const res = await fetch(`/api/sets/${set.serverId}`, { method: 'DELETE' });
-      if (!res.ok && res.status !== 404) {
-        toast.error(t('setDeleteError'));
-        return;
+    try {
+      let current = (await db.pendingSets.get(set.localId)) ?? set;
+      if (current.status === 'syncing') {
+        await flushPendingSets();
+        current = (await db.pendingSets.get(set.localId)) ?? current;
       }
+      const original = {
+        weight: current.weight,
+        reps: current.reps,
+        rir: current.rir,
+        status: current.status,
+        attempts: current.attempts,
+        lastError: current.lastError,
+        serverId: current.serverId,
+      };
+      await db.pendingSets.update(set.localId, {
+        weight: values.weight,
+        reps: values.reps,
+        rir: values.rir,
+        status: 'pending',
+        attempts: 0,
+        lastError: null,
+      });
+      await flushPendingSets();
+      const persisted = await db.pendingSets.get(set.localId);
+      const updateState = pendingSetUpdateState(persisted);
+      if (updateState === 'missing') {
+        throw new Error('set disappeared after update');
+      }
+      if (updateState === 'failed') {
+        await db.pendingSets.update(set.localId, original);
+        throw new Error(persisted?.lastError ?? 'set update rejected');
+      }
+      if (updateState === 'synced') {
+        toast.success(t('setUpdated'));
+      } else {
+        // A transient HTTP/network failure deliberately leaves the edit in the
+        // local retry queue. Do not claim remote persistence until it syncs.
+        toast.warning(t('setUpdateQueued'));
+      }
+    } catch (error) {
+      toast.error(t('setUpdateError'));
+      throw error;
     }
-    await db.pendingSets.delete(set.localId);
-    toast.success(t('setDeleted'));
+  }
+
+  async function handleDeleteSet(set: PendingSet): Promise<boolean> {
+    const db = getDB();
+    try {
+      let current = (await db.pendingSets.get(set.localId)) ?? set;
+      if (!current.serverId && (current.status === 'pending' || current.status === 'syncing')) {
+        await flushPendingSets();
+        current = (await db.pendingSets.get(set.localId)) ?? current;
+      }
+
+      // Once a server id exists, delete the persisted row first. A failed
+      // request leaves the local row intact so undo never loses data silently.
+      if (current.serverId) {
+        const res = await fetch(`/api/sets/${encodeURIComponent(current.serverId)}`, {
+          method: 'DELETE',
+        });
+        if (!res.ok && res.status !== 404) {
+          toast.error(t('setDeleteError'));
+          return false;
+        }
+      }
+      await db.pendingSets.delete(current.localId);
+      toast.success(t('setDeleted'));
+      return true;
+    } catch {
+      toast.error(t('setDeleteError'));
+      return false;
+    }
   }
 
   async function handleFinishSession() {
@@ -474,7 +541,10 @@ export function SessionRunner({
   // superset group before advancing past it (issue #146).
   const remainingNow = (pe: ProgramExerciseWithExercise) => {
     const target = effectiveProgramExerciseById.get(pe.id) ?? pe;
-    return target.targetSets - (setsByExercise.get(pe.exerciseId)?.filter((s) => !s.isWarmup).length ?? 0);
+    return (
+      target.targetSets -
+      (setsByExercise.get(pe.exerciseId)?.filter((s) => !s.isWarmup).length ?? 0)
+    );
   };
   const navNextIdx = nextNavIndex(supersetView, currentIdx, remainingNow);
   function goNext() {
@@ -591,14 +661,40 @@ export function SessionRunner({
           usesBodyweight={currentTarget.exercise.usesBodyweight}
         />
 
-        <SetsList
-          programExercise={currentTarget}
-          sets={currentSets}
-          isInputActive={mode.kind === 'input'}
-          onDeleteSet={handleDeleteSet}
-          priorSets={lastPerf?.sets}
-        />
+        {currentPE.exercise.category === 'CARDIO' ? (
+          <SetsList
+            programExercise={currentTarget}
+            sets={currentSets}
+            isInputActive={mode.kind === 'input'}
+            onDeleteSet={handleDeleteSet}
+            priorSets={lastPerf?.sets}
+          />
+        ) : (
+          <EditableSetsTable
+            programExercise={currentTarget}
+            sets={currentSets}
+            lastPerformance={lastPerf}
+            readiness={effectiveReadiness}
+            deloadActive={deloadActive}
+            unit={unit}
+            recommendation={currentRecommendation}
+            loadConstraints={loadConstraintsFor(currentTarget)}
+            priorSets={lastPerf?.sets}
+            equipmentOptions={(session.gym?.equipment ?? []).filter(
+              (item) =>
+                !droppedEquipmentIds.includes(item.id) &&
+                item.exerciseLinks.some((link) => link.exerciseId === currentPE.exerciseId),
+            )}
+            disabled={!hydrated || mode.kind !== 'input'}
+            onSubmit={handleValidate}
+            onDeleteSet={handleDeleteSet}
+            onUpdateSet={handleUpdateSet}
+          />
+        )}
 
+        {/* Keep the full logger available while the inline table is introduced:
+            strength users still retain warmup/drop-set, notes, AI parsing and
+            equipment selection; cardio continues to use this as its only input. */}
         {!hydrated ? null : mode.kind === 'input' ? (
           <SetInput
             programExercise={currentTarget}
@@ -607,7 +703,6 @@ export function SessionRunner({
             readiness={effectiveReadiness}
             deloadActive={deloadActive}
             unit={unit}
-            recommendation={currentRecommendation}
             returnRecommendation={currentReturnRecommendation}
             loadConstraints={loadConstraintsFor(currentTarget)}
             equipmentOptions={(session.gym?.equipment ?? []).filter(

@@ -549,3 +549,66 @@ capture of the seeded "Lower A" workout, looked at before committing). The recor
 are unchanged and now lag three shipped features - the equipment picker, the muscle heat
 map and the print sheet - which is the oldest debt in the repo.
 
+---
+
+## 2026-09-13 - the second SHAREN wave: two merged (#350, #354), five open and waiting on you
+
+Seven fork PRs from @SHAREN landed overnight. Two were small enough and clean enough to
+auto-merge at the vetted tier (**#350** progress-photo paths, **#354** MCP date formatting);
+both are one-line-shaped fixes, four review lenses each came back CLEAN, and neither needs
+your eyes. The other five are **OPEN and yours to decide** - every one of them either sits on
+a hard-block path or carries findings the review would not merge past. This digest is
+therefore not a "what shipped" list; it is a **decision queue**, ranked.
+
+**Read and decide, in this order:**
+
+1. **#353 - locale switching (auth-adjacent, and it adds a public route).** `gh pr diff 353`.
+   Two majors. (a) The new `POST /api/locale` sets the locale cookie's `Secure` flag from
+   `x-forwarded-proto`, a client-controllable header - the value is a client input on any
+   deployment where nothing strips or rewrites it. That directly contradicts the rule
+   `lib/auth.ts:71-84` documents for the session cookie (env-driven, `SESSION_COOKIE_SECURE`,
+   specifically so the flag cannot be derived from something unreliable). The locale cookie is
+   not a credential, so the immediate impact is small; the **precedent** is the thing to rule
+   on, because the next cookie written this way may not be a locale. (b) The route is public
+   (`middleware.ts` is edited to let it through) and the body is not Zod-validated - it is
+   `await request.json()` cast to a shape, so a literal `null` body reaches `body.locale` and
+   throws, which is a 500 on an unauthenticated route rather than the 400 the repo's own
+   convention (every API input validated with Zod) would give. Also worth a thought: this
+   converts a Server Action into a plain public POST, which changes the CSRF story, and the
+   spoofed-header case has no test.
+2. **#356 - inline set editing (API validation gap + data integrity).** `gh pr diff 356`.
+   The new `PATCH /api/sets/[id]` is correctly owner-scoped, but it drops two guards the POST
+   path enforces (`app/api/sessions/[id]/sets/route.ts`): no finished-session check, and no
+   `validateSetForCategory`. Through the raw API that means a finished session can still be
+   edited and a CARDIO set can be given a 500x100 working-set shape. Three more: the
+   pounds weight picker round-trips 100 -> 100.017 kg (untested, because every existing test
+   runs in KG); the table's submit payload omits `gymEquipmentId`, which quietly bypasses the
+   equipment snapshot #313/#325/#326 built; and the optimistic rollback can restore a queued
+   row to status `syncing`, stranding it. Ownership, the schema `pick`, and the sync replay
+   path were checked and are sound.
+3. **#352 - PWA update refresh (a reload that can interrupt a workout).** `gh pr diff 352`.
+   The update manager reloads a *visible* tab unconditionally when a replacement service
+   worker takes over. Mid-session that drops the lifter back to exercise 1. The loop guard is
+   per page lifetime, so it does not survive the reload it just caused. Separately, this PR
+   adds `clientsClaim: true` to `next.config.js`, which widens a pre-existing hole: the
+   `api-get` runtime cache is never purged on logout. That one is filed as **#357**
+   (`needs-maintainer`, auth-adjacent) and is independent of whether you merge this PR.
+4. **#351 - calendar history view (behavior regressions in an otherwise nice feature).**
+   `gh pr diff 351`. `buildCsvHref` now takes a required `month`, so the CSV export is
+   permanently month-scoped - the "export everything" affordance is gone. Day bucketing uses
+   the **server process** timezone rather than the lifter's, the French week start is wrong,
+   and some message keys are dead. Six E2E import specs are re-pointed at deep links; net
+   coverage was checked and is equal, not reduced.
+5. **#355 - live-session exercise strip (composition risk).** `gh pr diff 355`. Tapping the
+   *current* tile during rest remounts the runner and loses the rest timer and auto-advance.
+   Selection is keyed by `exerciseId` instead of `ProgramExercise.id`, so a program that uses
+   the same exercise twice will confuse the two. It also overlaps #356 in
+   `components/session/session-runner.tsx` and `messages/*/session.ts` - neither review saw
+   the composition. **If you take both, take #356 first**, then rebase #355 on it.
+
+**Trust the gate:** #350 (`path.join` -> `path.posix.join`, one line) and #354
+(`toLocaleDateString` -> `useFormatter`, plus a regression test whose throwing-spy mechanism
+was verified sound). Both merged, both low risk.
+
+**Carry forward:** #357 (new, this batch), #348, #320, #300-#304, and the MCP half of #331.
+The recorded clips still lag the equipment picker, the muscle heat map and the print sheet.

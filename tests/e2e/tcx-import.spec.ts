@@ -62,8 +62,8 @@ test('a lifter can import a TCX activity as a cardio session', async ({ page }) 
   await page.getByRole('button', { name: /confirm import/i }).click();
   await expect(page.getByTestId('import-preview')).not.toBeVisible();
 
-  await page.goto('/history');
-  await expect(page.getByText('May 20, 2026')).toBeVisible();
+  await page.goto('/history?month=2026-05&day=2026-05-20');
+  await expect(page.getByRole('heading', { name: /May 20, 2026/i })).toBeVisible();
   // The history list renders it as a cardio activity (name + HR), not an empty
   // "Free session" row.
   await expect(page.getByText('Running')).toBeVisible();
@@ -72,8 +72,8 @@ test('a lifter can import a TCX activity as a cardio session', async ({ page }) 
 
   // The session detail shows the cardio set with its average heart rate, plus
   // the heart-rate-over-time chart built from the trackpoints (issue #259).
-  await page.getByRole('link', { name: /May 20, 2026/ }).click();
+  await page.getByRole('link', { name: /Running/ }).click();
   await expect(page.getByRole('heading', { name: 'Running' })).toBeVisible();
-  await expect(page.getByText('152 bpm')).toBeVisible();
+  await expect(page.getByRole('cell', { name: '152 bpm' })).toBeVisible();
   await expect(page.getByTestId('activity-track-chart')).toBeVisible();
 });
