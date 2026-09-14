@@ -682,10 +682,17 @@ export function SessionRunner({
           open={exerciseMenuOpen}
           onOpenChange={setExerciseMenuOpen}
           programExercise={currentPE}
+          programExercises={programExercises}
           catalog={catalog}
           loggedSetCount={currentSets.filter((set) => !set.isWarmup).length}
-          onChanged={() => {
+          onChanged={(options) => {
             setExerciseMenuOpen(false);
+            if (options?.selectProgramExerciseId) {
+              const fallbackIndex = programExercises.findIndex(
+                (item) => item.id === options.selectProgramExerciseId,
+              );
+              if (fallbackIndex >= 0) selectExercise(fallbackIndex);
+            }
             router.refresh();
           }}
         />
