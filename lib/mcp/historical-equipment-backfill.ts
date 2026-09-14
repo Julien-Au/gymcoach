@@ -295,6 +295,121 @@ export async function applyHistoricalEquipmentBackfill(
   });
 }
 
+export interface UndoHistoricalEquipmentBackfillInput {
+  auditId: string;
+  confirmed: boolean;
+}
+
+export async function undoHistoricalEquipmentBackfill(
+  userId: string,
+  input: UndoHistoricalEquipmentBackfillInput,
+) {
+  if (input.confirmed !== true) {
+    throw new Error('Historical equipment backfill undo requires explicit confirmation.');
+  }
+
+  return db.$transaction(async (tx) => {
+    const audit = await tx.mcpHistoricalEquipmentBackfillAudit.findFirst({
+      where: { id: input.auditId, userId },
+      select: {
+        id: true,
+        gymId: true,
+        exerciseId: true,
+        equipmentId: true,
+        setIds: true,
+        equipmentSnapshot: true,
+        undoneAt: true,
+      },
+    });
+    if (!audit) throw new Error('Historical equipment backfill audit not found.');
+    if (audit.undoneAt) throw new Error('Historical equipment backfill was already undone.');
+
+    const snapshot = parseAuditEquipmentSnapshot(audit.equipmentSnapshot);
+    if (snapshot.gymEquipmentId !== audit.equipmentId) {
+      throw new Error('Historical equipment backfill audit snapshot is inconsistent.');
+    }
+
+    const matchingSets = await tx.set.findMany({
+      where: {
+        id: { in: audit.setIds },
+        exerciseId: audit.exerciseId,
+        gymEquipmentId: audit.equipmentId,
+        equipmentNameSnapshot: snapshot.equipmentNameSnapshot,
+        equipmentLoadSnapshot: { equals: snapshot.equipmentLoadSnapshot },
+        session: { userId, gymId: audit.gymId },
+      },
+      select: { id: true },
+    });
+    if (matchingSets.length !== audit.setIds.length) {
+      throw new Error(
+        'Undo aborted: every audited set must still exactly match the applied equipment snapshot.',
+      );
+    }
+
+    const cleared = await tx.set.updateMany({
+      where: {
+        id: { in: audit.setIds },
+        exerciseId: audit.exerciseId,
+        gymEquipmentId: audit.equipmentId,
+        equipmentNameSnapshot: snapshot.equipmentNameSnapshot,
+        equipmentLoadSnapshot: { equals: snapshot.equipmentLoadSnapshot },
+        session: { userId, gymId: audit.gymId },
+      },
+      data: {
+        gymEquipmentId: null,
+        equipmentNameSnapshot: null,
+        equipmentLoadSnapshot: Prisma.DbNull,
+      },
+    });
+    if (cleared.count !== audit.setIds.length) {
+      throw new Error(
+        'Undo aborted because the audited set collection changed during the transaction.',
+      );
+    }
+
+    const marked = await tx.mcpHistoricalEquipmentBackfillAudit.updateMany({
+      where: { id: audit.id, userId, undoneAt: null },
+      data: { undoneAt: new Date() },
+    });
+    if (marked.count !== 1) {
+      throw new Error('Undo aborted because the audit state changed during the transaction.');
+    }
+
+    return {
+      ok: true as const,
+      auditId: audit.id,
+      undoneSetIds: audit.setIds,
+      undoneSetCount: audit.setIds.length,
+    };
+  });
+}
+
+function parseAuditEquipmentSnapshot(value: Prisma.JsonValue) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error('Historical equipment backfill audit snapshot is invalid.');
+  }
+
+  const snapshot = value as Record<string, Prisma.JsonValue>;
+  const gymEquipmentId = snapshot.gymEquipmentId;
+  const equipmentNameSnapshot = snapshot.equipmentNameSnapshot;
+  const equipmentLoadSnapshot = snapshot.equipmentLoadSnapshot;
+  if (
+    typeof gymEquipmentId !== 'string' ||
+    typeof equipmentNameSnapshot !== 'string' ||
+    !equipmentLoadSnapshot ||
+    typeof equipmentLoadSnapshot !== 'object' ||
+    Array.isArray(equipmentLoadSnapshot)
+  ) {
+    throw new Error('Historical equipment backfill audit snapshot is invalid.');
+  }
+
+  return {
+    gymEquipmentId,
+    equipmentNameSnapshot,
+    equipmentLoadSnapshot: equipmentLoadSnapshot as Prisma.InputJsonValue,
+  };
+}
+
 function pairKey(gymId: string | null, exerciseId: string) {
   return (gymId ?? '<no-gym>') + '\u0000' + exerciseId;
 }

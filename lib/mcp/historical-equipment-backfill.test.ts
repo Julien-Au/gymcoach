@@ -12,6 +12,7 @@ import { db } from '@/lib/db';
 import {
   applyHistoricalEquipmentBackfill,
   previewHistoricalEquipmentBackfill,
+  undoHistoricalEquipmentBackfill,
 } from '@/lib/mcp/historical-equipment-backfill';
 
 const transaction = vi.mocked(db.$transaction);
@@ -197,5 +198,113 @@ describe('historical equipment backfill apply', () => {
       }),
     );
     expect(result).toMatchObject({ auditId: 'audit-1', appliedSetCount: 2 });
+  });
+});
+
+describe('historical equipment backfill undo', () => {
+  beforeEach(() => {
+    transaction.mockReset();
+  });
+
+  it('requires explicit confirmation before opening a transaction', async () => {
+    await expect(
+      undoHistoricalEquipmentBackfill('user-1', {
+        auditId: 'audit-1',
+        confirmed: false,
+      }),
+    ).rejects.toThrow('explicit confirmation');
+    expect(transaction).not.toHaveBeenCalled();
+  });
+
+  it('atomically clears only sets that still match the audited snapshot', async () => {
+    const snapshot = {
+      gymEquipmentId: 'cable-a',
+      equipmentNameSnapshot: 'Cable A',
+      equipmentLoadSnapshot: { version: 1, equipmentType: 'CABLE', weightOptions: [20, 30, 40] },
+    };
+    const tx = {
+      mcpHistoricalEquipmentBackfillAudit: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: 'audit-1',
+          gymId: 'gym-xfit',
+          exerciseId: 'exercise-row',
+          equipmentId: 'cable-a',
+          setIds: ['set-1', 'set-2'],
+          equipmentSnapshot: snapshot,
+          undoneAt: null,
+        }),
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+      },
+      set: {
+        findMany: vi.fn().mockResolvedValue([{ id: 'set-1' }, { id: 'set-2' }]),
+        updateMany: vi.fn().mockResolvedValue({ count: 2 }),
+      },
+    };
+    transaction.mockImplementation((async (callback: (client: typeof tx) => Promise<unknown>) =>
+      callback(tx)) as never);
+
+    const result = await undoHistoricalEquipmentBackfill('user-1', {
+      auditId: 'audit-1',
+      confirmed: true,
+    });
+
+    expect(tx.set.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: { in: ['set-1', 'set-2'] },
+          exerciseId: 'exercise-row',
+          gymEquipmentId: 'cable-a',
+          equipmentNameSnapshot: 'Cable A',
+          session: { userId: 'user-1', gymId: 'gym-xfit' },
+        }),
+        data: expect.objectContaining({
+          gymEquipmentId: null,
+          equipmentNameSnapshot: null,
+        }),
+      }),
+    );
+    expect(tx.mcpHistoricalEquipmentBackfillAudit.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'audit-1', userId: 'user-1', undoneAt: null },
+      }),
+    );
+    expect(result).toMatchObject({ auditId: 'audit-1', undoneSetCount: 2 });
+  });
+
+  it('fails closed before clearing anything when an audited set changed later', async () => {
+    const tx = {
+      mcpHistoricalEquipmentBackfillAudit: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: 'audit-1',
+          gymId: 'gym-xfit',
+          exerciseId: 'exercise-row',
+          equipmentId: 'cable-a',
+          setIds: ['set-1', 'set-2'],
+          equipmentSnapshot: {
+            gymEquipmentId: 'cable-a',
+            equipmentNameSnapshot: 'Cable A',
+            equipmentLoadSnapshot: { version: 1, equipmentType: 'CABLE' },
+          },
+          undoneAt: null,
+        }),
+        updateMany: vi.fn(),
+      },
+      set: {
+        findMany: vi.fn().mockResolvedValue([{ id: 'set-1' }]),
+        updateMany: vi.fn(),
+      },
+    };
+    transaction.mockImplementation((async (callback: (client: typeof tx) => Promise<unknown>) =>
+      callback(tx)) as never);
+
+    await expect(
+      undoHistoricalEquipmentBackfill('user-1', {
+        auditId: 'audit-1',
+        confirmed: true,
+      }),
+    ).rejects.toThrow('exactly match');
+
+    expect(tx.set.updateMany).not.toHaveBeenCalled();
+    expect(tx.mcpHistoricalEquipmentBackfillAudit.updateMany).not.toHaveBeenCalled();
   });
 });
