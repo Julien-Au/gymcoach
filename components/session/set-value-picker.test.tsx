@@ -80,6 +80,8 @@ describe('SetValuePicker', () => {
     );
 
     fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '72.5' } });
+    fireEvent.scroll(screen.getByTestId('set-value-options'));
+    expect(screen.getByRole('spinbutton')).toHaveValue(72.5);
     fireEvent.click(screen.getByRole('button', { name: 'Apply value' }));
 
     expect(onChoose).toHaveBeenCalledWith(72.5);

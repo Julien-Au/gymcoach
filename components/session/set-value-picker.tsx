@@ -28,10 +28,13 @@ export function SetValuePicker({ open, kind, value, options, unit, onClose, onCh
   const t = useTranslations('session.editableSets');
   const [pendingValue, setPendingValue] = useState(value);
   const [manualValue, setManualValue] = useState(String(value));
+  const [manualEntryActive, setManualEntryActive] = useState(false);
+  const [wheelPadding, setWheelPadding] = useState(12);
   const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
+    setManualEntryActive(false);
     const nearest = kind === 'weight' ? nearestOption(options, value)?.value : value;
     setPendingValue(nearest ?? value);
     setManualValue(String(nearest ?? value));
@@ -43,7 +46,19 @@ export function SetValuePicker({ open, kind, value, options, unit, onClose, onCh
     return () => window.clearTimeout(timer);
   }, [kind, open, options, value]);
 
+  useEffect(() => {
+    if (!open || kind !== 'weight' || !listRef.current) return;
+    const list = listRef.current;
+    const updatePadding = () => setWheelPadding(Math.max(12, (list.clientHeight - 64) / 2));
+    updatePadding();
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(updatePadding);
+    observer.observe(list);
+    return () => observer.disconnect();
+  }, [kind, open]);
+
   function selectOption(option: PickerOption, element: HTMLElement) {
+    setManualEntryActive(false);
     setPendingValue(option.value);
     setManualValue(String(option.value));
     if (kind !== 'weight') return;
@@ -54,7 +69,7 @@ export function SetValuePicker({ open, kind, value, options, unit, onClose, onCh
   }
 
   function previewCenteredWeight() {
-    if (kind !== 'weight' || !listRef.current) return;
+    if (kind !== 'weight' || manualEntryActive || !listRef.current) return;
     const list = listRef.current;
     const listRect = list.getBoundingClientRect();
     const centerY = listRect.top + list.clientHeight / 2;
@@ -105,7 +120,10 @@ export function SetValuePicker({ open, kind, value, options, unit, onClose, onCh
             step={kind === 'weight' ? '0.1' : '1'}
             min="0"
             value={manualValue}
-            onChange={(event) => setManualValue(event.target.value)}
+            onChange={(event) => {
+              setManualEntryActive(true);
+              setManualValue(event.target.value);
+            }}
             className="h-12 text-center text-xl font-semibold tabular-nums"
           />
           <Button
@@ -123,8 +141,16 @@ export function SetValuePicker({ open, kind, value, options, unit, onClose, onCh
           <div
             ref={listRef}
             data-testid="set-value-options"
+            data-weight-picker-list={kind === 'weight' ? 'true' : undefined}
+            onPointerDown={() => kind === 'weight' && setManualEntryActive(false)}
+            onWheel={() => kind === 'weight' && setManualEntryActive(false)}
             onScroll={previewCenteredWeight}
-            className={`max-h-[55vh] space-y-2 overflow-y-auto overscroll-contain py-[calc(27.5vh-2rem)] ${
+            style={
+              kind === 'weight'
+                ? { paddingTop: wheelPadding, paddingBottom: wheelPadding }
+                : undefined
+            }
+            className={`max-h-[55vh] space-y-2 overflow-y-auto overscroll-contain ${
               kind === 'weight' ? 'snap-y snap-mandatory scroll-smooth' : 'py-1'
             }`}
           >
