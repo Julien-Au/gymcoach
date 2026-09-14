@@ -1,7 +1,11 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createGymCoachMcpServer, GYMCOACH_MCP_INSTRUCTIONS } from './server';
+import {
+  createGymCoachMcpServer,
+  GYMCOACH_MCP_INSTRUCTIONS,
+  GYMCOACH_MCP_TOOL_NAMES,
+} from './server';
 
 const openServers: Array<ReturnType<typeof createGymCoachMcpServer>> = [];
 const openClients: Client[] = [];
@@ -27,11 +31,27 @@ describe('GymCoach MCP server', () => {
 
     const tools = await client.listTools();
     const byName = new Map(tools.tools.map((tool) => [tool.name, tool]));
+    expect(tools.tools.map((tool) => tool.name).sort()).toEqual(
+      [...GYMCOACH_MCP_TOOL_NAMES].sort(),
+    );
     expect(byName.has('get_training_context')).toBe(true);
     expect(byName.has('create_program')).toBe(true);
     expect(byName.has('update_program_exercise')).toBe(true);
+    expect(byName.get('get_mcp_capability_index')?.annotations?.readOnlyHint).toBe(true);
     expect(byName.get('get_training_context')?.annotations?.readOnlyHint).toBe(true);
     expect(byName.get('remove_program_exercise')?.annotations?.destructiveHint).toBe(true);
+
+    const capabilityIndex = await client.callTool({ name: 'get_mcp_capability_index' });
+    const capabilityContent = capabilityIndex.content as Array<{ type: string; text?: string }>;
+    const capabilityText = capabilityContent.find((item) => item.type === 'text');
+    expect(capabilityText?.text ? JSON.parse(capabilityText.text) : null).toMatchObject({
+      capabilities: {
+        allTools: GYMCOACH_MCP_TOOL_NAMES,
+        discovery: { tools: ['get_mcp_capability_index'] },
+        trainingContext: { tools: ['get_training_context'] },
+        exerciseCatalog: { tools: ['list_exercises'] },
+      },
+    });
 
     const resources = await client.listResources();
     expect(resources.resources.map((resource) => resource.uri)).toContain(
