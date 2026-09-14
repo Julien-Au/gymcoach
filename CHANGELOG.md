@@ -9,6 +9,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Calendar view on the history page: sessions are laid out on a month grid you
+  can page through, with a day's sessions listed under it and a program filter
+  on top. Days are bucketed in your own timezone (the browser sends its IANA
+  zone as `?tz=`, validated server-side, and the zone travels on every link and
+  on the session detail page), the week starts on Monday in French and Russian,
+  and the CSV export stays a full-history export narrowed only by the program
+  filter - the displayed month is a view, not an export scope. Community
+  contribution by @SHAREN (#351).
+- Live-session exercise navigation: a horizontal strip of the session's
+  exercises sits under the header, showing each one's position and whether it
+  is done, scrolling the current one into view and letting you jump straight to
+  another. Tapping the current tile opens a new exercise detail page (muscle
+  group, equipment, technique media, your recent sessions on that movement and
+  its best estimated 1RM) with a back link into the exact session you left. The
+  strip is inert while you are resting or on the summary, selection travels in
+  the URL as the program row id so a workout that programs the same exercise
+  twice does not confuse the two, and an unconfirmed set draft is parked per row
+  across jumps. Community contribution by @SHAREN (#355).
+- Inline set editing during a live session: the sets you have already logged
+  are shown as an editable table, so a mistyped weight, rep count or RIR is
+  corrected in place instead of deleted and re-entered. Edits go through a new
+  owner-scoped `PATCH /api/sets/[id]` that enforces the same guards as logging
+  (no edits on a finished session, no strength fields on a cardio set) and
+  re-derives goal achievement in the same serializable transaction as the
+  write, so a corrected set cannot leave a stale goal behind. Offline edits
+  queue and replay like logged sets. Community contribution by @SHAREN (#356).
 - Printable A4 workout sheet: a "Print sheet" button on a program page, and a
   "Print sheet" item in each workout's menu, open a chrome-free page that
   prints one A4 portrait sheet per workout. Each sheet lists the exercises in
@@ -408,6 +434,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Installed PWA clients no longer serve a stale bundle after a deploy: when a
+  replacement service worker takes over, the open tab reloads onto the new
+  version instead of waiting for the app to be closed and reopened. The reload
+  is deferred while a live session is on screen (it would drop you back to
+  exercise 1) and while the tab is hidden, and a 30 s guard in `sessionStorage`
+  prevents a reload loop if a rolling deploy serves mixed versions. Community
+  contribution by @SHAREN (#352).
+- Switching the interface language now works behind a reverse proxy and on the
+  login and signup pages. The language selector posts to a small public
+  `/api/locale` route instead of a Server Action, with a Zod-validated body, a
+  same-origin check that reads the browser-facing host from the first entry of a
+  chained `X-Forwarded-Host`, and a real pending state on the control. The
+  locale cookie's `Secure` flag follows the same env-driven rule as the session
+  cookie (`SESSION_COOKIE_SECURE`, production default) rather than being derived
+  from a client-supplied header. Community contribution by @SHAREN (#353).
 - Progress-photo storage paths are now built with POSIX separators, so a
   server running on Windows no longer writes a backslash into the stored
   relative path and then fails to read the photo back on any other platform.

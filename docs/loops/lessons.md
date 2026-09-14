@@ -468,3 +468,55 @@ Format per entry: trigger/evidence, the lesson (actionable), and **Status** = `g
   into "this route sets a cookie from a header - what does the repo already say about that?"
   is what makes independent verdicts comparable.
 - **Status:** graduated -> a sentence in `10-external-contributions.md` pass 2.
+
+### L28 - The isolated-container gate is a script in the repo now, not a recipe retyped per wave
+- **Trigger:** 2026-09-14. Five vetted fork PRs (#351, #352, #353, #355, #356) all needed a
+  local gate run for their maintainer fixups, and the execution gate forbids running
+  contributor code on the host. The container command was assembled by hand the first time and
+  then copy-pasted, which is exactly how a control quietly stops being applied - the fifth
+  paste is the one that drops a flag.
+- **Lesson:** a security control that lives in an agent's short-term memory is not a control.
+  `git archive` the COMMITTED ref, unpack it outside the checkout, and run
+  `scripts/verify.sh` in `node:22-bookworm` with `--network none`, `--user $(id -u):$(id -g)`,
+  `HOME=/tmp/home`, no `.env` and no credential mounts, host `node_modules` read-only.
+  Integration and E2E stay CI-only (no database, no browser in the container). Three gotchas
+  cost real time and are now comments in the script: `npm_config_offline=true` is mandatory or
+  `npx prisma generate` probes the registry and fails `EAI_AGAIN` under `--network none`;
+  vitest must be capped at 6 workers or a 5 s component test times out at ~5.2 s; and the gate
+  covers the committed tree only, so an uncommitted fixup is gated as if it did not exist.
+- **Status:** graduated -> `scripts/container-gate.sh` and `scripts/container-run.sh`, plus the
+  paragraph under "The execution gate" in `10-external-contributions.md`.
+
+### L29 - A maintainer fixup is un-reviewed code, and pinning a merge to an unread SHA proves nothing
+- **Trigger:** same wave. Every one of the five PRs merged on a tree that no review lens had
+  seen: the contributor's head plus a maintainer fixup. The verdict that authorized the merge
+  was written against the pre-fixup SHA. Running an independent re-review on each fixup delta
+  (eight times across the wave, READY/CLEAN every time, two lenses on the #356 contributor
+  delta) caught two things the fixup author had missed: #353's same-origin check read
+  `X-Forwarded-Host` whole, where a chained proxy appends and only the first entry is the host
+  the browser addressed; and #351's zone fix covered the calendar but not the session detail
+  page it links to.
+- **Lesson:** pass 3 pins the merge to a SHA precisely so that what was reviewed is what lands.
+  A fixup moves the head, so it resets that guarantee: re-review the delta (only the delta -
+  it is small, which is what makes this cheap), then re-pin to the new SHA. "I wrote it, so I
+  reviewed it" is the same failure the challenge protocol exists to prevent, and it does not
+  become safe because the diff is small.
+- **Status:** graduated -> rule 2 of "Maintainer fixups on a vetted fork PR" in
+  `10-external-contributions.md`.
+
+### L30 - Read the head before fixing: a responsive contributor makes the fixup tick redundant
+- **Trigger:** same wave, #356. The structured verdict listed five findings including two
+  majors. Within hours - and before the loop's fixup tick started - @SHAREN had pushed eleven
+  commits closing every one of them: the PATCH guards mirroring the POST path, a serializable
+  transaction with parameterized `FOR UPDATE` locks and a bounded retry, the canonical kg
+  picker, `gymEquipmentId` back in the submit payload, the rollback re-read. Had the tick
+  opened by re-implementing from the verdict it would have duplicated better work and created
+  a conflict on a fork branch.
+- **Lesson:** the first action of any fixup tick on an external PR is `gh pr view --json
+  commits` / re-read the head SHA and diff it against the SHA the verdict was written on. If
+  the contributor moved, the tick's job changes from "implement the findings" to "review the
+  delta and fill what is genuinely still missing" (here: four integration tests for the new
+  branches and picker labels aligned with the row format). Doing the review labor publicly is
+  what makes this outcome possible; not checking for it is what wastes it.
+- **Status:** graduated -> rule 1 of "Maintainer fixups on a vetted fork PR" in
+  `10-external-contributions.md`.

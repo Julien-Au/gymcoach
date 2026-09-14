@@ -72,6 +72,13 @@ on your own key - all self-hosted.
   dips, etc.
 - **Supersets** - pair exercises in the builder and run them A1/A2 with grouped
   navigation and superset-aware rest.
+- **Fix a set without deleting it** - the sets you have already logged stay on
+  screen as an editable table, so a mistyped weight, rep count or RIR is
+  corrected in place, offline included.
+- **Jump around a session** - a strip of the workout's exercises shows what is
+  done and what is next, and one tap opens an exercise page with its technique
+  media, your recent sessions on that movement and its best estimated 1RM,
+  then takes you back exactly where you were.
 - **Readiness check-in** - an optional pre-session soreness/readiness prompt that
   auto-regulates the suggested load and says why it held or dropped.
 - **Return-to-training calibration** - after a real layoff, the first session
@@ -100,6 +107,10 @@ on your own key - all self-hosted.
   over-cooked area is one glance away.
 - **Records and consistency** - an all-time records board, personal-record badges
   in-session and on the summary, and a training-consistency calendar.
+- **Workout history on a calendar** - page through the months, see which days you
+  trained, open a day's sessions, and filter by program. Days are bucketed in
+  your own timezone, not the server's
+  ([example](docs/screenshots/history.png)).
 - **Auto-regulation** - stalled-lift detection and a deload recommendation from
   your stalls and readiness, with a one-tap planned deload that lightens loads
   10% until it expires.
@@ -385,6 +396,12 @@ than CI reaching in to a small VPS.
       each logged set
 - [x] Return-to-training calibration after a long layoff
 - [x] Printable A4 workout sheet (blank weight / reps / RIR cells)
+- [x] Calendar workout history (month grid, day drill-down, program filter, your
+      timezone)
+- [x] Live-session exercise navigation (jump strip plus a per-exercise detail
+      page)
+- [x] Inline set editing during a live session (correct a logged set in place,
+      offline included)
 
 ## Contributing
 
@@ -406,11 +423,12 @@ Notable changes are tracked in the [CHANGELOG](CHANGELOG.md).
   (#312) and the equipment recorded on each logged set (#313). They also
   proposed making MCP a first-class "external deep coach" interface (#331); the
   sequencing is answered on that issue, and its one web-app-only piece is
-  tracked as #333. A third series followed in September: portable
-  progress-photo paths (#350) and locale-stable MCP dates (#354) are merged,
-  and five larger PRs - a calendar history view, PWA update refresh, locale
-  switching, live-session exercise navigation and inline set editing
-  (#351-#353, #355, #356) - are reviewed and waiting on a maintainer decision.
+  tracked as #333. A third series followed in September, seven PRs, all merged:
+  portable progress-photo paths (#350), locale-stable MCP dates (#354), the
+  calendar workout history (#351), the PWA update refresh (#352), reliable
+  locale switching behind a proxy (#353), live-session exercise navigation
+  (#355) and inline set editing (#356) - the last of which they hardened
+  themselves, closing every finding of the review within hours.
 - [@shaurya703](https://github.com/shaurya703) - picked up three of the loop's
   own follow-up issues within hours of their filing and turned each into a
   clean PR, including the persisted dropped-equipment notice (#342).

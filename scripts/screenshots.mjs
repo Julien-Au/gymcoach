@@ -11,9 +11,14 @@ const password = process.env.USER_PASSWORD ?? 'change-me-immediately';
 // capture. The progress page leads with the bodyweight card, which is the
 // least distinctive thing on it; the muscle heat map is the frame worth
 // showing, and it sits below the fold.
+// An optional `openLatestCalendarDay` clicks the last day cell that carries a
+// session marker: the history calendar opens on today, which on the demo seed
+// is as likely as not a rest day, and an empty "no workouts" panel is a poor
+// frame for a feature whose point is the drill-down.
 const shots = [
   ['/', 'home'],
   ['/progress', 'progress', { openOn: 'Muscle heat map' }],
+  ['/history', 'history', { openLatestCalendarDay: true }],
   ['/programs/generate', 'program-generator'],
   ['/exercises', 'catalog'],
 ];
@@ -79,6 +84,21 @@ for (const [path, name, opts] of shots) {
     }
     await target.scrollIntoViewIfNeeded();
     await page.waitForTimeout(500);
+  }
+  if (opts?.openLatestCalendarDay) {
+    const day = page
+      .locator('button[aria-pressed]')
+      .filter({ has: page.locator('span.rounded-full') })
+      .last();
+    if ((await day.count()) === 0) {
+      console.error(`[screenshots] ABORT - no calendar day with sessions on ${path}`);
+      await browser.close().catch(() => {});
+      process.exit(1);
+    }
+    await day.click();
+    await page.mouse.move(0, 0);
+    await page.waitForTimeout(500);
+    await assertHealthy(`calendar day on ${path}`);
   }
   await page.screenshot({ path: `docs/screenshots/${name}.png` });
   console.log('captured', name, '- healthy');
