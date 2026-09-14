@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, Loader2, RotateCcw, Trash2, Trophy } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import type { Exercise, ProgramExercise, WeightUnit } from '@/lib/prisma-client';
@@ -133,6 +133,11 @@ export function EditableSetsTable({
   const [gymEquipmentId, setGymEquipmentId] = useState('');
   const workingSets = useMemo(() => sets.filter((set) => !set.isWarmup), [sets]);
   const latestWorkingSetId = workingSets.at(-1)?.localId ?? null;
+  // The exercise strip lets the lifter jump between exercises mid-entry. An
+  // unconfirmed draft is parked per program row when they leave and restored
+  // when they come back, as long as no set was logged there in between.
+  const parkedDrafts = useRef(new Map<string, { draft: DraftSet; setCount: number }>());
+  const shownRow = useRef({ id: programExercise.id, setCount: workingSets.length });
   const prT = useTranslations('session.setsList');
   const prBaseline = useMemo(
     () => priorSets.map((set) => ({ ...set, isWarmup: false })),
@@ -147,16 +152,28 @@ export function EditableSetsTable({
   }
 
   useEffect(() => {
-    setDraft(
-      initialDraft(
-        programExercise,
-        sets,
-        lastPerformance,
-        readiness,
-        deloadActive,
-        loadConstraints,
-      ),
-    );
+    const previous = shownRow.current;
+    if (previous.id !== programExercise.id) {
+      parkedDrafts.current.set(previous.id, { draft, setCount: previous.setCount });
+    }
+    shownRow.current = { id: programExercise.id, setCount: workingSets.length };
+    const parked = parkedDrafts.current.get(programExercise.id);
+    if (parked && previous.id !== programExercise.id && parked.setCount === workingSets.length) {
+      parkedDrafts.current.delete(programExercise.id);
+      setDraft(parked.draft);
+    } else {
+      parkedDrafts.current.delete(programExercise.id);
+      setDraft(
+        initialDraft(
+          programExercise,
+          sets,
+          lastPerformance,
+          readiness,
+          deloadActive,
+          loadConstraints,
+        ),
+      );
+    }
     setEditingSet(null);
     setPicker(null);
     setAppliedRecommendationKey(null);

@@ -153,6 +153,85 @@ describe('EditableSetsTable', () => {
     );
   });
 
+  it('parks an unconfirmed draft per exercise and restores it when the lifter comes back', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    const otherExercise = {
+      ...(programExercise as Record<string, unknown>),
+      id: 'pe-2',
+      exerciseId: 'exercise-2',
+      exercise: { id: 'exercise-2', name: 'Bench', category: 'COMPOUND' },
+    } as never;
+    const props = {
+      sets: [],
+      lastPerformance: undefined,
+      readiness: null,
+      deloadActive: false,
+      unit: 'KG' as const,
+      onSubmit,
+      onDeleteSet: vi.fn(),
+      onUpdateSet: vi.fn().mockResolvedValue(undefined),
+    };
+    const view = render(<EditableSetsTable programExercise={programExercise} {...props} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /weight/i }));
+    fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '100' } });
+    fireEvent.click(screen.getByRole('button', { name: /apply value/i }));
+
+    // Jump to another exercise via the strip, then come back.
+    view.rerender(<EditableSetsTable programExercise={otherExercise} {...props} />);
+    view.rerender(<EditableSetsTable programExercise={programExercise} {...props} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /confirm set 1/i }));
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ weight: 100 })),
+    );
+  });
+
+  it('drops a parked draft once a set was logged on that exercise in between', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    const otherExercise = {
+      ...(programExercise as Record<string, unknown>),
+      id: 'pe-2',
+      exerciseId: 'exercise-2',
+      exercise: { id: 'exercise-2', name: 'Bench', category: 'COMPOUND' },
+    } as never;
+    const props = {
+      lastPerformance: undefined,
+      readiness: null,
+      deloadActive: false,
+      unit: 'KG' as const,
+      onSubmit,
+      onDeleteSet: vi.fn(),
+      onUpdateSet: vi.fn().mockResolvedValue(undefined),
+    };
+    const view = render(
+      <EditableSetsTable programExercise={programExercise} sets={[]} {...props} />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /weight/i }));
+    fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '100' } });
+    fireEvent.click(screen.getByRole('button', { name: /apply value/i }));
+
+    view.rerender(<EditableSetsTable programExercise={otherExercise} sets={[]} {...props} />);
+    const logged = [
+      {
+        localId: 'local-1',
+        exerciseId: 'exercise-1',
+        setNumber: 1,
+        weight: 60,
+        reps: 8,
+        rir: 2,
+        isWarmup: false,
+        status: 'synced',
+      },
+    ] as unknown as PendingSet[];
+    view.rerender(<EditableSetsTable programExercise={programExercise} sets={logged} {...props} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /confirm set 2/i }));
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(onSubmit.mock.calls[0]?.[0]).not.toMatchObject({ weight: 100 });
+  });
+
   it('keeps the table horizontally scrollable at narrow widths with touch-sized active controls', () => {
     render(
       <EditableSetsTable
