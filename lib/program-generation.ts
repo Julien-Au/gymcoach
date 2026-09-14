@@ -91,7 +91,9 @@ export async function buildProgramFromGenerated(
             userId,
             name: ex.name,
             muscleGroup: ex.muscleGroup,
-            category: ex.category,
+            // A CARDIO machine is always logged as cardio (duration/distance),
+            // whatever category the model picked.
+            category: ex.equipmentType === 'CARDIO' ? 'CARDIO' : ex.category,
             equipmentType: ex.equipmentType ?? 'OTHER',
             defaultRestSec: ex.restSec,
           },

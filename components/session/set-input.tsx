@@ -399,7 +399,7 @@ export function SetInput({
               <Input
                 id="cardio-duration"
                 type="text"
-                inputMode="numeric"
+                inputMode="decimal"
                 autoComplete="off"
                 value={form.durationInput}
                 onChange={(e) => setForm((f) => ({ ...f, durationInput: e.target.value }))}

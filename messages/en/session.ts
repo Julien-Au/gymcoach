@@ -96,8 +96,9 @@ export const session = {
     parseHelp: 'Fills the fields below for review; it never logs a set automatically.',
     parseError: 'Could not parse that. Try the shorthand (e.g. 100x8@9).',
     duration: 'Duration (mm:ss)',
-    durationExample: 'e.g. 12:30',
-    durationError: 'Expected format: mm:ss (e.g. 12:30), h:mm:ss, or plain minutes.',
+    durationExample: 'e.g. 12:30 or 12.30',
+    durationError:
+      'Expected format: mm:ss (e.g. 12:30, or 12.30 on a numeric keyboard), h:mm:ss, or plain minutes.',
     distance: 'Distance (km, optional)',
     distanceExample: 'e.g. 2.5',
     distanceError: 'Enter a distance between 0 and 1000 km.',

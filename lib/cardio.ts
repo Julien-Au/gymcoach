@@ -56,9 +56,11 @@ export function sumCardioWorkingSets(
 //   "mm:ss"    -> minutes and seconds (e.g. "12:30")
 //   "h:mm:ss"  -> hours, minutes, seconds (e.g. "1:05:00")
 //   "mm"       -> plain minutes (e.g. "45")
+// "." and "," are accepted in place of ":" ("11.46" = 11:46) because mobile
+// numeric keyboards have no colon key.
 // Returns null for anything else (empty, negative, out of bounds).
 export function parseDurationToSec(input: string): number | null {
-  const trimmed = input.trim();
+  const trimmed = input.trim().replace(/[.,]/g, ':');
   if (!/^\d{1,3}(:[0-5]?\d){0,2}$/.test(trimmed)) return null;
   const parts = trimmed.split(':').map((p) => parseInt(p, 10));
   let seconds: number;

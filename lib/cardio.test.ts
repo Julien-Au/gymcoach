@@ -32,6 +32,14 @@ describe('parseDurationToSec', () => {
     expect(parseDurationToSec('1:05:00')).toBe(3900);
   });
 
+  it('accepts "." and "," as separators (numeric keyboards have no colon)', () => {
+    expect(parseDurationToSec('11.46')).toBe(706);
+    expect(parseDurationToSec('11,46')).toBe(706);
+    expect(parseDurationToSec('1.05.00')).toBe(3900);
+    expect(parseDurationToSec('12.75')).toBeNull();
+    expect(parseDurationToSec('11..46')).toBeNull();
+  });
+
   it('parses plain digits as minutes', () => {
     expect(parseDurationToSec('45')).toBe(2700);
     expect(parseDurationToSec(' 5 ')).toBe(300);
