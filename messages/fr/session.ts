@@ -191,6 +191,16 @@ export const session = {
     chooseReps: 'Choisir les répétitions',
     applyValue: 'Appliquer la valeur',
     repsShort: 'reps',
+    metrics: {
+      open: 'Choisir les colonnes calculées',
+      label: 'Colonnes calculées',
+      oneRm: '1RM estimé',
+      tenRm: '10RM estimé',
+      volume: 'Volume',
+      oneRmShort: '1RM',
+      tenRmShort: '10RM',
+      volumeShort: 'VOL',
+    },
   },
   exerciseCard: {
     notAvailable: 'Indisponible dans cette salle',

@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { EditableSetsTable } from './editable-sets-table';
 import type { PendingSet } from '@/lib/indexeddb';
 import type { IntraSetRecommendation } from '@/lib/intra-set-autoregulation';
@@ -22,7 +22,59 @@ beforeAll(() => {
   HTMLElement.prototype.scrollIntoView = () => undefined;
 });
 
+beforeEach(() => {
+  window.localStorage.clear();
+});
+
 describe('EditableSetsTable', () => {
+  it('switches calculated columns and persists the selection', async () => {
+    const user = userEvent.setup();
+    render(
+      <EditableSetsTable
+        programExercise={programExercise}
+        sets={[
+          {
+            localId: 'metric-set',
+            sessionId: 'session-1',
+            exerciseId: 'exercise-1',
+            setNumber: 1,
+            weight: 100,
+            reps: 10,
+            rir: 2,
+            notes: null,
+            isWarmup: false,
+            isDropSet: false,
+            status: 'synced',
+            serverId: 'metric-server',
+            syncedAt: 1,
+            attempts: 0,
+            lastError: null,
+            createdAt: 1,
+          } as PendingSet,
+        ]}
+        lastPerformance={undefined}
+        readiness={null}
+        deloadActive={false}
+        unit="KG"
+        onSubmit={vi.fn()}
+        onDeleteSet={vi.fn()}
+        onUpdateSet={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    expect(screen.getByTestId('set-metric-header-1RM')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Choose calculated columns' }));
+    await user.click(screen.getByRole('menuitemcheckbox', { name: 'Volume' }));
+
+    expect(screen.getByTestId('set-metric-header-VOLUME')).toBeInTheDocument();
+    expect(screen.getByTestId('completed-set-1-metric-VOLUME')).toHaveTextContent('1000');
+    expect(window.localStorage.getItem('gymcoach.prefs.v1')).toContain('VOLUME');
+
+    await user.click(screen.getByRole('menuitemcheckbox', { name: 'Estimated 10RM' }));
+    expect(screen.queryByTestId('set-metric-header-1RM')).not.toBeInTheDocument();
+    expect(screen.getByTestId('set-metric-header-10RM')).toBeInTheDocument();
+    expect(screen.getByTestId('completed-set-1-metric-10RM')).toHaveTextContent('100');
+  });
   it('edits and confirms the active set row through value pickers', async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn().mockResolvedValue(undefined);
@@ -50,7 +102,7 @@ describe('EditableSetsTable', () => {
     await user.click(screen.getByRole('combobox', { name: /reps in reserve/i }));
     await user.click(screen.getByRole('option', { name: '1' }));
 
-    expect(screen.getByText('133.3 kg')).toBeInTheDocument();
+    expect(screen.getByTestId('active-set-metric-1RM')).toHaveTextContent('133.3');
     fireEvent.click(screen.getByRole('button', { name: /confirm set 1/i }));
 
     await waitFor(() =>
