@@ -11,9 +11,10 @@ import { localeCookieMaxAge, localeCookieName, locales } from '@/i18n/config';
 const localeSchema = z.object({ locale: z.enum(locales) });
 
 function requestHost(request: NextRequest): string {
-  return (
-    request.headers.get('x-forwarded-host') ?? request.headers.get('host') ?? request.nextUrl.host
-  );
+  // Chained proxies append to X-Forwarded-Host; the first entry is the host the
+  // browser addressed, which is the one the Origin header must match.
+  const forwarded = request.headers.get('x-forwarded-host')?.split(',')[0]?.trim();
+  return forwarded || (request.headers.get('host') ?? request.nextUrl.host);
 }
 
 function isSameOrigin(request: NextRequest): boolean {

@@ -128,5 +128,18 @@ describe('POST /api/locale', () => {
     );
     expect(proxied.status).toBe(200);
     expect(proxied.headers.get('set-cookie')).toContain('gymcoach.locale=fr');
+
+    // Two proxies in a row append to the header; the browser-facing host comes first.
+    const chained = await POST(
+      request(
+        'http://gymcoach.internal:3030/api/locale',
+        { locale: 'fr' },
+        {
+          origin: 'https://gymcoach.example',
+          'x-forwarded-host': 'gymcoach.example, edge.internal',
+        },
+      ),
+    );
+    expect(chained.status).toBe(200);
   });
 });
