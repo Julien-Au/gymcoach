@@ -7,7 +7,7 @@ import { getCurrentUserId } from '@/lib/auth';
 vi.mock('@/lib/auth', () => ({ getCurrentUserId: vi.fn() }));
 const mockUserId = vi.mocked(getCurrentUserId);
 
-import { DELETE as deleteSet } from '@/app/api/sets/[id]/route';
+import { PATCH as patchSet, DELETE as deleteSet } from '@/app/api/sets/[id]/route';
 import {
   GET as getSession,
   PUT as putSession,
@@ -134,6 +134,26 @@ async function seed() {
 
 beforeEach(() => {
   mockUserId.mockReset();
+});
+
+describe('route ownership: PATCH /api/sets/[id]', () => {
+  it('lets the owner correct strength values', async () => {
+    const { a, set } = await seed();
+    actAs(a.id);
+    const res = await patchSet(jsonReq('PATCH', { weight: 62.5, reps: 9, rir: 1 }), idParams(set.id));
+    expect(res.status).toBe(200);
+    const row = await db.set.findUnique({ where: { id: set.id } });
+    expect(row).toMatchObject({ weight: 62.5, reps: 9, rir: 1 });
+  });
+
+  it('returns 404 and keeps values when a stranger tries to patch it', async () => {
+    const { b, set } = await seed();
+    actAs(b.id);
+    const res = await patchSet(jsonReq('PATCH', { weight: 200, reps: 1, rir: 0 }), idParams(set.id));
+    expect(res.status).toBe(404);
+    const row = await db.set.findUnique({ where: { id: set.id } });
+    expect(row).toMatchObject({ weight: 60, reps: 10 });
+  });
 });
 
 describe('route ownership: DELETE /api/sets/[id]', () => {

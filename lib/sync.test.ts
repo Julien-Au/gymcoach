@@ -8,7 +8,12 @@ vi.mock('@/lib/indexeddb', async (importOriginal) => {
   return { ...actual, getDB: mockGetDB };
 });
 
-import { drainDroppedEquipment, flushPendingSets, onEquipmentDropped } from '@/lib/sync';
+import {
+  drainDroppedEquipment,
+  flushPendingSets,
+  onEquipmentDropped,
+  pendingSetUpdateState,
+} from '@/lib/sync';
 
 function pendingSet(): PendingSet {
   return {
@@ -49,6 +54,7 @@ function fakeDB(item: PendingSet) {
   const matching = (index: string, value: string) =>
     index === 'sessionId' && item.sessionId === value ? [item] : [];
   const table = {
+    get: vi.fn(async (id: string) => (id === item.localId ? item : undefined)),
     where: vi.fn((index: string) => ({
       anyOf: vi.fn(() => ({
         sortBy: vi.fn(async () => [item]),
@@ -84,6 +90,16 @@ function fakeDB(item: PendingSet) {
     }),
   };
 }
+
+describe('pendingSetUpdateState', () => {
+  it('distinguishes remote persistence from queued and fatal states', () => {
+    expect(pendingSetUpdateState(undefined)).toBe('missing');
+    expect(pendingSetUpdateState({ ...pendingSet(), status: 'failed' })).toBe('failed');
+    expect(pendingSetUpdateState({ ...pendingSet(), status: 'synced' })).toBe('synced');
+    expect(pendingSetUpdateState({ ...pendingSet(), status: 'pending' })).toBe('queued');
+    expect(pendingSetUpdateState({ ...pendingSet(), status: 'syncing' })).toBe('queued');
+  });
+});
 
 describe('offline set sync', () => {
   beforeEach(() => {
@@ -218,6 +234,69 @@ describe('offline set sync', () => {
 
     expect(result.droppedEquipment).toEqual([]);
     expect(listener).not.toHaveBeenCalled();
+  });
+
+  it('patches an existing server set instead of posting a duplicate', async () => {
+    const item: PendingSet = {
+      ...pendingSet(),
+      serverId: 'server/1',
+      syncedAt: 1,
+      weight: 95,
+      reps: 9,
+      rir: 1,
+    };
+    mockGetDB.mockReturnValue(fakeDB(item));
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(JSON.stringify({ id: 'server-1' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+
+    await flushPendingSets();
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith('/api/sets/server%2F1', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ weight: 95, reps: 9, rir: 1 }),
+    });
+    expect(item.status).toBe('synced');
+    expect(item.serverId).toBe('server-1');
+  });
+
+  it('keeps a newer local edit pending when an older PATCH completes', async () => {
+    const item: PendingSet = {
+      ...pendingSet(),
+      serverId: 'server-1',
+      syncedAt: 1,
+      weight: 95,
+      reps: 9,
+      rir: 1,
+    };
+    mockGetDB.mockReturnValue(fakeDB(item));
+    vi.spyOn(globalThis, 'fetch').mockImplementationOnce(async () => {
+      // Simulate a second local edit landing while the first PATCH is in flight.
+      item.weight = 97.5;
+      item.reps = 8;
+      item.rir = 0;
+      item.status = 'pending';
+      return new Response(JSON.stringify({ id: 'server-1' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    });
+
+    const result = await flushPendingSets();
+
+    expect(item).toMatchObject({
+      weight: 97.5,
+      reps: 8,
+      rir: 0,
+      status: 'pending',
+      serverId: 'server-1',
+    });
+    expect(result).toMatchObject({ flushed: 1, pending: 1 });
   });
 });
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { setInputSchema, validateSetForCategory } from './set';
+import { setInputSchema, setUpdateSchema, validateSetForCategory } from './set';
 
 describe('setInputSchema', () => {
   const valid = { exerciseId: 'ex1', setNumber: 1, weight: 60, reps: 10 };
@@ -77,6 +77,17 @@ describe('setInputSchema', () => {
     expect(setInputSchema.safeParse({ ...valid, maxHr: 39 }).success).toBe(false);
     expect(setInputSchema.safeParse({ ...valid, maxHr: 251 }).success).toBe(false);
     expect(setInputSchema.safeParse({ ...valid, maxHr: 150.5 }).success).toBe(false);
+  });
+});
+
+describe('setUpdateSchema', () => {
+  it('requires an explicit rir value so PATCH cannot clear it by omission', () => {
+    expect(setUpdateSchema.safeParse({ weight: 60, reps: 10 }).success).toBe(false);
+    expect(setUpdateSchema.parse({ weight: 60, reps: 10, rir: null })).toEqual({
+      weight: 60,
+      reps: 10,
+      rir: null,
+    });
   });
 });
 
