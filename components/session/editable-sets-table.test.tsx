@@ -99,9 +99,22 @@ describe('EditableSetsTable', () => {
         readiness={null}
         deloadActive={false}
         unit="KG"
+        gymId="gym-1"
         equipmentOptions={[
-          { id: 'machine-1', name: 'Hack Squat' },
-          { id: 'machine-2', name: 'Pendulum Squat' },
+          {
+            id: 'machine-1',
+            name: 'Hack Squat',
+            equipmentType: 'MACHINE',
+            weightOptions: [20, 40, 60],
+            exerciseLinks: [{ exerciseId: 'exercise-1' }],
+          },
+          {
+            id: 'machine-2',
+            name: 'Pendulum Squat',
+            equipmentType: 'MACHINE',
+            weightOptions: [25, 50, 75],
+            exerciseLinks: [{ exerciseId: 'exercise-1' }],
+          },
         ]}
         onSubmit={onSubmit}
         onDeleteSet={vi.fn()}
@@ -112,6 +125,13 @@ describe('EditableSetsTable', () => {
     expect(screen.getByRole('combobox', { name: /equipment/i })).toHaveTextContent('Hack Squat');
     await user.click(screen.getByRole('combobox', { name: /equipment/i }));
     await user.click(screen.getByRole('option', { name: 'Pendulum Squat' }));
+    expect(screen.getByRole('button', { name: 'Edit equipment weights' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /set 2 weight/i }));
+    expect(screen.getByRole('button', { name: '25 kg' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '50 kg' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '75 kg' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '40 kg' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '50 kg' }));
     fireEvent.click(screen.getByRole('button', { name: /confirm set 2/i }));
 
     await waitFor(() =>

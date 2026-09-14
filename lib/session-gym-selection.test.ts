@@ -8,6 +8,8 @@ describe('live session gym selection', () => {
     expect(equipment).toEqual({
       id: true,
       name: true,
+      equipmentType: true,
+      weightOptions: true,
       exerciseLinks: { select: { exerciseId: true } },
     });
     expect('imageData' in equipment).toBe(false);

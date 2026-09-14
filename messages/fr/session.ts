@@ -191,6 +191,18 @@ export const session = {
     chooseReps: 'Choisir les répétitions',
     applyValue: 'Appliquer la valeur',
     repsShort: 'reps',
+    weightEditor: {
+      open: 'Modifier les charges du matériel',
+      title: 'Modifier les charges de {name}',
+      description:
+        'Mettez à jour les charges disponibles sur ce matériel. Les changements sont enregistrés dans cette salle et utilisés immédiatement pendant la séance.',
+      weights: 'Charges disponibles ({unit})',
+      placeholder: '5, 10, 15, 20',
+      save: 'Enregistrer les charges',
+      saved: 'Charges du matériel mises à jour.',
+      saveError: 'Impossible de mettre à jour les charges du matériel.',
+      tooManyWeights: 'Saisissez au maximum 200 charges.',
+    },
   },
   exerciseCard: {
     notAvailable: 'Indisponible dans cette salle',

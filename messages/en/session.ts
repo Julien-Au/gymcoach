@@ -185,6 +185,18 @@ export const session = {
     chooseReps: 'Choose repetitions',
     applyValue: 'Apply value',
     repsShort: 'reps',
+    weightEditor: {
+      open: 'Edit equipment weights',
+      title: 'Edit {name} weights',
+      description:
+        'Update the discrete loads available on this equipment. Changes are saved to this gym and used immediately in this workout.',
+      weights: 'Available weights ({unit})',
+      placeholder: '5, 10, 15, 20',
+      save: 'Save weights',
+      saved: 'Equipment weights updated.',
+      saveError: 'Could not update equipment weights.',
+      tooManyWeights: 'Enter at most 200 weights.',
+    },
   },
   exerciseCard: {
     notAvailable: 'Not available in this gym',

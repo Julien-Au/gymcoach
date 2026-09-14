@@ -7,6 +7,8 @@ export const liveSessionGymInclude = {
     select: {
       id: true,
       name: true,
+      equipmentType: true,
+      weightOptions: true,
       exerciseLinks: { select: { exerciseId: true } },
     },
   },

@@ -15,6 +15,7 @@ import type {
   Workout,
   Gym,
   GymExerciseConfig,
+  EquipmentType,
 } from '@/lib/prisma-client';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { toast } from 'sonner';
@@ -52,6 +53,7 @@ import { hydrateFromServerSets } from '@/lib/sync-hydration';
 import { ExerciseCard } from '@/components/session/exercise-card';
 import { SetsList } from '@/components/session/sets-list';
 import { EditableSetsTable } from '@/components/session/editable-sets-table';
+import type { LiveEquipmentOption } from '@/components/session/live-equipment-weight-editor';
 import { SetInput } from '@/components/session/set-input';
 import { RestTimer } from '@/components/session/rest-timer';
 import { SessionSummary } from '@/components/session/session-summary';
@@ -82,6 +84,8 @@ type ProgramExerciseWithExercise = ProgramExercise & { exercise: Exercise };
 type SessionGymEquipment = {
   id: string;
   name: string;
+  equipmentType: EquipmentType;
+  weightOptions: number[];
   exerciseLinks: { exerciseId: string }[];
 };
 
@@ -127,6 +131,10 @@ export function SessionRunner({
   const trainingName = useTrainingName();
   const router = useRouter();
   const workout = session.workout!;
+  const [sessionEquipment, setSessionEquipment] = useState<SessionGymEquipment[]>(
+    session.gym?.equipment ?? [],
+  );
+  const [liveWeightOptions, setLiveWeightOptions] = useState<Record<string, number[]>>({});
   // Supersets (issue #146, slice 1): run the workout in presentation order -
   // members of a superset group come consecutively with A1/A2 labels. For a
   // workout without supersets this is exactly the stored order.
@@ -298,8 +306,20 @@ export function SessionRunner({
       dumbbellWeights: session.gym.dumbbellWeights,
       plateWeights: session.gym.plateWeights,
       barWeights: session.gym.barWeights,
-      weightOptions: config?.weightOptions ?? [],
+      weightOptions: liveWeightOptions[pe.exerciseId] ?? config?.weightOptions ?? [],
     };
+  }
+
+  function handleEquipmentWeightsUpdated(equipment: LiveEquipmentOption) {
+    setSessionEquipment((current) =>
+      current.map((item) => (item.id === equipment.id ? { ...item, ...equipment } : item)),
+    );
+    setLiveWeightOptions((current) => ({
+      ...current,
+      ...Object.fromEntries(
+        equipment.exerciseLinks.map((link) => [link.exerciseId, equipment.weightOptions]),
+      ),
+    }));
   }
 
   // Prior-session sets per exercise, the PR baseline for the post-session
@@ -681,12 +701,14 @@ export function SessionRunner({
             recommendation={currentRecommendation}
             loadConstraints={loadConstraintsFor(currentTarget)}
             priorSets={lastPerf?.sets}
-            equipmentOptions={(session.gym?.equipment ?? []).filter(
+            gymId={session.gym?.id ?? null}
+            equipmentOptions={sessionEquipment.filter(
               (item) =>
                 !droppedEquipmentIds.includes(item.id) &&
                 item.exerciseLinks.some((link) => link.exerciseId === currentPE.exerciseId),
             )}
             disabled={!hydrated || mode.kind !== 'input'}
+            onEquipmentWeightsUpdated={handleEquipmentWeightsUpdated}
             onSubmit={handleValidate}
             onDeleteSet={handleDeleteSet}
             onUpdateSet={handleUpdateSet}
@@ -706,7 +728,7 @@ export function SessionRunner({
             unit={unit}
             returnRecommendation={currentReturnRecommendation}
             loadConstraints={loadConstraintsFor(currentTarget)}
-            equipmentOptions={(session.gym?.equipment ?? []).filter(
+            equipmentOptions={sessionEquipment.filter(
               (item) =>
                 !droppedEquipmentIds.includes(item.id) &&
                 item.exerciseLinks.some((link) => link.exerciseId === currentPE.exerciseId),
