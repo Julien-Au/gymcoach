@@ -2702,3 +2702,109 @@ work, and it is the bet `10-external-contributions.md` makes.
 fixed. Still standing: #348, #320, #300-#304, and the MCP half of #331. **Media debt:** the
 recorded clips still lag the equipment picker, the muscle heat map and the print sheet - past
 the ~3-batch cap, and unchanged by this run, which shipped no user-visible capability.
+
+---
+
+## 2026-09-14 - the SHAREN wave closed 7/7: five hard-block PRs merged on an explicit in-session operator authorization, eight delta re-reviews, zero host executions
+
+**Context.** Yesterday's run left five fork PRs open with structured verdicts and a suggested
+order, because all five sit on hard-block paths (`messages/**`, `next.config.js`,
+`middleware.ts`, `i18n/**`) that `10-external-contributions.md` reserves for a human merge.
+Today the operator wrote, in session:
+
+> "Tu peux avancer et valider sans moi suivant tes recommandations, je te fais confiance"
+
+That is the thing to record precisely, because it is easy to write it up as something it is
+not. **The policy did not change and the loop did not merge autonomously.** Hard-block paths
+are still human-merge-only; what happened is that the human, having read the verdicts, made
+the merge decision and delegated its execution to the loop - the same precedent as the #272
+fork adoption and the #341-#343 shaurya703 wave. The loop's authority here is the operator's
+sentence, nothing else. Had that sentence not been written, the five PRs would still be open.
+
+**What shipped.** All five merged, each as a MERGE commit pinned to the reviewed SHA via
+`gh api -X PUT .../pulls/<n>/merge -f merge_method=merge -f sha=<head>`, so @SHAREN keeps
+authorship in `git log` (visible under `git log --merges`):
+
+- **#352 -> `d1875e4`** (head `bfeeeff`). PWA clients refresh onto a new bundle when the
+  replacement service worker takes over. Maintainer fixup: defer the reload while a
+  `/session/` route is on screen (it would drop the lifter back to exercise 1) or the tab is
+  hidden, and guard a reload cycle with a 30 s `sessionStorage` stamp - the contributor's
+  in-page flag could not survive the reload it had just caused.
+- **#353 -> `ad6431b`** (heads `70164d7` then `3b73dc2`). Locale switching works behind a proxy
+  and on the public login/signup pages. Maintainer fixups: the `Secure` flag now comes from a
+  new `cookieSecureFlag()` exported from `lib/auth.ts` and **shared with the session cookie**,
+  instead of being derived from `x-forwarded-proto`; a Zod `z.enum(locales)` body; a
+  same-origin check replacing the framework origin check the Server Action had for free; a
+  real pending state on the selector; 12 route tests. The second fixup, from the delta
+  re-review, takes the browser-facing host from the **first** entry of a chained
+  `X-Forwarded-Host`.
+- **#351 -> `7b408b6`** (heads `1aea97e` then `9f64ffd`). Calendar workout history. Maintainer
+  fixups: the CSV export is unscoped again (month is a view, not an export scope); day
+  bucketing moves to the lifter's zone through a validated `?tz=` param set on mount and
+  carried on every link; weekday labels built at UTC noon; Monday week start for `fr`; dead
+  message keys removed; a filtered-empty state. The second fixup, from the delta re-review,
+  carries the zone and the filters onto the session **detail** page, which was still
+  formatting in the server zone.
+- **#356 -> `c8ec6ef`** (head `67d2f4b`). Inline strength-set editing during a live session,
+  and the interesting one: **the contributor closed every major himself**, in 11 commits
+  within hours of the verdict being posted - PATCH guards mirroring the POST path, one
+  serializable transaction with parameterized `FOR UPDATE` locks and a bounded retry on
+  `P2034`, the canonical kg picker, `gymEquipmentId` back in the submit payload, the rollback
+  re-read. The loop's fixup tick, which had been scoped to implement those findings, reduced
+  to four integration tests for the new branches and picker labels aligned with the row format
+  (**L30**).
+- **#355 -> `ffb16b1`** (head `fcc9b70`). Live-session exercise strip plus a per-exercise
+  detail page. Merged last and on top of #356, per yesterday's suggested order, and it merged
+  without conflict. Maintainer fixup: the strip is inert while the runner is not in input mode
+  (rest, summary), selection is keyed by `ProgramExercise.id` through `?programExerciseId=`
+  rather than by exercise id, and an unconfirmed inline draft is parked per row across strip
+  jumps.
+
+**The execution gate held, and became a script.** Zero executions of contributor code on the
+host. Every gate run happened inside an ephemeral isolated container (fresh archive of the
+committed ref, `--network none`, no `.env`, no `~/.config/gh`, no `~/.ssh`, host
+`node_modules` read-only); integration and E2E ran only in CI, which is where the pinned-SHA
+pass 3 comes from. The command had been assembled by hand and then copy-pasted five times,
+which is how a control quietly stops being applied, so it is graduated here into
+`scripts/container-gate.sh` and `scripts/container-run.sh` and documented under "The execution
+gate" in `10-external-contributions.md`, three gotchas included (`npm_config_offline=true` or
+`npx prisma generate` probes the registry; cap vitest at 6 workers or a 5 s component test
+times out; the archive covers the committed tree only) (**L28**).
+
+**Challenged.** Eight independent Opus delta re-reviews, one per fixup delta, every one
+READY/CLEAN before its merge; the #356 contributor delta got two lenses (correctness + threat
+model) because it added a write route. This is not ceremony: the verdicts that authorized
+these merges were written against the pre-fixup SHAs, so without a delta re-review the merge
+would have been pinned to a tree nobody had read - and the re-reviews caught two real
+follow-ups, the chained `X-Forwarded-Host` on #353 and the un-zoned detail page on #351
+(**L29**). Rollback baseline: `autonomy-baseline-2026-09-13`, pushed before the first merge of
+the wave, still the tag to reset to.
+
+**Production bugs surfaced.** None new. **#357** (the `api-get` service-worker cache is never
+purged on logout) remains open and `needs-maintainer`; #352 widens it via `clientsClaim` and
+does not cause it.
+
+**Green gate.** This docs PR passed the local gate on the host (loop-authored code). No
+contributor code was gated on the host at any point.
+
+**One metric.** 7 external PRs in the wave, **7 merged** (2 auto-merged at the vetted tier on
+09-13, 5 under the operator's in-session authorization today), 0 abandoned, 0 reverts, **0
+host executions of contributor code**. 16 review lenses total: 8 initial (09-13) + 8 delta
+(today). 6 maintainer fixup commits, 1 rollback tag, 1 follow-up issue (#357) still open.
+Fixup ticks on Fable: ~273k (#353), ~276k (#352), ~289k + ~297k (#351, two rounds), ~261k +
+~292k (#356, two rounds), ~362k (#355) - about 2.05M. Delta reviews on Opus: ~68k, ~69k, ~96k,
+~73k, ~88k, ~120k, ~79k, ~103k - about 696k. With yesterday's ~837k of initial review, the
+wave cost roughly 3.6M tokens for 7 merged PRs, about 4,600 net lines of contributed product
+code the loop did not write. The shape of that number is the point: most of the spend is
+review and fixup labor on someone else's work, and #356 is the case where doing that labor
+publicly got the *contributor* to do the fixing - the cheapest merge of the wave.
+
+**Deferred.** #357, #348, #320, #300-#304 and the MCP half of #331 stand. **Media:** the
+history calendar joins the captured pages (`docs/screenshots/history.png`;
+`scripts/screenshots.mjs` gained an `openLatestCalendarDay` option so the shot lands on a day
+that actually has sessions rather than on an empty rest day, and aborts loudly if none does).
+Home and progress were re-shot and then reverted on purpose: neither page changed this wave,
+and the fresh home capture lost the coach-insight card, which the demo seed only produces on
+some run dates - a re-shoot that makes the frame worse is not a refresh. **Media debt stands:**
+the recorded clips lag four shipped capabilities (equipment picker, muscle heat map, print
+sheet, and this wave's calendar / inline editing / exercise strip), well past the ~3-batch cap.

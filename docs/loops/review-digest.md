@@ -612,3 +612,80 @@ was verified sound). Both merged, both low risk.
 
 **Carry forward:** #357 (new, this batch), #348, #320, #300-#304, and the MCP half of #331.
 The recorded clips still lag the equipment picker, the muscle heat map and the print sheet.
+
+---
+
+## 2026-09-14 - the SHAREN wave closed: the five hard-block PRs merged on your authorization
+
+You said in session: *"Tu peux avancer et valider sans moi suivant tes recommandations, je te
+fais confiance"* - so the five PRs this file handed you yesterday as a decision queue were
+merged today with the verdicts' recommendations applied. That is a **delegated human
+decision**, not a policy change: hard-block paths are still human-merge-only, and every merge
+was a merge commit pinned to a reviewed SHA. Each PR got a maintainer fixup (except #356,
+where the contributor had already closed every finding himself), each fixup got its own
+independent delta re-review, and no contributor code ran on this machine - the gate ran in an
+isolated container, integration and E2E in CI only.
+
+Merged: **#352** (`d1875e4`), **#353** (`ad6431b`), **#351** (`7b408b6`), **#356** (`c8ec6ef`),
+**#355** (`ffb16b1`), in that order. Yesterday's #350 and #354 close out the wave at 7/7.
+
+**Read first, in this order:**
+
+1. **#356 - inline set editing (new write route, transactions, goal re-derivation).**
+   `gh pr diff 356`. The largest new surface of the wave and the only new API write path:
+   `PATCH /api/sets/[id]`. Read it for three things. (a) The guards now mirror the POST path -
+   owner scope, 404 on a foreign set, 400 on a finished session, 400 on strength fields against
+   a CARDIO exercise - because a raw-API caller was the hole the review found. (b) The set
+   update and the goal re-derivation run in **one serializable transaction**, with
+   parameterized `FOR UPDATE` locks on the set row and on the `ExerciseGoal` row and a bounded
+   three-attempt retry on `P2034`, so a corrected set can no longer leave a stale `achievedAt`.
+   (c) The value math: the weight picker is canonical in kg, and `gymEquipmentId` is back in
+   the submit payload so the equipment snapshot from #313/#325/#326 is not silently bypassed.
+   Worth your eyes because it is a write path to your own logged data and because the
+   correctness argument is a concurrency argument.
+2. **#353 - locale switching (a new public route, and a cookie-flag precedent).**
+   `gh pr diff 353`. This is the one the digest flagged as a precedent question yesterday, and
+   the answer landed the conservative way: `cookieSecureFlag()` is now a named export of
+   `lib/auth.ts` used by **both** the session cookie and the locale cookie, so the flag comes
+   from `SESSION_COOKIE_SECURE` / `NODE_ENV` and never from a client-supplied
+   `x-forwarded-proto`. The route is still public (login and signup pages must be able to
+   switch language), so read the compensating controls: a Zod `z.enum(locales)` body, and a
+   same-origin check replacing the origin check the Server Action got for free. The delta
+   re-review is what caught that the same-origin check must take the **first** entry of a
+   chained `X-Forwarded-Host` - the host the browser actually addressed - rather than the
+   header whole.
+3. **#355 - live-session navigation (state machine + a new page).** `gh pr diff 355`. Two
+   things to check. The strip is **inert** unless the runner is in input mode: during rest or
+   the summary it neither switches nor opens details, because opening navigates away and a
+   remount would lose the rest timer and its pending auto-advance. And selection travels as
+   `?programExerciseId=` - the `ProgramExercise` row id, not the exercise id - so a workout
+   that programs the same movement twice keeps the two rows apart. The new
+   `/exercises/[id]` detail page takes a `returnTo` that is regex-restricted to a session path
+   (`safeSessionReturnPath`), which is the open-redirect question answered.
+4. **#351 - calendar history (behavior regressions, now reversed).** `gh pr diff 351`. Read
+   `lib/history-calendar.ts`: `buildHistoryCsvHref` takes only the program filter again, so the
+   full-history CSV export is back and the displayed month is a view rather than an export
+   scope; day bucketing goes through `dateKeyInTimeZone` with a `?tz=` param validated against
+   an IANA-shaped pattern and a real `Intl.DateTimeFormat` probe, falling back to the server
+   zone; the month query pads 36 h on each side so a zone shift cannot clip a day. The zone is
+   carried on links and on the session detail page too - the second delta re-review caught
+   that the detail page was still formatting in the server zone.
+5. **#352 - PWA update refresh (can interrupt a workout).** `gh pr diff 352`. Small, but it
+   reloads your tab. The fix defers on `/session/` routes and on a hidden tab, setting a
+   pending flag instead, and guards against a reload cycle with a 30 s `sessionStorage` stamp
+   that survives the reload it caused (the original in-page flag did not). Note what this PR
+   does **not** fix: `clientsClaim: true` widens the pre-existing `api-get` cache-on-logout
+   hole, still open as **#357** (`needs-maintainer`).
+
+**Trust the gate (loop-authored, this PR):** the container-gate scripts, the policy paragraph
+that documents them, lessons L28-L30, the CHANGELOG and README updates.
+
+**Carry forward:** #357, #348, #320, #300-#304, and the MCP half of #331. **Media:** the
+history calendar is now a captured page (`docs/screenshots/history.png`, and
+`scripts/screenshots.mjs` opens the latest day with sessions so the frame is not an empty
+rest day); home and progress were re-shot and reverted, because neither page changed this
+wave and the fresh home capture happened to lose the coach-insight card, which only appears
+when the demo seed's run date produces one. **Still in debt:** the recorded clips now lag four
+shipped capabilities (equipment picker, muscle heat map, print sheet, and this wave's calendar
+/ inline editing / exercise strip) - well past the ~3-batch cap, and the honest number to fix
+next content tick.
