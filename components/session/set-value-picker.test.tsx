@@ -65,6 +65,35 @@ describe('SetValuePicker', () => {
     expect(onChoose).toHaveBeenCalledWith(70);
   });
 
+  it('updates the barbell loading preview while a gym weight is still pending', () => {
+    const onChoose = vi.fn();
+    render(
+      <SetValuePicker
+        open
+        kind="weight"
+        value={60}
+        options={[{ value: 60 }, { value: 70 }]}
+        unit="KG"
+        loadConstraints={{
+          equipmentType: 'BARBELL',
+          barWeights: [20],
+          plateWeights: [20, 10, 5, 2.5],
+          weightOptions: [60, 70],
+        }}
+        onClose={vi.fn()}
+        onChoose={onChoose}
+      />,
+    );
+
+    const preview = screen.getByTestId('barbell-side-diagram');
+    expect(preview).toHaveAttribute('data-target-weight', '60');
+
+    fireEvent.click(screen.getByRole('button', { name: '70 kg' }));
+
+    expect(onChoose).not.toHaveBeenCalled();
+    expect(preview).toHaveAttribute('data-target-weight', '70');
+  });
+
   it('retains manual decimal entry as a weight fallback', () => {
     const onChoose = vi.fn();
     render(

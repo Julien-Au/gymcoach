@@ -1,9 +1,13 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { Check, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Check, ChevronLeft, ChevronRight, LockKeyhole } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import type { WeightUnit } from '@/lib/prisma-client';
+import type { GymLoadConstraints } from '@/lib/gym-loads';
+import { computePlateLoad, type PlateLoad } from '@/lib/plates';
+import { plateConfigForUnit } from '@/lib/preferences';
+import { roundWeight, toDisplayWeight } from '@/lib/units';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -20,11 +24,21 @@ interface Props {
   value: number;
   options: PickerOption[];
   unit: WeightUnit;
+  loadConstraints?: GymLoadConstraints | null;
   onClose: () => void;
   onChoose: (value: number, canonicalValue?: number) => void;
 }
 
-export function SetValuePicker({ open, kind, value, options, unit, onClose, onChoose }: Props) {
+export function SetValuePicker({
+  open,
+  kind,
+  value,
+  options,
+  unit,
+  loadConstraints = null,
+  onClose,
+  onChoose,
+}: Props) {
   const t = useTranslations('session.editableSets');
   const [pendingValue, setPendingValue] = useState(value);
   const [manualValue, setManualValue] = useState(String(value));
@@ -87,8 +101,29 @@ export function SetValuePicker({ open, kind, value, options, unit, onClose, onCh
     setManualValue(String(nearest.value));
   }
 
+  const parsedManualValue = Number(manualValue);
+  const previewWeight = manualEntryActive ? parsedManualValue : pendingValue;
+  const plateLoad = useMemo(() => {
+    if (
+      kind !== 'weight' ||
+      loadConstraints?.equipmentType !== 'BARBELL' ||
+      !Number.isFinite(previewWeight) ||
+      previewWeight <= 0
+    ) {
+      return null;
+    }
+    const fallback = plateConfigForUnit(unit);
+    const bars = loadConstraints.barWeights?.length
+      ? loadConstraints.barWeights.map((weight) => roundWeight(toDisplayWeight(weight, unit), 2))
+      : [fallback.barWeight];
+    const plates = loadConstraints.plateWeights?.length
+      ? loadConstraints.plateWeights.map((weight) => roundWeight(toDisplayWeight(weight, unit), 2))
+      : fallback.plates;
+    return bestPlateLoad(previewWeight, bars, plates, fallback.barWeight);
+  }, [kind, loadConstraints, previewWeight, unit]);
+
   function applyManual() {
-    const parsed = Number(manualValue);
+    const parsed = parsedManualValue;
     if (!Number.isFinite(parsed) || parsed < 0) return;
     if (kind === 'reps') {
       onChoose(Math.max(1, Math.round(parsed)));
@@ -136,6 +171,10 @@ export function SetValuePicker({ open, kind, value, options, unit, onClose, onCh
             <Check className="size-6" />
           </Button>
         </div>
+
+        {kind === 'weight' && plateLoad ? (
+          <BarbellSideDiagram load={plateLoad} targetWeight={previewWeight} unit={unit} />
+        ) : null}
 
         <div className="relative min-h-0">
           <div
@@ -200,4 +239,80 @@ function nearestOption(options: PickerOption[], value: number): PickerOption | n
 
 function nearlyEqual(left: number, right: number): boolean {
   return Math.abs(left - right) < 1e-9;
+}
+
+function bestPlateLoad(
+  targetWeight: number,
+  barWeights: number[],
+  plateWeights: number[],
+  fallbackBarWeight: number,
+): PlateLoad {
+  const candidates = (barWeights.length > 0 ? barWeights : [fallbackBarWeight]).map((barWeight) =>
+    computePlateLoad(targetWeight, barWeight, plateWeights),
+  );
+  return candidates.sort(
+    (left, right) =>
+      Number(right.exact) - Number(left.exact) ||
+      left.remainder - right.remainder ||
+      right.achievedWeight - left.achievedWeight,
+  )[0]!;
+}
+
+function BarbellSideDiagram({
+  load,
+  targetWeight,
+  unit,
+}: {
+  load: PlateLoad;
+  targetWeight: number;
+  unit: WeightUnit;
+}) {
+  const t = useTranslations('session.calculator');
+  const plates = load.perSide.flatMap((group) =>
+    Array.from({ length: group.count }, (_, index) => ({
+      weight: group.plate,
+      key: `${group.plate}-${index}`,
+    })),
+  );
+  const maxPlate = Math.max(...plates.map((plate) => plate.weight), 1);
+
+  return (
+    <div
+      className="rounded-md border border-border bg-muted/20 px-3 py-2"
+      data-testid="barbell-side-diagram"
+      data-target-weight={targetWeight}
+    >
+      <div
+        className="relative flex h-12 items-center overflow-hidden"
+        aria-label={t('platesPerSide')}
+      >
+        <div className="absolute left-1 right-0 h-2 rounded-sm bg-zinc-500" />
+        <div className="relative z-10 ml-1 h-8 w-3 shrink-0 rounded-sm bg-zinc-400" />
+        <div className="relative z-10 flex items-center gap-0.5">
+          {plates.map((plate) => {
+            const ratio = plate.weight / maxPlate;
+            return (
+              <div
+                key={plate.key}
+                className="flex w-4 shrink-0 items-center justify-center rounded-sm border border-zinc-300 bg-zinc-700 text-[0.55rem] font-bold text-white"
+                style={{ height: `${Math.round(22 + ratio * 24)}px` }}
+                title={`${plate.weight} ${unit.toLowerCase()}`}
+              >
+                <span className="-rotate-90 whitespace-nowrap">{plate.weight}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+        {load.exact ? <LockKeyhole className="size-3 text-emerald-500" /> : null}
+        <span>
+          {t('achieved', {
+            weight: `${load.achievedWeight} ${unit.toLowerCase()}`,
+            bar: `${load.barWeight} ${unit.toLowerCase()}`,
+          })}
+        </span>
+      </div>
+    </div>
+  );
 }

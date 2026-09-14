@@ -589,6 +589,7 @@ export function EditableSetsTable({
         }
         options={picker === 'reps' ? repPickerOptions : weightPickerOptions}
         unit={unit}
+        loadConstraints={loadConstraints}
         onClose={() => setPicker(null)}
         onChoose={chooseValue}
       />
