@@ -9,6 +9,7 @@ const withPWA = require('@ducanh2912/next-pwa').default({
   disable: process.env.NODE_ENV === 'development',
   workboxOptions: {
     skipWaiting: true,
+    clientsClaim: true,
     // Do not pre-cache API routes: too volatile and auth-dependent.
     exclude: [/middleware-manifest\.json$/, /app-build-manifest\.json$/],
     runtimeCaching: [
