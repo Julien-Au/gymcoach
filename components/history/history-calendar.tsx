@@ -103,6 +103,10 @@ export function HistoryCalendar({
     router.replace(`${pathname}?${params.toString()}`);
   }, [pathname, router, search]);
 
+  // URLs carry the zone the current URL already has (the browser zone once
+  // the effect above ran), never the server-resolved one, so the two cannot
+  // diverge and trigger a replace on every navigation.
+  const urlZone = search.get('tz') ?? timeZone;
   const selectedSessions = sessionsByDate.get(selectedDate) ?? [];
   // Calendar labels are pure dates: build them at UTC noon and format them in
   // UTC, so they never shift with the browser or server zone.
@@ -140,7 +144,7 @@ export function HistoryCalendar({
     if (day) params.set('day', day);
     else params.delete('day');
     if (selectedProgramId) params.set('programId', selectedProgramId);
-    params.set('tz', timeZone);
+    params.set('tz', urlZone);
     const href = `${pathname}?${params.toString()}`;
     startTransition(() => router.push(href));
   }
@@ -149,7 +153,7 @@ export function HistoryCalendar({
     setSelectedDate(dateKey);
     const params = new URLSearchParams(window.location.search);
     params.set('day', dateKey);
-    params.set('tz', timeZone);
+    if (!params.has('tz')) params.set('tz', urlZone);
     window.history.replaceState(null, '', `${pathname}?${params.toString()}`);
   }
 
@@ -278,7 +282,7 @@ export function HistoryCalendar({
             {selectedSessions.map((session) => {
               const returnParams = new URLSearchParams({ month: monthKey, day: selectedDate });
               if (selectedProgramId) returnParams.set('programId', selectedProgramId);
-              returnParams.set('tz', timeZone);
+              returnParams.set('tz', urlZone);
               return (
                 <li key={session.id}>
                   <Link

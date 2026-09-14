@@ -91,6 +91,26 @@ describe('HistoryCalendar', () => {
     expect(params.get('tz')).toBe(browserZone);
   });
 
+  it('builds URLs with the zone the URL already carries, not the server fallback', () => {
+    navigation.query = 'month=2026-09&tz=Asia/Tokyo';
+    render(
+      <HistoryCalendar
+        monthKey="2026-09"
+        initialDay="2026-09-12"
+        sessions={sessions}
+        timeZone="UTC"
+      />,
+    );
+
+    expect(screen.getByRole('link', { name: /Upper body/i })).toHaveAttribute(
+      'href',
+      '/history/session-1?month=2026-09&day=2026-09-12&tz=Asia%2FTokyo',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Next month' }));
+    const href = navigation.push.mock.calls[0]?.[0] as string;
+    expect(new URLSearchParams(href.split('?')[1]).get('tz')).toBe('Asia/Tokyo');
+  });
+
   it('shows the filtered empty message when a program has no sessions this month', () => {
     navigation.query = `programId=program-1&month=2026-09&tz=${browserZone}`;
     render(
