@@ -1,4 +1,6 @@
 import { db } from '@/lib/db';
+import { resolveSetEquipmentSnapshot } from '@/lib/set-equipment';
+import { Prisma } from '@/prisma/generated/client';
 
 export interface HistoricalEquipmentGapQuery {
   gymId?: string;
@@ -198,6 +200,99 @@ export async function previewHistoricalEquipmentBackfill(
     guidance:
       'Suggestions are evidence for review, not authorization. Confirm the exact equipment mapping with the trainee before applying any historical backfill.',
   };
+}
+
+export interface ApplyHistoricalEquipmentBackfillInput {
+  gymId: string;
+  exerciseId: string;
+  equipmentId: string;
+  setIds: string[];
+  confirmed: boolean;
+}
+
+export async function applyHistoricalEquipmentBackfill(
+  userId: string,
+  input: ApplyHistoricalEquipmentBackfillInput,
+) {
+  if (input.confirmed !== true) {
+    throw new Error('Historical equipment backfill requires explicit confirmation.');
+  }
+
+  const setIds = [...new Set(input.setIds)];
+  if (setIds.length === 0 || setIds.length > 500) {
+    throw new Error('Historical equipment backfill requires between 1 and 500 unique set IDs.');
+  }
+
+  return db.$transaction(async (tx) => {
+    const equipmentSnapshot = await resolveSetEquipmentSnapshot(tx, {
+      userId,
+      sessionGymId: input.gymId,
+      exerciseId: input.exerciseId,
+      gymEquipmentId: input.equipmentId,
+    });
+    if (equipmentSnapshot.gymEquipmentId !== input.equipmentId) {
+      throw new Error(
+        'Equipment mapping is not owned, linked to the exercise, and in the target gym.',
+      );
+    }
+
+    const eligibleSets = await tx.set.findMany({
+      where: {
+        id: { in: setIds },
+        exerciseId: input.exerciseId,
+        gymEquipmentId: null,
+        session: { userId, gymId: input.gymId },
+      },
+      select: { id: true },
+    });
+    if (eligibleSets.length !== setIds.length) {
+      throw new Error(
+        'Backfill aborted: every requested set must still be owned, belong to the exact gym/exercise mapping, and have no equipment assignment.',
+      );
+    }
+
+    const updated = await tx.set.updateMany({
+      where: {
+        id: { in: setIds },
+        exerciseId: input.exerciseId,
+        gymEquipmentId: null,
+        session: { userId, gymId: input.gymId },
+      },
+      data: equipmentSnapshot,
+    });
+    if (updated.count !== setIds.length) {
+      throw new Error(
+        'Backfill aborted because the eligible set collection changed during the transaction.',
+      );
+    }
+
+    const audit = await tx.mcpHistoricalEquipmentBackfillAudit.create({
+      data: {
+        userId,
+        gymId: input.gymId,
+        exerciseId: input.exerciseId,
+        equipmentId: input.equipmentId,
+        setIds,
+        equipmentSnapshot: {
+          gymEquipmentId: equipmentSnapshot.gymEquipmentId,
+          equipmentNameSnapshot: equipmentSnapshot.equipmentNameSnapshot,
+          // A non-null gymEquipmentId above proves resolveSetEquipmentSnapshot
+          // returned its version-1 JSON object rather than Prisma.JsonNull.
+          equipmentLoadSnapshot: equipmentSnapshot.equipmentLoadSnapshot as Prisma.InputJsonValue,
+        },
+      },
+      select: { id: true, createdAt: true },
+    });
+
+    return {
+      ok: true as const,
+      auditId: audit.id,
+      createdAt: audit.createdAt,
+      appliedSetIds: setIds,
+      appliedSetCount: setIds.length,
+      equipmentSnapshot,
+    };
+  });
 }
 
 function pairKey(gymId: string | null, exerciseId: string) {

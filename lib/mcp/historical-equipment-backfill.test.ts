@@ -2,14 +2,19 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/lib/db', () => ({
   db: {
+    $transaction: vi.fn(),
     set: { findMany: vi.fn() },
     gymEquipment: { findMany: vi.fn() },
   },
 }));
 
 import { db } from '@/lib/db';
-import { previewHistoricalEquipmentBackfill } from '@/lib/mcp/historical-equipment-backfill';
+import {
+  applyHistoricalEquipmentBackfill,
+  previewHistoricalEquipmentBackfill,
+} from '@/lib/mcp/historical-equipment-backfill';
 
+const transaction = vi.mocked(db.$transaction);
 const findSets = vi.mocked(db.set.findMany);
 const findEquipment = vi.mocked(db.gymEquipment.findMany);
 
@@ -110,5 +115,87 @@ describe('historical equipment backfill preview', () => {
       reason: 'MOST_USED_ASSIGNED_HISTORY',
     });
     expect(result.groups[0]?.suggestionIsConfirmation).toBe(false);
+  });
+});
+
+describe('historical equipment backfill apply', () => {
+  beforeEach(() => {
+    transaction.mockReset();
+  });
+
+  it('requires explicit confirmation before opening a transaction', async () => {
+    await expect(
+      applyHistoricalEquipmentBackfill('user-1', {
+        gymId: 'gym-xfit',
+        exerciseId: 'exercise-row',
+        equipmentId: 'cable-a',
+        setIds: ['set-1'],
+        confirmed: false,
+      }),
+    ).rejects.toThrow('explicit confirmation');
+    expect(transaction).not.toHaveBeenCalled();
+  });
+
+  it('atomically assigns only exact still-unassigned sets and creates a durable audit record', async () => {
+    const tx = {
+      gymEquipment: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: 'cable-a',
+          gymId: 'gym-xfit',
+          name: 'Cable A',
+          equipmentType: 'CABLE',
+          manufacturer: 'Acme',
+          modelName: 'Stack 1',
+          weightOptions: [20, 30, 40],
+        }),
+      },
+      set: {
+        findMany: vi.fn().mockResolvedValue([{ id: 'set-1' }, { id: 'set-2' }]),
+        updateMany: vi.fn().mockResolvedValue({ count: 2 }),
+      },
+      mcpHistoricalEquipmentBackfillAudit: {
+        create: vi.fn().mockResolvedValue({
+          id: 'audit-1',
+          createdAt: new Date('2026-09-15T00:00:00.000Z'),
+        }),
+      },
+    };
+    transaction.mockImplementation((async (callback: (client: typeof tx) => Promise<unknown>) =>
+      callback(tx)) as never);
+
+    const result = await applyHistoricalEquipmentBackfill('user-1', {
+      gymId: 'gym-xfit',
+      exerciseId: 'exercise-row',
+      equipmentId: 'cable-a',
+      setIds: ['set-1', 'set-2'],
+      confirmed: true,
+    });
+
+    expect(tx.set.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: { in: ['set-1', 'set-2'] },
+          exerciseId: 'exercise-row',
+          gymEquipmentId: null,
+          session: { userId: 'user-1', gymId: 'gym-xfit' },
+        }),
+        data: expect.objectContaining({
+          gymEquipmentId: 'cable-a',
+          equipmentNameSnapshot: 'Cable A',
+        }),
+      }),
+    );
+    expect(tx.mcpHistoricalEquipmentBackfillAudit.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          userId: 'user-1',
+          gymId: 'gym-xfit',
+          exerciseId: 'exercise-row',
+          equipmentId: 'cable-a',
+          setIds: ['set-1', 'set-2'],
+        }),
+      }),
+    );
+    expect(result).toMatchObject({ auditId: 'audit-1', appliedSetCount: 2 });
   });
 });
