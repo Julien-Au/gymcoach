@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useFormatter, useTranslations } from 'next-intl';
 import { Copy, KeyRound, Loader2, Plug, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -24,6 +24,7 @@ interface Props {
 
 export function McpSection({ initialTokens }: Props) {
   const t = useTranslations('settings.mcp');
+  const format = useFormatter();
   const [tokens, setTokens] = useState(initialTokens);
   const [name, setName] = useState('ChatGPT');
   // Least privilege: new connections start read-only; the user opts in to write.
@@ -146,7 +147,13 @@ export function McpSection({ initialTokens }: Props) {
                   <p className="text-xs text-muted-foreground">
                     {token.canWrite ? t('readWrite') : t('readOnly')}
                     {token.lastUsedAt
-                      ? ` · ${t('lastUsed', { date: new Date(token.lastUsedAt).toLocaleDateString() })}`
+                      ? ` · ${t('lastUsed', {
+                          date: format.dateTime(new Date(token.lastUsedAt), {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                          }),
+                        })}`
                       : ''}
                   </p>
                 </div>

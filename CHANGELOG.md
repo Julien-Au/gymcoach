@@ -408,6 +408,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Progress-photo storage paths are now built with POSIX separators, so a
+  server running on Windows no longer writes a backslash into the stored
+  relative path and then fails to read the photo back on any other platform.
+  The path-containment guard is unchanged. Community contribution by @SHAREN
+  (#350).
+- The "last used" date on an MCP connection in Settings is now formatted with
+  the app's locale through `next-intl` instead of the browser's own
+  `toLocaleDateString`, so it reads the same on the server and on the client
+  and no longer depends on the machine's regional settings. Community
+  contribution by @SHAREN (#354).
 - Every exercise in the default catalog now carries its equipment type. The
   seeded catalog never set `equipmentType`, so all 55 entries were `OTHER`: the
   logger's load rounding could not pick the barbell, dumbbell or stack branch
