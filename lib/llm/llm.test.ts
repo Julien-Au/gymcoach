@@ -34,6 +34,7 @@ const ENV_KEYS = [
   'OPENROUTER_MODEL',
   'OPENROUTER_APP_NAME',
   'OPENROUTER_APP_URL',
+  'OPENROUTER_MAX_TOKENS',
   'CODEX_LB_API_KEY',
   'CODEX_LB_BASE_URL',
   'CODEX_LB_MODEL',
@@ -225,5 +226,46 @@ describe('OpenRouterProvider', () => {
     await expect(
       p.complete({ system: 'S', messages: [{ role: 'user', content: 'x' }] }),
     ).rejects.toBeInstanceOf(LlmError);
+  });
+
+  it('OPENROUTER_MAX_TOKENS raises the per-call budget but never lowers it', async () => {
+    process.env.OPENROUTER_API_KEY = 'or-key';
+    process.env.OPENROUTER_MAX_TOKENS = '100000';
+    const fetchFn = mockFetch(() => ({
+      ok: true,
+      json: async () => ({ choices: [{ message: { role: 'assistant', content: 'ok' } }] }),
+    }));
+    const p = new OpenRouterProvider();
+    await p.complete({ system: 'S', messages: [{ role: 'user', content: 'x' }], maxTokens: 200 });
+    await p.complete({ system: 'S', messages: [{ role: 'user', content: 'x' }] });
+    await p.complete({
+      system: 'S',
+      messages: [{ role: 'user', content: 'x' }],
+      maxTokens: 250000,
+    });
+    const budgets = fetchFn.mock.calls.map(
+      ([, init]) => JSON.parse(init.body as string).max_tokens,
+    );
+    expect(budgets).toEqual([100000, 100000, 250000]);
+
+    process.env.OPENROUTER_MAX_TOKENS = 'nope';
+    await p.complete({ system: 'S', messages: [{ role: 'user', content: 'x' }], maxTokens: 200 });
+    expect(JSON.parse(fetchFn.mock.calls[3]![1].body as string).max_tokens).toBe(200);
+  });
+
+  it('throws 502 with a clear message when the reply was cut off by max_tokens', async () => {
+    process.env.OPENROUTER_API_KEY = 'or-key';
+    mockFetch(() => ({
+      ok: true,
+      json: async () => ({
+        choices: [
+          { message: { role: 'assistant', content: '{"name": "trunc' }, finish_reason: 'length' },
+        ],
+      }),
+    }));
+    const p = new OpenRouterProvider();
+    await expect(
+      p.complete({ system: 'S', messages: [{ role: 'user', content: 'x' }] }),
+    ).rejects.toMatchObject({ status: 502, message: expect.stringContaining('cut off') });
   });
 });
