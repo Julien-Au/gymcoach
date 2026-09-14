@@ -105,3 +105,25 @@ export function computePlateLoad(
     exact: remainder === 0,
   };
 }
+
+export function computeBestPlateLoad(
+  targetWeight: number,
+  barWeights: number[],
+  availablePlates: number[],
+  fallbackBarWeight: number,
+): PlateLoad {
+  const bars = barWeights.filter((bar) => Number.isFinite(bar) && bar > 0);
+  const candidates = (bars.length > 0 ? bars : [fallbackBarWeight]).map((barWeight) =>
+    computePlateLoad(targetWeight, barWeight, availablePlates),
+  );
+
+  return (
+    candidates.sort(
+      (a, b) =>
+        Number(b.exact) - Number(a.exact) ||
+        a.remainder - b.remainder ||
+        b.achievedWeight - a.achievedWeight ||
+        a.barWeight - b.barWeight,
+    )[0] ?? computePlateLoad(targetWeight, fallbackBarWeight, availablePlates)
+  );
+}
