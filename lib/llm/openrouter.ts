@@ -9,9 +9,20 @@ import {
 const DEFAULT_MODEL = 'anthropic/claude-sonnet-4.5';
 const DEFAULT_MAX_TOKENS = 8000;
 
+// Optional floor on the output budget of every OpenRouter call. Reasoning
+// models (e.g. z-ai/glm-5.3-flash) spend thousands of tokens thinking before
+// answering and count them against max_tokens, so the per-call budgets sized
+// for plain chat models truncate their answers mid-JSON. Set
+// OPENROUTER_MAX_TOKENS (e.g. 100000) to give them room.
+export function resolveOpenRouterMaxTokens(requested: number | undefined): number {
+  const base = requested ?? DEFAULT_MAX_TOKENS;
+  const floor = Number.parseInt(process.env.OPENROUTER_MAX_TOKENS ?? '', 10);
+  return Number.isFinite(floor) && floor > 0 ? Math.max(base, floor) : base;
+}
+
 interface OpenRouterResponse {
   model?: string;
-  choices?: Array<{ message?: { role: string; content: string } }>;
+  choices?: Array<{ message?: { role: string; content: string }; finish_reason?: string }>;
   error?: { message: string; code?: number | string };
 }
 
@@ -64,7 +75,7 @@ export class OpenRouterProvider implements LlmProvider {
         ...req.messages.map((m) => ({ role: m.role, content: m.content })),
       ],
       ...(req.temperature != null ? { temperature: req.temperature } : {}),
-      max_tokens: req.maxTokens ?? DEFAULT_MAX_TOKENS,
+      max_tokens: resolveOpenRouterMaxTokens(req.maxTokens),
     };
 
     let res: Response;
@@ -95,7 +106,15 @@ export class OpenRouterProvider implements LlmProvider {
     if (json.error) {
       throw new LlmError(502, `OpenRouter: ${json.error.message}`);
     }
-    const text = json.choices?.[0]?.message?.content?.trim();
+    const choice = json.choices?.[0];
+    const text = choice?.message?.content?.trim();
+    if (choice?.finish_reason === 'length') {
+      throw new LlmError(
+        502,
+        'The coach response was cut off: the model hit its output token budget ' +
+          '(reasoning models count their thinking against it). Raise OPENROUTER_MAX_TOKENS or retry.',
+      );
+    }
     if (!text) {
       throw new LlmError(502, 'Empty response from the coach.');
     }
@@ -114,7 +133,7 @@ export class OpenRouterProvider implements LlmProvider {
         ...req.messages.map((m) => ({ role: m.role, content: m.content })),
       ],
       ...(req.temperature != null ? { temperature: req.temperature } : {}),
-      max_tokens: req.maxTokens ?? DEFAULT_MAX_TOKENS,
+      max_tokens: resolveOpenRouterMaxTokens(req.maxTokens),
       stream: true,
     };
 
