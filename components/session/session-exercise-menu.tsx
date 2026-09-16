@@ -72,6 +72,7 @@ export function SessionExerciseMenu({
         : catalog.filter(
             (exercise) =>
               exercise.id !== programExercise.exerciseId &&
+              !existingExerciseIds.has(exercise.id) &&
               exercise.muscleGroup === programExercise.exercise.muscleGroup,
           );
     if (!needle) return source;

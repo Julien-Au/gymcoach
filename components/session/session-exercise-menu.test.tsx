@@ -29,6 +29,11 @@ const row = {
   equipmentType: 'CABLE',
   defaultRestSec: 90,
 } as Exercise;
+const decline = {
+  ...bench,
+  id: 'decline',
+  name: 'Decline Press',
+} as Exercise;
 
 const programExercise = {
   id: 'pe-bench',
@@ -81,6 +86,30 @@ describe('SessionExerciseMenu', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Replace exercise' }));
     expect(screen.getByRole('button', { name: 'Incline Press' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Cable Row' })).not.toBeInTheDocument();
+  });
+
+  it('does not offer a replacement already assigned elsewhere in the workout', () => {
+    const declineProgramExercise = {
+      ...programExercise,
+      id: 'pe-decline',
+      exerciseId: 'decline',
+      order: 2,
+      exercise: decline,
+    } as ProgramExercise & { exercise: Exercise };
+    render(
+      <SessionExerciseMenu
+        open
+        onOpenChange={vi.fn()}
+        programExercise={programExercise}
+        programExercises={[programExercise, declineProgramExercise, nextProgramExercise]}
+        catalog={[bench, incline, decline, row]}
+        loggedSetCount={0}
+        onChanged={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Replace exercise' }));
+    expect(screen.getByRole('button', { name: 'Incline Press' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Decline Press' })).not.toBeInTheDocument();
   });
 
   it('replaces through the existing owned program-exercise route', async () => {

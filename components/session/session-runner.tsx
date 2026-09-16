@@ -163,6 +163,7 @@ export function SessionRunner({
   const initialExerciseIndex = selectedExerciseIndex(programExercises, initialProgramExerciseId);
   const [hydrated, setHydrated] = useState(false);
   const [currentIdx, setCurrentIdx] = useState(initialExerciseIndex);
+  const [pendingProgramExerciseId, setPendingProgramExerciseId] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>({ kind: 'input' });
   const [closing, setClosing] = useState(false);
   const [exerciseMenuOpen, setExerciseMenuOpen] = useState(false);
@@ -173,6 +174,14 @@ export function SessionRunner({
 
   const currentPE = programExercises[currentIdx];
   const currentTarget = effectiveProgramExercises[currentIdx];
+
+  useEffect(() => {
+    if (!pendingProgramExerciseId) return;
+    const refreshedIndex = programExercises.findIndex((item) => item.id === pendingProgramExerciseId);
+    if (refreshedIndex < 0) return;
+    setCurrentIdx(refreshedIndex);
+    setPendingProgramExerciseId(null);
+  }, [pendingProgramExerciseId, programExercises]);
 
   // When auto-regulation is off, the readiness signal is dropped entirely, so
   // the suggestion falls back to pure programmed progression (pre-#55 behavior).
@@ -688,10 +697,7 @@ export function SessionRunner({
           onChanged={(options) => {
             setExerciseMenuOpen(false);
             if (options?.selectProgramExerciseId) {
-              const fallbackIndex = programExercises.findIndex(
-                (item) => item.id === options.selectProgramExerciseId,
-              );
-              if (fallbackIndex >= 0) selectExercise(fallbackIndex);
+              setPendingProgramExerciseId(options.selectProgramExerciseId);
             }
             router.refresh();
           }}
