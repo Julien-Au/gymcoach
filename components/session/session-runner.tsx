@@ -163,7 +163,10 @@ export function SessionRunner({
   const initialExerciseIndex = selectedExerciseIndex(programExercises, initialProgramExerciseId);
   const [hydrated, setHydrated] = useState(false);
   const [currentIdx, setCurrentIdx] = useState(initialExerciseIndex);
-  const [pendingProgramExerciseId, setPendingProgramExerciseId] = useState<string | null>(null);
+  const [pendingExerciseSelection, setPendingExerciseSelection] = useState<{
+    selectProgramExerciseId: string;
+    removedProgramExerciseId?: string;
+  } | null>(null);
   const [mode, setMode] = useState<Mode>({ kind: 'input' });
   const [closing, setClosing] = useState(false);
   const [exerciseMenuOpen, setExerciseMenuOpen] = useState(false);
@@ -176,12 +179,20 @@ export function SessionRunner({
   const currentTarget = effectiveProgramExercises[currentIdx];
 
   useEffect(() => {
-    if (!pendingProgramExerciseId) return;
-    const refreshedIndex = programExercises.findIndex((item) => item.id === pendingProgramExerciseId);
+    if (!pendingExerciseSelection) return;
+    if (
+      pendingExerciseSelection.removedProgramExerciseId &&
+      programExercises.some((item) => item.id === pendingExerciseSelection.removedProgramExerciseId)
+    ) {
+      return;
+    }
+    const refreshedIndex = programExercises.findIndex(
+      (item) => item.id === pendingExerciseSelection.selectProgramExerciseId,
+    );
     if (refreshedIndex < 0) return;
     setCurrentIdx(refreshedIndex);
-    setPendingProgramExerciseId(null);
-  }, [pendingProgramExerciseId, programExercises]);
+    setPendingExerciseSelection(null);
+  }, [pendingExerciseSelection, programExercises]);
 
   // When auto-regulation is off, the readiness signal is dropped entirely, so
   // the suggestion falls back to pure programmed progression (pre-#55 behavior).
@@ -697,7 +708,10 @@ export function SessionRunner({
           onChanged={(options) => {
             setExerciseMenuOpen(false);
             if (options?.selectProgramExerciseId) {
-              setPendingProgramExerciseId(options.selectProgramExerciseId);
+              setPendingExerciseSelection({
+                selectProgramExerciseId: options.selectProgramExerciseId,
+                removedProgramExerciseId: options.removedProgramExerciseId,
+              });
             }
             router.refresh();
           }}

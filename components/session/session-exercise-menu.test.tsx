@@ -172,6 +172,9 @@ describe('SessionExerciseMenu', () => {
     const [url, init] = vi.mocked(fetch).mock.calls[0]!;
     expect(url).toBe('/api/program-exercises/pe-bench');
     expect(init?.method).toBe('DELETE');
-    expect(onChanged).toHaveBeenCalledWith({ selectProgramExerciseId: 'pe-row' });
+    expect(onChanged).toHaveBeenCalledWith({
+      selectProgramExerciseId: 'pe-row',
+      removedProgramExerciseId: 'pe-bench',
+    });
   });
 });

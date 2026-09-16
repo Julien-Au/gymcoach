@@ -20,7 +20,7 @@ interface Props {
   programExercises: SessionProgramExercise[];
   catalog: Exercise[];
   loggedSetCount: number;
-  onChanged: (options?: { selectProgramExerciseId?: string }) => void;
+  onChanged: (options?: { selectProgramExerciseId?: string; removedProgramExerciseId?: string }) => void;
 }
 
 function replacementPayload(programExercise: ProgramExercise, exerciseId: string) {
@@ -184,7 +184,10 @@ export function SessionExerciseMenu({
       onOpenChange(false);
       setView('actions');
       setQuery('');
-      onChanged({ selectProgramExerciseId: next?.id ?? previous?.id });
+      onChanged({
+        selectProgramExerciseId: next?.id ?? previous?.id,
+        removedProgramExerciseId: programExercise.id,
+      });
     } catch {
       toast.error(t('removeError'));
     } finally {
