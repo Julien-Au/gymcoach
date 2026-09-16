@@ -70,10 +70,24 @@ describe('historical equipment backfill transactions', () => {
       expect.objectContaining({
         gymEquipmentId: seeded.equipment.id,
         equipmentNameSnapshot: seeded.equipment.name,
+        equipmentLoadSnapshot: {
+          version: 1,
+          equipmentType: 'CABLE',
+          manufacturer: null,
+          modelName: null,
+          weightOptions: [10, 20, 30],
+        },
       }),
       expect.objectContaining({
         gymEquipmentId: seeded.equipment.id,
         equipmentNameSnapshot: seeded.equipment.name,
+        equipmentLoadSnapshot: {
+          version: 1,
+          equipmentType: 'CABLE',
+          manufacturer: null,
+          modelName: null,
+          weightOptions: [10, 20, 30],
+        },
       }),
     ]);
     expect(

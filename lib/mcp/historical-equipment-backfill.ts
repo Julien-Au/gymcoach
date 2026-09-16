@@ -81,19 +81,14 @@ export async function previewHistoricalEquipmentBackfill(
         })
       : Promise.resolve([]),
     gymIds.length && exerciseIds.length
-      ? db.set.findMany({
+      ? db.set.groupBy({
+          by: ['exerciseId', 'gymEquipmentId'],
           where: {
             gymEquipmentId: { not: null },
             exerciseId: { in: exerciseIds },
             session: { userId, gymId: { in: gymIds } },
           },
-          orderBy: { completedAt: 'desc' },
-          take: 5000,
-          select: {
-            exerciseId: true,
-            gymEquipmentId: true,
-            session: { select: { gymId: true } },
-          },
+          _count: { _all: true },
         })
       : Promise.resolve([]),
   ]);
@@ -137,11 +132,15 @@ export async function previewHistoricalEquipmentBackfill(
     groups.set(key, current);
   }
 
+  const equipmentById = new Map(equipment.map((item) => [item.id, item]));
   const evidenceCounts = new Map<string, number>();
   for (const row of assignedEvidence) {
-    if (!row.session.gymId || !row.gymEquipmentId) continue;
-    const key = pairKey(row.session.gymId, row.exerciseId) + '\u0000' + row.gymEquipmentId;
-    evidenceCounts.set(key, (evidenceCounts.get(key) ?? 0) + 1);
+    if (!row.gymEquipmentId) continue;
+    const assignedEquipment = equipmentById.get(row.gymEquipmentId);
+    if (!assignedEquipment) continue;
+    const key =
+      pairKey(assignedEquipment.gymId, row.exerciseId) + '\u0000' + row.gymEquipmentId;
+    evidenceCounts.set(key, (evidenceCounts.get(key) ?? 0) + row._count._all);
   }
 
   const serializedGroups = [...groups.values()].map((group) => {

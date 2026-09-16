@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('@/lib/db', () => ({
   db: {
     $transaction: vi.fn(),
-    set: { findMany: vi.fn() },
+    set: { findMany: vi.fn(), groupBy: vi.fn() },
     gymEquipment: { findMany: vi.fn() },
   },
 }));
@@ -17,11 +17,13 @@ import {
 
 const transaction = vi.mocked(db.$transaction);
 const findSets = vi.mocked(db.set.findMany);
+const groupSets = vi.mocked(db.set.groupBy);
 const findEquipment = vi.mocked(db.gymEquipment.findMany);
 
 describe('historical equipment backfill preview', () => {
   beforeEach(() => {
     findSets.mockReset();
+    groupSets.mockReset();
     findEquipment.mockReset();
   });
 
@@ -42,8 +44,8 @@ describe('historical equipment backfill preview', () => {
             gym: { id: 'gym-xfit', name: 'X-Fit' },
           },
         },
-      ] as never)
-      .mockResolvedValueOnce([] as never);
+      ] as never);
+    groupSets.mockResolvedValueOnce([] as never);
     findEquipment.mockResolvedValue([
       {
         id: 'bar-20',
@@ -85,12 +87,11 @@ describe('historical equipment backfill preview', () => {
             gym: { id: 'gym-xfit', name: 'X-Fit' },
           },
         },
-      ] as never)
-      .mockResolvedValueOnce([
-        { exerciseId: 'exercise-row', gymEquipmentId: 'cable-b', session: { gymId: 'gym-xfit' } },
-        { exerciseId: 'exercise-row', gymEquipmentId: 'cable-b', session: { gymId: 'gym-xfit' } },
-        { exerciseId: 'exercise-row', gymEquipmentId: 'cable-a', session: { gymId: 'gym-xfit' } },
       ] as never);
+    groupSets.mockResolvedValueOnce([
+      { exerciseId: 'exercise-row', gymEquipmentId: 'cable-b', _count: { _all: 2 } },
+      { exerciseId: 'exercise-row', gymEquipmentId: 'cable-a', _count: { _all: 1 } },
+    ] as never);
     findEquipment.mockResolvedValue([
       {
         id: 'cable-a',
