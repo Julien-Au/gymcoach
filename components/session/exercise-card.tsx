@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useFormatter, useLocale, useTranslations } from 'next-intl';
-import { ChevronDown, ChevronUp, HelpCircle, Lightbulb, TrendingUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, HelpCircle, Lightbulb, MoreHorizontal, TrendingUp } from 'lucide-react';
 import type { Exercise, ProgramExercise, WeightUnit } from '@/lib/prisma-client';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -38,6 +38,7 @@ interface Props {
   unit: WeightUnit;
   gymName?: string | null;
   loadConstraints?: GymLoadConstraints | null;
+  onOpenMenu?: () => void;
 }
 
 export function ExerciseCard({
@@ -48,6 +49,7 @@ export function ExerciseCard({
   unit,
   gymName = null,
   loadConstraints = null,
+  onOpenMenu,
 }: Props) {
   const t = useTranslations('session.exerciseCard');
   const exerciseT = useTranslations('exercises');
@@ -120,13 +122,27 @@ export function ExerciseCard({
   return (
     <Card className="min-w-0">
       <CardHeader className="min-w-0 pb-3">
-        <div
-          data-testid="exercise-title-scroll"
-          className="max-w-full overflow-x-auto overscroll-x-contain pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        >
-          <h2 className="w-max min-w-full whitespace-nowrap text-xl font-bold tracking-tight sm:text-2xl">
-            {exerciseName(exo.name)}
-          </h2>
+        <div className="flex min-w-0 items-start gap-1">
+          <div
+            data-testid="exercise-title-scroll"
+            className="min-w-0 flex-1 overflow-x-auto overscroll-x-contain pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            <h2 className="w-max min-w-full whitespace-nowrap text-xl font-bold tracking-tight sm:text-2xl">
+              {exerciseName(exo.name)}
+            </h2>
+          </div>
+          {onOpenMenu && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={onOpenMenu}
+              aria-label={t('actions')}
+              className="-mr-2 -mt-2 size-10 shrink-0"
+            >
+              <MoreHorizontal className="size-5" aria-hidden />
+            </Button>
+          )}
         </div>
         <div className="mt-1 flex flex-wrap gap-1.5">
           <Badge variant="secondary">

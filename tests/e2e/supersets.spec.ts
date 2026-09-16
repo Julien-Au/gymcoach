@@ -57,9 +57,7 @@ async function seedPairableWorkout(
   return { programId: program.id, workoutId: workout.id };
 }
 
-test('a lifter can pair two exercises as a superset and run the A1/A2 flow', async ({
-  page,
-}) => {
+test('a lifter can pair two exercises as a superset and run the A1/A2 flow', async ({ page }) => {
   // Sign up through the API (fresh user; the cookie lands in the context). A
   // unique X-Forwarded-For keeps this spec in its own register rate-limit
   // bucket.
@@ -98,10 +96,14 @@ test('a lifter can pair two exercises as a superset and run the A1/A2 flow', asy
   await expect(page.getByText('Superset A1')).toBeVisible();
   await expect(page.getByText(/Exercise 1\/2 · E2E Bench/)).toBeVisible();
 
-  // Log a working set on A1; after the rest, the runner auto-advances to A2
-  // (the alternating superset flow), not to a second bench set.
+  // Log a working set on A1. For a same-superset transition, the runner shows
+  // A2 immediately while the short rest is still counting down so the lifter
+  // can move into position; skipping rest must not navigate a second time.
   await page.getByLabel('Quick entry').fill('60x8@2');
   await page.getByRole('button', { name: /log the set/i }).click();
+  await expect(page.getByTestId('rest-remaining')).toBeVisible();
+  await expect(page.getByText('Superset A2')).toBeVisible();
+  await expect(page.getByText(/Exercise 2\/2 · E2E Row/)).toBeVisible();
   await page.getByRole('button', { name: /skip/i }).click();
   await expect(page.getByText('Superset A2')).toBeVisible();
   await expect(page.getByText(/Exercise 2\/2 · E2E Row/)).toBeVisible();

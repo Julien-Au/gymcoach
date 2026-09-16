@@ -50,6 +50,7 @@ import {
 } from '@/lib/sync';
 import { hydrateFromServerSets } from '@/lib/sync-hydration';
 import { ExerciseCard } from '@/components/session/exercise-card';
+import { SessionExerciseMenu } from '@/components/session/session-exercise-menu';
 import { SetsList } from '@/components/session/sets-list';
 import { EditableSetsTable } from '@/components/session/editable-sets-table';
 import { SetInput } from '@/components/session/set-input';
@@ -106,11 +107,18 @@ type SessionRunnerProps = {
   deloadActive: boolean;
   unit: WeightUnit;
   initialProgramExerciseId?: string;
+  catalog: Exercise[];
 };
 
 type Mode =
   | { kind: 'input' }
-  | { kind: 'rest'; endsAt: number; totalSec: number; nextExerciseIdx: number | null }
+  | {
+      kind: 'rest';
+      endsAt: number;
+      totalSec: number;
+      nextExerciseIdx: number | null;
+      navigatedImmediately: boolean;
+    }
   | { kind: 'summary' };
 
 export function SessionRunner({
@@ -121,6 +129,7 @@ export function SessionRunner({
   deloadActive,
   unit,
   initialProgramExerciseId,
+  catalog,
 }: SessionRunnerProps) {
   const t = useTranslations('session');
   const exerciseName = useExerciseName();
@@ -154,8 +163,13 @@ export function SessionRunner({
   const initialExerciseIndex = selectedExerciseIndex(programExercises, initialProgramExerciseId);
   const [hydrated, setHydrated] = useState(false);
   const [currentIdx, setCurrentIdx] = useState(initialExerciseIndex);
+  const [pendingExerciseSelection, setPendingExerciseSelection] = useState<{
+    selectProgramExerciseId: string;
+    removedProgramExerciseId?: string;
+  } | null>(null);
   const [mode, setMode] = useState<Mode>({ kind: 'input' });
   const [closing, setClosing] = useState(false);
+  const [exerciseMenuOpen, setExerciseMenuOpen] = useState(false);
   // Readiness auto-regulation can be turned off in settings (issue #61). The
   // preference lives in localStorage, so it is read after mount; until then we
   // assume the default (on) so the first render matches the server output.
@@ -163,6 +177,22 @@ export function SessionRunner({
 
   const currentPE = programExercises[currentIdx];
   const currentTarget = effectiveProgramExercises[currentIdx];
+
+  useEffect(() => {
+    if (!pendingExerciseSelection) return;
+    if (
+      pendingExerciseSelection.removedProgramExerciseId &&
+      programExercises.some((item) => item.id === pendingExerciseSelection.removedProgramExerciseId)
+    ) {
+      return;
+    }
+    const refreshedIndex = programExercises.findIndex(
+      (item) => item.id === pendingExerciseSelection.selectProgramExerciseId,
+    );
+    if (refreshedIndex < 0) return;
+    setCurrentIdx(refreshedIndex);
+    setPendingExerciseSelection(null);
+  }, [pendingExerciseSelection, programExercises]);
 
   // When auto-regulation is off, the readiness signal is dropped entirely, so
   // the suggestion falls back to pure programmed progression (pre-#55 behavior).
@@ -393,11 +423,18 @@ export function SessionRunner({
     const transition = isSupersetTransitionRest(supersetView, currentIdx, nextIdx);
     const restSec = transition ? SUPERSET_TRANSITION_REST_SEC : currentTarget.restSec;
 
+    // For a same-superset transition, show the next exercise immediately so
+    // the lifter can get into position while the short transition rest runs.
+    // The timer still keeps input locked until it ends or is skipped.
+    const navigatedImmediately = transition && nextIdx != null;
+    if (navigatedImmediately) selectExercise(nextIdx);
+
     setMode({
       kind: 'rest',
       endsAt: Date.now() + restSec * 1000,
       totalSec: restSec,
       nextExerciseIdx: nextIdx,
+      navigatedImmediately,
     });
   }
 
@@ -514,14 +551,14 @@ export function SessionRunner({
 
   function handleRestEnd() {
     vibrate(VIBRATION_PATTERNS.restEnd);
-    if (mode.kind === 'rest' && mode.nextExerciseIdx != null) {
+    if (mode.kind === 'rest' && !mode.navigatedImmediately && mode.nextExerciseIdx != null) {
       selectExercise(mode.nextExerciseIdx);
     }
     setMode({ kind: 'input' });
   }
 
   function handleSkipRest() {
-    if (mode.kind === 'rest' && mode.nextExerciseIdx != null) {
+    if (mode.kind === 'rest' && !mode.navigatedImmediately && mode.nextExerciseIdx != null) {
       selectExercise(mode.nextExerciseIdx);
     }
     setMode({ kind: 'input' });
@@ -586,6 +623,10 @@ export function SessionRunner({
         : currentSets.filter((set) => !set.isWarmup).length < currentTarget.targetSets
           ? currentTarget
           : null
+      : null;
+  const restNextLabel =
+    mode.kind === 'rest' && !mode.navigatedImmediately && restNextPe
+      ? exerciseName(restNextPe.exercise.name)
       : null;
   const restRecommendation =
     mode.kind === 'rest' && restNextPe ? recommendationFor(restNextPe, mode.endsAt) : null;
@@ -655,6 +696,25 @@ export function SessionRunner({
           unit={unit}
           gymName={session.gym?.name ?? null}
           loadConstraints={loadConstraintsFor(currentPE)}
+          onOpenMenu={mode.kind === 'input' ? () => setExerciseMenuOpen(true) : undefined}
+        />
+        <SessionExerciseMenu
+          open={exerciseMenuOpen}
+          onOpenChange={setExerciseMenuOpen}
+          programExercise={currentPE}
+          programExercises={programExercises}
+          catalog={catalog}
+          loggedSetCount={currentSets.filter((set) => !set.isWarmup).length}
+          onChanged={(options) => {
+            setExerciseMenuOpen(false);
+            if (options?.selectProgramExerciseId) {
+              setPendingExerciseSelection({
+                selectProgramExerciseId: options.selectProgramExerciseId,
+                removedProgramExerciseId: options.removedProgramExerciseId,
+              });
+            }
+            router.refresh();
+          }}
         />
         <ReturnToTrainingNotice
           recommendation={currentReturnRecommendation}
@@ -717,7 +777,7 @@ export function SessionRunner({
           <RestTimer
             endsAt={mode.endsAt}
             totalSec={mode.totalSec}
-            nextLabel={restNextPe ? exerciseName(restNextPe.exercise.name) : null}
+            nextLabel={restNextLabel}
             recommendation={restRecommendation}
             unit={unit}
             onEnd={handleRestEnd}
