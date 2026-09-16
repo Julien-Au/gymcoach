@@ -30,7 +30,19 @@ describe('GymCoach MCP server', () => {
     expect(byName.has('get_training_context')).toBe(true);
     expect(byName.has('create_program')).toBe(true);
     expect(byName.has('update_program_exercise')).toBe(true);
+    expect(byName.has('preview_historical_equipment_backfill')).toBe(true);
+    expect(byName.has('apply_historical_equipment_backfill')).toBe(true);
+    expect(byName.has('undo_historical_equipment_backfill')).toBe(true);
     expect(byName.get('get_training_context')?.annotations?.readOnlyHint).toBe(true);
+    expect(byName.get('preview_historical_equipment_backfill')?.annotations?.readOnlyHint).toBe(
+      true,
+    );
+    expect(byName.get('apply_historical_equipment_backfill')?.annotations?.readOnlyHint).toBe(
+      false,
+    );
+    expect(byName.get('undo_historical_equipment_backfill')?.annotations?.destructiveHint).toBe(
+      true,
+    );
     expect(byName.get('remove_program_exercise')?.annotations?.destructiveHint).toBe(true);
 
     const resources = await client.listResources();

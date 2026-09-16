@@ -387,6 +387,20 @@ model Set {
 // it (upsert on the unique constraint). Weight is stored in kg like Set.weight;
 // for bodyweight exercises it is the EFFECTIVE load (bodyweight + added load),
 // consistent with lib/stats.ts effectiveWeight semantics.
+model McpHistoricalEquipmentBackfillAudit {
+  id                String    @id @default(cuid())
+  userId            String
+  gymId             String
+  exerciseId        String
+  equipmentId       String
+  setIds             String[]
+  equipmentSnapshot Json
+  createdAt          DateTime  @default(now())
+  undoneAt           DateTime?
+
+  @@index([userId, createdAt])
+}
+
 model ExerciseGoal {
   id           String    @id @default(cuid())
   userId       String

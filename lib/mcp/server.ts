@@ -12,6 +12,11 @@ import {
   SetAutoregulationMode,
 } from '@/lib/prisma-client';
 import type { McpPrincipal } from '@/lib/mcp/auth';
+import {
+  applyHistoricalEquipmentBackfill,
+  previewHistoricalEquipmentBackfill,
+  undoHistoricalEquipmentBackfill,
+} from '@/lib/mcp/historical-equipment-backfill';
 
 export const GYMCOACH_MCP_INSTRUCTIONS = `GymCoach stores the trainee's profile, gyms, equipment, programs, workout history, sets, RIR, goals and recovery signals.
 
@@ -170,6 +175,78 @@ export function createGymCoachMcpServer({ principal, baseUrl }: ServerOptions): 
         },
       });
       return result({ exercises });
+    },
+  );
+
+  server.registerTool(
+    'preview_historical_equipment_backfill',
+    {
+      title: 'Preview historical equipment backfill',
+      description:
+        'Finds owned historical sets that are missing a physical equipment assignment and returns linked equipment candidates plus prior-use evidence. This tool never writes data and suggestions are not user confirmation.',
+      inputSchema: {
+        gymId: z.string().cuid().optional(),
+        exerciseId: z.string().cuid().optional(),
+        from: z.coerce.date().optional(),
+        to: z.coerce.date().optional(),
+        limit: z.number().int().min(1).max(2000).default(500),
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false, idempotentHint: true },
+    },
+    async (input) => {
+      const preview = await previewHistoricalEquipmentBackfill(principal.userId, input);
+      return result(preview);
+    },
+  );
+
+  server.registerTool(
+    'apply_historical_equipment_backfill',
+    {
+      title: 'Apply historical equipment backfill',
+      description:
+        'Assigns one explicitly confirmed owned gym/exercise/equipment mapping to an exact list of historical sets that are still unassigned. Returns an audit ID for safe undo.',
+      inputSchema: {
+        confirmed: explicitConfirmation,
+        gymId: z.string().cuid(),
+        exerciseId: z.string().cuid(),
+        equipmentId: z.string().cuid(),
+        setIds: z.array(z.string().cuid()).min(1).max(500),
+      },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: false,
+      },
+    },
+    async (input) => {
+      requireWrite(principal);
+      const applied = await applyHistoricalEquipmentBackfill(principal.userId, input);
+      return result(applied);
+    },
+  );
+
+  server.registerTool(
+    'undo_historical_equipment_backfill',
+    {
+      title: 'Undo historical equipment backfill',
+      description:
+        'Atomically undoes one audited historical equipment backfill only when every affected set still exactly matches the recorded applied equipment snapshot.',
+      inputSchema: {
+        confirmed: explicitConfirmation,
+        auditId: z.string().cuid(),
+      },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: false,
+        openWorldHint: false,
+      },
+    },
+    async (input) => {
+      requireWrite(principal);
+      const undone = await undoHistoricalEquipmentBackfill(principal.userId, input);
+      return result(undone);
     },
   );
 
