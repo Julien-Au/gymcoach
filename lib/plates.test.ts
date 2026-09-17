@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  computeBestPlateLoad,
   computePlateLoad,
   DEFAULT_BAR_WEIGHT,
   DEFAULT_PLATES,
@@ -95,6 +96,34 @@ describe('computePlateLoad', () => {
       { plate: 2.5, count: 1 },
       { plate: 1.25, count: 1 },
     ]);
+  });
+
+  it('chooses the bar that loads a target exactly when multiple bars are available', () => {
+    const load = computeBestPlateLoad(70, [15, 20], [20, 5], 20);
+
+    expect(load.exact).toBe(true);
+    expect(load.barWeight).toBe(20);
+    expect(load.achievedWeight).toBe(70);
+    expect(load.perSide).toEqual([
+      { plate: 20, count: 1 },
+      { plate: 5, count: 1 },
+    ]);
+  });
+
+  it('falls back to the configured bar when no valid gym bars are available', () => {
+    const load = computeBestPlateLoad(60, [], [20, 10, 5], 20);
+
+    expect(load.barWeight).toBe(20);
+    expect(load.exact).toBe(true);
+    expect(load.perSide).toEqual([{ plate: 20, count: 1 }]);
+  });
+
+  it('chooses the closest achievable bar when every bar is heavier than the target', () => {
+    const load = computeBestPlateLoad(10, [20, 30], [5], 20);
+
+    expect(load.exact).toBe(false);
+    expect(load.barWeight).toBe(20);
+    expect(load.achievedWeight).toBe(20);
   });
 
   it('exposes sensible defaults per unit', () => {
