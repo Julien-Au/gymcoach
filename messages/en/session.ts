@@ -185,6 +185,16 @@ export const session = {
     chooseReps: 'Choose repetitions',
     applyValue: 'Apply value',
     repsShort: 'reps',
+    metrics: {
+      open: 'Choose calculated columns',
+      label: 'Calculated columns',
+      oneRm: 'Estimated 1RM',
+      tenRm: 'Estimated 10RM',
+      volume: 'Volume',
+      oneRmShort: '1RM',
+      tenRmShort: '10RM',
+      volumeShort: 'VOL',
+    },
   },
   exerciseCard: {
     notAvailable: 'Not available in this gym',

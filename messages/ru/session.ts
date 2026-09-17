@@ -188,6 +188,16 @@ export const session = {
     chooseReps: 'Выберите повторения',
     applyValue: 'Применить значение',
     repsShort: 'повт.',
+    metrics: {
+      open: 'Выбрать расчётные столбцы',
+      label: 'Расчётные столбцы',
+      oneRm: 'Расчётный 1ПМ',
+      tenRm: 'Расчётный 10ПМ',
+      volume: 'Объём',
+      oneRmShort: '1ПМ',
+      tenRmShort: '10ПМ',
+      volumeShort: 'ОБЪЁМ',
+    },
   },
   exerciseCard: {
     notAvailable: 'Нет в этом зале',
