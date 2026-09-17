@@ -27,9 +27,39 @@ describe('GymCoach MCP server', () => {
 
     const tools = await client.listTools();
     const byName = new Map(tools.tools.map((tool) => [tool.name, tool]));
+    expect(byName.has('list_gyms')).toBe(true);
+    expect(byName.has('get_gym_inventory')).toBe(true);
+    expect(byName.has('get_gym_equipment_image')).toBe(true);
+    expect(byName.has('update_gym_free_weights')).toBe(true);
+    expect(byName.has('upsert_gym_equipment')).toBe(true);
+    expect(byName.has('set_gym_equipment_image')).toBe(true);
     expect(byName.has('get_training_context')).toBe(true);
     expect(byName.has('create_program')).toBe(true);
     expect(byName.has('update_program_exercise')).toBe(true);
+    expect(byName.get('list_gyms')?.annotations?.readOnlyHint).toBe(true);
+    expect(byName.get('get_gym_inventory')?.annotations?.readOnlyHint).toBe(true);
+    expect(byName.get('get_gym_equipment_image')?.annotations?.readOnlyHint).toBe(true);
+    for (const name of [
+      'update_gym_free_weights',
+      'upsert_gym_equipment',
+      'set_gym_equipment_image',
+    ]) {
+      expect(byName.get(name)?.annotations).toMatchObject({
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      });
+    }
+    expect(byName.get('upsert_gym_equipment')?.inputSchema).toMatchObject({
+      required: expect.arrayContaining(['confirmed', 'gymId', 'name', 'equipmentType']),
+    });
+    expect(byName.get('update_gym_free_weights')?.inputSchema).toMatchObject({
+      required: expect.arrayContaining(['confirmed']),
+    });
+    expect(byName.get('set_gym_equipment_image')?.inputSchema).toMatchObject({
+      required: expect.arrayContaining(['confirmed', 'equipmentId']),
+    });
     expect(byName.get('get_training_context')?.annotations?.readOnlyHint).toBe(true);
     expect(byName.get('remove_program_exercise')?.annotations?.destructiveHint).toBe(true);
 

@@ -1,10 +1,21 @@
+import { Buffer } from 'node:buffer';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { db } from '@/lib/db';
 import { buildCoachPayload } from '@/lib/coach';
+import {
+  GYM_EQUIPMENT_IMAGE_MIME_TYPES,
+  getOwnedGymEquipmentImage,
+  getOwnedGymInventory,
+  listOwnedGyms,
+  setOwnedGymEquipmentImage,
+  updateOwnedGymFreeWeights,
+  upsertOwnedGymEquipment,
+} from '@/lib/gym-equipment';
 import { buildProgramFromGenerated } from '@/lib/program-generation';
 import { generatedExerciseSchema, generatedProgramSchema } from '@/lib/schemas/program-generation';
 import { programInputSchema } from '@/lib/schemas/program';
+import { gymWeightListSchema } from '@/lib/schemas/gym';
 import {
   EquipmentType,
   ExerciseCategory,
@@ -17,6 +28,8 @@ export const GYMCOACH_MCP_INSTRUCTIONS = `GymCoach stores the trainee's profile,
 
 Use read tools before making recommendations. Ground every recommendation in returned GymCoach data and never invent completed sets, available equipment, records or injuries. Respect the active gym's equipment constraints. Use the trainee's language.
 
+Before changing gym inventory, read the saved gym first, explain the proposed additions or corrections, and require explicit confirmation. Do not guess machine identity, exercise links or selectable weights from ambiguous information.
+
 Program-writing tools change saved data. Explain the proposed change before calling a write tool. Newly created programs are inactive so the trainee can review them. Activate a program only when the trainee explicitly asks. Never delete or remove a program exercise without explicit confirmation.`;
 
 interface ServerOptions {
@@ -27,6 +40,20 @@ interface ServerOptions {
 const explicitConfirmation = z
   .literal(true)
   .describe('Set to true only after the trainee explicitly confirmed this saved-data change.');
+
+const gymIdSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(120)
+  .describe('Opaque GymCoach gym ID returned by list_gyms.');
+
+const httpsImageUrl = z
+  .string()
+  .trim()
+  .url()
+  .max(2048)
+  .refine((value) => value.startsWith('https://'), 'Equipment image URL must use HTTPS.');
 
 function result(data: Record<string, unknown>) {
   return {
@@ -98,6 +125,170 @@ export function createGymCoachMcpServer({ principal, baseUrl }: ServerOptions): 
         },
       ],
     }),
+  );
+
+  server.registerTool(
+    'list_gyms',
+    {
+      title: 'List gyms',
+      description:
+        'Lists saved gyms, identifies the active gym and reports physical-equipment/config counts.',
+      annotations: { readOnlyHint: true, openWorldHint: false, idempotentHint: true },
+    },
+    async () => result(await listOwnedGyms(principal.userId)),
+  );
+
+  server.registerTool(
+    'get_gym_inventory',
+    {
+      title: 'Get complete gym inventory',
+      description:
+        'Returns shared dumbbells, plates and bars, every saved physical equipment item with descriptions/images/exercise links, plus full exercise availability coverage. Omit gymId to read the active gym.',
+      inputSchema: {
+        gymId: gymIdSchema.optional(),
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false, idempotentHint: true },
+    },
+    async ({ gymId }) => result(await getOwnedGymInventory(principal.userId, baseUrl, gymId)),
+  );
+
+  server.registerTool(
+    'get_gym_equipment_image',
+    {
+      title: 'Get a gym-equipment image',
+      description:
+        'Returns a saved uploaded equipment image as MCP image content, or the approved external HTTPS image URL. Use this when visual comparison is needed.',
+      inputSchema: {
+        equipmentId: z.string().cuid(),
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false, idempotentHint: true },
+    },
+    async ({ equipmentId }) => {
+      const saved = await getOwnedGymEquipmentImage(principal.userId, equipmentId);
+      if (saved.kind === 'uploaded') {
+        const metadata = {
+          equipmentId,
+          image: {
+            kind: saved.kind,
+            mimeType: saved.mimeType,
+            updatedAt: saved.updatedAt,
+          },
+        };
+        return {
+          content: [
+            { type: 'text' as const, text: JSON.stringify(metadata, null, 2) },
+            {
+              type: 'image' as const,
+              data: Buffer.from(saved.bytes).toString('base64'),
+              mimeType: saved.mimeType,
+            },
+          ],
+          structuredContent: metadata,
+        };
+      }
+      return result({ equipmentId, image: saved });
+    },
+  );
+
+  server.registerTool(
+    'update_gym_free_weights',
+    {
+      title: 'Update gym free-weight inventory',
+      description:
+        'Updates any supplied dumbbell, plate or bar lists in kg after the trainee confirms the inventory change. Omitted lists remain unchanged.',
+      inputSchema: {
+        confirmed: explicitConfirmation,
+        gymId: gymIdSchema.optional(),
+        dumbbellWeights: gymWeightListSchema.optional(),
+        plateWeights: gymWeightListSchema.optional(),
+        barWeights: gymWeightListSchema.optional(),
+      },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async ({ gymId, confirmed: _confirmed, ...patch }) => {
+      requireWrite(principal);
+      const gym = await updateOwnedGymFreeWeights(principal.userId, gymId, patch);
+      return result({ ok: true, gym });
+    },
+  );
+
+  server.registerTool(
+    'upsert_gym_equipment',
+    {
+      title: 'Add or update physical gym equipment',
+      description:
+        'Creates or updates a physical machine, station or accessory in a gym. Link exercise IDs to make those exercises available and apply machine/cable weight options.',
+      inputSchema: {
+        confirmed: explicitConfirmation,
+        gymId: gymIdSchema,
+        equipmentId: z.string().cuid().optional(),
+        name: z.string().trim().min(1).max(120),
+        equipmentType: z.nativeEnum(EquipmentType),
+        description: z.string().trim().max(4000).nullable().optional(),
+        manufacturer: z.string().trim().max(120).nullable().optional(),
+        modelName: z.string().trim().max(120).nullable().optional(),
+        quantity: z.number().int().min(1).max(100).optional(),
+        weightOptions: gymWeightListSchema.optional(),
+        exerciseIds: z.array(z.string().cuid()).max(100).optional(),
+        markExercisesAvailable: z.boolean().optional(),
+      },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async ({ gymId, confirmed: _confirmed, ...input }) => {
+      requireWrite(principal);
+      const saved = await upsertOwnedGymEquipment(principal.userId, gymId, input);
+      return result({ ok: true, ...saved });
+    },
+  );
+
+  server.registerTool(
+    'set_gym_equipment_image',
+    {
+      title: 'Set a gym-equipment image',
+      description:
+        'Sets or clears a physical equipment image after confirmation. Use one of: an approved HTTPS URL, or JPEG/PNG/WebP base64 (raw or data URL) for durable database storage.',
+      inputSchema: {
+        confirmed: explicitConfirmation,
+        equipmentId: z.string().cuid(),
+        clear: z.literal(true).optional(),
+        imageUrl: httpsImageUrl.optional(),
+        imageBase64: z.string().max(7_100_000).optional(),
+        mimeType: z.enum(GYM_EQUIPMENT_IMAGE_MIME_TYPES).optional(),
+      },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async ({ equipmentId, confirmed: _confirmed, ...input }) => {
+      requireWrite(principal);
+      const equipment = await setOwnedGymEquipmentImage(principal.userId, equipmentId, input);
+      const image = equipment.imageMimeType
+        ? {
+            kind: 'uploaded',
+            url: new URL(
+              `/api/gym-equipment/${equipment.id}/image?v=${equipment.updatedAt.getTime()}`,
+              baseUrl,
+            ).toString(),
+            mimeType: equipment.imageMimeType,
+          }
+        : equipment.imageUrl
+          ? { kind: 'external', url: equipment.imageUrl, mimeType: null }
+          : null;
+      return result({ ok: true, equipment: { ...equipment, image } });
+    },
   );
 
   server.registerTool(

@@ -1,6 +1,7 @@
 import { Buffer } from 'node:buffer';
 import { ApiError } from '@/lib/api';
 import { db } from '@/lib/db';
+import { getExerciseMedia } from '@/lib/exercise-media';
 import type { EquipmentType } from '@/lib/prisma-client';
 
 export const GYM_EQUIPMENT_IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
@@ -57,6 +58,155 @@ const equipmentSelection = {
     },
   },
 } as const;
+
+export async function listOwnedGyms(userId: string) {
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: { activeGymId: true },
+  });
+  const gyms = await db.gym.findMany({
+    where: { userId },
+    orderBy: { name: 'asc' },
+    select: {
+      id: true,
+      name: true,
+      updatedAt: true,
+      _count: { select: { equipment: true, exerciseConfigs: true, sessions: true } },
+    },
+  });
+  return {
+    activeGymId: user?.activeGymId ?? null,
+    gyms: gyms.map((gym) => ({ ...gym, isActive: gym.id === user?.activeGymId })),
+  };
+}
+
+export async function getOwnedGymInventory(userId: string, baseUrl: string, gymId?: string) {
+  const gym = await resolveOwnedGym(userId, gymId);
+  const [details, exercises] = await Promise.all([
+    db.gym.findUnique({
+      where: { id: gym.id },
+      include: {
+        equipment: { orderBy: { name: 'asc' }, select: equipmentSelection },
+        exerciseConfigs: {
+          orderBy: { exercise: { name: 'asc' } },
+          include: {
+            exercise: {
+              select: {
+                id: true,
+                name: true,
+                muscleGroup: true,
+                category: true,
+                equipmentType: true,
+                notes: true,
+              },
+            },
+          },
+        },
+      },
+    }),
+    db.exercise.findMany({
+      where: { userId },
+      orderBy: { name: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        muscleGroup: true,
+        category: true,
+        equipmentType: true,
+        usesBodyweight: true,
+        notes: true,
+      },
+    }),
+  ]);
+  if (!details) throw new Error('Gym not found.');
+
+  const configByExercise = new Map(
+    details.exerciseConfigs.map((config) => [config.exerciseId, config]),
+  );
+  const equipmentIdsByExercise = new Map<string, string[]>();
+  for (const item of details.equipment) {
+    for (const link of item.exerciseLinks) {
+      const ids = equipmentIdsByExercise.get(link.exerciseId) ?? [];
+      ids.push(item.id);
+      equipmentIdsByExercise.set(link.exerciseId, ids);
+    }
+  }
+
+  return {
+    gym: {
+      id: details.id,
+      name: details.name,
+      sharedFreeWeights: {
+        dumbbellWeightsKg: details.dumbbellWeights,
+        plateWeightsKg: details.plateWeights,
+        barWeightsKg: details.barWeights,
+      },
+      equipment: details.equipment.map((item) => ({
+        ...item,
+        image: equipmentImage(item, baseUrl),
+        exerciseLinks: item.exerciseLinks.map((link) => link.exercise),
+      })),
+      exerciseCoverage: exercises.map((exercise) => {
+        const config = configByExercise.get(exercise.id);
+        const media = getExerciseMedia(exercise.name);
+        return {
+          ...exercise,
+          configured: config != null,
+          isAvailable: config?.isAvailable ?? true,
+          weightOptionsKg: config?.weightOptions ?? [],
+          equipmentIds: equipmentIdsByExercise.get(exercise.id) ?? [],
+          builtInMedia: media
+            ? {
+                frames: media.frames.map((frame) => new URL(frame, baseUrl).toString()),
+                approximate: media.approximate,
+                source: media.source,
+              }
+            : null,
+        };
+      }),
+      updatedAt: details.updatedAt,
+    },
+    workflow: {
+      comparePhotosAndNarrationAgainst: ['gym.equipment', 'gym.sharedFreeWeights'],
+      addPhysicalItemWith: 'upsert_gym_equipment',
+      updateSharedWeightsWith: 'update_gym_free_weights',
+      attachImageWith: 'set_gym_equipment_image',
+      readEquipmentImageWith: 'get_gym_equipment_image',
+      note: 'Physical equipment and exercises are separate records; link equipment to exercise IDs so machine/cable load options constrain program design.',
+    },
+  };
+}
+
+export async function updateOwnedGymFreeWeights(
+  userId: string,
+  gymId: string | undefined,
+  patch: {
+    dumbbellWeights?: number[];
+    plateWeights?: number[];
+    barWeights?: number[];
+  },
+) {
+  const gym = await resolveOwnedGym(userId, gymId);
+  if (
+    patch.dumbbellWeights === undefined &&
+    patch.plateWeights === undefined &&
+    patch.barWeights === undefined
+  ) {
+    throw new Error('Provide at least one free-weight inventory list.');
+  }
+  return db.gym.update({
+    where: { id: gym.id },
+    data: patch,
+    select: {
+      id: true,
+      name: true,
+      dumbbellWeights: true,
+      plateWeights: true,
+      barWeights: true,
+      updatedAt: true,
+    },
+  });
+}
 
 export async function listOwnedGymEquipment(userId: string, gymId: string) {
   await requireOwnedGym(userId, gymId);
@@ -329,6 +479,41 @@ export function decodeGymEquipmentImage(
   const bytes = new Uint8Array(new ArrayBuffer(buffer.length));
   bytes.set(buffer);
   return { bytes, mimeType };
+}
+
+async function resolveOwnedGym(userId: string, gymId?: string) {
+  const resolvedId =
+    gymId ??
+    (
+      await db.user.findUnique({
+        where: { id: userId },
+        select: { activeGymId: true },
+      })
+    )?.activeGymId;
+  if (!resolvedId) throw new Error('No active gym. Provide gymId or activate a gym first.');
+  const gym = await db.gym.findFirst({
+    where: { id: resolvedId, userId },
+    select: { id: true, name: true },
+  });
+  if (!gym) throw new Error('Gym not found.');
+  return gym;
+}
+
+function equipmentImage(
+  item: { id: string; imageUrl: string | null; imageMimeType: string | null; updatedAt: Date },
+  baseUrl: string,
+) {
+  if (item.imageMimeType) {
+    return {
+      kind: 'uploaded',
+      url: new URL(
+        `/api/gym-equipment/${item.id}/image?v=${item.updatedAt.getTime()}`,
+        baseUrl,
+      ).toString(),
+      mimeType: item.imageMimeType,
+    };
+  }
+  return item.imageUrl ? { kind: 'external', url: item.imageUrl, mimeType: null } : null;
 }
 
 async function requireOwnedGym(userId: string, gymId: string) {
