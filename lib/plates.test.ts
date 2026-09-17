@@ -118,6 +118,14 @@ describe('computePlateLoad', () => {
     expect(load.perSide).toEqual([{ plate: 20, count: 1 }]);
   });
 
+  it('chooses the closest achievable bar when every bar is heavier than the target', () => {
+    const load = computeBestPlateLoad(10, [20, 30], [5], 20);
+
+    expect(load.exact).toBe(false);
+    expect(load.barWeight).toBe(20);
+    expect(load.achievedWeight).toBe(20);
+  });
+
   it('exposes sensible defaults per unit', () => {
     expect(DEFAULT_BAR_WEIGHT.KG).toBe(20);
     expect(DEFAULT_BAR_WEIGHT.LB).toBe(45);

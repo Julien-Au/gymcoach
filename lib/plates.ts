@@ -122,7 +122,7 @@ export function computeBestPlateLoad(
       (a, b) =>
         Number(b.exact) - Number(a.exact) ||
         a.remainder - b.remainder ||
-        b.achievedWeight - a.achievedWeight ||
+        Math.abs(a.achievedWeight - targetWeight) - Math.abs(b.achievedWeight - targetWeight) ||
         a.barWeight - b.barWeight,
     )[0] ?? computePlateLoad(targetWeight, fallbackBarWeight, availablePlates)
   );
