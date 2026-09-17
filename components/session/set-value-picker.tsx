@@ -254,7 +254,7 @@ function bestPlateLoad(
     (left, right) =>
       Number(right.exact) - Number(left.exact) ||
       left.remainder - right.remainder ||
-      right.achievedWeight - left.achievedWeight,
+      Math.abs(left.achievedWeight - targetWeight) - Math.abs(right.achievedWeight - targetWeight),
   )[0]!;
 }
 

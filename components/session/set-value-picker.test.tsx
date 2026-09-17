@@ -94,6 +94,29 @@ describe('SetValuePicker', () => {
     expect(preview).toHaveAttribute('data-target-weight', '70');
   });
 
+  it('prefers the closest bar when the target is below every available bar', () => {
+    render(
+      <SetValuePicker
+        open
+        kind="weight"
+        value={10}
+        options={[{ value: 10 }]}
+        unit="KG"
+        loadConstraints={{
+          equipmentType: 'BARBELL',
+          barWeights: [20, 30],
+          plateWeights: [5],
+          weightOptions: [10],
+        }}
+        onClose={vi.fn()}
+        onChoose={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId('barbell-side-diagram')).toHaveTextContent('20 kg');
+    expect(screen.getByTestId('barbell-side-diagram')).not.toHaveTextContent('30 kg');
+  });
+
   it('retains manual decimal entry as a weight fallback', () => {
     const onChoose = vi.fn();
     render(
