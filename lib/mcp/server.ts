@@ -17,6 +17,8 @@ export const GYMCOACH_MCP_INSTRUCTIONS = `GymCoach stores the trainee's profile,
 
 Use read tools before making recommendations. Ground every recommendation in returned GymCoach data and never invent completed sets, available equipment, records or injuries. Respect the active gym's equipment constraints. Use the trainee's language.
 
+For MCP tool discovery, inspect the complete tool list once before guessing names. Do not repeatedly probe synonyms or issue many filtered discovery requests. If the client cannot expose the complete tool list, call get_mcp_capability_index once and use the exact tool names it returns. If a capability is still missing after that, report it as missing instead of continuing trial-and-error.
+
 Program-writing tools change saved data. Explain the proposed change before calling a write tool. Newly created programs are inactive so the trainee can review them. Activate a program only when the trainee explicitly asks. Never delete or remove a program exercise without explicit confirmation.`;
 
 interface ServerOptions {
@@ -50,6 +52,45 @@ async function getOwnedProgram(userId: string, programId?: string) {
   if (!program) throw new Error(programId ? 'Program not found.' : 'No active program.');
   return program.id;
 }
+
+export const GYMCOACH_MCP_TOOL_NAMES = [
+  'get_mcp_capability_index',
+  'get_training_context',
+  'list_exercises',
+  'list_programs',
+  'get_program',
+  'create_program',
+  'update_program_metadata',
+  'add_program_exercise',
+  'update_program_exercise',
+  'remove_program_exercise',
+  'activate_program',
+] as const;
+
+const MCP_CAPABILITY_INDEX = {
+  allTools: GYMCOACH_MCP_TOOL_NAMES,
+  discovery: {
+    tools: ['get_mcp_capability_index'],
+    note: 'Prefer one complete tools/list. Use this fallback once when the client cannot expose it.',
+  },
+  trainingContext: {
+    tools: ['get_training_context'],
+  },
+  exerciseCatalog: {
+    tools: ['list_exercises'],
+  },
+  programs: {
+    read: ['list_programs', 'get_program'],
+    write: [
+      'create_program',
+      'update_program_metadata',
+      'add_program_exercise',
+      'update_program_exercise',
+      'remove_program_exercise',
+      'activate_program',
+    ],
+  },
+} as const;
 
 export function createGymCoachMcpServer({ principal, baseUrl }: ServerOptions): McpServer {
   const server = new McpServer(
@@ -98,6 +139,22 @@ export function createGymCoachMcpServer({ principal, baseUrl }: ServerOptions): 
         },
       ],
     }),
+  );
+
+  server.registerTool(
+    'get_mcp_capability_index',
+    {
+      title: 'Get GymCoach MCP capability index',
+      description:
+        'Returns a compact task-oriented index of exact GymCoach MCP tool names. Use this once when the client cannot expose a complete tools/list; do not repeatedly guess tool names or probe synonyms.',
+      annotations: { readOnlyHint: true, openWorldHint: false, idempotentHint: true },
+    },
+    async () =>
+      result({
+        discoveryRule:
+          'Prefer one complete tools/list. If unavailable, call get_mcp_capability_index once, then use exact names. Stop repeated synonym probing.',
+        capabilities: MCP_CAPABILITY_INDEX,
+      }),
   );
 
   server.registerTool(
