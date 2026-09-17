@@ -50,6 +50,17 @@ describe('GymCoach MCP server', () => {
         discovery: { tools: ['get_mcp_capability_index'] },
         trainingContext: { tools: ['get_training_context'] },
         exerciseCatalog: { tools: ['list_exercises'] },
+        programs: {
+          read: ['list_programs', 'get_program'],
+          write: [
+            'create_program',
+            'update_program_metadata',
+            'add_program_exercise',
+            'update_program_exercise',
+            'remove_program_exercise',
+            'activate_program',
+          ],
+        },
       },
     });
 
