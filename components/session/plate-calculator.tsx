@@ -125,23 +125,25 @@ function BarbellSideDiagram({
 
   return (
     <div className="rounded-md border bg-muted/20 p-3" data-testid="barbell-side-diagram">
-      <div className="relative mx-auto grid min-h-16 max-w-sm grid-cols-[minmax(2.5rem,1fr)_max-content_minmax(1.25rem,0.6fr)] items-center">
-        <div className="absolute inset-x-2 top-1/2 h-2 -translate-y-1/2 rounded-full bg-zinc-500" />
-        <span aria-hidden />
-        <div className="relative z-10 flex h-14 items-center gap-0.5" aria-label={platesLabel}>
-          <div className="mr-0.5 h-10 w-3 shrink-0 rounded-sm bg-zinc-400" aria-hidden />
-          {plates.map((plate) => (
-            <div
-              key={plate.key}
-              className="flex w-5 shrink-0 items-center justify-center rounded-sm border border-zinc-300 bg-zinc-700 text-[0.6rem] font-bold text-white"
-              style={{ height: String(Math.round(26 + (plate.weight / maxPlate) * 26)) + 'px' }}
-              title={String(plate.weight) + ' ' + unitLabel}
-            >
-              <span className="-rotate-90 whitespace-nowrap">{plate.weight}</span>
-            </div>
-          ))}
+      <div className="overflow-x-auto">
+        <div className="relative mx-auto grid min-h-16 w-max min-w-full max-w-sm grid-cols-[minmax(2.5rem,1fr)_max-content_minmax(1.25rem,0.6fr)] items-center">
+          <div className="absolute inset-x-2 top-1/2 h-2 -translate-y-1/2 rounded-full bg-zinc-500" />
+          <span aria-hidden />
+          <div className="relative z-10 flex h-14 items-center gap-0.5" aria-label={platesLabel}>
+            <div className="mr-0.5 h-10 w-3 shrink-0 rounded-sm bg-zinc-400" aria-hidden />
+            {plates.map((plate) => (
+              <div
+                key={plate.key}
+                className="flex w-5 shrink-0 items-center justify-center rounded-sm border border-zinc-300 bg-zinc-700 text-[0.6rem] font-bold text-white"
+                style={{ height: String(Math.round(26 + (plate.weight / maxPlate) * 26)) + 'px' }}
+                title={String(plate.weight) + ' ' + unitLabel}
+              >
+                <span className="-rotate-90 whitespace-nowrap">{plate.weight}</span>
+              </div>
+            ))}
+          </div>
+          <span aria-hidden />
         </div>
-        <span aria-hidden />
       </div>
       <p className="mt-1 text-center text-xs text-muted-foreground">
         {load.perSide
