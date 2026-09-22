@@ -12,6 +12,17 @@ describe('chat system prompt', () => {
     expect(CHAT_SYSTEM_PROMPT).toMatch(/staying within the user's program/i);
   });
 
+  // The chat has no write path: a trainee asked the coach to add a cardio
+  // session and the model answered as if it had done it. The prompt must say
+  // the coach cannot change saved data and must never claim it did.
+  it('states the coach is advisory only and must never claim to have changed data', () => {
+    expect(CHAT_SYSTEM_PROMPT).toMatch(/advisory only/i);
+    expect(CHAT_SYSTEM_PROMPT).toMatch(/cannot create, change, activate or delete programs/i);
+    expect(CHAT_SYSTEM_PROMPT).toMatch(/never say or imply that you added/i);
+    expect(CHAT_SYSTEM_PROMPT).toMatch(/Programs page/);
+    expect(CHAT_SYSTEM_PROMPT).toMatch(/MCP connector/);
+  });
+
   it('defines no structured output contract (free-form text only)', () => {
     expect(CHAT_SYSTEM_PROMPT).not.toContain('<adjustments>');
     expect(CHAT_SYSTEM_PROMPT).not.toMatch(/JSON object/i);

@@ -203,6 +203,11 @@ export function ChatClient({
         ))}
       </div>
 
+      {/* The chat has no write path. Say so in the UI as well as in the
+          system prompt, so a trainee who asks for a program change does not
+          leave believing it was applied. */}
+      <p className="text-xs text-muted-foreground">{t('advisory')}</p>
+
       <div
         ref={threadRef}
         className="flex min-h-[40vh] flex-col gap-3 overflow-y-auto rounded-lg border p-3"
