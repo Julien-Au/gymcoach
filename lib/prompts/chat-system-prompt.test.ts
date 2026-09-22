@@ -21,6 +21,11 @@ describe('chat system prompt', () => {
     expect(CHAT_SYSTEM_PROMPT).toMatch(/never say or imply that you added/i);
     expect(CHAT_SYSTEM_PROMPT).toMatch(/Programs page/);
     expect(CHAT_SYSTEM_PROMPT).toMatch(/MCP connector/);
+    // ...but a mid-workout deviation stays plain advice: the pointer to the
+    // Programs page is scoped to LASTING changes, so the in-session guidance
+    // above ("reorder or skip an exercise") is not contradicted.
+    expect(CHAT_SYSTEM_PROMPT).toMatch(/one-off deviation for today's session/i);
+    expect(CHAT_SYSTEM_PROMPT).toMatch(/lasting change to their saved program/i);
   });
 
   it('defines no structured output contract (free-form text only)', () => {
