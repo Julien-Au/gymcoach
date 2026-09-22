@@ -122,7 +122,39 @@ describe('addWorkoutToProgram', () => {
     expect(added.exercises[0]!.notes).toBe('30 min easy pace');
   });
 
-  it("refuses a program the user does not own", async () => {
+  it('reuses an existing exercise by name and targets an explicit inactive program', async () => {
+    const { user, programId } = await makeUserWithProgram('reuse@test.dev', false);
+    const before = await db.exercise.count({ where: { userId: user.id } });
+
+    const workoutId = await addWorkoutToProgram(user.id, programId, {
+      name: 'Upper B',
+      exercises: [
+        {
+          // Same name as the existing 'Upper' day: the Exercise row is reused,
+          // not duplicated, and its stored category/equipment are kept.
+          name: 'Barbell bench press',
+          muscleGroup: 'CHEST',
+          category: 'ISOLATION',
+          targetSets: 3,
+          targetRepsMin: 8,
+          targetRepsMax: 12,
+          targetRIR: 2,
+          restSec: 90,
+        },
+      ],
+    });
+
+    expect(await db.exercise.count({ where: { userId: user.id } })).toBe(before);
+    const added = await db.workout.findUnique({
+      where: { id: workoutId },
+      include: { exercises: { include: { exercise: true } } },
+    });
+    expect(added?.programId).toBe(programId);
+    expect(added?.order).toBe(3);
+    expect(added?.exercises[0]!.exercise.category).toBe('COMPOUND');
+  });
+
+  it('refuses a program the user does not own', async () => {
     const { programId } = await makeUserWithProgram('owner@test.dev', false);
     const other = await db.user.create({ data: { email: 'other@test.dev', passwordHash: 'x' } });
 
@@ -171,6 +203,42 @@ describe('MCP add_workout', () => {
     });
     expect(response.isError).toBe(true);
     expect(JSON.stringify(response.content)).toContain('No active program.');
+  });
+
+  it('adds to an explicit inactive program without touching the active one', async () => {
+    const { user, programId: activeId } = await makeUserWithProgram('explicit@test.dev', true);
+    const draftId = await buildProgramFromGenerated(user.id, {
+      name: 'Draft',
+      phase: 'Base',
+      workouts: [
+        {
+          name: 'Full body',
+          exercises: [
+            {
+              name: 'Back Squat',
+              muscleGroup: 'QUADS',
+              category: 'COMPOUND',
+              targetSets: 3,
+              targetRepsMin: 5,
+              targetRepsMax: 8,
+              targetRIR: 2,
+              restSec: 180,
+            },
+          ],
+        },
+      ],
+    });
+    const client = await connect(user.id);
+
+    const response = await client.callTool({
+      name: 'add_workout',
+      arguments: { confirmed: true, programId: draftId, workout: cardioDay },
+    });
+
+    expect(response.isError).toBeFalsy();
+    expect((response.structuredContent as { programId: string }).programId).toBe(draftId);
+    expect(await db.workout.count({ where: { programId: draftId } })).toBe(2);
+    expect(await db.workout.count({ where: { programId: activeId } })).toBe(2);
   });
 
   it("cannot write into another user's program by id", async () => {
