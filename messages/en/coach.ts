@@ -27,6 +27,8 @@ export const coach = {
       'Mid-workout question? Ask about your next set, a load that feels off, or an exercise swap.',
     empty:
       'Ask about breaking a plateau, training volume, progression, recovery or injury adjustments.',
+    advisory:
+      'The chat advises but cannot edit your data. Apply changes yourself on the Programs page, or from the weekly debrief.',
   },
   context: {
     title: 'What your coach sees',
