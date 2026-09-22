@@ -2,8 +2,12 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { db } from '@/lib/db';
 import { buildCoachPayload } from '@/lib/coach';
-import { buildProgramFromGenerated } from '@/lib/program-generation';
-import { generatedExerciseSchema, generatedProgramSchema } from '@/lib/schemas/program-generation';
+import { addWorkoutToProgram, buildProgramFromGenerated } from '@/lib/program-generation';
+import {
+  generatedExerciseSchema,
+  generatedProgramSchema,
+  generatedWorkoutSchema,
+} from '@/lib/schemas/program-generation';
 import { programInputSchema } from '@/lib/schemas/program';
 import {
   EquipmentType,
@@ -17,7 +21,7 @@ export const GYMCOACH_MCP_INSTRUCTIONS = `GymCoach stores the trainee's profile,
 
 Use read tools before making recommendations. Ground every recommendation in returned GymCoach data and never invent completed sets, available equipment, records or injuries. Respect the active gym's equipment constraints. Use the trainee's language.
 
-Program-writing tools change saved data. Explain the proposed change before calling a write tool. Newly created programs are inactive so the trainee can review them. Activate a program only when the trainee explicitly asks. Never delete or remove a program exercise without explicit confirmation.`;
+Program-writing tools change saved data. Explain the proposed change before calling a write tool. Newly created programs are inactive so the trainee can review them. Activate a program only when the trainee explicitly asks. To add a session (for example a cardio day) to the program the trainee already follows, call add_workout on that program rather than creating a new program. Never delete or remove a program exercise without explicit confirmation.`;
 
 interface ServerOptions {
   principal: McpPrincipal;
@@ -278,6 +282,36 @@ export function createGymCoachMcpServer({ principal, baseUrl }: ServerOptions): 
         },
       });
       return result({ ok: true, program });
+    },
+  );
+
+  server.registerTool(
+    'add_workout',
+    {
+      title: 'Add workout to program',
+      description:
+        'Appends a workout (a training session with its exercises, cardio included) to an existing program after user confirmation. Omit programId to target the active program.',
+      inputSchema: {
+        confirmed: explicitConfirmation,
+        programId: z.string().cuid().optional().describe('Omit to add to the active program.'),
+        workout: generatedWorkoutSchema,
+      },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: false,
+      },
+    },
+    async ({ programId, workout: input }) => {
+      requireWrite(principal);
+      const id = await getOwnedProgram(principal.userId, programId);
+      const workoutId = await addWorkoutToProgram(principal.userId, id, input);
+      const workout = await db.workout.findUnique({
+        where: { id: workoutId },
+        include: { exercises: { orderBy: { order: 'asc' }, include: { exercise: true } } },
+      });
+      return result({ ok: true, programId: id, workout });
     },
   );
 

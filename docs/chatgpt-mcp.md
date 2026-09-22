@@ -55,6 +55,7 @@ Write tools:
 
 - `create_program`
 - `update_program_metadata`
+- `add_workout` (append a session, cardio included, to an existing program)
 - `add_program_exercise`
 - `update_program_exercise`
 - `remove_program_exercise`
