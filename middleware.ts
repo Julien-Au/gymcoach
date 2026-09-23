@@ -46,7 +46,12 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    // Exclude static resources and PWA assets.
-    '/((?!_next/static|_next/image|icons|manifest.json|favicon.ico|sw.js|workbox-).*)',
+    // Exclude static resources and PWA assets. /exercise-media holds the
+    // public-domain technique frames: they must be reachable without a
+    // session because the next/image optimizer fetches the source file
+    // through a cookie-less internal request. Redirecting that request to
+    // /login handed the optimizer an HTML page and every technique image
+    // came back as a 400 in production.
+    '/((?!_next/static|_next/image|exercise-media|icons|manifest.json|favicon.ico|sw.js|workbox-).*)',
   ],
 };
