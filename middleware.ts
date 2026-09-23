@@ -50,8 +50,8 @@ export const config = {
     // public-domain technique frames: they must be reachable without a
     // session because the next/image optimizer fetches the source file
     // through a cookie-less internal request. Redirecting that request to
-    // /login handed the optimizer an HTML page and every technique image
-    // came back as a 400 in production.
-    '/((?!_next/static|_next/image|exercise-media|icons|manifest.json|favicon.ico|sw.js|workbox-).*)',
+    // /login handed the optimizer an HTML page and every optimized frame
+    // (the live-session strip thumbnails) came back as a 400 in production.
+    '/((?!_next/static|_next/image|exercise-media/|icons|manifest.json|favicon.ico|sw.js|workbox-).*)',
   ],
 };
