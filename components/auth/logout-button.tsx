@@ -5,6 +5,7 @@ import { useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { clearSessionCaches } from '@/lib/pwa-cache';
 
 export function LogoutButton() {
   const t = useTranslations('auth');
@@ -14,6 +15,10 @@ export function LogoutButton() {
   function handleLogout() {
     startTransition(async () => {
       await fetch('/api/auth/logout', { method: 'POST' });
+      // Purge the Workbox runtime caches: they hold this user's GET /api/*
+      // responses and page documents, which must not leak to the next
+      // sign-in on a shared device.
+      await clearSessionCaches();
       router.replace('/login');
       router.refresh();
     });
