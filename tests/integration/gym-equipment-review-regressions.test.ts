@@ -80,6 +80,64 @@ describe('gym equipment maintainer-review regressions', () => {
     expect(saved?.exerciseLinks.map((link) => link.exerciseId)).toEqual([exercise.id]);
   });
 
+  it('does not project a cable stack onto an OTHER exercise, but keeps OTHER to OTHER', async () => {
+    const { user, gym } = await seedUser('stack-inheritance');
+    // equipmentType defaults to OTHER on create, matching form/imported exercises.
+    const otherExercise = await db.exercise.create({
+      data: {
+        userId: user.id,
+        name: `Landmine press ${seed}`,
+        muscleGroup: 'CHEST',
+        category: 'COMPOUND',
+      },
+    });
+    const cableExercise = await db.exercise.create({
+      data: {
+        userId: user.id,
+        name: `Cable fly ${seed}`,
+        muscleGroup: 'CHEST',
+        category: 'ISOLATION',
+        equipmentType: 'CABLE',
+      },
+    });
+    mockUserId.mockResolvedValue(user.id);
+
+    const cableResponse = await upsertEquipment(
+      request(`http://test.local/api/gyms/${gym.id}/equipment`, 'POST', {
+        name: 'Cable station',
+        equipmentType: 'CABLE',
+        weightOptions: [12, 16, 20, 24],
+        exerciseIds: [otherExercise.id, cableExercise.id],
+      }),
+      params(gym.id),
+    );
+    expect(cableResponse.status).toBe(201);
+
+    const configs = await db.gymExerciseConfig.findMany({ where: { gymId: gym.id } });
+    expect(configs).toHaveLength(2);
+    expect(
+      configs.find((config) => config.exerciseId === otherExercise.id)?.weightOptions,
+    ).toEqual([]);
+    expect(
+      configs.find((config) => config.exerciseId === cableExercise.id)?.weightOptions,
+    ).toEqual([12, 16, 20, 24]);
+
+    const rackResponse = await upsertEquipment(
+      request(`http://test.local/api/gyms/${gym.id}/equipment`, 'POST', {
+        name: 'Kettlebell rack',
+        equipmentType: 'OTHER',
+        weightOptions: [8, 12, 16],
+        exerciseIds: [otherExercise.id],
+      }),
+      params(gym.id),
+    );
+    expect(rackResponse.status).toBe(201);
+    const rackConfig = await db.gymExerciseConfig.findUnique({
+      where: { gymId_exerciseId: { gymId: gym.id, exerciseId: otherExercise.id } },
+    });
+    expect(rackConfig?.weightOptions).toEqual([8, 12, 16]);
+  });
+
   it('enforces the per-gym REST creation cap without blocking updates', async () => {
     const { user, gym } = await seedUser('cap');
     await db.gymEquipment.createMany({

@@ -80,6 +80,28 @@ export async function listOwnedGymEquipment(userId: string, gymId: string) {
   }));
 }
 
+// Whether a physical item's selectable loads should be projected onto a linked
+// exercise's GymExerciseConfig.weightOptions. Only stack-carrying items
+// (MACHINE / CABLE / OTHER) share their loads, and only with exercises that
+// use a stack. OTHER is the default exercise equipment type rather than a
+// deliberate choice, so an OTHER exercise inherits only from an OTHER item
+// (for example a kettlebell rack) - linking it to a cable station must not
+// silently snap its session stepper to the cable stack.
+export function inheritsItemWeightOptions(
+  itemType: EquipmentType,
+  exerciseType: EquipmentType,
+): boolean {
+  switch (exerciseType) {
+    case 'MACHINE':
+    case 'CABLE':
+      return itemType === 'MACHINE' || itemType === 'CABLE' || itemType === 'OTHER';
+    case 'OTHER':
+      return itemType === 'OTHER';
+    default:
+      return false;
+  }
+}
+
 export async function upsertOwnedGymEquipment(
   userId: string,
   gymId: string,
@@ -180,8 +202,11 @@ export async function upsertOwnedGymEquipment(
     // directly, while current upstream screens immediately see linked exercises
     // as available and retain their machine/cable load options.
     if (input.markExercisesAvailable !== false && shouldSyncExerciseConfigs) {
-      const useItemWeights = ['MACHINE', 'CABLE', 'OTHER'].includes(input.equipmentType);
       for (const exercise of exercises) {
+        const useItemWeights = inheritsItemWeightOptions(
+          input.equipmentType,
+          exercise.equipmentType,
+        );
         await tx.gymExerciseConfig.upsert({
           where: { gymId_exerciseId: { gymId, exerciseId: exercise.id } },
           update: {

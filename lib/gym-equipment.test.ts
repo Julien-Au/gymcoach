@@ -3,9 +3,34 @@ import { describe, expect, it } from 'vitest';
 import {
   MAX_GYM_EQUIPMENT_IMAGE_BYTES,
   decodeGymEquipmentImage,
+  inheritsItemWeightOptions,
 } from './gym-equipment';
 
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+
+describe('inheritsItemWeightOptions', () => {
+  it('copies a stack onto MACHINE and CABLE exercises', () => {
+    expect(inheritsItemWeightOptions('CABLE', 'CABLE')).toBe(true);
+    expect(inheritsItemWeightOptions('MACHINE', 'MACHINE')).toBe(true);
+    expect(inheritsItemWeightOptions('CABLE', 'MACHINE')).toBe(true);
+  });
+
+  it('does not copy a MACHINE or CABLE stack onto an OTHER exercise', () => {
+    expect(inheritsItemWeightOptions('CABLE', 'OTHER')).toBe(false);
+    expect(inheritsItemWeightOptions('MACHINE', 'OTHER')).toBe(false);
+  });
+
+  it('still copies an OTHER item stack onto an OTHER exercise', () => {
+    expect(inheritsItemWeightOptions('OTHER', 'OTHER')).toBe(true);
+    expect(inheritsItemWeightOptions('OTHER', 'CABLE')).toBe(true);
+  });
+
+  it('never copies a non-stack item onto any exercise', () => {
+    expect(inheritsItemWeightOptions('DUMBBELL', 'MACHINE')).toBe(false);
+    expect(inheritsItemWeightOptions('BARBELL', 'OTHER')).toBe(false);
+    expect(inheritsItemWeightOptions('BODYWEIGHT', 'BODYWEIGHT')).toBe(false);
+  });
+});
 
 describe('decodeGymEquipmentImage', () => {
   it('rejects bytes whose magic signature does not match the declared MIME type', () => {
