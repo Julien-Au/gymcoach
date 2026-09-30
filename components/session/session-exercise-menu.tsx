@@ -1,10 +1,11 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Plus, Replace, Search, Trash2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import type { Exercise, ProgramExercise } from '@/lib/prisma-client';
+import { defaultIntraSetConfig } from '@/lib/intra-set-autoregulation';
 import { useExerciseName } from '@/components/shared/use-exercise-name';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
@@ -20,20 +21,52 @@ interface Props {
   programExercises: SessionProgramExercise[];
   catalog: Exercise[];
   loggedSetCount: number;
-  onChanged: (options?: { selectProgramExerciseId?: string; removedProgramExerciseId?: string }) => void;
+  onChanged: (options?: {
+    selectProgramExerciseId?: string;
+    removedProgramExerciseId?: string;
+  }) => void;
 }
 
-function replacementPayload(programExercise: ProgramExercise, exerciseId: string) {
+// Targets for a program row created from the session menu. Cardio follows the
+// repo rule (one continuous effort is one set, logged as duration/distance, see
+// lib/prompts/program-system-prompt.ts). The autoregulation config is left out:
+// the POST route derives it from the exercise.
+function additionPayload(exercise: Pick<Exercise, 'id' | 'category' | 'defaultRestSec'>) {
+  const cardio = exercise.category === 'CARDIO';
   return {
-    exerciseId,
-    targetSets: programExercise.targetSets,
-    targetRepsMin: programExercise.targetRepsMin,
-    targetRepsMax: programExercise.targetRepsMax,
-    targetRIR: programExercise.targetRIR,
-    restSec: programExercise.restSec,
+    exerciseId: exercise.id,
+    targetSets: cardio ? 1 : 4,
+    targetRepsMin: cardio ? 1 : 8,
+    targetRepsMax: cardio ? 1 : 12,
+    targetRIR: cardio ? 0 : 2,
+    restSec: exercise.defaultRestSec,
+  };
+}
+
+function replacementPayload(programExercise: SessionProgramExercise, exercise: Exercise) {
+  // Strength targets make no sense for cardio and the other way round, so a
+  // swap across that line starts from the new exercise's defaults.
+  const sameKind =
+    (programExercise.exercise.category === 'CARDIO') === (exercise.category === 'CARDIO');
+  const targets = sameKind
+    ? {
+        exerciseId: exercise.id,
+        targetSets: programExercise.targetSets,
+        targetRepsMin: programExercise.targetRepsMin,
+        targetRepsMax: programExercise.targetRepsMax,
+        targetRIR: programExercise.targetRIR,
+        restSec: programExercise.restSec,
+      }
+    : additionPayload(exercise);
+  // The fatigue rate and load step were tuned for the old exercise, and the
+  // PUT route stores what it receives. Send the new exercise's defaults, which
+  // is what the POST route stores for a freshly added row.
+  const autoregulation = defaultIntraSetConfig(exercise);
+  return {
+    ...targets,
     autoregulationMode: programExercise.autoregulationMode,
-    fatigueRate: programExercise.fatigueRate,
-    loadAdjustmentPct: programExercise.loadAdjustmentPct,
+    fatigueRate: autoregulation.fatigueRate,
+    loadAdjustmentPct: autoregulation.loadAdjustmentPct,
     tempo: programExercise.tempo,
     notes: programExercise.notes,
     supersetGroup: programExercise.supersetGroup,
@@ -55,6 +88,9 @@ export function SessionExerciseMenu({
   const [query, setQuery] = useState('');
   const [busy, setBusy] = useState(false);
   const [pendingReplacement, setPendingReplacement] = useState<Exercise | null>(null);
+  // `busy` disables the buttons on the next render; the ref closes the gap
+  // for a second call that arrives before that render.
+  const inFlight = useRef(false);
 
   const currentIndex = programExercises.findIndex((item) => item.id === programExercise.id);
   const previous = currentIndex > 0 ? programExercises[currentIndex - 1] : undefined;
@@ -111,6 +147,8 @@ export function SessionExerciseMenu({
   }
 
   async function replaceExercise(exercise: Exercise) {
+    if (inFlight.current) return;
+    inFlight.current = true;
     setBusy(true);
     try {
       const response = await fetch(
@@ -118,7 +156,7 @@ export function SessionExerciseMenu({
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(replacementPayload(programExercise, exercise.id)),
+          body: JSON.stringify(replacementPayload(programExercise, exercise)),
         },
       );
       if (!response.ok) throw new Error('replace failed');
@@ -131,6 +169,7 @@ export function SessionExerciseMenu({
     } catch {
       toast.error(t('replaceError'));
     } finally {
+      inFlight.current = false;
       setBusy(false);
     }
   }
@@ -142,6 +181,8 @@ export function SessionExerciseMenu({
   }
 
   async function addExercise(exercise: Exercise) {
+    if (inFlight.current) return;
+    inFlight.current = true;
     setBusy(true);
     try {
       const response = await fetch(
@@ -149,14 +190,7 @@ export function SessionExerciseMenu({
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            exerciseId: exercise.id,
-            targetSets: 4,
-            targetRepsMin: 8,
-            targetRepsMax: 12,
-            targetRIR: 2,
-            restSec: exercise.defaultRestSec,
-          }),
+          body: JSON.stringify(additionPayload(exercise)),
         },
       );
       if (!response.ok) throw new Error('add failed');
@@ -168,11 +202,14 @@ export function SessionExerciseMenu({
     } catch {
       toast.error(t('addError'));
     } finally {
+      inFlight.current = false;
       setBusy(false);
     }
   }
 
   async function removeExercise() {
+    if (inFlight.current) return;
+    inFlight.current = true;
     setBusy(true);
     try {
       const response = await fetch(
@@ -193,6 +230,7 @@ export function SessionExerciseMenu({
     } catch {
       toast.error(t('removeError'));
     } finally {
+      inFlight.current = false;
       setBusy(false);
     }
   }

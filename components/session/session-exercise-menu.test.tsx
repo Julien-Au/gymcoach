@@ -190,6 +190,85 @@ describe('SessionExerciseMenu', () => {
     expect(onChanged).toHaveBeenCalledOnce();
   });
 
+  it('adds a cardio exercise as one continuous set, not as a strength prescription', async () => {
+    const bike = {
+      ...bench,
+      id: 'bike',
+      name: 'Stationary Bike',
+      muscleGroup: 'OTHER',
+      category: 'CARDIO',
+      equipmentType: 'CARDIO',
+      defaultRestSec: 60,
+    } as Exercise;
+    render(
+      <SessionExerciseMenu
+        open
+        onOpenChange={vi.fn()}
+        programExercise={programExercise}
+        programExercises={[programExercise, nextProgramExercise]}
+        catalog={[bench, bike, row]}
+        loggedSetCount={0}
+        onChanged={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Add exercise' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Stationary Bike' }));
+    await waitFor(() => expect(fetch).toHaveBeenCalledOnce());
+    expect(JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string)).toEqual({
+      exerciseId: 'bike',
+      targetSets: 1,
+      targetRepsMin: 1,
+      targetRepsMax: 1,
+      targetRIR: 0,
+      restSec: 60,
+    });
+  });
+
+  it('sends one request when the same choice is tapped twice', async () => {
+    let release: (value: Response) => void = () => undefined;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockReturnValue(new Promise<Response>((resolve) => (release = resolve))),
+    );
+    renderMenu();
+    fireEvent.click(screen.getByRole('button', { name: 'Add exercise' }));
+    const choice = screen.getByRole('button', { name: 'Incline Press' });
+    fireEvent.click(choice);
+    fireEvent.click(choice);
+    expect(fetch).toHaveBeenCalledOnce();
+    release({ ok: true } as Response);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Add exercise' })).toBeEnabled());
+  });
+
+  it('does not carry the old exercise autoregulation tuning onto the replacement', async () => {
+    const tuned = {
+      ...programExercise,
+      fatigueRate: 1.4,
+      loadAdjustmentPct: 5,
+    } as ProgramExercise & { exercise: Exercise };
+    render(
+      <SessionExerciseMenu
+        open
+        onOpenChange={vi.fn()}
+        programExercise={tuned}
+        programExercises={[tuned, nextProgramExercise]}
+        catalog={[bench, incline, row]}
+        loggedSetCount={0}
+        onChanged={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Replace exercise' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Incline Press' }));
+    fireEvent.click(screen.getByRole('button', { name: /replace with incline press/i }));
+    await waitFor(() => expect(fetch).toHaveBeenCalledOnce());
+    // Same values the POST route stores for a new upper-body compound row.
+    expect(JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string)).toMatchObject({
+      exerciseId: 'incline',
+      fatigueRate: 0.75,
+      loadAdjustmentPct: 2.5,
+    });
+  });
+
   it('does not offer to remove the only exercise of the workout', () => {
     render(
       <SessionExerciseMenu
