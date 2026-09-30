@@ -10,7 +10,7 @@ import type { IntraSetRecommendation } from '@/lib/intra-set-autoregulation';
 import type { GymLoadConstraints } from '@/lib/gym-loads';
 import { constrainGymWeight, gymWeightOptions } from '@/lib/gym-loads';
 import { suggestNextWeight, type ReadinessSignal } from '@/lib/progression';
-import { estimate1RM } from '@/lib/stats';
+import { estimate1RM, estimateRepMax } from '@/lib/stats';
 import {
   loadPreferences,
   savePreferences,
@@ -78,8 +78,9 @@ const DUAL_METRIC_GRID_COLUMNS =
 
 function metricValue(metric: SetTableMetric, draft: DraftSet): number {
   if (metric === 'VOLUME') return draft.weight * draft.reps;
-  const oneRm = estimate1RM(draft.weight, draft.reps);
-  return metric === '10RM' ? oneRm / (1 + 10 / 30) : oneRm;
+  return metric === '10RM'
+    ? estimateRepMax(draft.weight, draft.reps, 10)
+    : estimate1RM(draft.weight, draft.reps);
 }
 
 function initialDraft(
