@@ -44,9 +44,12 @@ describe('GymCoach MCP server', () => {
       'upsert_gym_equipment',
       'set_gym_equipment_image',
     ]) {
+      // These overwrite whole lists, item fields, exercise links or image bytes
+      // with no undo, so clients that gate their confirmation UI on the hint
+      // must be told to ask.
       expect(byName.get(name)?.annotations).toMatchObject({
         readOnlyHint: false,
-        destructiveHint: false,
+        destructiveHint: true,
         idempotentHint: true,
         openWorldHint: false,
       });
