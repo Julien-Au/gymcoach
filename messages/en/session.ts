@@ -193,6 +193,7 @@ export const session = {
       weights: 'Available weights ({unit})',
       placeholder: '5; 7.5; 10; 12.5',
       help: 'Separate weights with spaces, semicolons or new lines. A comma between two digits is read as a decimal separator (22,5 is 22.5).',
+      preview: 'Will save: {weights} {unit}',
       save: 'Save weights',
       saved: 'Equipment weights updated.',
       saveError: 'Could not update equipment weights.',

@@ -19,6 +19,21 @@ function centerOption(centered: 50 | 60 | 70) {
   return list;
 }
 
+// Same idea for an arbitrary kg list: `centered` is the row under the pointer.
+function placeRows(weights: number[], centered: number) {
+  const list = screen.getByTestId('set-value-options');
+  Object.defineProperty(list, 'clientHeight', { configurable: true, value: 300 });
+  vi.spyOn(list, 'getBoundingClientRect').mockReturnValue({ top: 0, height: 300 } as DOMRect);
+  const offset = weights.indexOf(centered);
+  weights.forEach((weight, index) => {
+    vi.spyOn(
+      screen.getByRole('button', { name: `${weight} kg` }),
+      'getBoundingClientRect',
+    ).mockReturnValue({ top: 118 + (index - offset) * 84, height: 64 } as DOMRect);
+  });
+  return list;
+}
+
 afterEach(() => {
   Reflect.deleteProperty(window, 'matchMedia');
 });
@@ -325,6 +340,93 @@ describe('SetValuePicker', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Apply value' }));
     expect(onChoose).toHaveBeenCalledWith(73);
+  });
+
+  it('keeps an off-grid weight when the wheel settles back on the row it opened on', () => {
+    const onChoose = vi.fn();
+    render(
+      <SetValuePicker
+        open
+        kind="weight"
+        value={73}
+        canonicalValue={73}
+        options={[{ value: 70 }, { value: 72.5 }, { value: 75 }]}
+        unit="KG"
+        onClose={vi.fn()}
+        onChoose={onChoose}
+      />,
+    );
+
+    // 73 opens with its nearest row, 72.5, under the pointer. A nudge that snaps
+    // back to that row is not a move to another row.
+    const list = placeRows([70, 72.5, 75], 72.5);
+    fireEvent.pointerDown(list);
+    fireEvent.scroll(list);
+
+    expect(screen.getByRole('spinbutton')).toHaveValue(73);
+    expect(screen.getByRole('button', { name: '72.5 kg' })).not.toHaveAttribute(
+      'data-picker-selected',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Apply value' }));
+    expect(onChoose).toHaveBeenCalledOnce();
+    expect(onChoose).toHaveBeenCalledWith(73, 73);
+  });
+
+  it('adopts a row once the wheel moves off the one an off-grid weight opened on', () => {
+    const onChoose = vi.fn();
+    render(
+      <SetValuePicker
+        open
+        kind="weight"
+        value={73}
+        canonicalValue={73}
+        options={[{ value: 70 }, { value: 72.5 }, { value: 75 }]}
+        unit="KG"
+        onClose={vi.fn()}
+        onChoose={onChoose}
+      />,
+    );
+
+    const list = placeRows([70, 72.5, 75], 75);
+    fireEvent.pointerDown(list);
+    fireEvent.scroll(list);
+    expect(screen.getByRole('spinbutton')).toHaveValue(75);
+
+    // Coming back to 72.5 is now a real move too: the wheel left that row.
+    placeRows([70, 72.5, 75], 72.5);
+    fireEvent.scroll(list);
+    expect(screen.getByRole('spinbutton')).toHaveValue(72.5);
+    expect(screen.getByRole('button', { name: '72.5 kg' })).toHaveAttribute(
+      'data-picker-selected',
+      'true',
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Apply value' }));
+    expect(onChoose).toHaveBeenCalledWith(72.5);
+  });
+
+  it('keeps a typed value on an off-grid seed when the wheel stays on its row', () => {
+    const onChoose = vi.fn();
+    render(
+      <SetValuePicker
+        open
+        kind="weight"
+        value={73}
+        options={[{ value: 70 }, { value: 72.5 }, { value: 75 }]}
+        unit="KG"
+        onClose={vi.fn()}
+        onChoose={onChoose}
+      />,
+    );
+
+    fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '80' } });
+    const list = placeRows([70, 72.5, 75], 72.5);
+    fireEvent.pointerDown(list);
+    fireEvent.scroll(list);
+
+    expect(screen.getByRole('spinbutton')).toHaveValue(80);
+    fireEvent.click(screen.getByRole('button', { name: 'Apply value' }));
+    expect(onChoose).toHaveBeenCalledWith(80);
   });
 
   it('hands back the stored kg weight when a rounded lb value is applied unchanged', () => {

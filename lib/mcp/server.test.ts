@@ -147,6 +147,9 @@ describe('GymCoach MCP server', () => {
         },
       },
     });
+    // A write-enabled connection is told the confirmation rule, not the read-only refusal.
+    expect(capabilityResult!.writeAccessNote).toMatch(/confirmed: true/);
+    expect(capabilityResult!.writeAccessNote).not.toMatch(/read-only/);
 
     // The index is only useful if it cannot drift: rebuild the tool list from
     // the groups a client actually receives (not from the exported constant)
@@ -182,6 +185,10 @@ describe('GymCoach MCP server', () => {
       /Write tools \(programs, gym inventory, equipment history\) change saved data/,
     );
     expect(GYMCOACH_MCP_INSTRUCTIONS).not.toMatch(/Program-writing tools/);
+    // The confirmation rule covers every destructive write, not only program exercises.
+    expect(GYMCOACH_MCP_INSTRUCTIONS).toMatch(
+      /Never delete, remove or undo saved data .* without explicit confirmation/,
+    );
     expect(GYMCOACH_MCP_INSTRUCTIONS).toMatch(/call get_mcp_capability_index once/);
   });
 

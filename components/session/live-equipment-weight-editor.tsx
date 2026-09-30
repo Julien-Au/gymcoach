@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Loader2, Save } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import type { EquipmentType, WeightUnit } from '@/lib/prisma-client';
 import { Button } from '@/components/ui/button';
@@ -50,11 +50,16 @@ export function LiveEquipmentWeightEditor({
   onSaved,
 }: Props) {
   const t = useTranslations('session.editableSets.weightEditor');
+  const locale = useLocale();
   const [value, setValue] = useState('');
+  // Whether the lifter has typed since the dialog opened. Equipment with no
+  // weights yet opens on an empty field: that is a starting point, not an error.
+  const [edited, setEdited] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!open) return;
+    setEdited(false);
     setValue(
       equipment.weightOptions
         .map((weight) => roundWeight(toDisplayWeight(weight, unit), 2))
@@ -66,12 +71,29 @@ export function LiveEquipmentWeightEditor({
   const problem = parsed.ok
     ? null
     : parsed.problem === 'empty'
-      ? t('empty')
+      ? edited
+        ? t('empty')
+        : null
       : parsed.problem === 'tooMany'
         ? t('tooManyWeights')
         : parsed.problem === 'invalid'
           ? t('invalidWeight', { token: parsed.token })
           : t('outOfRange', { token: parsed.token });
+  // The list exactly as it will be saved, back in the display unit, so a
+  // reading the lifter did not intend (20,40 is 20.4) is visible before saving.
+  const preview = parsed.ok
+    ? t('preview', {
+        weights: parsed.weightOptions
+          .map((weight) =>
+            roundWeight(toDisplayWeight(weight, unit), 2).toLocaleString(locale, {
+              maximumFractionDigits: 2,
+              useGrouping: false,
+            }),
+          )
+          .join('; '),
+        unit: unit.toLowerCase(),
+      })
+    : null;
 
   async function save() {
     if (saving || !parsed.ok) return;
@@ -115,32 +137,30 @@ export function LiveEquipmentWeightEditor({
           <Input
             id="live-equipment-weights"
             value={value}
-            onChange={(event) => setValue(event.target.value)}
+            onChange={(event) => {
+              setEdited(true);
+              setValue(event.target.value);
+            }}
             // A list needs separators, which the numeric keypads do not offer.
             inputMode="text"
             autoComplete="off"
             placeholder={t('placeholder')}
             disabled={saving}
             aria-invalid={problem != null}
-            aria-describedby="live-equipment-weights-help live-equipment-weights-problem"
+            aria-describedby="live-equipment-weights-help live-equipment-weights-status"
           />
           <p id="live-equipment-weights-help" className="text-xs text-muted-foreground">
             {t('help')}
           </p>
-          <p
-            id="live-equipment-weights-problem"
-            aria-live="polite"
-            className="min-h-5 text-sm text-destructive"
-          >
-            {problem}
-          </p>
+          {/* Only a problem is announced: the preview changes on every keystroke. */}
+          <div id="live-equipment-weights-status" className="min-h-5 text-sm">
+            <p aria-live="polite" className="text-destructive">
+              {problem}
+            </p>
+            {problem == null && preview ? <p className="text-muted-foreground">{preview}</p> : null}
+          </div>
         </div>
-        <Button
-          type="button"
-          onClick={save}
-          disabled={saving || problem != null}
-          className="w-full"
-        >
+        <Button type="button" onClick={save} disabled={saving || !parsed.ok} className="w-full">
           {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
           <span className="ml-2">{t('save')}</span>
         </Button>
@@ -173,12 +193,12 @@ async function fetchCurrentEquipment(
 // Weights are separated by whitespace, a semicolon or a new line. A comma
 // directly between two digits is a decimal separator (22,5 is 22.5, the
 // natural form in French and Russian); any other comma separates two weights,
-// so "20, 40, 60" still reads as three.
+// so "20, 40, 60" still reads as three. A comma stuck to the front of a number
+// (",5", or the "22 ,5" typo for 22,5) is refused: guessing would save 5.
 export function parseDisplayWeightList(raw: string, unit: WeightUnit): WeightListResult {
   const tokens = raw
     .split(/[\s;]+/)
     .flatMap((chunk) => chunk.split(/,(?!\d)/))
-    .map((token) => token.replace(/^,+/, ''))
     .filter((token) => token !== '');
   if (tokens.length === 0) return { ok: false, problem: 'empty' };
 

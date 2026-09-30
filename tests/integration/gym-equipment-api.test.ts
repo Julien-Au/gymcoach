@@ -312,4 +312,57 @@ describe('gym equipment REST API', () => {
     expect(preserved?.imageMimeType).toBe('image/png');
     expect(preserved?.imageData?.byteLength).toBe(PNG.byteLength);
   });
+
+  it('stores an external https image URL instead of bytes and redirects its owner to it', async () => {
+    const { user, gym } = await seedUser('image-url');
+    const equipment = await db.gymEquipment.create({
+      data: { gymId: gym.id, name: 'Leg press', equipmentType: 'MACHINE' },
+    });
+    const imagePath = `http://test.local/api/gym-equipment/${equipment.id}/image`;
+    const stored = () =>
+      db.gymEquipment.findUniqueOrThrow({
+        where: { id: equipment.id },
+        select: { imageUrl: true, imageMimeType: true, imageData: true },
+      });
+    mockUserId.mockResolvedValue(user.id);
+
+    // Start from uploaded bytes, so the URL mode has something to clear.
+    const uploaded = await setImage(
+      request(imagePath, 'PUT', { imageBase64: PNG.toString('base64'), mimeType: 'image/png' }),
+      params(equipment.id),
+    );
+    expect(uploaded.status).toBe(200);
+    expect((await stored()).imageData?.byteLength).toBe(PNG.byteLength);
+
+    const externalUrl = 'https://images.example.com/leg-press.webp';
+    const linked = await setImage(
+      request(imagePath, 'PUT', { imageUrl: externalUrl }),
+      params(equipment.id),
+    );
+    expect(linked.status).toBe(200);
+    expect(await stored()).toEqual({ imageUrl: externalUrl, imageMimeType: null, imageData: null });
+
+    const redirected = await getImage(request(imagePath), params(equipment.id));
+    expect(redirected.status).toBe(307);
+    expect(redirected.headers.get('location')).toBe(externalUrl);
+
+    // Refused inputs leave the stored URL alone: a non-https URL, a non-URL,
+    // and both sources at once.
+    for (const body of [
+      { imageUrl: 'http://images.example.com/leg-press.webp' },
+      { imageUrl: 'javascript:alert(1)' },
+      { imageUrl: externalUrl, imageBase64: PNG.toString('base64'), mimeType: 'image/png' },
+    ]) {
+      const refused = await setImage(request(imagePath, 'PUT', body), params(equipment.id));
+      expect(refused.status).toBe(400);
+    }
+    expect(await stored()).toEqual({ imageUrl: externalUrl, imageMimeType: null, imageData: null });
+
+    // Another user is not redirected to it.
+    const stranger = await seedUser('image-url-stranger');
+    mockUserId.mockResolvedValue(stranger.user.id);
+    const foreign = await getImage(request(imagePath), params(equipment.id));
+    expect(foreign.status).toBe(404);
+    expect(foreign.headers.get('location')).toBeNull();
+  });
 });

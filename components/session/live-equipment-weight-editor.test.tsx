@@ -107,6 +107,28 @@ describe('parseDisplayWeightList', () => {
     });
   });
 
+  it('refuses a number with a comma stuck to its front instead of guessing', () => {
+    expect(parseDisplayWeightList(',5', 'KG')).toEqual({
+      ok: false,
+      problem: 'invalid',
+      token: ',5',
+    });
+    // The typo for 22,5: reading it as 22 and 5 would save a 5 kg step.
+    expect(parseDisplayWeightList('20 22 ,5 25', 'KG')).toEqual({
+      ok: false,
+      problem: 'invalid',
+      token: ',5',
+    });
+    expect(parseDisplayWeightList('20,,5', 'KG')).toEqual({
+      ok: false,
+      problem: 'invalid',
+      token: ',5',
+    });
+    // A comma on its own, or at the end of a number, is still a separator.
+    expect(parseDisplayWeightList('20 , 40', 'KG')).toEqual({ ok: true, weightOptions: [20, 40] });
+    expect(parseDisplayWeightList('20, 40,', 'KG')).toEqual({ ok: true, weightOptions: [20, 40] });
+  });
+
   it('applies the server bounds in kg, whatever the display unit', () => {
     expect(parseDisplayWeightList('10 0', 'KG')).toEqual({
       ok: false,
@@ -241,6 +263,69 @@ describe('LiveEquipmentWeightEditor', () => {
     fireEvent.change(input, { target: { value: '20 40 60' } });
     expect(saveButton).toBeEnabled();
     expect(input).toHaveAttribute('aria-invalid', 'false');
+  });
+
+  it('previews the list exactly as it will be saved', () => {
+    stubEquipmentApi();
+    const { input } = renderEditor();
+
+    expect(screen.getByText('Will save: 20; 40; 60 kg')).toBeInTheDocument();
+
+    // Glued digits are one decimal number, which the preview makes visible.
+    fireEvent.change(input, { target: { value: '20,40' } });
+    expect(screen.getByText('Will save: 20.4 kg')).toBeInTheDocument();
+
+    // Sorted and de-duplicated, as the save sends it.
+    fireEvent.change(input, { target: { value: '60 20; 20 22,5' } });
+    expect(screen.getByText('Will save: 20; 22.5; 60 kg')).toBeInTheDocument();
+
+    // The preview changes on every keystroke, so it must not sit in a live region.
+    expect(screen.getByText('Will save: 20; 22.5; 60 kg').closest('[aria-live]')).toBeNull();
+
+    fireEvent.change(input, { target: { value: '20 ,5' } });
+    expect(screen.queryByText(/Will save/)).not.toBeInTheDocument();
+    const problem = screen.getByText('“,5” is not a valid weight.');
+    expect(problem).toBeInTheDocument();
+    // A problem is announced.
+    expect(problem.closest('[aria-live="polite"]')).not.toBeNull();
+  });
+
+  it('previews in the display unit', () => {
+    stubEquipmentApi();
+    render(
+      <LiveEquipmentWeightEditor
+        open
+        gymId="gym-1"
+        equipment={{ ...equipment, weightOptions: [20.41, 45.36] }}
+        unit="LB"
+        onOpenChange={vi.fn()}
+        onSaved={vi.fn()}
+      />,
+    );
+
+    // Stored in kg (20.41 and 45.36), shown back in the unit the lifter types in.
+    expect(screen.getByText('Will save: 45; 100 lb')).toBeInTheDocument();
+  });
+
+  it('opens quietly on equipment that has no weights yet', () => {
+    const fetchMock = stubEquipmentApi();
+    const { input, saveButton } = renderEditor({ equipment: { ...equipment, weightOptions: [] } });
+
+    // Nothing typed yet: no error, but nothing to save either.
+    expect(input).toHaveValue('');
+    expect(screen.queryByText('Enter at least one weight.')).not.toBeInTheDocument();
+    expect(input).toHaveAttribute('aria-invalid', 'false');
+    expect(saveButton).toBeDisabled();
+    fireEvent.click(saveButton);
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    // Once the field was edited, an empty list is reported.
+    fireEvent.change(input, { target: { value: '20' } });
+    expect(saveButton).toBeEnabled();
+    fireEvent.change(input, { target: { value: '' } });
+    expect(screen.getByText('Enter at least one weight.')).toBeInTheDocument();
+    expect(input).toHaveAttribute('aria-invalid', 'true');
+    expect(saveButton).toBeDisabled();
   });
 
   it('cannot save an empty list', () => {

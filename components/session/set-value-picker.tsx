@@ -49,9 +49,7 @@ export function SetValuePicker({
   const locale = useLocale();
   // The input is the single source of what Apply commits: the opening seed, a
   // tap and the wheel all write into it, and the highlighted row and the plate
-  // preview are derived from it. `pendingValue` is only the row the wheel last
-  // settled on, used to tell a real wheel move from a stray scroll event.
-  const [pendingValue, setPendingValue] = useState(value);
+  // preview are derived from it.
   const [manualValue, setManualValue] = useState(String(value));
   const [wheelPadding, setWheelPadding] = useState(12);
   const listRef = useRef<HTMLDivElement>(null);
@@ -64,6 +62,12 @@ export function SetValuePicker({
   // a tap, focus, key press, typing or reopen disarms it. While disarmed,
   // programmatic recentering, focus and keyboard scrolling cannot move the value.
   const userScrolling = useRef(false);
+  // The row the wheel is resting on: the opening anchor (the nearest row, which
+  // is not the value itself for an off-grid weight), a tapped row, or the row the
+  // last scroll settled on. The wheel replaces the value only when the centred
+  // row differs from this one, so a scroll that snaps back to the same row (or
+  // a relayout scroll) cannot swap an off-grid 73 for the 72.5 shown beside it.
+  const centeredValue = useRef<number | null>(null);
   const scrollTimer = useRef<number | undefined>(undefined);
 
   useEffect(() => {
@@ -85,7 +89,7 @@ export function SetValuePicker({
     const seedValue = storedOption?.value ?? value;
     untouchedSeed.current = { value: seedValue, canonicalValue };
     userScrolling.current = false;
-    setPendingValue(seedValue);
+    centeredValue.current = nearestOptionValue(options, seedValue);
     setManualValue(String(seedValue));
     window.clearTimeout(scrollTimer.current);
     scrollTimer.current = window.setTimeout(() => {
@@ -117,7 +121,7 @@ export function SetValuePicker({
     // so the rows passing under the pointer on the way cannot replace it.
     userScrolling.current = false;
     untouchedSeed.current = null;
-    setPendingValue(option.value);
+    centeredValue.current = option.value;
     setManualValue(String(option.value));
     if (kind !== 'weight') return;
     const list = listRef.current;
@@ -151,9 +155,10 @@ export function SetValuePicker({
       const distance = Math.abs(rect.top + rect.height / 2 - centerY);
       return best == null || distance < best.distance ? { value: option, distance } : best;
     }, null);
-    if (!nearest || nearlyEqual(nearest.value, pendingValue)) return;
+    if (!nearest) return;
+    if (centeredValue.current != null && nearlyEqual(nearest.value, centeredValue.current)) return;
+    centeredValue.current = nearest.value;
     untouchedSeed.current = null;
-    setPendingValue(nearest.value);
     setManualValue(String(nearest.value));
   }
 
@@ -324,6 +329,15 @@ export function SetValuePicker({
 
 function nearlyEqual(left: number, right: number): boolean {
   return Math.abs(left - right) < 1e-9;
+}
+
+// The option closest to a value; null for an empty list.
+function nearestOptionValue(options: PickerOption[], value: number): number | null {
+  return options.reduce<number | null>(
+    (best, option) =>
+      best == null || Math.abs(option.value - value) < Math.abs(best - value) ? option.value : best,
+    null,
+  );
 }
 
 // The row to centre when the picker opens: the selected option, or for a value

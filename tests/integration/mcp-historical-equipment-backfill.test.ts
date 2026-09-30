@@ -398,6 +398,51 @@ describe('historical equipment backfill transactions', () => {
 });
 
 describe('historical equipment backfill preview and audit listing', () => {
+  it('does not count a set from a session still in progress as prior-use evidence', async () => {
+    const seeded = await seedBackfillCase('evidence');
+    // A second machine for the same exercise: with two candidates the
+    // suggestion can only come from assigned history.
+    const other = await db.gymEquipment.create({
+      data: {
+        gymId: seeded.gym.id,
+        name: 'Second cable stack',
+        equipmentType: 'CABLE',
+        weightOptions: [10, 20, 30],
+        exerciseLinks: { create: { exerciseId: seeded.exercise.id } },
+      },
+    });
+    const live = await db.session.create({
+      data: { userId: seeded.user.id, gymId: seeded.gym.id, finishedAt: null },
+    });
+    await db.set.create({
+      data: {
+        sessionId: live.id,
+        exerciseId: seeded.exercise.id,
+        setNumber: 1,
+        weight: 20,
+        reps: 10,
+        gymEquipmentId: other.id,
+        equipmentNameSnapshot: other.name,
+      },
+    });
+    const evidenceFor = async () => {
+      const preview = await previewHistoricalEquipmentBackfill(seeded.user.id, {});
+      const group = preview.groups[0];
+      return {
+        suggested: group?.suggestedEquipment?.equipmentId ?? null,
+        count:
+          group?.candidateEquipment.find((item) => item.equipmentId === other.id)
+            ?.assignedHistoricalSetCount ?? null,
+      };
+    };
+
+    expect(await evidenceFor()).toEqual({ suggested: null, count: 0 });
+
+    // Once that session is finished its set is history and backs a suggestion.
+    await db.session.update({ where: { id: live.id }, data: { finishedAt: new Date() } });
+    expect(await evidenceFor()).toEqual({ suggested: other.id, count: 1 });
+  });
+
   it("previews only the caller's own missing sets and equipment candidates", async () => {
     const caller = await seedBackfillCase('preview-caller');
     const other = await seedBackfillCase('preview-other');
@@ -667,7 +712,16 @@ describe('historical equipment backfill MCP tools', () => {
     const preview = (args: Record<string, unknown>) =>
       client.callTool({ name: 'preview_historical_equipment_backfill', arguments: args });
 
-    for (const bad of [{ from: null }, { from: 0 }, { to: 'yesterday' }, { limit: 501 }]) {
+    for (const bad of [
+      { from: null },
+      { from: 0 },
+      { to: 'yesterday' },
+      // Not a calendar date: the engine would roll it over to March 2.
+      { from: '2026-02-30' },
+      // No offset: it would depend on the server's time zone.
+      { to: '2026-08-31T18:00:00' },
+      { limit: 501 },
+    ]) {
       expect((await preview(bad)).isError).toBe(true);
     }
     const reversed = await preview({ from: '2026-09-01', to: '2026-08-01' });

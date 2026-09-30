@@ -21,6 +21,10 @@ describe('chat system prompt', () => {
     expect(CHAT_SYSTEM_PROMPT).toMatch(/never say or imply that you added/i);
     expect(CHAT_SYSTEM_PROMPT).toMatch(/Programs page/);
     expect(CHAT_SYSTEM_PROMPT).toMatch(/MCP connector/);
+    // The Settings toggle is "Allow changes to saved data": the prompt names
+    // the capability (write access), not a label that no longer exists.
+    expect(CHAT_SYSTEM_PROMPT).toMatch(/MCP connector in Settings with write access enabled/);
+    expect(CHAT_SYSTEM_PROMPT).not.toMatch(/program changes allowed/i);
     // ...but a mid-workout deviation stays plain advice: the pointer to the
     // Programs page is scoped to LASTING changes, so the in-session guidance
     // above ("reorder or skip an exercise") is not contradicted.
