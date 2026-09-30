@@ -143,7 +143,7 @@ export async function getOwnedGymInventory(userId: string, baseUrl: string, gymI
       },
       equipment: details.equipment.map((item) => ({
         ...item,
-        image: equipmentImage(item, baseUrl),
+        image: gymEquipmentImageRef(item),
         exerciseLinks: item.exerciseLinks.map((link) => link.exercise),
       })),
       exerciseCoverage: exercises.map((exercise) => {
@@ -172,7 +172,7 @@ export async function getOwnedGymInventory(userId: string, baseUrl: string, gymI
       updateSharedWeightsWith: 'update_gym_free_weights',
       attachImageWith: 'set_gym_equipment_image',
       readEquipmentImageWith: 'get_gym_equipment_image',
-      note: 'Physical equipment and exercises are separate records; link equipment to exercise IDs so machine/cable load options constrain program design.',
+      note: 'Physical equipment and exercises are separate records; link equipment to exercise IDs so machine/cable load options constrain program design. Uploaded equipment images carry no URL: read them with get_gym_equipment_image.',
     },
   };
 }
@@ -539,21 +539,25 @@ async function resolveOwnedGym(userId: string, gymId?: string) {
   return gym;
 }
 
-function equipmentImage(
-  item: { id: string; imageUrl: string | null; imageMimeType: string | null; updatedAt: Date },
-  baseUrl: string,
-) {
+// How MCP results describe an item's image. Uploaded bytes are served to the web
+// app by a cookie-authenticated route an MCP client cannot fetch, so no URL is
+// advertised for them: the client reads them with get_gym_equipment_image.
+export function gymEquipmentImageRef(item: {
+  imageUrl: string | null;
+  imageMimeType: string | null;
+  updatedAt: Date;
+}) {
   if (item.imageMimeType) {
     return {
-      kind: 'uploaded',
-      url: new URL(
-        `/api/gym-equipment/${item.id}/image?v=${item.updatedAt.getTime()}`,
-        baseUrl,
-      ).toString(),
+      kind: 'uploaded' as const,
       mimeType: item.imageMimeType,
+      updatedAt: item.updatedAt,
+      readWith: 'get_gym_equipment_image' as const,
     };
   }
-  return item.imageUrl ? { kind: 'external', url: item.imageUrl, mimeType: null } : null;
+  return item.imageUrl
+    ? { kind: 'external' as const, url: item.imageUrl, mimeType: null }
+    : null;
 }
 
 async function requireOwnedGym(userId: string, gymId: string) {

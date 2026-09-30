@@ -8,6 +8,7 @@ import {
   findOwnedGymEquipmentUpsertTarget,
   getOwnedGymEquipmentImage,
   getOwnedGymInventory,
+  gymEquipmentImageRef,
   listOwnedGyms,
   setOwnedGymEquipmentImage,
   updateOwnedGymFreeWeights,
@@ -291,18 +292,7 @@ export function createGymCoachMcpServer({ principal, baseUrl }: ServerOptions): 
         throw new Error('Choose exactly one image action: clear or imageBase64.');
       }
       const equipment = await setOwnedGymEquipmentImage(principal.userId, equipmentId, input);
-      const image = equipment.imageMimeType
-        ? {
-            kind: 'uploaded',
-            url: new URL(
-              `/api/gym-equipment/${equipment.id}/image?v=${equipment.updatedAt.getTime()}`,
-              baseUrl,
-            ).toString(),
-            mimeType: equipment.imageMimeType,
-          }
-        : equipment.imageUrl
-          ? { kind: 'external', url: equipment.imageUrl, mimeType: null }
-          : null;
+      const image = gymEquipmentImageRef(equipment);
       return result({ ok: true, equipment: { ...equipment, image } });
     },
   );

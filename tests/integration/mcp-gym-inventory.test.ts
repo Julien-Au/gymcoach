@@ -226,6 +226,16 @@ describe('GymCoach MCP gym inventory', () => {
       },
     });
     expect(uploaded.isError).not.toBe(true);
+    // The uploaded image is described without the cookie-only web URL: an MCP
+    // client cannot fetch it and is pointed at the read tool instead.
+    const uploadedImage = (uploaded.structuredContent as { equipment: { image: unknown } })
+      .equipment.image;
+    expect(uploadedImage).toMatchObject({
+      kind: 'uploaded',
+      mimeType: 'image/png',
+      readWith: 'get_gym_equipment_image',
+    });
+    expect(uploadedImage).not.toHaveProperty('url');
 
     const fetched = await client.callTool({
       name: 'get_gym_equipment_image',
@@ -251,7 +261,7 @@ describe('GymCoach MCP gym inventory', () => {
         equipment: Array<{
           id: string;
           description: string | null;
-          image: { kind: string; mimeType: string } | null;
+          image: { kind: string; mimeType: string; url?: string } | null;
           exerciseLinks: Array<{ id: string }>;
         }>;
       };
@@ -260,10 +270,15 @@ describe('GymCoach MCP gym inventory', () => {
       expect.objectContaining({
         id: savedEquipment.id,
         description: 'Plate-loaded converging chest press with an adjustable seat.',
-        image: expect.objectContaining({ kind: 'uploaded', mimeType: 'image/png' }),
+        image: expect.objectContaining({
+          kind: 'uploaded',
+          mimeType: 'image/png',
+          readWith: 'get_gym_equipment_image',
+        }),
         exerciseLinks: [expect.objectContaining({ id: exercise.id })],
       }),
     ]);
+    expect(inventoryData.gym.equipment[0].image).not.toHaveProperty('url');
 
     // External URLs are not an MCP input: the argument is dropped by the tool
     // schema, so the call has no image action and nothing is stored.
