@@ -28,6 +28,7 @@ import {
   SetAutoregulationMode,
 } from '@/lib/prisma-client';
 import type { McpPrincipal } from '@/lib/mcp/auth';
+import { Prisma } from '@/prisma/generated/client';
 
 export const GYMCOACH_MCP_INSTRUCTIONS = `GymCoach stores the trainee's profile, gyms, equipment, programs, workout history, sets, RIR, goals and recovery signals.
 
@@ -66,6 +67,16 @@ function requireWrite(principal: McpPrincipal) {
       'This GymCoach MCP token is read-only. Create a write-enabled token in Settings.',
     );
   }
+}
+
+// A thrown error reaches the MCP client as its bare message. A unique-constraint
+// violation would leak the raw Prisma invocation text, so give it the same clean
+// wording the REST layer uses for a 409 (lib/api.ts handleApiError).
+function rethrowUniqueConflict(err: unknown): never {
+  if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+    throw new Error('Conflict: an entry with this value already exists.');
+  }
+  throw err;
 }
 
 async function getOwnedProgram(userId: string, programId?: string) {
@@ -245,7 +256,9 @@ export function createGymCoachMcpServer({ principal, baseUrl }: ServerOptions): 
     async ({ gymId, confirmed: _confirmed, ...input }) => {
       requireWrite(principal);
       const previous = await findOwnedGymEquipmentUpsertTarget(principal.userId, gymId, input);
-      const saved = await upsertOwnedGymEquipment(principal.userId, gymId, input);
+      const saved = await upsertOwnedGymEquipment(principal.userId, gymId, input).catch(
+        rethrowUniqueConflict,
+      );
       return result({ ok: true, ...saved, previous });
     },
   );

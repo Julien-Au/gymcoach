@@ -118,7 +118,7 @@ export async function getOwnedGymInventory(userId: string, baseUrl: string, gymI
       },
     }),
   ]);
-  if (!details) throw new Error('Gym not found.');
+  if (!details) throw new ApiError(404, 'Gym not found.');
 
   const configByExercise = new Map(
     details.exerciseConfigs.map((config) => [config.exerciseId, config]),
@@ -192,7 +192,7 @@ export async function updateOwnedGymFreeWeights(
     patch.plateWeights === undefined &&
     patch.barWeights === undefined
   ) {
-    throw new Error('Provide at least one free-weight inventory list.');
+    throw new ApiError(400, 'Provide at least one free-weight inventory list.');
   }
   // The update replaces whole lists, so hand back what was there before: the
   // caller can show the change or restore it.
@@ -528,12 +528,14 @@ async function resolveOwnedGym(userId: string, gymId?: string) {
         select: { activeGymId: true },
       })
     )?.activeGymId;
-  if (!resolvedId) throw new Error('No active gym. Provide gymId or activate a gym first.');
+  if (!resolvedId) {
+    throw new ApiError(400, 'No active gym. Provide gymId or activate a gym first.');
+  }
   const gym = await db.gym.findFirst({
     where: { id: resolvedId, userId },
     select: { id: true, name: true },
   });
-  if (!gym) throw new Error('Gym not found.');
+  if (!gym) throw new ApiError(404, 'Gym not found.');
   return gym;
 }
 

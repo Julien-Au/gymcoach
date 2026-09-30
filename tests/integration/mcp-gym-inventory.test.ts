@@ -192,6 +192,30 @@ describe('GymCoach MCP gym inventory', () => {
       1,
     );
 
+    // Renaming onto another item's name violates the per-gym unique name. The
+    // client gets a clean conflict message, not the raw Prisma error text.
+    const other = await db.gymEquipment.create({
+      data: { gymId: gym.id, name: 'Leg press', equipmentType: 'MACHINE' },
+    });
+    const renamed = await client.callTool({
+      name: 'upsert_gym_equipment',
+      arguments: {
+        confirmed: true,
+        gymId: gym.id,
+        equipmentId: other.id,
+        name: savedEquipment.name,
+        equipmentType: 'MACHINE',
+      },
+    });
+    expect(renamed.isError).toBe(true);
+    const renamedText = JSON.stringify(renamed.content);
+    expect(renamedText).toContain('Conflict: an entry with this value already exists.');
+    expect(renamedText).not.toMatch(/prisma|invocation|constraint/i);
+    expect((await db.gymEquipment.findUniqueOrThrow({ where: { id: other.id } })).name).toBe(
+      'Leg press',
+    );
+    await db.gymEquipment.delete({ where: { id: other.id } });
+
     const uploaded = await client.callTool({
       name: 'set_gym_equipment_image',
       arguments: {
