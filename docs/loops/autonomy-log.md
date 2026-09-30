@@ -2808,3 +2808,134 @@ and the fresh home capture lost the coach-insight card, which the demo seed only
 some run dates - a re-shoot that makes the frame worse is not a refresh. **Media debt stands:**
 the recorded clips lag four shipped capabilities (equipment picker, muscle heat map, print
 sheet, and this wave's calendar / inline editing / exercise strip), well past the ~3-batch cap.
+
+---
+
+## 2026-09-30 - the third SHAREN wave: eight fork PRs merged 8/8 on an in-session authorization, fourteen delta reviews, a missed 72 h verdict, and the integration tier moved into a container
+
+**Context.** @SHAREN (vetted tier) opened eight independent fork PRs on 2026-09-16 and 09-17:
+#362 (MCP equipment backfill), #363 (in-session exercise actions), #364 (gym-aware weight
+picker), #365 (in-session equipment weight editing), #366 (barbell loading diagram), #367
+(table metric columns), #368 (MCP gym inventory) and #369 (MCP capability index). Six of them
+touch a hard-block path: `lib/mcp/**` (#362, #368, #369), `prisma/schema.prisma` plus a
+migration (#362), and `messages/**` (#363, #365, #367). Today the operator wrote, in session,
+that there were many new PRs from SHAREN and delegated handling them end to end to the loop.
+That was taken as the explicit in-session authorization for **this wave**, hard-block PRs
+included - the same precedent as 2026-09-14, and the same caveat: **the policy did not change**,
+hard-block paths are still human-merge-only, and the loop's authority for the seven merges
+outside the automatic path is that sentence and nothing else.
+
+**The missed commitment, stated plainly.** `10-external-contributions.md` promises a full
+structured verdict on an external PR within 72 h. These PRs got none until today: the
+commitment was missed by about eleven days, on all eight. No verdict was posted in that
+window. The verdict comments apologise for it; the policy text is unchanged, because the
+promise is right and the loop simply did not keep it.
+
+**Pipeline as run.**
+
+- **Pass 1, mechanical.** Heads pinned, hard-block hits recorded, overlaps mapped:
+  `editable-sets-table.tsx` (#364 / #365 / #367), `session-runner.tsx` (#363 / #365),
+  `messages/*/session.ts` (#363 / #365 / #367), and `lib/mcp/server.ts` (#362 / #368 / #369),
+  the last three all conflicting with `main`'s #371 (`add_workout`).
+- **Pass 2, nine independent Opus lenses in two batches** (MCP: #362 / #368 / #369; session UI:
+  #363-#367). Four lenses each - backdoor / egress, test weakening, correctness, threat model -
+  with correctness split in two for the UI batch. Each lens got the concrete questions the
+  diffs raised (**L27**) and had to name what it read in full (**L26**). Verdicts posted as PR
+  comments. No injection attempt, no egress, no cross-user path, and no weakened test except
+  one loosened assertion on #367.
+- **Fixups.** Maintainer fixup ticks, one git worktree per PR, every execution inside
+  `scripts/container-run.sh` / `scripts/container-gate.sh` plus a new helper for the
+  integration tier (below). Fixups pushed to the contributor's branch; merges pinned to the
+  reviewed SHA with `gh api -X PUT .../pulls/<n>/merge -f merge_method=merge -f sha=`. Each
+  fixup tick ran a mutation check on its own new tests (revert the fix, confirm the tests
+  fail) and reported it (**L36**).
+- **Delta reviews (L29).** Every fixup round got an independent Opus delta review, two lenses
+  when the delta touched the MCP surface: 14 in all (#368 x4, #364 x2, #363 x2, #362 x2, #369
+  x2, #367 x1, #365 x1; none for #366, which merged without a fixup).
+- **Pass 3.** Green CI on each pinned SHA, rollback tag `autonomy-baseline-2026-09-30` pushed
+  before the first merge. Merge order: #366, #367, #362, #364, #363, #365, #368, #369.
+
+**Findings that mattered.**
+
+- **#364** reset its pending value on every parent re-render; snapped the stored weight on
+  open (220 kg became 200, 73 became 72.5 on a plain Apply); and duplicated #366's
+  bar-selection helper and diagram.
+- **#363** said "active workout" in its copy while the actions edit the saved program; a
+  replace skipped confirmation when no working set was logged; a replace left a stale draft.
+- **#365** re-snapped a logged set's weight to the equipment selected for new sets on any
+  edit, RIR-only included; its weight-list parser split on commas, so "22,5" was saved
+  silently as 22 and 5.
+- **#362** had correct ownership guards that no test exercised (removing them would have
+  failed nothing); a Prisma model inserted between another model's doc comment and that model;
+  and it widened write consent silently.
+- **#368** annotated three overwriting tools `destructiveHint: false`; let a prompt-injected
+  client plant an external image URL that later clients would be handed; and widened write
+  consent silently.
+- **#369** hard-coded a tool list that was stale against `main` - its own exact-equality test
+  would have failed after the merge, which is the test doing its job.
+- **The delta reviews paid.** On #363 the delta review caught a regression the fixup itself
+  introduced: the 64 px actions button rendered only in input mode, so the card header jumped
+  about 24 px at every set / rest transition - fixed in a second round before the merge. On
+  #368 it found that an empty `imageBase64` crashed with a raw `TypeError` surfaced to the MCP
+  client - fixed.
+
+**Decisions the loop took under the delegation - flagged for the operator.** These are the
+loop's calls, not the operator's, and each is listed first in `review-digest.md`:
+
+1. **#363 keeps the contributor's semantics:** the in-session actions edit the saved program.
+   The copy now says so and a replace always confirms. A session-scoped override was not
+   built.
+2. **MCP write consent:** the single write toggle is relabelled "Allow changes to saved data",
+   and its description and `docs/chatgpt-mcp.md` name programs, gym inventory and workout
+   history. Separate write scopes need a migration and a default for existing tokens: filed
+   as **#375**, `needs-maintainer`.
+3. **#368:** the external image URL mode was removed from the MCP tool (uploaded bytes or
+   clear only); the REST route is unchanged.
+
+**Two process failures, both absorbed.** A stack that received its sibling through the
+sibling's branch went "dirty" on GitHub once the sibling landed through `main`: no CI on #369,
+and HTTP 405 on #368's pinned merge although its CI was green. Merging `origin/main` into the
+stacked branch fixed it, at one extra CI cycle on two PRs (**L31**). And the temptation to
+merge a stack's second PR on the strength of its superset-tree CI was declined: #364 and #368
+each merged on their own green run first (**L32**). Two late MINORs (#364's wheel nudge on an
+off-grid value, #365's leading-comma token) went to a maintainer follow-up instead of a third
+container round (**L34**): issue #382, implemented by the loop in **#383** (open at the time of
+writing).
+
+**The integration tier left CI-only.** Fixups on the MCP PRs needed their integration tests.
+A helper ran them in a container on an `--internal` docker network whose only other member is
+a throwaway Postgres on tmpfs - a fresh database per run, `prisma migrate deploy`, then
+Vitest, no route to the host or the internet, no credentials. The first run with the unit
+tier's six workers failed on foreign keys, because a forced worker cap overrides the
+integration config's `fileParallelism: false`; one worker fixed it. The helper graduates in
+this PR as `scripts/container-integration.sh` (**L33**).
+
+**CI infrastructure failures.** 8 pushed heads, 18 run attempts, 10 reruns - every rerun for
+the same failure: `toomanyrequests: Data limit exceeded` pulling
+`public.ecr.aws/docker/library/postgres:16-alpine`, at "Initialize containers" of the
+service-container jobs or "Start Postgres" of the smoke job. Zero real CI failures. Attempts
+per head: #367 2, #362 2, #364 3, #363 1, #368 4 on its first head and 3 on the re-merged head,
+#365 1, #369 2. The run's waiter classified the failed step before calling
+`rerun-failed-jobs` (bounded, with a pause); it also learned that the pulls API can report the
+old head for a few seconds after a push (**L35**). The mirror that was L2's fix now fails about
+half the runs: **#381**.
+
+**Green gate.** No contributor code executed on the host at any point. This docs PR passed the
+local gate on the host (loop-authored).
+
+**One metric.** 8 external PRs, **8 merged**, 0 abandoned, 0 reverts: 1 through the vetted
+auto-merge path (#366, squash, no fixup), 7 under the operator's authorization (the six
+hard-block PRs plus #364, which had no hard-block path but three majors and fixups). 9 pass-2
+lenses, 14 delta reviews, 10 fixup / re-merge ticks on contributor branches, 1 maintainer
+follow-up dev tick (#383). 0 host executions of contributor code. Token spend per tick was not
+recorded for this write-up.
+
+**Follow-up issues filed.** #375 (MCP write scopes, `needs-maintainer`), #376 (rate limit and
+body cap on `/mcp`), #377 (one MCP error mapper), #378 (show the sets of a replaced
+exercise), #379 (server-side duplicate exercise check), #380 (weights-only equipment update),
+#381 (CI: the ECR mirror), #382 (small review follow-ups, PR #383).
+
+**Media.** No captured page (home, progress, generator, catalog) changed, so no re-shoot. The
+live-session screen changed a lot - weight picker, actions menu, metric columns, barbell
+diagram - so the recorded session clip is now stale, on top of the clip debt already logged on
+2026-09-14.

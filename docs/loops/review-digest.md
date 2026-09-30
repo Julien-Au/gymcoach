@@ -689,3 +689,56 @@ when the demo seed's run date produces one. **Still in debt:** the recorded clip
 shipped capabilities (equipment picker, muscle heat map, print sheet, and this wave's calendar
 / inline editing / exercise strip) - well past the ~3-batch cap, and the honest number to fix
 next content tick.
+
+## 2026-09-30 - the third SHAREN wave: eight PRs merged on your authorization, three decisions the loop took for you
+
+You wrote in session that you left the new SHAREN PRs to the loop end to end. That was taken
+as the in-session authorization for **this wave only**, hard-block PRs included - the same
+kind of delegated human decision as 2026-09-14, not a policy change. Six of the eight touch a
+hard-block path (`lib/mcp/**`, `prisma/schema.prisma` plus a migration, `messages/**`). Every
+merge was pinned to a reviewed SHA; #366 was the one vetted-tier squash, the other seven are
+merge commits. No contributor code ran on this machine (unit gate, one-off commands and the
+integration tier all ran in isolated containers). Rollback tag:
+`autonomy-baseline-2026-09-30`.
+
+Merged, in order: **#366** (`ed6a333`), **#367** (`91b5293`), **#362** (`2bddb4b`), **#364**
+(`5c5a784`), **#363** (`b0394aa`), **#365** (`8d74479`), **#368** (`0eb377c`), **#369**
+(`3ac4203`). Open, maintainer-authored: **#383** (closes #382, the minor follow-ups).
+
+**Decide first - three product decisions the loop took under your delegation.** Each is
+reversible; each is the loop's call, not yours, until you confirm it.
+
+1. **#363 keeps the contributor's semantics: the in-session actions edit the saved
+   program.** `gh pr diff 363`. Replace / add / remove change the program, not only today's
+   session; the copy now says so and a replace always confirms. A session-scoped override
+   (change today only) was not built. If you wanted "today only", that is a new feature, not
+   a fix.
+2. **MCP write consent stays one toggle, relabelled "Allow changes to saved data".**
+   `gh pr diff 362` and `gh pr diff 368` (settings copy and `docs/chatgpt-mcp.md`). Both PRs
+   widened what a write-enabled token can do - gym inventory and workout history, on top of
+   programs - and neither said so; the loop made the widening explicit in the label, the
+   description and the docs rather than split the scope. **#375** (`needs-maintainer`) is the
+   real fix: separate write scopes need a migration and a default for existing tokens, and
+   that default is your call.
+3. **#368: the external image URL mode was removed from the MCP tool.** A prompt-injected
+   client could otherwise plant a URL that later clients are handed. Over MCP an image is now
+   uploaded bytes or cleared; the REST route keeps its URL mode (and #383 adds a test for it).
+
+**Read next:**
+
+4. **#362 - MCP equipment backfill (migration + a new write path to history).**
+   `gh pr diff 362`. The new audit table and migration, the ownership guards (now tested - no
+   test would have failed if they were removed before the fixup), the never-overwrite rule on
+   apply, and the undo's "every affected set still matches" check.
+5. **#381 - the CI image mirror.** Not a diff yet, an issue: 10 of 18 CI attempts this wave
+   were reruns for `toomanyrequests: Data limit exceeded` on the ECR public mirror of
+   `postgres:16-alpine`. The mirror was L2's fix for Docker Hub limits; it now fails about
+   half the runs. Choosing the replacement registry is a CI change, so it is yours.
+
+**Trust the gate (lower risk):** #366, #367, #364, #365 (UI, each fixed up and delta-reviewed),
+#369 (read-only index); in this PR, `scripts/container-integration.sh`, lessons L31-L36, the
+policy and `ship-pr` edits that graduate them, the CHANGELOG and README.
+
+**Carry forward:** #375-#381 (filed this wave), #383 open, #357, #348, #320, #300-#304, the
+MCP half of #331. **Media:** no captured page changed, no re-shoot; the recorded session clip
+is now stale against the picker, actions menu, metric columns and barbell diagram.

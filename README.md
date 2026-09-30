@@ -65,8 +65,14 @@ on your own key - all self-hosted.
 
 - **Fast set logging** - sets, reps, RIR, warm-ups and drop sets, with shorthand
   quick entry (`100x8@9`) and natural-language entry parsed by the AI.
-- **In-logger tools** - a rest timer, a plate-loading calculator, and a warm-up
-  ramp calculator, right where you log.
+- **In-logger tools** - a rest timer, a plate-loading calculator that draws the
+  per-side load on a barbell, and a warm-up ramp calculator, right where you log.
+- **A weight picker that knows your gym** - the weight and reps fields open a
+  drum-style picker limited to the loads your equipment can actually make, with
+  a barbell preview of the pending load; nothing changes until you press Apply,
+  and typing an exact decimal still works.
+- **Pick your table metrics** - the live sets table shows estimated 1RM,
+  estimated 10RM or volume (volume alongside either), and remembers the choice.
 - **Double-progression suggestions** - the next working load is computed from
   your last sets (and explained), with bodyweight-aware tonnage for pull-ups,
   dips, etc.
@@ -79,6 +85,10 @@ on your own key - all self-hosted.
   done and what is next, and one tap opens an exercise page with its technique
   media, your recent sessions on that movement and its best estimated 1RM,
   then takes you back exactly where you were.
+- **Change the plan mid-session** - an actions menu on the exercise card
+  replaces an exercise with another from the same muscle group, adds one, or
+  removes one without leaving the session. These edits go to the saved
+  program, and the menu says so.
 - **Readiness check-in** - an optional pre-session soreness/readiness prompt that
   auto-regulates the suggested load and says why it held or dropped.
 - **Return-to-training calibration** - after a real layoff, the first session
@@ -91,7 +101,8 @@ on your own key - all self-hosted.
   options, an optional photo), link them to the exercises they serve, and the
   equipment you used is recorded on every set you log. If a selection cannot be
   recorded (the item was deleted or unlinked while you trained), the set is
-  still saved and the logger says so instead of dropping it silently.
+  still saved and the logger says so instead of dropping it silently. A
+  machine's selectable weights can be corrected from the live session itself.
 - **Quality-of-life** - kilograms or pounds per user, an interface in English,
   French or Russian (extensible message catalogs), multi-user with strict
   per-user data isolation, and an installable PWA with offline logging.
@@ -163,7 +174,12 @@ on your own key - all self-hosted.
 - **Self-hosted** - your training lives in your own Postgres; the AI runs on your
   own key. No subscription, no rate-limited free tier.
 - **ChatGPT / MCP connector** - external agents can analyse your training data
-  and, with explicit permission, create or edit programs.
+  and, when you enable "Allow changes to saved data" on the connection, change
+  it: create or edit programs, maintain your gym inventory (free weights,
+  equipment and its photos), and backfill the equipment on past sets with an
+  audited undo. Every write asks for confirmation, and a capability index tool
+  tells a client which tools exist and whether it can write. Details in
+  [docs/chatgpt-mcp.md](docs/chatgpt-mcp.md).
 - **Import and export** - bring history in from a Strong or Hevy CSV, or from
   GymCoach's own history CSV (a spreadsheet with the same columns works too;
   dry-run preview, duplicate-safe, cardio included), and export everything back
@@ -402,6 +418,9 @@ than CI reaching in to a small VPS.
       page)
 - [x] Inline set editing during a live session (correct a logged set in place,
       offline included)
+- [x] Gym-aware weight picker and in-session exercise actions (replace, add,
+      remove)
+- [x] MCP gym inventory, equipment backfill and capability index tools
 
 ## Contributing
 
@@ -428,7 +447,12 @@ Notable changes are tracked in the [CHANGELOG](CHANGELOG.md).
   calendar workout history (#351), the PWA update refresh (#352), reliable
   locale switching behind a proxy (#353), live-session exercise navigation
   (#355) and inline set editing (#356) - the last of which they hardened
-  themselves, closing every finding of the review within hours.
+  themselves, closing every finding of the review within hours. A fourth
+  series of eight PRs, all merged on 2026-09-30, brought the barbell
+  diagram (#366), table metric columns (#367), the gym-aware weight picker
+  (#364), in-session exercise actions (#363), in-session equipment weight
+  editing (#365), and three MCP additions: the audited equipment backfill
+  (#362), the gym inventory tools (#368) and the capability index (#369).
 - [@shaurya703](https://github.com/shaurya703) - picked up three of the loop's
   own follow-up issues within hours of their filing and turned each into a
   clean PR, including the persisted dropped-equipment notice (#342).

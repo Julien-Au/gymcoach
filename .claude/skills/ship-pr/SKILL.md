@@ -95,7 +95,9 @@ changes on.
    between review and merge fail closed; without the flag, `gh api -X PUT
    repos/<owner>/<repo>/pulls/<n>/merge -f sha=<sha> -f merge_method=merge` is the same pin,
    and `gh api ... --jq` replaces a `jq` binary this host does not have). Confirm it merged
-   (`gh pr view <n> --json state,mergedAt`).
+   (`gh pr view <n> --json state,mergedAt`). In a stack, never merge the second PR before
+   the first has its own green CI on its own pinned SHA, even when the second's green CI
+   covered a superset tree (lesson L32).
    **`--delete-branch` fails after a successful merge when the branch is checked out in a
    worktree**: `gh` cannot delete a branch that some working tree still has checked out, so
    it exits 1 *after* the merge landed - the PR is merged and the remote branch survives.
@@ -115,7 +117,15 @@ changes on.
 - A red at the integration job's *Initialize containers* step (`Docker pull failed`) is
   transient infra, not a regression: re-run the run (`gh run rerun <id>`) before assuming
   the change broke anything. Acknowledge which step actually failed before re-planning
-  (lesson L2, anti feedback-blindness).
+  (lesson L2, anti feedback-blindness). The converse holds too: rerun **only** when the
+  failed step is the image pull (*Initialize containers* / *Start Postgres*, e.g.
+  `toomanyrequests: Data limit exceeded` from the ECR mirror); any other failed step is a
+  real failure and is read, not rerun. Bound the reruns and pause between them. After a
+  push, the pulls API can report the old head for a few seconds, so do not treat an
+  immediate "head moved" as real (lesson L35).
+- A vetted fork PR's integration tier runs locally only through
+  `scripts/container-integration.sh` (internal-only network, throwaway Postgres), never
+  on the host (lesson L33).
 - Reproducing the gate in a fresh checkout/worktree: `npm ci` first (worktrees do not share
   `node_modules`), `npm rebuild bcrypt` if its native binding is missing, and
   `prisma migrate deploy` on :5434 before the integration/E2E tiers (lesson L4).

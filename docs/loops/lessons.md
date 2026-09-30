@@ -520,3 +520,86 @@ Format per entry: trigger/evidence, the lesson (actionable), and **Status** = `g
   what makes this outcome possible; not checking for it is what wastes it.
 - **Status:** graduated -> rule 1 of "Maintainer fixups on a vetted fork PR" in
   `10-external-contributions.md`.
+
+### L31 - A stacked fork branch must re-merge `main` once its sibling lands, or GitHub calls it conflicting
+- **Trigger:** 2026-09-30, the third SHAREN wave. To save a CI cycle, #368 was stacked on
+  #362's branch and #369 on #368's. #362 then landed through `main`'s own merge commit, which
+  left the stacked branches with a criss-cross history (two merge bases). Local `git merge`
+  (ort) resolved it cleanly, but GitHub reported both PRs "dirty": it never started CI on
+  #369, and it answered the pinned merge call on #368 with HTTP 405 "Pull Request has merge
+  conflicts" although #368's CI was green. The fix was `git merge origin/main` into the
+  stacked branch (clean, no hand edits), a re-gate and a push - one extra CI cycle on two
+  PRs. The other stack of the wave (#364 then #363) had no such problem: #363's pushed head
+  contained #364's exact head and both merged in order, so the tree CI tested was the tree
+  that landed.
+- **Lesson:** stacking on a reviewed-but-unmerged sibling is worth it, but a branch that
+  received the sibling through its **branch** (rather than through `main`) must merge
+  `origin/main` after the sibling lands and before it asks GitHub for CI or a merge. A clean
+  local merge is not evidence that GitHub agrees.
+- **Status:** graduated -> pass 3 of `10-external-contributions.md`.
+
+### L32 - Never merge the second PR of a stack before the first is green on its own pinned SHA
+- **Trigger:** same wave. #363 went green before #364, and #369 before #368; in both cases
+  the second PR's run covered a tree that contained the first. It was tempting to read that
+  as covering the first PR too.
+- **Lesson:** pass 3 is "green CI on exactly the SHA that was reviewed", per PR. A superset
+  tree going green is not the first PR's result: the first PR merges on its own pinned SHA,
+  with its own green run, and only then does the second.
+- **Status:** graduated -> pass 3 of `10-external-contributions.md` and step 5 of the
+  `ship-pr` skill.
+
+### L33 - The integration tier of external code can run locally without breaking the execution gate
+- **Trigger:** same wave. Fixups on the MCP PRs (#362 carries a migration) needed their
+  integration tests run, and until now the integration tier of a fork branch was CI-only -
+  the only way to learn whether a fixup broke it was a CI round trip. The run used a helper: the test container on an `--internal` docker network whose only other member is a
+  throwaway Postgres, a fresh database per run, `prisma migrate deploy`, then Vitest, with no
+  route to the host or the internet and no credentials. First attempt with the unit tier's
+  `VITEST_MAX_WORKERS=6` failed on foreign keys: forcing a worker cap overrides the
+  integration config's `fileParallelism: false`, and the test files truncated each other's
+  tables.
+- **Lesson:** the execution gate forbids the host, not the database. An internal-only network
+  plus a throwaway Postgres gives external code a database without giving it the host or the
+  internet. The integration tier needs exactly one worker.
+- **Status:** graduated -> `scripts/container-integration.sh` (with a `down` sub-command),
+  "The execution gate" in `10-external-contributions.md` (the sentence saying integration
+  stays CI-only is replaced), and a guardrail in the `ship-pr` skill.
+
+### L34 - Bound the fixup rounds: a late MINOR goes to a maintainer follow-up, not a third container round
+- **Trigger:** same wave. Second-round delta reviews found two MINORs on contributor
+  branches after their majors were fixed: #364's wheel could rewrite an off-grid value to the
+  nearest row on a nudge, and #365's weight-list parser accepted a token starting with a
+  comma. Each would have meant a third fixup round in the container, a third delta review and
+  another CI cycle on the fork, for a finding that did not block the merge.
+- **Lesson:** after the second round, a MINOR is filed and fixed in a maintainer follow-up PR
+  (the loop's own code, gated on the host) and the contributor PR merges on its reviewed SHA.
+  Here: issue #382, PR #383.
+- **Status:** graduated -> rule 3 of "Maintainer fixups on a vetted fork PR" in
+  `10-external-contributions.md`.
+
+### L35 - Rerun a red CI only when the failed step is the image pull, and do not trust "head moved" right after a push
+- **Trigger:** same wave. 18 CI run attempts on 8 pushed heads; 10 were reruns, every one for
+  the same infrastructure failure (`toomanyrequests: Data limit exceeded` pulling
+  `postgres:16-alpine` from the ECR public mirror, at "Initialize containers" of the
+  service-container jobs or "Start Postgres" of the smoke job). Zero real CI failures. The run
+  used a small waiter that classified the failed step before calling `rerun-failed-jobs`, with
+  bounded retries and a pause between them. Separately, the pulls API returned the previous
+  head for a few seconds after a push, so a waiter that checked "head moved" immediately
+  reported a false HEAD MOVED.
+- **Lesson:** L2 said an image-pull failure is infra; the converse matters as much once
+  reruns are automated - a rerun is only for the pull step, anything else is read as a real
+  failure. Give the API a few seconds after a push before comparing heads. The mirror failure
+  itself is tracked as #381.
+- **Status:** graduated -> the CI guardrail of the `ship-pr` skill and pass 3 of
+  `10-external-contributions.md`; the mirror is accepted risk until #381.
+
+### L36 - Ask the fixup tick for a mutation check, and the verdict for the merge order
+- **Trigger:** same wave. The fixup ticks reverted their own fix and confirmed the new tests
+  failed, and reported it. That made the delta reviewer's standing question ("would this test
+  fail without the fix?") a fact to check instead of a judgment - relevant here because #362's
+  ownership guards had been correct but untested. With three overlapping groups of PRs
+  (the sets table, the session runner, the MCP server), the merge order was the other thing a
+  contributor needed to know before rebasing anything.
+- **Lesson:** make the mutation check part of every fixup tick's report, and state the merge
+  order at the top of the contributor-facing verdict whenever PRs overlap.
+- **Status:** graduated -> rules 2 and 4 of "Maintainer fixups on a vetted fork PR" in
+  `10-external-contributions.md`.
