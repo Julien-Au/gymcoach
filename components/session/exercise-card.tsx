@@ -2,14 +2,7 @@
 
 import { useState } from 'react';
 import { useFormatter, useLocale, useTranslations } from 'next-intl';
-import {
-  ChevronDown,
-  ChevronUp,
-  HelpCircle,
-  Lightbulb,
-  MoreHorizontal,
-  TrendingUp,
-} from 'lucide-react';
+import { ChevronDown, ChevronUp, HelpCircle, Lightbulb, MoreHorizontal, TrendingUp } from 'lucide-react';
 import type { Exercise, ProgramExercise, WeightUnit } from '@/lib/prisma-client';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';

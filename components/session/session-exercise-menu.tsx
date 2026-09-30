@@ -27,10 +27,7 @@ interface Props {
   programExercises: SessionProgramExercise[];
   catalog: SessionCatalogExercise[];
   loggedSetCount: number;
-  onChanged: (options?: {
-    selectProgramExerciseId?: string;
-    removedProgramExerciseId?: string;
-  }) => void;
+  onChanged: (options?: { selectProgramExerciseId?: string; removedProgramExerciseId?: string }) => void;
 }
 
 // Targets for a program row created from the session menu. Cardio follows the

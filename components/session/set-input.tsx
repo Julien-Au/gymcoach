@@ -690,10 +690,7 @@ function computeInitial(
         loadConstraints,
       );
       weight = ordinary.weight ?? lastPerf.maxWeight;
-      if (
-        returnRecommendation.weightCeiling != null &&
-        weight > returnRecommendation.weightCeiling
-      ) {
+      if (returnRecommendation.weightCeiling != null && weight > returnRecommendation.weightCeiling) {
         weight = constrainGymWeightAtOrBelow(returnRecommendation.weightCeiling, loadConstraints);
       }
     }
