@@ -121,6 +121,7 @@ export function SessionExerciseMenu({
       if (!response.ok) throw new Error('replace failed');
       toast.success(t('replaced'));
       onOpenChange(false);
+      setView('actions');
       setPendingReplacement(null);
       setQuery('');
       onChanged();

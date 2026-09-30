@@ -142,6 +142,9 @@ describe('SessionExerciseMenu', () => {
       targetRepsMax: 10,
     });
     expect(onChanged).toHaveBeenCalledOnce();
+    // The menu goes back to its action list, so reopening it does not land on
+    // the replacement picker of the exercise that was just swapped in.
+    expect(await screen.findByRole('button', { name: 'Add exercise' })).toBeInTheDocument();
   });
 
   it('requires confirmation when replacement would leave logged sets on the original exercise', async () => {
