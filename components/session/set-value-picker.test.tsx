@@ -458,6 +458,121 @@ describe('SetValuePicker', () => {
     expect(screen.getByRole('button', { name: '70 kg' })).toHaveAttribute('aria-pressed', 'true');
   });
 
+  it('highlights the row a typed value would commit, and none when it matches no row', () => {
+    render(
+      <SetValuePicker
+        open
+        kind="weight"
+        value={60}
+        options={weightOptions}
+        unit="KG"
+        onClose={vi.fn()}
+        onChoose={vi.fn()}
+      />,
+    );
+
+    const input = screen.getByRole('spinbutton');
+    const sixty = screen.getByRole('button', { name: '60 kg' });
+    const seventy = screen.getByRole('button', { name: '70 kg' });
+
+    fireEvent.change(input, { target: { value: '70' } });
+    expect(seventy).toHaveAttribute('aria-pressed', 'true');
+    expect(seventy).toHaveAttribute('data-picker-selected', 'true');
+    expect(sixty).toHaveAttribute('aria-pressed', 'false');
+    expect(sixty).not.toHaveAttribute('data-picker-selected');
+
+    // Off the list, or not applicable at all: no row claims to be the choice.
+    for (const value of ['65', '']) {
+      fireEvent.change(input, { target: { value } });
+      expect(screen.queryAllByRole('button', { pressed: true })).toHaveLength(0);
+    }
+  });
+
+  it('keeps the highlight and the plate preview on a typed value when the wheel is only touched', () => {
+    const onChoose = vi.fn();
+    render(
+      <SetValuePicker
+        open
+        kind="weight"
+        value={60}
+        options={[{ value: 60 }, { value: 70 }]}
+        unit="KG"
+        loadConstraints={{
+          equipmentType: 'BARBELL',
+          barWeights: [20],
+          plateWeights: [20, 10, 5, 2.5],
+          weightOptions: [60, 70],
+        }}
+        onClose={vi.fn()}
+        onChoose={onChoose}
+      />,
+    );
+
+    const preview = screen.getByTestId('barbell-side-diagram');
+    const seventy = screen.getByRole('button', { name: '70 kg' });
+    fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '70' } });
+    expect(preview).toHaveAttribute('data-target-weight', '70');
+
+    // A touch that does not move the wheel leaves the typed value in charge.
+    fireEvent.pointerDown(screen.getByTestId('set-value-options'));
+    expect(screen.getByRole('spinbutton')).toHaveValue(70);
+    expect(preview).toHaveAttribute('data-target-weight', '70');
+    expect(seventy).toHaveAttribute('aria-pressed', 'true');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Apply value' }));
+    expect(onChoose).toHaveBeenCalledWith(70);
+  });
+
+  it('lets a real wheel move replace a typed value everywhere at once', () => {
+    const onChoose = vi.fn();
+    render(
+      <SetValuePicker
+        open
+        kind="weight"
+        value={60}
+        options={weightOptions}
+        unit="KG"
+        onClose={vi.fn()}
+        onChoose={onChoose}
+      />,
+    );
+
+    fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '72.5' } });
+    const list = centerOption(50);
+    fireEvent.pointerDown(list);
+    fireEvent.scroll(list);
+
+    expect(screen.getByRole('spinbutton')).toHaveValue(50);
+    expect(screen.getByRole('button', { name: '50 kg' })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByRole('button', { name: 'Apply value' }));
+    expect(onChoose).toHaveBeenCalledWith(50);
+  });
+
+  it('highlights the repetition count Apply will commit for a typed value', () => {
+    const onChoose = vi.fn();
+    render(
+      <SetValuePicker
+        open
+        kind="reps"
+        value={10}
+        options={[{ value: 8 }, { value: 10 }, { value: 12 }]}
+        unit="KG"
+        onClose={vi.fn()}
+        onChoose={onChoose}
+      />,
+    );
+
+    fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '11.6' } });
+    expect(screen.getByRole('button', { name: '12 reps' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: '10 reps' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Apply value' }));
+    expect(onChoose).toHaveBeenCalledWith(12);
+  });
+
   it('disables Apply for an empty, negative or non-numeric manual entry', () => {
     const onChoose = vi.fn();
     render(

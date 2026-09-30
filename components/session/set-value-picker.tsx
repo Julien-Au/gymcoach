@@ -47,17 +47,22 @@ export function SetValuePicker({
   const t = useTranslations('session.editableSets');
   const calculatorT = useTranslations('session.calculator');
   const locale = useLocale();
+  // The input is the single source of what Apply commits: the opening seed, a
+  // tap and the wheel all write into it, and the highlighted row and the plate
+  // preview are derived from it. `pendingValue` is only the row the wheel last
+  // settled on, used to tell a real wheel move from a stray scroll event.
   const [pendingValue, setPendingValue] = useState(value);
   const [manualValue, setManualValue] = useState(String(value));
-  const [manualEntryActive, setManualEntryActive] = useState(false);
   const [wheelPadding, setWheelPadding] = useState(12);
   const listRef = useRef<HTMLDivElement>(null);
   // Which kind the open picker was last seeded for; null while closed.
   const seededKind = useRef<Props['kind'] | null>(null);
   // The value the picker opened on, until the lifter changes anything.
   const untouchedSeed = useRef<{ value: number; canonicalValue?: number } | null>(null);
-  // True only while a pointer or wheel gesture drives the wheel. Programmatic
-  // recentering, focus and keyboard scrolling must not move the pending value.
+  // Armed by a pointer-down or wheel event on the list. It stays armed after
+  // the gesture ends, so momentum and the closing snap are still followed, until
+  // a tap, focus, key press, typing or reopen disarms it. While disarmed,
+  // programmatic recentering, focus and keyboard scrolling cannot move the value.
   const userScrolling = useRef(false);
   const scrollTimer = useRef<number | undefined>(undefined);
 
@@ -80,7 +85,6 @@ export function SetValuePicker({
     const seedValue = storedOption?.value ?? value;
     untouchedSeed.current = { value: seedValue, canonicalValue };
     userScrolling.current = false;
-    setManualEntryActive(false);
     setPendingValue(seedValue);
     setManualValue(String(seedValue));
     window.clearTimeout(scrollTimer.current);
@@ -113,7 +117,6 @@ export function SetValuePicker({
     // so the rows passing under the pointer on the way cannot replace it.
     userScrolling.current = false;
     untouchedSeed.current = null;
-    setManualEntryActive(false);
     setPendingValue(option.value);
     setManualValue(String(option.value));
     if (kind !== 'weight') return;
@@ -124,9 +127,10 @@ export function SetValuePicker({
   }
 
   function startWheelGesture() {
+    // Touching the wheel changes nothing by itself: a typed value stays the
+    // candidate until the wheel actually moves to another row.
     if (kind !== 'weight') return;
     userScrolling.current = true;
-    setManualEntryActive(false);
   }
 
   function endWheelGesture() {
@@ -134,9 +138,7 @@ export function SetValuePicker({
   }
 
   function previewCenteredWeight() {
-    if (kind !== 'weight' || manualEntryActive || !userScrolling.current || !listRef.current) {
-      return;
-    }
+    if (kind !== 'weight' || !userScrolling.current || !listRef.current) return;
     const list = listRef.current;
     const listRect = list.getBoundingClientRect();
     const centerY = listRect.top + list.clientHeight / 2;
@@ -158,13 +160,18 @@ export function SetValuePicker({
   const parsedManualValue = Number(manualValue);
   const manualValueInvalid =
     manualValue.trim() === '' || !Number.isFinite(parsedManualValue) || parsedManualValue < 0;
-  const previewWeight = manualEntryActive ? parsedManualValue : pendingValue;
+  // What Apply would commit right now; null while the entry cannot be applied.
+  const candidateValue = manualValueInvalid
+    ? null
+    : kind === 'reps'
+      ? Math.max(1, Math.round(parsedManualValue))
+      : parsedManualValue;
   const plateLoad = useMemo(() => {
     if (
       kind !== 'weight' ||
       loadConstraints?.equipmentType !== 'BARBELL' ||
-      !Number.isFinite(previewWeight) ||
-      previewWeight <= 0
+      candidateValue == null ||
+      candidateValue <= 0
     ) {
       return null;
     }
@@ -175,8 +182,8 @@ export function SetValuePicker({
     const plates = loadConstraints.plateWeights?.length
       ? loadConstraints.plateWeights.map((weight) => roundWeight(toDisplayWeight(weight, unit), 2))
       : fallback.plates;
-    return computeBestPlateLoad(previewWeight, bars, plates, fallback.barWeight);
-  }, [kind, loadConstraints, previewWeight, unit]);
+    return computeBestPlateLoad(candidateValue, bars, plates, fallback.barWeight);
+  }, [candidateValue, kind, loadConstraints, unit]);
 
   function applyManual() {
     if (manualValueInvalid) return;
@@ -220,7 +227,9 @@ export function SetValuePicker({
             value={manualValue}
             onChange={(event) => {
               untouchedSeed.current = null;
-              setManualEntryActive(true);
+              // Typing takes over from the wheel: a scroll caused by the keyboard
+              // resizing the sheet must not replace what was typed.
+              userScrolling.current = false;
               setManualValue(event.target.value);
             }}
             className="h-12 text-center text-xl font-semibold tabular-nums"
@@ -242,7 +251,7 @@ export function SetValuePicker({
             load={plateLoad}
             unitLabel={label}
             platesLabel={calculatorT('platesPerSide')}
-            targetWeight={previewWeight}
+            targetWeight={candidateValue ?? undefined}
             compact
           >
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -277,7 +286,7 @@ export function SetValuePicker({
             }`}
           >
             {options.map((option) => {
-              const selected = nearlyEqual(option.value, pendingValue);
+              const selected = candidateValue != null && nearlyEqual(option.value, candidateValue);
               return (
                 <button
                   key={`${option.value}:${option.canonicalValue ?? ''}`}
