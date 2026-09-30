@@ -93,6 +93,13 @@ type SessionGymEquipment = {
   exerciseLinks: { exerciseId: string }[];
 };
 
+// In-session weight edits, valid for one server snapshot of the gym equipment.
+type LiveEquipmentEdits = {
+  base: SessionGymEquipment[] | undefined;
+  equipment: Record<string, LiveEquipmentOption>;
+  weightOptions: Record<string, number[]>;
+};
+
 type SessionRunnerProps = {
   session: Session & {
     workout:
@@ -143,10 +150,27 @@ export function SessionRunner({
   const trainingName = useTrainingName();
   const router = useRouter();
   const workout = session.workout!;
-  const [sessionEquipment, setSessionEquipment] = useState<SessionGymEquipment[]>(
-    session.gym?.equipment ?? [],
+  // Weight edits made from this screen show at once, layered on the equipment
+  // the server sent. They are tied to that server snapshot: once a refresh
+  // delivers new props (the exercise menu triggers one), the server data, which
+  // by then includes the saved edit, is the source again.
+  const serverEquipment = session.gym?.equipment;
+  const [liveEquipmentEdits, setLiveEquipmentEdits] = useState<LiveEquipmentEdits>({
+    base: serverEquipment,
+    equipment: {},
+    weightOptions: {},
+  });
+  const activeEquipmentEdits =
+    liveEquipmentEdits.base === serverEquipment ? liveEquipmentEdits : null;
+  const sessionEquipment = useMemo<SessionGymEquipment[]>(
+    () =>
+      (serverEquipment ?? []).map((item) => {
+        const edited = activeEquipmentEdits?.equipment[item.id];
+        return edited ? { ...item, ...edited } : item;
+      }),
+    [serverEquipment, activeEquipmentEdits],
   );
-  const [liveWeightOptions, setLiveWeightOptions] = useState<Record<string, number[]>>({});
+  const liveWeightOptions = activeEquipmentEdits?.weightOptions;
   // Supersets (issue #146, slice 1): run the workout in presentation order -
   // members of a superset group come consecutively with A1/A2 labels. For a
   // workout without supersets this is exactly the stored order.
@@ -358,20 +382,27 @@ export function SessionRunner({
       dumbbellWeights: session.gym.dumbbellWeights,
       plateWeights: session.gym.plateWeights,
       barWeights: session.gym.barWeights,
-      weightOptions: liveWeightOptions[pe.exerciseId] ?? config?.weightOptions ?? [],
+      weightOptions: liveWeightOptions?.[pe.exerciseId] ?? config?.weightOptions ?? [],
     };
   }
 
   function handleEquipmentWeightsUpdated(equipment: LiveEquipmentOption) {
-    setSessionEquipment((current) =>
-      current.map((item) => (item.id === equipment.id ? { ...item, ...equipment } : item)),
-    );
-    setLiveWeightOptions((current) => ({
-      ...current,
-      ...Object.fromEntries(
-        equipment.exerciseLinks.map((link) => [link.exerciseId, equipment.weightOptions]),
-      ),
-    }));
+    setLiveEquipmentEdits((current) => {
+      const edits =
+        current.base === serverEquipment
+          ? current
+          : { base: serverEquipment, equipment: {}, weightOptions: {} };
+      return {
+        base: serverEquipment,
+        equipment: { ...edits.equipment, [equipment.id]: equipment },
+        weightOptions: {
+          ...edits.weightOptions,
+          ...Object.fromEntries(
+            equipment.exerciseLinks.map((link) => [link.exerciseId, equipment.weightOptions]),
+          ),
+        },
+      };
+    });
   }
 
   // Prior-session sets per exercise, the PR baseline for the post-session
