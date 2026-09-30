@@ -102,7 +102,7 @@ describe('EditableSetsTable', () => {
     await user.click(screen.getByRole('combobox', { name: /reps in reserve/i }));
     await user.click(screen.getByRole('option', { name: '1' }));
 
-    expect(screen.getByTestId('active-set-metric-1RM')).toHaveTextContent('133.3');
+    expect(screen.getByTestId('active-set-metric-1RM')).toHaveTextContent(/^133\.3 kg$/);
     fireEvent.click(screen.getByRole('button', { name: /confirm set 1/i }));
 
     await waitFor(() =>
