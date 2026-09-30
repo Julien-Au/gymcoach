@@ -269,6 +269,21 @@ describe('SessionExerciseMenu', () => {
     });
   });
 
+  it('keeps every menu control at the repo tap-target height', () => {
+    renderMenu();
+    for (const name of ['Replace exercise', 'Add exercise', 'Remove exercise']) {
+      expect(screen.getByRole('button', { name })).toHaveClass('min-h-tap');
+    }
+    fireEvent.click(screen.getByRole('button', { name: 'Replace exercise' }));
+    expect(screen.getByRole('button', { name: 'Incline Press' })).toHaveClass('min-h-tap');
+    expect(screen.getByRole('button', { name: 'Back' })).toHaveClass('min-h-tap');
+    fireEvent.click(screen.getByRole('button', { name: 'Incline Press' }));
+    expect(screen.getByRole('button', { name: 'Cancel' })).toHaveClass('min-h-tap');
+    expect(screen.getByRole('button', { name: /replace with incline press/i })).toHaveClass(
+      'min-h-tap',
+    );
+  });
+
   it('does not offer to remove the only exercise of the workout', () => {
     render(
       <SessionExerciseMenu

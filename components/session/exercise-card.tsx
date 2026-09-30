@@ -2,7 +2,14 @@
 
 import { useState } from 'react';
 import { useFormatter, useLocale, useTranslations } from 'next-intl';
-import { ChevronDown, ChevronUp, HelpCircle, Lightbulb, MoreHorizontal, TrendingUp } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronUp,
+  HelpCircle,
+  Lightbulb,
+  MoreHorizontal,
+  TrendingUp,
+} from 'lucide-react';
 import type { Exercise, ProgramExercise, WeightUnit } from '@/lib/prisma-client';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -138,7 +145,7 @@ export function ExerciseCard({
               size="icon"
               onClick={onOpenMenu}
               aria-label={t('actions')}
-              className="-mr-2 -mt-2 size-10 shrink-0"
+              className="-mr-2 -mt-2 min-h-tap min-w-tap shrink-0"
             >
               <MoreHorizontal className="size-5" aria-hidden />
             </Button>

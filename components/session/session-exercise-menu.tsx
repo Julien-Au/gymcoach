@@ -262,7 +262,7 @@ export function SessionExerciseMenu({
             <Button
               type="button"
               variant="outline"
-              className="justify-start"
+              className="min-h-tap justify-start"
               onClick={() => openView('replace')}
             >
               <Replace className="mr-2 size-4" aria-hidden />
@@ -271,7 +271,7 @@ export function SessionExerciseMenu({
             <Button
               type="button"
               variant="outline"
-              className="justify-start"
+              className="min-h-tap justify-start"
               onClick={() => openView('add')}
             >
               <Plus className="mr-2 size-4" aria-hidden />
@@ -280,7 +280,7 @@ export function SessionExerciseMenu({
             <Button
               type="button"
               variant="destructive"
-              className="justify-start"
+              className="min-h-tap justify-start"
               disabled={onlyExercise}
               onClick={() => openView('removeConfirm')}
             >
@@ -301,6 +301,7 @@ export function SessionExerciseMenu({
             <div className="flex justify-end gap-2">
               <Button
                 type="button"
+                className="min-h-tap"
                 variant="outline"
                 disabled={busy}
                 onClick={() => setView('actions')}
@@ -309,6 +310,7 @@ export function SessionExerciseMenu({
               </Button>
               <Button
                 type="button"
+                className="min-h-tap"
                 variant="destructive"
                 disabled={busy}
                 onClick={() => void removeExercise()}
@@ -327,6 +329,7 @@ export function SessionExerciseMenu({
             <div className="flex justify-end gap-2">
               <Button
                 type="button"
+                className="min-h-tap"
                 variant="outline"
                 disabled={busy}
                 onClick={() => setPendingReplacement(null)}
@@ -335,6 +338,7 @@ export function SessionExerciseMenu({
               </Button>
               <Button
                 type="button"
+                className="min-h-tap"
                 disabled={busy}
                 onClick={() => void replaceExercise(pendingReplacement)}
               >
@@ -366,7 +370,7 @@ export function SessionExerciseMenu({
                     key={exercise.id}
                     type="button"
                     variant="ghost"
-                    className="justify-start"
+                    className="min-h-tap justify-start"
                     disabled={busy}
                     onClick={() =>
                       view === 'replace' ? requestReplacement(exercise) : void addExercise(exercise)
@@ -379,6 +383,7 @@ export function SessionExerciseMenu({
             </div>
             <Button
               type="button"
+              className="min-h-tap"
               variant="outline"
               disabled={busy}
               onClick={() => setView('actions')}

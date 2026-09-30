@@ -87,6 +87,28 @@ describe('ExerciseCard mobile title layout', () => {
   });
 });
 
+describe('ExerciseCard actions button', () => {
+  it('is a full tap target next to the scrollable title', () => {
+    render(
+      <ExerciseCard
+        programExercise={pe}
+        lastPerformance={lastPerf}
+        readiness={null}
+        deloadActive={false}
+        unit="KG"
+        onOpenMenu={() => undefined}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Exercise actions' })).toHaveClass(
+      'min-h-tap',
+      'min-w-tap',
+      'shrink-0',
+    );
+    expect(screen.getByTestId('exercise-title-scroll')).toHaveClass('min-w-0', 'flex-1');
+  });
+});
+
 describe('ExerciseCard readiness explainer', () => {
   it('shows no readiness note when there is no check-in (unchanged UI)', () => {
     renderCard(null);
