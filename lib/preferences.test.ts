@@ -2,7 +2,9 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import {
   DEFAULT_PREFERENCES,
   loadPreferences,
+  normalizeSetTableMetrics,
   savePreferences,
+  setTableMetricEnabled,
   isVibrationEnabled,
   isRestTimerSoundEnabled,
   isReadinessAutoRegulationEnabled,
@@ -38,6 +40,34 @@ describe('preferences', () => {
     savePreferences({ ...DEFAULT_PREFERENCES, readinessAutoRegulation: false });
     expect(loadPreferences().readinessAutoRegulation).toBe(false);
     expect(isReadinessAutoRegulationEnabled()).toBe(false);
+  });
+
+  it('defaults workout-table metrics to 1RM and preserves the default for old prefs', () => {
+    expect(DEFAULT_PREFERENCES.setTableMetrics).toEqual(['1RM']);
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ vibration: false }));
+    expect(loadPreferences().setTableMetrics).toEqual(['1RM']);
+  });
+
+  it('normalizes invalid, duplicate, and conflicting workout-table metrics', () => {
+    expect(normalizeSetTableMetrics(['VOLUME', '10RM', '10RM', '1RM', 'NOPE'])).toEqual([
+      '10RM',
+      'VOLUME',
+    ]);
+    expect(normalizeSetTableMetrics([])).toEqual(['1RM']);
+    expect(normalizeSetTableMetrics('VOLUME')).toEqual(['1RM']);
+  });
+
+  it('keeps rep-max choices exclusive while allowing volume', () => {
+    let metrics = setTableMetricEnabled(['1RM'], 'VOLUME', true);
+    expect(metrics).toEqual(['1RM', 'VOLUME']);
+
+    metrics = setTableMetricEnabled(metrics, '10RM', true);
+    expect(metrics).toEqual(['10RM', 'VOLUME']);
+
+    metrics = setTableMetricEnabled(metrics, 'VOLUME', false);
+    expect(metrics).toEqual(['10RM']);
+
+    expect(setTableMetricEnabled(metrics, '10RM', false)).toEqual(['10RM']);
   });
 
   it('merges a partial stored object over the defaults', () => {
