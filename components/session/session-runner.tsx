@@ -165,7 +165,7 @@ export function SessionRunner({
 
   const initialExerciseIndex = selectedExerciseIndex(programExercises, initialProgramExerciseId);
   const [hydrated, setHydrated] = useState(false);
-  const [selectedIdx, setCurrentIdx] = useState(initialExerciseIndex);
+  const [selectedIdx, setSelectedIdx] = useState(initialExerciseIndex);
   // Removing an exercise shortens the list one render before the pending
   // selection below lands. Clamp instead of showing the empty state for that
   // pass: it would unmount the sets table and drop its parked drafts.
@@ -185,6 +185,13 @@ export function SessionRunner({
   const currentPE = programExercises[currentIdx];
   const currentTarget = effectiveProgramExercises[currentIdx];
 
+  // Write the clamp back. If a pending selection never lands (failed refresh,
+  // target row gone), an index left past the end would make a later add jump
+  // the view to the new row.
+  useEffect(() => {
+    if (selectedIdx !== currentIdx) setSelectedIdx(currentIdx);
+  }, [selectedIdx, currentIdx]);
+
   useEffect(() => {
     if (!pendingExerciseSelection) return;
     if (
@@ -200,7 +207,7 @@ export function SessionRunner({
     if (!target) return;
     // Same two steps as selectExercise: the URL keeps naming the selected
     // row, so a reload does not fall back to the first exercise.
-    setCurrentIdx(refreshedIndex);
+    setSelectedIdx(refreshedIndex);
     window.history.replaceState(
       window.history.state,
       '',
@@ -560,7 +567,7 @@ export function SessionRunner({
   function selectExercise(index: number) {
     const next = programExercises[index];
     if (!next) return;
-    setCurrentIdx(index);
+    setSelectedIdx(index);
     window.history.replaceState(window.history.state, '', sessionExercisePath(session.id, next.id));
   }
 
@@ -711,7 +718,8 @@ export function SessionRunner({
           unit={unit}
           gymName={session.gym?.name ?? null}
           loadConstraints={loadConstraintsFor(currentPE)}
-          onOpenMenu={mode.kind === 'input' ? () => setExerciseMenuOpen(true) : undefined}
+          onOpenMenu={() => setExerciseMenuOpen(true)}
+          menuDisabled={mode.kind !== 'input'}
         />
         <SessionExerciseMenu
           open={exerciseMenuOpen}

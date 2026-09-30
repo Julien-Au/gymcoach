@@ -39,6 +39,9 @@ interface Props {
   gymName?: string | null;
   loadConstraints?: GymLoadConstraints | null;
   onOpenMenu?: () => void;
+  // The button stays rendered while disabled (during a rest) so the header
+  // keeps its height across the set/rest transition.
+  menuDisabled?: boolean;
 }
 
 export function ExerciseCard({
@@ -50,6 +53,7 @@ export function ExerciseCard({
   gymName = null,
   loadConstraints = null,
   onOpenMenu,
+  menuDisabled = false,
 }: Props) {
   const t = useTranslations('session.exerciseCard');
   const exerciseT = useTranslations('exercises');
@@ -137,6 +141,7 @@ export function ExerciseCard({
               variant="ghost"
               size="icon"
               onClick={onOpenMenu}
+              disabled={menuDisabled}
               aria-label={t('actions')}
               className="-mr-2 -mt-2 min-h-tap min-w-tap shrink-0"
             >

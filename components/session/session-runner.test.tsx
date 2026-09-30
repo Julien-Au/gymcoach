@@ -17,6 +17,7 @@ type MenuProps = {
     removedProgramExerciseId?: string;
   }) => void;
 };
+type CardProps = { onOpenMenu?: () => void; menuDisabled?: boolean };
 type TableProps = {
   programExercise: { id: string };
   onSubmit: (values: Record<string, unknown>) => Promise<void>;
@@ -24,6 +25,7 @@ type TableProps = {
 
 const harness = vi.hoisted(() => ({
   liveSets: [] as unknown[],
+  card: null as unknown,
   menu: null as unknown,
   table: null as unknown,
   tableUnmounts: 0,
@@ -64,7 +66,12 @@ vi.mock('@/components/shared/use-exercise-name', () => ({
 vi.mock('@/components/shared/use-training-name', () => ({
   useTrainingName: () => (name: string) => name,
 }));
-vi.mock('@/components/session/exercise-card', () => ({ ExerciseCard: () => null }));
+vi.mock('@/components/session/exercise-card', () => ({
+  ExerciseCard: (props: CardProps) => {
+    harness.card = props;
+    return null;
+  },
+}));
 vi.mock('@/components/session/sets-list', () => ({ SetsList: () => null }));
 vi.mock('@/components/session/set-input', () => ({ SetInput: () => null }));
 vi.mock('@/components/session/session-summary', () => ({ SessionSummary: () => null }));
@@ -100,6 +107,7 @@ vi.mock('@/components/session/rest-timer', () => ({
   ),
 }));
 
+const card = () => harness.card as CardProps;
 const menu = () => harness.menu as MenuProps;
 const table = () => harness.table as TableProps;
 
@@ -177,6 +185,7 @@ const loggedSet = { weight: 60, reps: 8, rir: 2, durationSec: null, distanceM: n
 
 beforeEach(() => {
   harness.liveSets = [];
+  harness.card = null;
   harness.menu = null;
   harness.table = null;
   harness.tableUnmounts = 0;
@@ -220,6 +229,39 @@ describe('SessionRunner exercise menu wiring', () => {
       '',
       '/session/s1?programExerciseId=pe-bench',
     );
+  });
+
+  it('keeps the actions button on the card during a rest, disabled', async () => {
+    await renderRunner(runner([row('bench', 1), row('fly', 2)]));
+    expect(card().onOpenMenu).toBeTypeOf('function');
+    expect(card().menuDisabled).toBe(false);
+
+    await act(async () => {
+      await table().onSubmit({ ...loggedSet, isWarmup: false, isDropSet: false, notes: null });
+    });
+
+    // Resting: the button keeps its box (so the header does not jump) but
+    // cannot open the menu.
+    expect(await screen.findByRole('button', { name: 'skip rest' })).toBeInTheDocument();
+    expect(card().onOpenMenu).toBeTypeOf('function');
+    expect(card().menuDisabled).toBe(true);
+
+    fireEvent.click(screen.getByRole('button', { name: 'skip rest' }));
+    await waitFor(() => expect(card().menuDisabled).toBe(false));
+  });
+
+  it('does not jump to a newly added row after the list shrank under the selection', async () => {
+    const view = await renderRunner(runner([row('bench', 1), row('fly', 2)], 'pe-fly'));
+    expect(screen.getByTestId('sets-table')).toHaveTextContent('pe-fly');
+
+    // The selected row disappears without a pending selection to replace it
+    // (removed elsewhere, or a selection whose target never arrives).
+    view.rerender(runner([row('bench', 1)], 'pe-fly'));
+    expect(screen.getByTestId('sets-table')).toHaveTextContent('pe-bench');
+
+    // A row added afterwards takes the old index; the view must stay put.
+    view.rerender(runner([row('bench', 1), row('dips', 2)], 'pe-fly'));
+    expect(screen.getByTestId('sets-table')).toHaveTextContent('pe-bench');
   });
 });
 
