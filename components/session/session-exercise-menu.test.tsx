@@ -284,6 +284,40 @@ describe('SessionExerciseMenu', () => {
     );
   });
 
+  it('starts from the new exercise targets when a replace crosses the cardio line', async () => {
+    const chestCardio = {
+      ...bench,
+      id: 'ski-erg',
+      name: 'Ski Erg',
+      category: 'CARDIO',
+      equipmentType: 'CARDIO',
+      defaultRestSec: 60,
+    } as Exercise;
+    render(
+      <SessionExerciseMenu
+        open
+        onOpenChange={vi.fn()}
+        programExercise={programExercise}
+        programExercises={[programExercise, nextProgramExercise]}
+        catalog={[bench, chestCardio, row]}
+        loggedSetCount={0}
+        onChanged={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Replace exercise' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ski Erg' }));
+    fireEvent.click(screen.getByRole('button', { name: /replace with ski erg/i }));
+    await waitFor(() => expect(fetch).toHaveBeenCalledOnce());
+    expect(JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string)).toMatchObject({
+      exerciseId: 'ski-erg',
+      targetSets: 1,
+      targetRepsMin: 1,
+      targetRepsMax: 1,
+      targetRIR: 0,
+      restSec: 60,
+    });
+  });
+
   it('does not offer to remove the only exercise of the workout', () => {
     render(
       <SessionExerciseMenu
