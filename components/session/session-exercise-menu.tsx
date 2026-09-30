@@ -59,6 +59,9 @@ export function SessionExerciseMenu({
   const currentIndex = programExercises.findIndex((item) => item.id === programExercise.id);
   const previous = currentIndex > 0 ? programExercises[currentIndex - 1] : undefined;
   const next = currentIndex >= 0 ? programExercises[currentIndex + 1] : undefined;
+  // Removing the only exercise would leave the runner on its empty state,
+  // which has no Finish button. Replace stays available.
+  const onlyExercise = programExercises.length <= 1;
   const existingExerciseIds = useMemo(
     () => new Set(programExercises.map((item) => item.exerciseId)),
     [programExercises],
@@ -240,11 +243,15 @@ export function SessionExerciseMenu({
               type="button"
               variant="destructive"
               className="justify-start"
+              disabled={onlyExercise}
               onClick={() => openView('removeConfirm')}
             >
               <Trash2 className="mr-2 size-4" aria-hidden />
               {t('remove')}
             </Button>
+            {onlyExercise && (
+              <p className="text-sm text-muted-foreground">{t('removeLastBlocked')}</p>
+            )}
           </div>
         )}
 

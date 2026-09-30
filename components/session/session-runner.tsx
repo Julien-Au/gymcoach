@@ -162,7 +162,11 @@ export function SessionRunner({
 
   const initialExerciseIndex = selectedExerciseIndex(programExercises, initialProgramExerciseId);
   const [hydrated, setHydrated] = useState(false);
-  const [currentIdx, setCurrentIdx] = useState(initialExerciseIndex);
+  const [selectedIdx, setCurrentIdx] = useState(initialExerciseIndex);
+  // Removing an exercise shortens the list one render before the pending
+  // selection below lands. Clamp instead of showing the empty state for that
+  // pass: it would unmount the sets table and drop its parked drafts.
+  const currentIdx = Math.min(selectedIdx, Math.max(programExercises.length - 1, 0));
   const [pendingExerciseSelection, setPendingExerciseSelection] = useState<{
     selectProgramExerciseId: string;
     removedProgramExerciseId?: string;
@@ -189,10 +193,18 @@ export function SessionRunner({
     const refreshedIndex = programExercises.findIndex(
       (item) => item.id === pendingExerciseSelection.selectProgramExerciseId,
     );
-    if (refreshedIndex < 0) return;
+    const target = programExercises[refreshedIndex];
+    if (!target) return;
+    // Same two steps as selectExercise: the URL keeps naming the selected
+    // row, so a reload does not fall back to the first exercise.
     setCurrentIdx(refreshedIndex);
+    window.history.replaceState(
+      window.history.state,
+      '',
+      sessionExercisePath(session.id, target.id),
+    );
     setPendingExerciseSelection(null);
-  }, [pendingExerciseSelection, programExercises]);
+  }, [pendingExerciseSelection, programExercises, session.id]);
 
   // When auto-regulation is off, the readiness signal is dropped entirely, so
   // the suggestion falls back to pure programmed progression (pre-#55 behavior).

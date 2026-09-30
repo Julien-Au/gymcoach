@@ -190,6 +190,23 @@ describe('SessionExerciseMenu', () => {
     expect(onChanged).toHaveBeenCalledOnce();
   });
 
+  it('does not offer to remove the only exercise of the workout', () => {
+    render(
+      <SessionExerciseMenu
+        open
+        onOpenChange={vi.fn()}
+        programExercise={programExercise}
+        programExercises={[programExercise]}
+        catalog={[bench, incline, row]}
+        loggedSetCount={0}
+        onChanged={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'Remove exercise' })).toBeDisabled();
+    expect(screen.getByText(/only exercise in the workout/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Replace exercise' })).toBeEnabled();
+  });
+
   it('requires removal confirmation and selects the neighboring exercise after delete', async () => {
     const onChanged = vi.fn();
     renderMenu(2, onChanged);
