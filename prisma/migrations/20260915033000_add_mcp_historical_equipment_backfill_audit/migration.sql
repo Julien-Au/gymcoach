@@ -1,6 +1,7 @@
 -- Durable audit records for explicitly confirmed MCP historical-equipment backfills.
 -- References are intentionally stored as immutable scalar IDs/snapshots so the audit
 -- survives later deletion of a gym, exercise, equipment item, or training set.
+-- The owning user is the one real foreign key: audit rows go away with the account.
 CREATE TABLE "McpHistoricalEquipmentBackfillAudit" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
@@ -17,3 +18,7 @@ CREATE TABLE "McpHistoricalEquipmentBackfillAudit" (
 
 CREATE INDEX "McpHistoricalEquipmentBackfillAudit_userId_createdAt_idx"
 ON "McpHistoricalEquipmentBackfillAudit"("userId", "createdAt");
+
+ALTER TABLE "McpHistoricalEquipmentBackfillAudit"
+ADD CONSTRAINT "McpHistoricalEquipmentBackfillAudit_userId_fkey"
+FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
