@@ -49,7 +49,7 @@ For MCP tool discovery, inspect the complete tool list once before guessing name
 
 Before changing gym inventory, read the saved gym first, explain the proposed additions or corrections, and require explicit confirmation. Do not guess machine identity, exercise links or selectable weights from ambiguous information.
 
-Write tools (programs, gym inventory, equipment history) change saved data. Explain the proposed change before calling a write tool. Newly created programs are inactive so the trainee can review them. Activate a program only when the trainee explicitly asks. To add a session (for example a cardio day) to the program the trainee already follows, call add_workout on that program rather than creating a new program. Never delete or remove a program exercise without explicit confirmation.`;
+Write tools (programs, gym inventory, equipment history) change saved data. Explain the proposed change before calling a write tool. Newly created programs are inactive so the trainee can review them. Activate a program only when the trainee explicitly asks. To add a session (for example a cardio day) to the program the trainee already follows, call add_workout on that program rather than creating a new program. Never delete, remove or undo saved data (a program exercise, an equipment image, a historical equipment backfill) without explicit confirmation.`;
 
 interface ServerOptions {
   principal: McpPrincipal;
