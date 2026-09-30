@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Loader2, Save } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
@@ -28,6 +28,19 @@ interface Props {
   onSaved: (equipment: LiveEquipmentOption) => void;
 }
 
+// Same bounds as gymWeightListSchema (lib/schemas/gym), which the save goes
+// through: each weight between 0.1 and 5000 kg, at most 200 of them.
+const MIN_WEIGHT_KG = 0.1;
+const MAX_WEIGHT_KG = 5000;
+const MAX_WEIGHTS = 200;
+
+export type WeightListResult =
+  | { ok: true; weightOptions: number[] }
+  | { ok: false; problem: 'empty' }
+  | { ok: false; problem: 'tooMany' }
+  | { ok: false; problem: 'invalid'; token: string }
+  | { ok: false; problem: 'outOfRange'; token: string };
+
 export function LiveEquipmentWeightEditor({
   open,
   gymId,
@@ -45,35 +58,44 @@ export function LiveEquipmentWeightEditor({
     setValue(
       equipment.weightOptions
         .map((weight) => roundWeight(toDisplayWeight(weight, unit), 2))
-        .join(', '),
+        .join('; '),
     );
   }, [equipment.id, equipment.weightOptions, open, unit]);
 
+  const parsed = useMemo(() => parseDisplayWeightList(value, unit), [value, unit]);
+  const problem = parsed.ok
+    ? null
+    : parsed.problem === 'empty'
+      ? t('empty')
+      : parsed.problem === 'tooMany'
+        ? t('tooManyWeights')
+        : parsed.problem === 'invalid'
+          ? t('invalidWeight', { token: parsed.token })
+          : t('outOfRange', { token: parsed.token });
+
   async function save() {
-    if (saving) return;
-    const displayWeights = parseDisplayWeightList(value);
-    if (displayWeights.length > 200) {
-      toast.error(t('tooManyWeights'));
-      return;
-    }
-    const weightOptions = uniqueSorted(
-      displayWeights.map((weight) => roundWeight(fromDisplayWeight(weight, unit), 2)),
-    );
+    if (saving || !parsed.ok) return;
+    const weightOptions = parsed.weightOptions;
 
     setSaving(true);
     try {
-      const response = await fetch('/api/gyms/' + gymId + '/equipment', {
+      const url = '/api/gyms/' + encodeURIComponent(gymId) + '/equipment';
+      // The session holds this equipment as it was when the page loaded, and
+      // the save endpoint needs its name and type. Re-read them first, so
+      // saving weights cannot revert a rename or a type change made since.
+      const current = await fetchCurrentEquipment(url, equipment.id);
+      const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           equipmentId: equipment.id,
-          name: equipment.name,
-          equipmentType: equipment.equipmentType,
+          name: current.name,
+          equipmentType: current.equipmentType,
           weightOptions,
         }),
       });
       if (!response.ok) throw new Error('save failed');
-      onSaved({ ...equipment, weightOptions });
+      onSaved({ ...equipment, ...current, weightOptions });
       onOpenChange(false);
       toast.success(t('saved'));
     } catch {
@@ -94,12 +116,31 @@ export function LiveEquipmentWeightEditor({
             id="live-equipment-weights"
             value={value}
             onChange={(event) => setValue(event.target.value)}
-            inputMode="decimal"
+            // A list needs separators, which the numeric keypads do not offer.
+            inputMode="text"
+            autoComplete="off"
             placeholder={t('placeholder')}
             disabled={saving}
+            aria-invalid={problem != null}
+            aria-describedby="live-equipment-weights-help live-equipment-weights-problem"
           />
+          <p id="live-equipment-weights-help" className="text-xs text-muted-foreground">
+            {t('help')}
+          </p>
+          <p
+            id="live-equipment-weights-problem"
+            aria-live="polite"
+            className="min-h-5 text-sm text-destructive"
+          >
+            {problem}
+          </p>
         </div>
-        <Button type="button" onClick={save} disabled={saving} className="w-full">
+        <Button
+          type="button"
+          onClick={save}
+          disabled={saving || problem != null}
+          className="w-full"
+        >
           {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
           <span className="ml-2">{t('save')}</span>
         </Button>
@@ -108,16 +149,48 @@ export function LiveEquipmentWeightEditor({
   );
 }
 
-export function parseDisplayWeightList(raw: string): number[] {
-  return uniqueSorted(
-    raw
-      .split(/[;,\n]/)
-      .map((value) => Number(value.trim()))
-      .filter((value) => Number.isFinite(value) && value > 0)
-      .map((value) => roundWeight(value, 2)),
-  );
+async function fetchCurrentEquipment(
+  url: string,
+  equipmentId: string,
+): Promise<{ name: string; equipmentType: EquipmentType }> {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error('read failed');
+  const body: unknown = await response.json();
+  const list =
+    body && typeof body === 'object' && 'equipment' in body && Array.isArray(body.equipment)
+      ? (body.equipment as Array<{ id?: unknown; name?: unknown; equipmentType?: unknown }>)
+      : [];
+  const current = list.find((item) => item?.id === equipmentId);
+  if (!current || typeof current.name !== 'string' || typeof current.equipmentType !== 'string') {
+    throw new Error('equipment not found');
+  }
+  return { name: current.name, equipmentType: current.equipmentType as EquipmentType };
 }
 
-function uniqueSorted(values: number[]): number[] {
-  return [...new Set(values)].sort((a, b) => a - b);
+// Reads a typed list of weights in the display unit and returns it in kg, or
+// the first thing that stops it from being saved. Nothing is dropped silently.
+//
+// Weights are separated by whitespace, a semicolon or a new line. A comma
+// directly between two digits is a decimal separator (22,5 is 22.5, the
+// natural form in French and Russian); any other comma separates two weights,
+// so "20, 40, 60" still reads as three.
+export function parseDisplayWeightList(raw: string, unit: WeightUnit): WeightListResult {
+  const tokens = raw
+    .split(/[\s;]+/)
+    .flatMap((chunk) => chunk.split(/,(?!\d)/))
+    .map((token) => token.replace(/^,+/, ''))
+    .filter((token) => token !== '');
+  if (tokens.length === 0) return { ok: false, problem: 'empty' };
+
+  const weightOptions = new Set<number>();
+  for (const token of tokens) {
+    if (!/^\d+(?:[.,]\d+)?$/.test(token)) return { ok: false, problem: 'invalid', token };
+    const kg = roundWeight(fromDisplayWeight(Number(token.replace(',', '.')), unit), 2);
+    if (kg < MIN_WEIGHT_KG || kg > MAX_WEIGHT_KG) {
+      return { ok: false, problem: 'outOfRange', token };
+    }
+    weightOptions.add(kg);
+  }
+  if (weightOptions.size > MAX_WEIGHTS) return { ok: false, problem: 'tooMany' };
+  return { ok: true, weightOptions: [...weightOptions].sort((a, b) => a - b) };
 }
