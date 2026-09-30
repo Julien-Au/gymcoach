@@ -153,13 +153,17 @@ export function createGymCoachMcpServer({ principal, baseUrl }: ServerOptions): 
     {
       title: 'Get complete gym inventory',
       description:
-        'Returns shared dumbbells, plates and bars, every saved physical equipment item with descriptions/images/exercise links, plus full exercise availability coverage. Omit gymId to read the active gym.',
+        'Returns shared dumbbells, plates and bars and every saved physical equipment item with descriptions/images/exercise links. Omit gymId to read the active gym. Set includeExerciseCoverage to true to also get availability and weight options for every exercise of the trainee (a large payload; request it only when needed).',
       inputSchema: {
         gymId: gymIdSchema.optional(),
+        includeExerciseCoverage: z.boolean().default(false),
       },
       annotations: { readOnlyHint: true, openWorldHint: false, idempotentHint: true },
     },
-    async ({ gymId }) => result(await getOwnedGymInventory(principal.userId, baseUrl, gymId)),
+    async ({ gymId, includeExerciseCoverage }) =>
+      result(
+        await getOwnedGymInventory(principal.userId, baseUrl, gymId, { includeExerciseCoverage }),
+      ),
   );
 
   server.registerTool(

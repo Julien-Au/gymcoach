@@ -323,6 +323,26 @@ describe('GymCoach MCP gym inventory', () => {
       }),
     ]);
     expect(inventoryData.gym.equipment[0].image).not.toHaveProperty('url');
+    // Per-exercise coverage is unbounded, so it is opt-in.
+    expect(inventoryData.gym).not.toHaveProperty('exerciseCoverage');
+
+    const withCoverage = await client.callTool({
+      name: 'get_gym_inventory',
+      arguments: { gymId: gym.id, includeExerciseCoverage: true },
+    });
+    expect(withCoverage.structuredContent).toMatchObject({
+      gym: {
+        exerciseCoverage: [
+          {
+            id: exercise.id,
+            configured: true,
+            isAvailable: true,
+            weightOptionsKg: [15, 25, 35, 45],
+            equipmentIds: [savedEquipment.id],
+          },
+        ],
+      },
+    });
 
     // External URLs are not an MCP input: the argument is dropped by the tool
     // schema, so the call has no image action and nothing is stored.

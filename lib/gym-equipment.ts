@@ -80,57 +80,24 @@ export async function listOwnedGyms(userId: string) {
   };
 }
 
-export async function getOwnedGymInventory(userId: string, baseUrl: string, gymId?: string) {
+export async function getOwnedGymInventory(
+  userId: string,
+  baseUrl: string,
+  gymId?: string,
+  options: { includeExerciseCoverage?: boolean } = {},
+) {
   const gym = await resolveOwnedGym(userId, gymId);
-  const [details, exercises] = await Promise.all([
-    db.gym.findUnique({
-      where: { id: gym.id },
-      include: {
-        equipment: { orderBy: { name: 'asc' }, select: equipmentSelection },
-        exerciseConfigs: {
-          orderBy: { exercise: { name: 'asc' } },
-          include: {
-            exercise: {
-              select: {
-                id: true,
-                name: true,
-                muscleGroup: true,
-                category: true,
-                equipmentType: true,
-                notes: true,
-              },
-            },
-          },
-        },
-      },
-    }),
-    db.exercise.findMany({
-      where: { userId },
-      orderBy: { name: 'asc' },
-      select: {
-        id: true,
-        name: true,
-        muscleGroup: true,
-        category: true,
-        equipmentType: true,
-        usesBodyweight: true,
-        notes: true,
-      },
-    }),
-  ]);
+  const details = await db.gym.findUnique({
+    where: { id: gym.id },
+    include: { equipment: { orderBy: { name: 'asc' }, select: equipmentSelection } },
+  });
   if (!details) throw new ApiError(404, 'Gym not found.');
 
-  const configByExercise = new Map(
-    details.exerciseConfigs.map((config) => [config.exerciseId, config]),
-  );
-  const equipmentIdsByExercise = new Map<string, string[]>();
-  for (const item of details.equipment) {
-    for (const link of item.exerciseLinks) {
-      const ids = equipmentIdsByExercise.get(link.exerciseId) ?? [];
-      ids.push(item.id);
-      equipmentIdsByExercise.set(link.exerciseId, ids);
-    }
-  }
+  // Per-exercise coverage lists every exercise of the trainee with media URLs,
+  // an unbounded payload, so it is computed only when the caller asks for it.
+  const exerciseCoverage = options.includeExerciseCoverage
+    ? await buildGymExerciseCoverage(userId, baseUrl, details)
+    : undefined;
 
   return {
     gym: {
@@ -146,24 +113,7 @@ export async function getOwnedGymInventory(userId: string, baseUrl: string, gymI
         image: gymEquipmentImageRef(item),
         exerciseLinks: item.exerciseLinks.map((link) => link.exercise),
       })),
-      exerciseCoverage: exercises.map((exercise) => {
-        const config = configByExercise.get(exercise.id);
-        const media = getExerciseMedia(exercise.name);
-        return {
-          ...exercise,
-          configured: config != null,
-          isAvailable: config?.isAvailable ?? true,
-          weightOptionsKg: config?.weightOptions ?? [],
-          equipmentIds: equipmentIdsByExercise.get(exercise.id) ?? [],
-          builtInMedia: media
-            ? {
-                frames: media.frames.map((frame) => new URL(frame, baseUrl).toString()),
-                approximate: media.approximate,
-                source: media.source,
-              }
-            : null,
-        };
-      }),
+      ...(exerciseCoverage ? { exerciseCoverage } : {}),
       updatedAt: details.updatedAt,
     },
     workflow: {
@@ -175,6 +125,61 @@ export async function getOwnedGymInventory(userId: string, baseUrl: string, gymI
       note: 'Physical equipment and exercises are separate records; link equipment to exercise IDs so machine/cable load options constrain program design. Uploaded equipment images carry no URL: read them with get_gym_equipment_image.',
     },
   };
+}
+
+async function buildGymExerciseCoverage(
+  userId: string,
+  baseUrl: string,
+  gym: { id: string; equipment: Array<{ id: string; exerciseLinks: Array<{ exerciseId: string }> }> },
+) {
+  const [configs, exercises] = await Promise.all([
+    db.gymExerciseConfig.findMany({
+      where: { gymId: gym.id },
+      select: { exerciseId: true, isAvailable: true, weightOptions: true },
+    }),
+    db.exercise.findMany({
+      where: { userId },
+      orderBy: { name: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        muscleGroup: true,
+        category: true,
+        equipmentType: true,
+        usesBodyweight: true,
+        notes: true,
+      },
+    }),
+  ]);
+
+  const configByExercise = new Map(configs.map((config) => [config.exerciseId, config]));
+  const equipmentIdsByExercise = new Map<string, string[]>();
+  for (const item of gym.equipment) {
+    for (const link of item.exerciseLinks) {
+      const ids = equipmentIdsByExercise.get(link.exerciseId) ?? [];
+      ids.push(item.id);
+      equipmentIdsByExercise.set(link.exerciseId, ids);
+    }
+  }
+
+  return exercises.map((exercise) => {
+    const config = configByExercise.get(exercise.id);
+    const media = getExerciseMedia(exercise.name);
+    return {
+      ...exercise,
+      configured: config != null,
+      isAvailable: config?.isAvailable ?? true,
+      weightOptionsKg: config?.weightOptions ?? [],
+      equipmentIds: equipmentIdsByExercise.get(exercise.id) ?? [],
+      builtInMedia: media
+        ? {
+            frames: media.frames.map((frame) => new URL(frame, baseUrl).toString()),
+            approximate: media.approximate,
+            source: media.source,
+          }
+        : null,
+    };
+  });
 }
 
 export async function updateOwnedGymFreeWeights(
