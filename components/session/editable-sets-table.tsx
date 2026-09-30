@@ -88,6 +88,21 @@ function metricValue(metric: SetTableMetric, draft: DraftSet): number {
     : estimate1RM(draft.weight, draft.reps);
 }
 
+// Machines, cables and "other" items carry their own discrete loads: on those
+// the physical item, not the exercise's gym configuration, decides which
+// weights exist. Free-weight items keep the exercise's own constraints.
+function equipmentLoadConstraints(
+  base: GymLoadConstraints | null,
+  equipment: LiveEquipmentOption | undefined,
+): GymLoadConstraints | null {
+  if (!equipment || !['MACHINE', 'CABLE', 'OTHER'].includes(equipment.equipmentType)) return base;
+  return {
+    ...(base ?? {}),
+    equipmentType: equipment.equipmentType,
+    weightOptions: equipment.weightOptions,
+  };
+}
+
 function initialDraft(
   pe: Props['programExercise'],
   sets: PendingSet[],
@@ -265,16 +280,31 @@ export function EditableSetsTable({
     ['MACHINE', 'CABLE', 'OTHER'].includes(selectedEquipment.equipmentType);
   const canEditSelectedEquipment = gymId != null && usesSelectedEquipmentWeights;
   const effectiveLoadConstraints = useMemo(
-    () =>
-      usesSelectedEquipmentWeights && selectedEquipment
-        ? {
-            ...(loadConstraints ?? {}),
-            equipmentType: selectedEquipment.equipmentType,
-            weightOptions: selectedEquipment.weightOptions,
-          }
-        : loadConstraints,
-    [loadConstraints, selectedEquipment, usesSelectedEquipmentWeights],
+    () => equipmentLoadConstraints(loadConstraints, selectedEquipment),
+    [loadConstraints, selectedEquipment],
   );
+  // A logged set is constrained by the equipment it was logged on, which is
+  // not necessarily the one currently selected for the next set.
+  function loadConstraintsForSet(set: PendingSet): GymLoadConstraints | null {
+    return equipmentLoadConstraints(
+      loadConstraints,
+      equipmentOptions.find((equipment) => equipment.id === set.gymEquipmentId),
+    );
+  }
+  // The picker edits either a logged row or the next set: its options and its
+  // plate preview follow the equipment of the row it was opened for.
+  const editedSet = editingSet?.set ?? null;
+  const pickerLoadConstraints = useMemo(
+    () =>
+      editedSet
+        ? equipmentLoadConstraints(
+            loadConstraints,
+            equipmentOptions.find((equipment) => equipment.id === editedSet.gymEquipmentId),
+          )
+        : effectiveLoadConstraints,
+    [editedSet, effectiveLoadConstraints, equipmentOptions, loadConstraints],
+  );
+  const pickerReferenceWeight = editingSet?.draft.weight ?? draft.weight;
 
   const currentNumber = workingSets.length + 1;
   const totalRows = Math.max(programExercise.targetSets, currentNumber);
@@ -288,11 +318,11 @@ export function EditableSetsTable({
   });
   const gridColumns = metrics.length > 1 ? DUAL_METRIC_GRID_COLUMNS : SINGLE_METRIC_GRID_COLUMNS;
   const availableWeights = useMemo(() => {
-    const constrained = gymWeightOptions(effectiveLoadConstraints, draft.weight);
+    const constrained = gymWeightOptions(pickerLoadConstraints, pickerReferenceWeight);
     if (constrained.length > 0) return constrained;
     const step = programExercise.exercise.category === 'ISOLATION' ? 1 : 2.5;
     return Array.from({ length: 81 }, (_, index) => +(index * step).toFixed(2));
-  }, [draft.weight, effectiveLoadConstraints, programExercise.exercise.category]);
+  }, [pickerLoadConstraints, pickerReferenceWeight, programExercise.exercise.category]);
   const repOptions = useMemo(() => Array.from({ length: 30 }, (_, index) => index + 1), []);
   const weightPickerOptions = useMemo(
     () =>
@@ -351,10 +381,19 @@ export function EditableSetsTable({
   async function persistEditedSet(set: PendingSet, nextDraft: DraftSet) {
     if (disabled || updatingSetId === set.localId || nextDraft.reps <= 0 || nextDraft.weight < 0)
       return;
-    const normalized = {
-      ...nextDraft,
-      weight: constrainGymWeight(nextDraft.weight, nextDraft.weight, effectiveLoadConstraints),
-    };
+    // Only a weight the lifter actually changed is snapped, and against the
+    // set's own equipment. An edit of reps or RIR leaves the stored weight as is.
+    const normalized =
+      nextDraft.weight === set.weight
+        ? nextDraft
+        : {
+            ...nextDraft,
+            weight: constrainGymWeight(
+              nextDraft.weight,
+              nextDraft.weight,
+              loadConstraintsForSet(set),
+            ),
+          };
     setEditingSet({ set, draft: normalized });
     setUpdatingSetId(set.localId);
     try {
@@ -747,7 +786,7 @@ export function EditableSetsTable({
         canonicalValue={picker === 'reps' ? undefined : (editingSet?.draft.weight ?? draft.weight)}
         options={picker === 'reps' ? repPickerOptions : weightPickerOptions}
         unit={unit}
-        loadConstraints={loadConstraints}
+        loadConstraints={pickerLoadConstraints}
         onClose={() => setPicker(null)}
         onChoose={chooseValue}
       />
