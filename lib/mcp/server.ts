@@ -16,6 +16,16 @@ import {
   SetAutoregulationMode,
 } from '@/lib/prisma-client';
 import type { McpPrincipal } from '@/lib/mcp/auth';
+import {
+  applyHistoricalEquipmentBackfill,
+  HISTORICAL_EQUIPMENT_BACKFILL_AUDIT_LIST_LIMIT,
+  HISTORICAL_EQUIPMENT_BACKFILL_MAX_SETS,
+  listHistoricalEquipmentBackfills,
+  parseHistoricalDateBound,
+  previewHistoricalEquipmentBackfill,
+  undoHistoricalEquipmentBackfill,
+} from '@/lib/mcp/historical-equipment-backfill';
+import { databaseIdSchema } from '@/lib/schemas/gym-equipment';
 
 export const GYMCOACH_MCP_INSTRUCTIONS = `GymCoach stores the trainee's profile, gyms, equipment, programs, workout history, sets, RIR, goals and recovery signals.
 
@@ -31,6 +41,11 @@ interface ServerOptions {
 const explicitConfirmation = z
   .literal(true)
   .describe('Set to true only after the trainee explicitly confirmed this saved-data change.');
+
+// Strict ISO 8601 calendar date (2026-08-31) or datetime with an offset
+// (2026-08-31T18:00:00Z). Anything else - null, a number, free text - is
+// rejected instead of being coerced into a surprising date.
+const isoDateOrDatetime = z.union([z.string().date(), z.string().datetime({ offset: true })]);
 
 function result(data: Record<string, unknown>) {
   return {
@@ -174,6 +189,110 @@ export function createGymCoachMcpServer({ principal, baseUrl }: ServerOptions): 
         },
       });
       return result({ exercises });
+    },
+  );
+
+  server.registerTool(
+    'preview_historical_equipment_backfill',
+    {
+      title: 'Preview historical equipment backfill',
+      description:
+        'Finds owned historical sets (finished sessions only) that are missing a physical equipment assignment and returns linked equipment candidates plus prior-use evidence. This tool never writes data and suggestions are not user confirmation.',
+      inputSchema: {
+        gymId: databaseIdSchema.optional(),
+        exerciseId: databaseIdSchema.optional(),
+        from: isoDateOrDatetime
+          .optional()
+          .describe('ISO date or datetime; only sessions started at or after it.'),
+        to: isoDateOrDatetime
+          .optional()
+          .describe('ISO date or datetime; a date-only value includes that whole UTC day.'),
+        limit: z
+          .number()
+          .int()
+          .min(1)
+          .max(HISTORICAL_EQUIPMENT_BACKFILL_MAX_SETS)
+          .default(HISTORICAL_EQUIPMENT_BACKFILL_MAX_SETS),
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false, idempotentHint: true },
+    },
+    async ({ from, to, ...input }) => {
+      const preview = await previewHistoricalEquipmentBackfill(principal.userId, {
+        ...input,
+        from: from ? parseHistoricalDateBound(from, 'from') : undefined,
+        to: to ? parseHistoricalDateBound(to, 'to') : undefined,
+      });
+      return result(preview);
+    },
+  );
+
+  server.registerTool(
+    'list_historical_equipment_backfills',
+    {
+      title: 'List historical equipment backfills',
+      description:
+        'Lists the most recent audited historical equipment backfills of the trainee, newest first, with their audit IDs, undo state and set counts. Use it to find the audit ID of an earlier backfill before undoing it. This tool never writes data.',
+      inputSchema: {
+        limit: z
+          .number()
+          .int()
+          .min(1)
+          .max(HISTORICAL_EQUIPMENT_BACKFILL_AUDIT_LIST_LIMIT)
+          .default(HISTORICAL_EQUIPMENT_BACKFILL_AUDIT_LIST_LIMIT),
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false, idempotentHint: true },
+    },
+    async ({ limit }) => result(await listHistoricalEquipmentBackfills(principal.userId, limit)),
+  );
+
+  server.registerTool(
+    'apply_historical_equipment_backfill',
+    {
+      title: 'Apply historical equipment backfill',
+      description:
+        'Assigns one explicitly confirmed owned gym/exercise/equipment mapping to an exact list of historical sets (finished sessions only) that are still unassigned. Returns an audit ID for safe undo; the ID stays recoverable later through list_historical_equipment_backfills.',
+      inputSchema: {
+        confirmed: explicitConfirmation,
+        gymId: databaseIdSchema,
+        exerciseId: databaseIdSchema,
+        equipmentId: databaseIdSchema,
+        setIds: z.array(z.string().cuid()).min(1).max(HISTORICAL_EQUIPMENT_BACKFILL_MAX_SETS),
+      },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: false,
+      },
+    },
+    async (input) => {
+      requireWrite(principal);
+      const applied = await applyHistoricalEquipmentBackfill(principal.userId, input);
+      return result(applied);
+    },
+  );
+
+  server.registerTool(
+    'undo_historical_equipment_backfill',
+    {
+      title: 'Undo historical equipment backfill',
+      description:
+        'Atomically undoes one audited historical equipment backfill only when every affected set still exactly matches the recorded applied equipment snapshot.',
+      inputSchema: {
+        confirmed: explicitConfirmation,
+        auditId: z.string().cuid(),
+      },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: false,
+        openWorldHint: false,
+      },
+    },
+    async (input) => {
+      requireWrite(principal);
+      const undone = await undoHistoricalEquipmentBackfill(principal.userId, input);
+      return result(undone);
     },
   );
 

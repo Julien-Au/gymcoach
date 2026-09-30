@@ -674,6 +674,50 @@ describe('POST /api/backup - malformed and oversized input (issue #168)', () => 
     expect(comparable(dumpAfter)).toEqual(comparable(pristine));
   });
 
+  it('purges the MCP backfill audits of the sets it replaces, and only those', async () => {
+    const user = await seedFullUser('audited@test.dev');
+    const other = await db.user.create({
+      data: { email: 'bystander@test.dev', passwordHash: 'x' },
+    });
+    const oldSet = await db.set.findFirstOrThrow({ where: { session: { userId: user.id } } });
+    const auditData = {
+      gymId: 'gym-before-restore',
+      exerciseId: oldSet.exerciseId,
+      equipmentId: 'equipment-before-restore',
+      setIds: [oldSet.id],
+      equipmentSnapshot: { gymEquipmentId: 'equipment-before-restore' },
+    };
+    await db.mcpHistoricalEquipmentBackfillAudit.create({
+      data: { ...auditData, userId: user.id },
+    });
+    await db.mcpHistoricalEquipmentBackfillAudit.create({
+      data: { ...auditData, userId: other.id },
+    });
+    actAs(user.id);
+    const dump = await (await getBackup()).json();
+
+    // A restore that fails mid-transaction rolls the purge back with the rest.
+    const broken = JSON.parse(JSON.stringify(dump));
+    broken.exercises.push({ ...broken.exercises[0] });
+    expect((await postBackup(jsonReq({ payload: broken, confirmReplace: true }))).status).toBe(409);
+    expect(await db.mcpHistoricalEquipmentBackfillAudit.count({ where: { userId: user.id } })).toBe(
+      1,
+    );
+
+    const res = await postBackup(jsonReq({ payload: dump, confirmReplace: true }));
+    expect(res.status).toBe(200);
+
+    // The audited set id no longer exists, so its audit is gone with it...
+    expect(await db.set.findUnique({ where: { id: oldSet.id } })).toBeNull();
+    expect(await db.mcpHistoricalEquipmentBackfillAudit.count({ where: { userId: user.id } })).toBe(
+      0,
+    );
+    // ...while another user's audit trail is untouched.
+    expect(
+      await db.mcpHistoricalEquipmentBackfillAudit.count({ where: { userId: other.id } }),
+    ).toBe(1);
+  });
+
   it('rejects an oversized body with 413 while reading it', async () => {
     const user = await db.user.create({
       data: { email: 'big@test.dev', passwordHash: 'x' },

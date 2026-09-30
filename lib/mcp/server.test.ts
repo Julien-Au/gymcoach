@@ -30,6 +30,10 @@ describe('GymCoach MCP server', () => {
     expect(byName.has('get_training_context')).toBe(true);
     expect(byName.has('create_program')).toBe(true);
     expect(byName.has('update_program_exercise')).toBe(true);
+    expect(byName.has('preview_historical_equipment_backfill')).toBe(true);
+    expect(byName.has('apply_historical_equipment_backfill')).toBe(true);
+    expect(byName.has('undo_historical_equipment_backfill')).toBe(true);
+    expect(byName.get('list_historical_equipment_backfills')?.annotations?.readOnlyHint).toBe(true);
     // add_workout: an agent asked to "add a cardio day" used to have only
     // create_program (a whole new, inactive program) or add_program_exercise.
     expect(byName.has('add_workout')).toBe(true);
@@ -37,6 +41,15 @@ describe('GymCoach MCP server', () => {
     expect(byName.get('add_workout')?.annotations?.destructiveHint).toBe(false);
     expect(GYMCOACH_MCP_INSTRUCTIONS).toMatch(/call add_workout on that program/);
     expect(byName.get('get_training_context')?.annotations?.readOnlyHint).toBe(true);
+    expect(byName.get('preview_historical_equipment_backfill')?.annotations?.readOnlyHint).toBe(
+      true,
+    );
+    expect(byName.get('apply_historical_equipment_backfill')?.annotations?.readOnlyHint).toBe(
+      false,
+    );
+    expect(byName.get('undo_historical_equipment_backfill')?.annotations?.destructiveHint).toBe(
+      true,
+    );
     expect(byName.get('remove_program_exercise')?.annotations?.destructiveHint).toBe(true);
 
     const resources = await client.listResources();
