@@ -126,6 +126,53 @@ describe('computePlateLoad', () => {
     expect(load.achievedWeight).toBe(20);
   });
 
+  it('prefers a lighter bar that under-loads slightly over a heavier bar that overshoots', () => {
+    // 15 kg bar + 0 plates = 15 (1 under); 20 kg bar = 20 (4 over). A bar above
+    // the target has remainder 0, so ranking on the remainder alone picked 20.
+    const load = computeBestPlateLoad(16, [15, 20], [1.25], 20);
+
+    expect(load.barWeight).toBe(15);
+    expect(load.achievedWeight).toBe(15);
+    expect(load.remainder).toBe(1);
+    expect(load.exact).toBe(false);
+  });
+
+  it('still takes the heavier bar when its overshoot is the smaller miss', () => {
+    // 15 kg bar = 15 (4 under); 20 kg bar = 20 (1 over).
+    const load = computeBestPlateLoad(19, [15, 20], [5], 20);
+
+    expect(load.barWeight).toBe(20);
+    expect(load.achievedWeight).toBe(20);
+  });
+
+  it('breaks a tie between equally close loads with the lighter bar', () => {
+    // Both bars reach 60 exactly: 10 + 2x25 and 20 + 2x20.
+    const exactTie = computeBestPlateLoad(60, [20, 10], [25, 20], 20);
+    expect(exactTie.exact).toBe(true);
+    expect(exactTie.barWeight).toBe(10);
+
+    // Both bars stop at 60, 1 short of the target.
+    const inexactTie = computeBestPlateLoad(61, [20, 10], [25, 20], 20);
+    expect(inexactTie.exact).toBe(false);
+    expect(inexactTie.achievedWeight).toBe(60);
+    expect(inexactTie.barWeight).toBe(10);
+  });
+
+  it('ignores non-finite, zero and negative bars', () => {
+    const load = computeBestPlateLoad(60, [NaN, 0, -20, Infinity, 20], [20], 45);
+
+    expect(load.barWeight).toBe(20);
+    expect(load.exact).toBe(true);
+    expect(load.perSide).toEqual([{ plate: 20, count: 1 }]);
+  });
+
+  it('falls back to the configured bar when every gym bar is unusable', () => {
+    const load = computeBestPlateLoad(60, [NaN, 0, -20], [20], 20);
+
+    expect(load.barWeight).toBe(20);
+    expect(load.achievedWeight).toBe(60);
+  });
+
   it('exposes sensible defaults per unit', () => {
     expect(DEFAULT_BAR_WEIGHT.KG).toBe(20);
     expect(DEFAULT_BAR_WEIGHT.LB).toBe(45);

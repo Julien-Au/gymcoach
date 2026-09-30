@@ -106,6 +106,11 @@ export function computePlateLoad(
   };
 }
 
+// Pick the bar whose load lands closest to the target. Distance to the target
+// comes first: a bar heavier than the target has no remainder to report (you
+// cannot remove bar weight), so ranking on the remainder alone would let it
+// outrank a lighter bar that under-loads by less. Exactness, the remainder and
+// the lighter bar only break ties between equally close loads.
 export function computeBestPlateLoad(
   targetWeight: number,
   barWeights: number[],
@@ -116,13 +121,14 @@ export function computeBestPlateLoad(
   const candidates = (bars.length > 0 ? bars : [fallbackBarWeight]).map((barWeight) =>
     computePlateLoad(targetWeight, barWeight, availablePlates),
   );
+  const distance = (load: PlateLoad) => clean(Math.abs(load.achievedWeight - targetWeight));
 
   return (
     candidates.sort(
       (a, b) =>
+        distance(a) - distance(b) ||
         Number(b.exact) - Number(a.exact) ||
         a.remainder - b.remainder ||
-        Math.abs(a.achievedWeight - targetWeight) - Math.abs(b.achievedWeight - targetWeight) ||
         a.barWeight - b.barWeight,
     )[0] ?? computePlateLoad(targetWeight, fallbackBarWeight, availablePlates)
   );
