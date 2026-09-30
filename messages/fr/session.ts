@@ -202,7 +202,43 @@ export const session = {
       volumeShort: 'VOL',
     },
   },
+  exerciseMenu: {
+    actions: 'Actions de l’exercice',
+    actionsDescription:
+      'Ces actions modifient votre programme enregistré : elles s’appliquent aussi aux prochaines séances.',
+    replace: 'Remplacer l’exercice',
+    replaceDescription:
+      'Choisissez un autre exercice. Il remplace celui-ci dans votre programme enregistré, pour cette séance et les suivantes.',
+    addExercises: 'Ajouter un exercice',
+    addDescription:
+      'Ajoutez un exercice à la fin de cette séance. Il est enregistré dans votre programme, pour les prochaines séances aussi.',
+    remove: 'Supprimer l’exercice',
+    removeDescription:
+      'Supprimez cet exercice de votre programme enregistré, pour cette séance et les suivantes.',
+    searchExercises: 'Rechercher des exercices',
+    noExercises: 'Aucun exercice correspondant.',
+    replaceConfirm:
+      'L’exercice sera remplacé dans votre programme enregistré : les prochaines séances changent aussi. Le remplacer ?',
+    replaceLoggedWarning:
+      'Les séries déjà enregistrées pendant la séance en cours restent dans votre historique, liées à l’exercice d’origine, mais ne sont plus affichées sur cet écran. Votre programme enregistré change aussi pour les prochaines séances. Le remplacer ?',
+    removeLoggedWarning:
+      'Les séries déjà enregistrées restent dans l’historique, mais ne sont plus affichées sur cet écran. L’exercice est supprimé de votre programme enregistré, pour les prochaines séances aussi.',
+    removeConfirm:
+      'Supprimer cet exercice de votre programme enregistré ? Les prochaines séances changent aussi.',
+    removeLastBlocked:
+      'C’est le seul exercice de la séance : il ne peut pas être supprimé ici. Remplacez-le plutôt.',
+    confirmReplace: 'Remplacer par {name}',
+    cancel: 'Annuler',
+    back: 'Retour',
+    replaced: 'Exercice remplacé.',
+    replaceError: 'Impossible de remplacer l’exercice.',
+    added: 'Exercice ajouté.',
+    addError: 'Impossible d’ajouter l’exercice.',
+    removed: 'Exercice supprimé.',
+    removeError: 'Impossible de supprimer l’exercice.',
+  },
   exerciseCard: {
+    actions: 'Actions de l’exercice',
     notAvailable: 'Indisponible dans cette salle',
     cardioPrescription: '{sets, plural, one {# série} other {# séries}} · Repos {seconds} s',
     strengthPrescription:
