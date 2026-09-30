@@ -49,7 +49,8 @@ export const session = {
       'hold-load': 'La série précédente a atteint la cible ; gardez la même charge.',
       'adjust-reps': 'Gardez la charge et ajustez les répétitions pour préserver le RIR cible.',
       'reduce-load': 'Réduisez la charge pour préserver la cible programmée.',
-      'increase-load': 'La série précédente était plus facile que prévu ; ajoutez un cran de charge.',
+      'increase-load':
+        'La série précédente était plus facile que prévu ; ajoutez un cran de charge.',
       'bodyweight-adjust-reps':
         'La charge ne peut pas descendre sous le poids de corps ; ajustez plutôt les répétitions.',
     },
@@ -65,7 +66,8 @@ export const session = {
     targets: 'Séries aujourd’hui : {sets}. RIR cible : {rir}.',
     startWeight: 'Charge de départ prudente : {weight}.',
     bodyweightStart: 'Commencez au poids de corps, sans charge ajoutée.',
-    chooseLoad: 'Choisissez une charge de calibration volontairement légère pour la première série.',
+    chooseLoad:
+      'Choisissez une charge de calibration volontairement légère pour la première série.',
     ceiling: 'Ne dépassez pas aujourd’hui le plafond issu de votre historique : {weight}.',
     calibrate:
       'Notez un RIR honnête après la première série. La recommandation de la série suivante s’adaptera au résultat.',
@@ -74,7 +76,8 @@ export const session = {
     open: 'Bilan de forme (facultatif)',
     update: 'Mettre à jour le bilan de forme',
     title: 'Comment vous sentez-vous ?',
-    description: 'Facultatif. Notez de 1 (faible) à 5 (élevé) ; le coach s’en sert pour autoréguler.',
+    description:
+      'Facultatif. Notez de 1 (faible) à 5 (élevé) ; le coach s’en sert pour autoréguler.',
     overall: 'Forme générale',
     sleep: 'Qualité du sommeil',
     details: 'Ajouter courbatures / note (facultatif)',
@@ -160,12 +163,14 @@ export const session = {
     warmupDescription: 'Séries d’échauffement suggérées jusqu’à une charge de travail de {weight}.',
     warmupSets: 'Séries d’échauffement',
     reps: '{count} reps',
-    noWarmup: 'Cette charge est au niveau de la barre ou en dessous - pas de montée en charge nécessaire.',
+    noWarmup:
+      'Cette charge est au niveau de la barre ou en dessous - pas de montée en charge nécessaire.',
     warmupHelp:
       'Suggestions uniquement. Enregistrez les échauffements avec l’option Échauffement. Les charges sont arrondies vers le bas aux disques chargeables.',
   },
   setsList: {
-    noneDuringRest: 'Aucune série pour l’instant. Après le repos vous pourrez enregistrer la série {number}.',
+    noneDuringRest:
+      'Aucune série pour l’instant. Après le repos vous pourrez enregistrer la série {number}.',
     set: 'Série {number}',
     warmup: ' (échauffement)',
     drop: ' (dégressive)',
@@ -194,20 +199,29 @@ export const session = {
   },
   exerciseMenu: {
     actions: 'Actions de l’exercice',
-    actionsDescription: 'Gérez cet exercice sans quitter la séance en cours.',
+    actionsDescription:
+      'Ces actions modifient votre programme enregistré : elles s’appliquent aussi aux prochaines séances.',
     replace: 'Remplacer l’exercice',
-    replaceDescription: 'Choisissez un autre exercice pour le travail restant.',
+    replaceDescription:
+      'Choisissez un autre exercice. Il remplace celui-ci dans votre programme enregistré, pour cette séance et les suivantes.',
     addExercises: 'Ajouter un exercice',
-    addDescription: 'Ajoutez un exercice à la fin de cette séance.',
+    addDescription:
+      'Ajoutez un exercice à la fin de cette séance. Il est enregistré dans votre programme, pour les prochaines séances aussi.',
     remove: 'Supprimer l’exercice',
-    removeDescription: 'Supprimez cet exercice de la séance en cours.',
+    removeDescription:
+      'Supprimez cet exercice de votre programme enregistré, pour cette séance et les suivantes.',
     searchExercises: 'Rechercher des exercices',
     noExercises: 'Aucun exercice correspondant.',
+    replaceConfirm:
+      'L’exercice sera remplacé dans votre programme enregistré : les prochaines séances changent aussi. Le remplacer ?',
     replaceLoggedWarning:
-      'Les séries déjà enregistrées restent liées à l’exercice d’origine. Le remplacer pour la suite de la séance ?',
+      'Les séries déjà enregistrées pendant la séance en cours restent dans votre historique, liées à l’exercice d’origine, mais ne sont plus affichées sur cet écran. Votre programme enregistré change aussi pour les prochaines séances. Le remplacer ?',
     removeLoggedWarning:
-      'Les séries déjà enregistrées restent dans l’historique, mais cet exercice disparaîtra de la séance active.',
-    removeConfirm: 'Supprimer cet exercice de la séance ?',
+      'Les séries déjà enregistrées restent dans l’historique, mais ne sont plus affichées sur cet écran. L’exercice est supprimé de votre programme enregistré, pour les prochaines séances aussi.',
+    removeConfirm:
+      'Supprimer cet exercice de votre programme enregistré ? Les prochaines séances changent aussi.',
+    removeLastBlocked:
+      'C’est le seul exercice de la séance : il ne peut pas être supprimé ici. Remplacez-le plutôt.',
     confirmReplace: 'Remplacer par {name}',
     cancel: 'Annuler',
     back: 'Retour',

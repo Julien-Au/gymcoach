@@ -81,6 +81,19 @@ beforeEach(() => {
 });
 
 describe('SessionExerciseMenu', () => {
+  it('says on every view that the saved program changes, not only this session', () => {
+    renderMenu();
+    expect(screen.getAllByText(/saved program/i).length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole('button', { name: 'Replace exercise' }));
+    expect(screen.getAllByText(/saved program/i).length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add exercise' }));
+    expect(screen.getAllByText(/saved.*program/i).length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove exercise' }));
+    expect(screen.getAllByText(/saved program/i).length).toBeGreaterThan(0);
+  });
+
   it('offers replacements only from the current primary muscle group', () => {
     renderMenu();
     fireEvent.click(screen.getByRole('button', { name: 'Replace exercise' }));
