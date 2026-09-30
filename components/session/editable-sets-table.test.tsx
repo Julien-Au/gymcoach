@@ -142,17 +142,67 @@ describe('EditableSetsTable', () => {
       />,
     );
 
+    // The draft is prefilled with 100 kg (220.46 lb); pick a different option so
+    // the assertion can only pass when the tap and Apply really went through.
     fireEvent.click(screen.getByRole('button', { name: /weight/i }));
-    fireEvent.click(screen.getByRole('button', { name: /220\.46 lb/i }));
+    expect(screen.getByRole('button', { name: /220\.46 lb/i })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    fireEvent.click(screen.getByRole('button', { name: /225\.97 lb/i }));
     fireEvent.click(screen.getByRole('button', { name: /apply value/i }));
+    expect(screen.getByRole('button', { name: /set 1 weight/i })).toHaveTextContent('225.97');
     fireEvent.click(screen.getByRole('button', { name: /confirm set 1/i }));
 
     await waitFor(() =>
       expect(onSubmit).toHaveBeenCalledWith(
-        expect.objectContaining({ weight: 100, reps: 10, rir: 2 }),
+        expect.objectContaining({ weight: 102.5, reps: 10, rir: 2 }),
       ),
     );
   });
+
+  it.each([
+    { label: 'above the option range', weight: 220 },
+    { label: 'off the option grid', weight: 73 },
+  ])(
+    'opens a logged set $label on its exact weight and keeps it on a plain Apply',
+    async ({ weight }) => {
+      const loggedSet = {
+        localId: 'local-exact',
+        sessionId: 'session-1',
+        exerciseId: 'exercise-1',
+        setNumber: 1,
+        weight,
+        reps: 5,
+        rir: 1,
+        status: 'synced',
+        serverId: 'server-exact',
+        createdAt: 1,
+      } as never;
+      const onUpdateSet = vi.fn().mockResolvedValue(undefined);
+      render(
+        <EditableSetsTable
+          programExercise={programExercise}
+          sets={[loggedSet]}
+          lastPerformance={undefined}
+          readiness={null}
+          deloadActive={false}
+          unit="KG"
+          onSubmit={vi.fn()}
+          onDeleteSet={vi.fn()}
+          onUpdateSet={onUpdateSet}
+        />,
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: /set 1 weight/i }));
+      expect(screen.getByRole('spinbutton')).toHaveValue(weight);
+      fireEvent.click(screen.getByRole('button', { name: /apply value/i }));
+
+      await waitFor(() =>
+        expect(onUpdateSet).toHaveBeenCalledWith(loggedSet, { weight, reps: 5, rir: 1 }),
+      );
+    },
+  );
 
   it('parks an unconfirmed draft per exercise and restores it when the lifter comes back', async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
