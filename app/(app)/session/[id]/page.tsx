@@ -48,7 +48,7 @@ export default async function SessionRunPage(props: Props) {
     where: { id: auth.userId },
     select: { unit: true, deloadUntil: true, bodyweight: true },
   });
-  const [lastPerformances, user, latestCheckin, returnRecommendations] = await Promise.all([
+  const [lastPerformances, user, latestCheckin, returnRecommendations, catalog] = await Promise.all([
     getLastPerformances(auth.userId, exerciseIds, session.id),
     userPromise,
     db.readinessCheckin.findFirst({
@@ -65,6 +65,20 @@ export default async function SessionRunPage(props: Props) {
         gym: session.gym,
       }),
     ),
+    // Catalog for the in-session exercise menu: only the fields it reads
+    // (SessionCatalogExercise), not the whole row.
+    db.exercise.findMany({
+      where: { userId: auth.userId },
+      orderBy: [{ muscleGroup: 'asc' }, { name: 'asc' }],
+      select: {
+        id: true,
+        name: true,
+        muscleGroup: true,
+        category: true,
+        usesBodyweight: true,
+        defaultRestSec: true,
+      },
+    }),
   ]);
 
   const lastPerfRecord: Record<string, SerializedLastPerformance> = {};
@@ -86,6 +100,7 @@ export default async function SessionRunPage(props: Props) {
       deloadActive={deloadActive}
       unit={user?.unit ?? 'KG'}
       initialProgramExerciseId={searchParams.programExerciseId}
+      catalog={catalog}
     />
   );
 }

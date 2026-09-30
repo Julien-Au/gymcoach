@@ -15,6 +15,7 @@ import type {
   Workout,
   Gym,
   GymExerciseConfig,
+  EquipmentType,
 } from '@/lib/prisma-client';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { toast } from 'sonner';
@@ -50,8 +51,13 @@ import {
 } from '@/lib/sync';
 import { hydrateFromServerSets } from '@/lib/sync-hydration';
 import { ExerciseCard } from '@/components/session/exercise-card';
+import {
+  SessionExerciseMenu,
+  type SessionCatalogExercise,
+} from '@/components/session/session-exercise-menu';
 import { SetsList } from '@/components/session/sets-list';
 import { EditableSetsTable } from '@/components/session/editable-sets-table';
+import type { LiveEquipmentOption } from '@/components/session/live-equipment-weight-editor';
 import { SetInput } from '@/components/session/set-input';
 import { RestTimer } from '@/components/session/rest-timer';
 import { SessionSummary } from '@/components/session/session-summary';
@@ -82,7 +88,16 @@ type ProgramExerciseWithExercise = ProgramExercise & { exercise: Exercise };
 type SessionGymEquipment = {
   id: string;
   name: string;
+  equipmentType: EquipmentType;
+  weightOptions: number[];
   exerciseLinks: { exerciseId: string }[];
+};
+
+// In-session weight edits, valid for one server snapshot of the gym equipment.
+type LiveEquipmentEdits = {
+  base: SessionGymEquipment[] | undefined;
+  equipment: Record<string, LiveEquipmentOption>;
+  weightOptions: Record<string, number[]>;
 };
 
 type SessionRunnerProps = {
@@ -106,11 +121,18 @@ type SessionRunnerProps = {
   deloadActive: boolean;
   unit: WeightUnit;
   initialProgramExerciseId?: string;
+  catalog: SessionCatalogExercise[];
 };
 
 type Mode =
   | { kind: 'input' }
-  | { kind: 'rest'; endsAt: number; totalSec: number; nextExerciseIdx: number | null }
+  | {
+      kind: 'rest';
+      endsAt: number;
+      totalSec: number;
+      nextExerciseIdx: number | null;
+      navigatedImmediately: boolean;
+    }
   | { kind: 'summary' };
 
 export function SessionRunner({
@@ -121,12 +143,34 @@ export function SessionRunner({
   deloadActive,
   unit,
   initialProgramExerciseId,
+  catalog,
 }: SessionRunnerProps) {
   const t = useTranslations('session');
   const exerciseName = useExerciseName();
   const trainingName = useTrainingName();
   const router = useRouter();
   const workout = session.workout!;
+  // Weight edits made from this screen show at once, layered on the equipment
+  // the server sent. They are tied to that server snapshot: once a refresh
+  // delivers new props (the exercise menu triggers one), the server data, which
+  // by then includes the saved edit, is the source again.
+  const serverEquipment = session.gym?.equipment;
+  const [liveEquipmentEdits, setLiveEquipmentEdits] = useState<LiveEquipmentEdits>({
+    base: serverEquipment,
+    equipment: {},
+    weightOptions: {},
+  });
+  const activeEquipmentEdits =
+    liveEquipmentEdits.base === serverEquipment ? liveEquipmentEdits : null;
+  const sessionEquipment = useMemo<SessionGymEquipment[]>(
+    () =>
+      (serverEquipment ?? []).map((item) => {
+        const edited = activeEquipmentEdits?.equipment[item.id];
+        return edited ? { ...item, ...edited } : item;
+      }),
+    [serverEquipment, activeEquipmentEdits],
+  );
+  const liveWeightOptions = activeEquipmentEdits?.weightOptions;
   // Supersets (issue #146, slice 1): run the workout in presentation order -
   // members of a superset group come consecutively with A1/A2 labels. For a
   // workout without supersets this is exactly the stored order.
@@ -153,9 +197,18 @@ export function SessionRunner({
 
   const initialExerciseIndex = selectedExerciseIndex(programExercises, initialProgramExerciseId);
   const [hydrated, setHydrated] = useState(false);
-  const [currentIdx, setCurrentIdx] = useState(initialExerciseIndex);
+  const [selectedIdx, setSelectedIdx] = useState(initialExerciseIndex);
+  // Removing an exercise shortens the list one render before the pending
+  // selection below lands. Clamp instead of showing the empty state for that
+  // pass: it would unmount the sets table and drop its parked drafts.
+  const currentIdx = Math.min(selectedIdx, Math.max(programExercises.length - 1, 0));
+  const [pendingExerciseSelection, setPendingExerciseSelection] = useState<{
+    selectProgramExerciseId: string;
+    removedProgramExerciseId?: string;
+  } | null>(null);
   const [mode, setMode] = useState<Mode>({ kind: 'input' });
   const [closing, setClosing] = useState(false);
+  const [exerciseMenuOpen, setExerciseMenuOpen] = useState(false);
   // Readiness auto-regulation can be turned off in settings (issue #61). The
   // preference lives in localStorage, so it is read after mount; until then we
   // assume the default (on) so the first render matches the server output.
@@ -163,6 +216,37 @@ export function SessionRunner({
 
   const currentPE = programExercises[currentIdx];
   const currentTarget = effectiveProgramExercises[currentIdx];
+
+  // Write the clamp back. If a pending selection never lands (failed refresh,
+  // target row gone), an index left past the end would make a later add jump
+  // the view to the new row.
+  useEffect(() => {
+    if (selectedIdx !== currentIdx) setSelectedIdx(currentIdx);
+  }, [selectedIdx, currentIdx]);
+
+  useEffect(() => {
+    if (!pendingExerciseSelection) return;
+    if (
+      pendingExerciseSelection.removedProgramExerciseId &&
+      programExercises.some((item) => item.id === pendingExerciseSelection.removedProgramExerciseId)
+    ) {
+      return;
+    }
+    const refreshedIndex = programExercises.findIndex(
+      (item) => item.id === pendingExerciseSelection.selectProgramExerciseId,
+    );
+    const target = programExercises[refreshedIndex];
+    if (!target) return;
+    // Same two steps as selectExercise: the URL keeps naming the selected
+    // row, so a reload does not fall back to the first exercise.
+    setSelectedIdx(refreshedIndex);
+    window.history.replaceState(
+      window.history.state,
+      '',
+      sessionExercisePath(session.id, target.id),
+    );
+    setPendingExerciseSelection(null);
+  }, [pendingExerciseSelection, programExercises, session.id]);
 
   // When auto-regulation is off, the readiness signal is dropped entirely, so
   // the suggestion falls back to pure programmed progression (pre-#55 behavior).
@@ -298,8 +382,27 @@ export function SessionRunner({
       dumbbellWeights: session.gym.dumbbellWeights,
       plateWeights: session.gym.plateWeights,
       barWeights: session.gym.barWeights,
-      weightOptions: config?.weightOptions ?? [],
+      weightOptions: liveWeightOptions?.[pe.exerciseId] ?? config?.weightOptions ?? [],
     };
+  }
+
+  function handleEquipmentWeightsUpdated(equipment: LiveEquipmentOption) {
+    setLiveEquipmentEdits((current) => {
+      const edits =
+        current.base === serverEquipment
+          ? current
+          : { base: serverEquipment, equipment: {}, weightOptions: {} };
+      return {
+        base: serverEquipment,
+        equipment: { ...edits.equipment, [equipment.id]: equipment },
+        weightOptions: {
+          ...edits.weightOptions,
+          ...Object.fromEntries(
+            equipment.exerciseLinks.map((link) => [link.exerciseId, equipment.weightOptions]),
+          ),
+        },
+      };
+    });
   }
 
   // Prior-session sets per exercise, the PR baseline for the post-session
@@ -393,11 +496,18 @@ export function SessionRunner({
     const transition = isSupersetTransitionRest(supersetView, currentIdx, nextIdx);
     const restSec = transition ? SUPERSET_TRANSITION_REST_SEC : currentTarget.restSec;
 
+    // For a same-superset transition, show the next exercise immediately so
+    // the lifter can get into position while the short transition rest runs.
+    // The timer still keeps input locked until it ends or is skipped.
+    const navigatedImmediately = transition && nextIdx != null;
+    if (navigatedImmediately) selectExercise(nextIdx);
+
     setMode({
       kind: 'rest',
       endsAt: Date.now() + restSec * 1000,
       totalSec: restSec,
       nextExerciseIdx: nextIdx,
+      navigatedImmediately,
     });
   }
 
@@ -508,20 +618,20 @@ export function SessionRunner({
   function selectExercise(index: number) {
     const next = programExercises[index];
     if (!next) return;
-    setCurrentIdx(index);
+    setSelectedIdx(index);
     window.history.replaceState(window.history.state, '', sessionExercisePath(session.id, next.id));
   }
 
   function handleRestEnd() {
     vibrate(VIBRATION_PATTERNS.restEnd);
-    if (mode.kind === 'rest' && mode.nextExerciseIdx != null) {
+    if (mode.kind === 'rest' && !mode.navigatedImmediately && mode.nextExerciseIdx != null) {
       selectExercise(mode.nextExerciseIdx);
     }
     setMode({ kind: 'input' });
   }
 
   function handleSkipRest() {
-    if (mode.kind === 'rest' && mode.nextExerciseIdx != null) {
+    if (mode.kind === 'rest' && !mode.navigatedImmediately && mode.nextExerciseIdx != null) {
       selectExercise(mode.nextExerciseIdx);
     }
     setMode({ kind: 'input' });
@@ -586,6 +696,10 @@ export function SessionRunner({
         : currentSets.filter((set) => !set.isWarmup).length < currentTarget.targetSets
           ? currentTarget
           : null
+      : null;
+  const restNextLabel =
+    mode.kind === 'rest' && !mode.navigatedImmediately && restNextPe
+      ? exerciseName(restNextPe.exercise.name)
       : null;
   const restRecommendation =
     mode.kind === 'rest' && restNextPe ? recommendationFor(restNextPe, mode.endsAt) : null;
@@ -655,6 +769,26 @@ export function SessionRunner({
           unit={unit}
           gymName={session.gym?.name ?? null}
           loadConstraints={loadConstraintsFor(currentPE)}
+          onOpenMenu={() => setExerciseMenuOpen(true)}
+          menuDisabled={mode.kind !== 'input'}
+        />
+        <SessionExerciseMenu
+          open={exerciseMenuOpen}
+          onOpenChange={setExerciseMenuOpen}
+          programExercise={currentPE}
+          programExercises={programExercises}
+          catalog={catalog}
+          loggedSetCount={currentSets.length}
+          onChanged={(options) => {
+            setExerciseMenuOpen(false);
+            if (options?.selectProgramExerciseId) {
+              setPendingExerciseSelection({
+                selectProgramExerciseId: options.selectProgramExerciseId,
+                removedProgramExerciseId: options.removedProgramExerciseId,
+              });
+            }
+            router.refresh();
+          }}
         />
         <ReturnToTrainingNotice
           recommendation={currentReturnRecommendation}
@@ -681,12 +815,14 @@ export function SessionRunner({
             recommendation={currentRecommendation}
             loadConstraints={loadConstraintsFor(currentTarget)}
             priorSets={lastPerf?.sets}
-            equipmentOptions={(session.gym?.equipment ?? []).filter(
+            gymId={session.gym?.id ?? null}
+            equipmentOptions={sessionEquipment.filter(
               (item) =>
                 !droppedEquipmentIds.includes(item.id) &&
                 item.exerciseLinks.some((link) => link.exerciseId === currentPE.exerciseId),
             )}
             disabled={!hydrated || mode.kind !== 'input'}
+            onEquipmentWeightsUpdated={handleEquipmentWeightsUpdated}
             onSubmit={handleValidate}
             onDeleteSet={handleDeleteSet}
             onUpdateSet={handleUpdateSet}
@@ -706,7 +842,7 @@ export function SessionRunner({
             unit={unit}
             returnRecommendation={currentReturnRecommendation}
             loadConstraints={loadConstraintsFor(currentTarget)}
-            equipmentOptions={(session.gym?.equipment ?? []).filter(
+            equipmentOptions={sessionEquipment.filter(
               (item) =>
                 !droppedEquipmentIds.includes(item.id) &&
                 item.exerciseLinks.some((link) => link.exerciseId === currentPE.exerciseId),
@@ -717,7 +853,7 @@ export function SessionRunner({
           <RestTimer
             endsAt={mode.endsAt}
             totalSec={mode.totalSec}
-            nextLabel={restNextPe ? exerciseName(restNextPe.exercise.name) : null}
+            nextLabel={restNextLabel}
             recommendation={restRecommendation}
             unit={unit}
             onEnd={handleRestEnd}
