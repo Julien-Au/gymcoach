@@ -120,6 +120,16 @@ describe('GymCoach MCP gym inventory', () => {
       10, 15.5, 19,
     ]);
 
+    // An overwrite reports what it replaced, so the client can show or restore it.
+    const reweighted = await client.callTool({
+      name: 'update_gym_free_weights',
+      arguments: { confirmed: true, gymId: gym.id, dumbbellWeights: [12, 14] },
+    });
+    expect(reweighted.structuredContent).toMatchObject({
+      gym: { dumbbellWeights: [12, 14], plateWeights: [1.25, 2.5, 20], barWeights: [20] },
+      previous: { dumbbellWeights: [10, 15.5, 19], plateWeights: [1.25, 2.5, 20], barWeights: [20] },
+    });
+
     const upserted = await client.callTool({
       name: 'upsert_gym_equipment',
       arguments: {
@@ -136,6 +146,7 @@ describe('GymCoach MCP gym inventory', () => {
       },
     });
     expect(upserted.isError).not.toBe(true);
+    expect(upserted.structuredContent).toMatchObject({ created: true, previous: null });
     const savedEquipment = await db.gymEquipment.findFirstOrThrow({
       where: { gymId: gym.id, name: 'Seated chest press' },
       include: { exerciseLinks: true },
@@ -161,6 +172,17 @@ describe('GymCoach MCP gym inventory', () => {
       },
     });
     expect(updatedStack.isError).not.toBe(true);
+    expect(updatedStack.structuredContent).toMatchObject({
+      created: false,
+      previous: {
+        id: savedEquipment.id,
+        name: 'Seated chest press',
+        equipmentType: 'MACHINE',
+        manufacturer: 'GymCo',
+        weightOptions: [10, 20, 30, 40],
+        exerciseIds: [exercise.id],
+      },
+    });
     expect(
       await db.gymExerciseConfig.findUniqueOrThrow({
         where: { gymId_exerciseId: { gymId: gym.id, exerciseId: exercise.id } },

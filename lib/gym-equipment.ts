@@ -194,7 +194,13 @@ export async function updateOwnedGymFreeWeights(
   ) {
     throw new Error('Provide at least one free-weight inventory list.');
   }
-  return db.gym.update({
+  // The update replaces whole lists, so hand back what was there before: the
+  // caller can show the change or restore it.
+  const previous = await db.gym.findUniqueOrThrow({
+    where: { id: gym.id },
+    select: { dumbbellWeights: true, plateWeights: true, barWeights: true },
+  });
+  const updated = await db.gym.update({
     where: { id: gym.id },
     data: patch,
     select: {
@@ -206,6 +212,38 @@ export async function updateOwnedGymFreeWeights(
       updatedAt: true,
     },
   });
+  return { gym: updated, previous };
+}
+
+// The item an upsert with this input would overwrite, or null when it would
+// create one. Mirrors the target resolution of upsertOwnedGymEquipment (by id
+// inside the gym, else by case-insensitive name) so an agent-driven overwrite
+// can report the values it replaced.
+export async function findOwnedGymEquipmentUpsertTarget(
+  userId: string,
+  gymId: string,
+  input: Pick<UpsertGymEquipmentInput, 'equipmentId' | 'name'>,
+) {
+  await requireOwnedGym(userId, gymId);
+  const target = await db.gymEquipment.findFirst({
+    where: input.equipmentId
+      ? { id: input.equipmentId, gymId }
+      : { gymId, name: { equals: input.name, mode: 'insensitive' } },
+    select: {
+      id: true,
+      name: true,
+      equipmentType: true,
+      description: true,
+      manufacturer: true,
+      modelName: true,
+      quantity: true,
+      weightOptions: true,
+      exerciseLinks: { select: { exerciseId: true } },
+    },
+  });
+  if (!target) return null;
+  const { exerciseLinks, ...fields } = target;
+  return { ...fields, exerciseIds: exerciseLinks.map((link) => link.exerciseId) };
 }
 
 export async function listOwnedGymEquipment(userId: string, gymId: string) {

@@ -5,6 +5,7 @@ import { db } from '@/lib/db';
 import { buildCoachPayload } from '@/lib/coach';
 import {
   GYM_EQUIPMENT_IMAGE_MIME_TYPES,
+  findOwnedGymEquipmentUpsertTarget,
   getOwnedGymEquipmentImage,
   getOwnedGymInventory,
   listOwnedGyms,
@@ -192,7 +193,7 @@ export function createGymCoachMcpServer({ principal, baseUrl }: ServerOptions): 
     {
       title: 'Update gym free-weight inventory',
       description:
-        'Updates any supplied dumbbell, plate or bar lists in kg after the trainee confirms the inventory change. Omitted lists remain unchanged.',
+        'Replaces any supplied dumbbell, plate or bar lists in kg after the trainee confirms the inventory change. Omitted lists remain unchanged. The result includes the previous lists.',
       inputSchema: {
         confirmed: explicitConfirmation,
         gymId: gymIdSchema.optional(),
@@ -209,8 +210,8 @@ export function createGymCoachMcpServer({ principal, baseUrl }: ServerOptions): 
     },
     async ({ gymId, confirmed: _confirmed, ...patch }) => {
       requireWrite(principal);
-      const gym = await updateOwnedGymFreeWeights(principal.userId, gymId, patch);
-      return result({ ok: true, gym });
+      const { gym, previous } = await updateOwnedGymFreeWeights(principal.userId, gymId, patch);
+      return result({ ok: true, gym, previous });
     },
   );
 
@@ -219,7 +220,7 @@ export function createGymCoachMcpServer({ principal, baseUrl }: ServerOptions): 
     {
       title: 'Add or update physical gym equipment',
       description:
-        'Creates or updates a physical machine, station or accessory in a gym. Link exercise IDs to make those exercises available and apply machine/cable weight options.',
+        'Creates or updates a physical machine, station or accessory in a gym. Link exercise IDs to make those exercises available and apply machine/cable weight options. Without equipmentId, an item with the same name in the gym is overwritten; supplied fields and exercise links replace the saved ones, and the result includes the previous values.',
       inputSchema: {
         confirmed: explicitConfirmation,
         gymId: gymIdSchema,
@@ -243,8 +244,9 @@ export function createGymCoachMcpServer({ principal, baseUrl }: ServerOptions): 
     },
     async ({ gymId, confirmed: _confirmed, ...input }) => {
       requireWrite(principal);
+      const previous = await findOwnedGymEquipmentUpsertTarget(principal.userId, gymId, input);
       const saved = await upsertOwnedGymEquipment(principal.userId, gymId, input);
-      return result({ ok: true, ...saved });
+      return result({ ok: true, ...saved, previous });
     },
   );
 
