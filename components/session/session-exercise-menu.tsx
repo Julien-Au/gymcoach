@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useId, useMemo, useRef, useState } from 'react';
 import { Plus, Replace, Search, Trash2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
@@ -104,6 +104,7 @@ export function SessionExerciseMenu({
   // Removing the only exercise would leave the runner on its empty state,
   // which has no Finish button. Replace stays available.
   const onlyExercise = programExercises.length <= 1;
+  const removeBlockedId = useId();
   const existingExerciseIds = useMemo(
     () => new Set(programExercises.map((item) => item.exerciseId)),
     [programExercises],
@@ -288,13 +289,16 @@ export function SessionExerciseMenu({
               variant="destructive"
               className="min-h-tap justify-start"
               disabled={onlyExercise}
+              aria-describedby={onlyExercise ? removeBlockedId : undefined}
               onClick={() => openView('removeConfirm')}
             >
               <Trash2 className="mr-2 size-4" aria-hidden />
               {t('remove')}
             </Button>
             {onlyExercise && (
-              <p className="text-sm text-muted-foreground">{t('removeLastBlocked')}</p>
+              <p id={removeBlockedId} className="text-sm text-muted-foreground">
+                {t('removeLastBlocked')}
+              </p>
             )}
           </div>
         )}

@@ -330,8 +330,11 @@ describe('SessionExerciseMenu', () => {
         onChanged={vi.fn()}
       />,
     );
-    expect(screen.getByRole('button', { name: 'Remove exercise' })).toBeDisabled();
+    const remove = screen.getByRole('button', { name: 'Remove exercise' });
+    expect(remove).toBeDisabled();
     expect(screen.getByText(/only exercise in the workout/i)).toBeInTheDocument();
+    // The reason is announced with the disabled button, not only shown near it.
+    expect(remove).toHaveAccessibleDescription(/only exercise in the workout/i);
     expect(screen.getByRole('button', { name: 'Replace exercise' })).toBeEnabled();
   });
 
