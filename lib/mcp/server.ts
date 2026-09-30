@@ -45,9 +45,11 @@ export const GYMCOACH_MCP_INSTRUCTIONS = `GymCoach stores the trainee's profile,
 
 Use read tools before making recommendations. Ground every recommendation in returned GymCoach data and never invent completed sets, available equipment, records or injuries. Respect the active gym's equipment constraints. Use the trainee's language.
 
+For MCP tool discovery, inspect the complete tool list once before guessing names. Do not repeatedly probe synonyms or issue many filtered discovery requests. If the client cannot expose the complete tool list, call get_mcp_capability_index once and use the exact tool names it returns. If a capability is still missing after that, report it as missing instead of continuing trial-and-error.
+
 Before changing gym inventory, read the saved gym first, explain the proposed additions or corrections, and require explicit confirmation. Do not guess machine identity, exercise links or selectable weights from ambiguous information.
 
-Program-writing tools change saved data. Explain the proposed change before calling a write tool. Newly created programs are inactive so the trainee can review them. Activate a program only when the trainee explicitly asks. To add a session (for example a cardio day) to the program the trainee already follows, call add_workout on that program rather than creating a new program. Never delete or remove a program exercise without explicit confirmation.`;
+Write tools (programs, gym inventory, equipment history) change saved data. Explain the proposed change before calling a write tool. Newly created programs are inactive so the trainee can review them. Activate a program only when the trainee explicitly asks. To add a session (for example a cardio day) to the program the trainee already follows, call add_workout on that program rather than creating a new program. Never delete or remove a program exercise without explicit confirmation.`;
 
 interface ServerOptions {
   principal: McpPrincipal;
@@ -102,6 +104,53 @@ async function getOwnedProgram(userId: string, programId?: string) {
   return program.id;
 }
 
+// Task-oriented index of every registered tool, and the single source of the
+// tool list: GYMCOACH_MCP_TOOL_NAMES is flattened from these groups, and the
+// unit test pins it to what the server registers. A tool added without an
+// index entry (or an entry without a tool) fails the gate instead of leaving a
+// client with a stale index.
+const MCP_CAPABILITY_GROUPS = {
+  discovery: {
+    tools: ['get_mcp_capability_index'],
+    note: 'Prefer one complete tools/list. Use this fallback once when the client cannot expose it.',
+  },
+  trainingContext: {
+    tools: ['get_training_context'],
+  },
+  exerciseCatalog: {
+    tools: ['list_exercises'],
+  },
+  gyms: {
+    read: ['list_gyms', 'get_gym_inventory', 'get_gym_equipment_image'],
+    write: ['update_gym_free_weights', 'upsert_gym_equipment', 'set_gym_equipment_image'],
+  },
+  equipmentHistory: {
+    read: ['preview_historical_equipment_backfill', 'list_historical_equipment_backfills'],
+    write: ['apply_historical_equipment_backfill', 'undo_historical_equipment_backfill'],
+  },
+  programs: {
+    read: ['list_programs', 'get_program'],
+    write: [
+      'create_program',
+      'update_program_metadata',
+      'add_workout',
+      'add_program_exercise',
+      'update_program_exercise',
+      'remove_program_exercise',
+      'activate_program',
+    ],
+  },
+} as const;
+
+export const GYMCOACH_MCP_TOOL_NAMES = Object.values(MCP_CAPABILITY_GROUPS).flatMap((group) =>
+  'tools' in group ? [...group.tools] : [...group.read, ...group.write],
+);
+
+const MCP_CAPABILITY_INDEX = {
+  allTools: GYMCOACH_MCP_TOOL_NAMES,
+  ...MCP_CAPABILITY_GROUPS,
+};
+
 export function createGymCoachMcpServer({ principal, baseUrl }: ServerOptions): McpServer {
   const server = new McpServer(
     {
@@ -149,6 +198,28 @@ export function createGymCoachMcpServer({ principal, baseUrl }: ServerOptions): 
         },
       ],
     }),
+  );
+
+  server.registerTool(
+    'get_mcp_capability_index',
+    {
+      title: 'Get GymCoach MCP capability index',
+      description:
+        'Returns a compact task-oriented index of exact GymCoach MCP tool names. Use this once when the client cannot expose a complete tools/list; do not repeatedly guess tool names or probe synonyms.',
+      annotations: { readOnlyHint: true, openWorldHint: false, idempotentHint: true },
+    },
+    async () =>
+      result({
+        discoveryRule:
+          'Prefer one complete tools/list. If unavailable, call get_mcp_capability_index once, then use exact names. Stop repeated synonym probing.',
+        // Same flag requireWrite checks: the index is served to read-only
+        // connections too, and they must not plan around tools they cannot call.
+        writeAccess: principal.canWrite,
+        writeAccessNote: principal.canWrite
+          ? 'This connection can call the tools listed under "write". Each one still requires confirmed: true after the trainee agreed to the change.'
+          : 'This connection is read-only: every tool listed under "write" is refused. Do not plan around them; tell the trainee a write-enabled connection from Settings is needed for changes.',
+        capabilities: MCP_CAPABILITY_INDEX,
+      }),
   );
 
   server.registerTool(

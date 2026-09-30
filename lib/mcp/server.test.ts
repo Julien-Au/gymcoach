@@ -1,7 +1,23 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createGymCoachMcpServer, GYMCOACH_MCP_INSTRUCTIONS } from './server';
+import {
+  createGymCoachMcpServer,
+  GYMCOACH_MCP_INSTRUCTIONS,
+  GYMCOACH_MCP_TOOL_NAMES,
+} from './server';
+
+interface CapabilityGroup {
+  tools?: string[];
+  read?: string[];
+  write?: string[];
+}
+
+interface CapabilityIndexResult {
+  writeAccess: boolean;
+  writeAccessNote: string;
+  capabilities: { allTools: string[] } & Record<string, CapabilityGroup>;
+}
 
 const openServers: Array<ReturnType<typeof createGymCoachMcpServer>> = [];
 const openClients: Client[] = [];
@@ -27,6 +43,9 @@ describe('GymCoach MCP server', () => {
 
     const tools = await client.listTools();
     const byName = new Map(tools.tools.map((tool) => [tool.name, tool]));
+    expect(tools.tools.map((tool) => tool.name).sort()).toEqual(
+      [...GYMCOACH_MCP_TOOL_NAMES].sort(),
+    );
     expect(byName.has('list_gyms')).toBe(true);
     expect(byName.has('get_gym_inventory')).toBe(true);
     expect(byName.has('get_gym_equipment_image')).toBe(true);
@@ -80,6 +99,7 @@ describe('GymCoach MCP server', () => {
     expect(byName.get('add_workout')?.annotations?.readOnlyHint).toBe(false);
     expect(byName.get('add_workout')?.annotations?.destructiveHint).toBe(false);
     expect(GYMCOACH_MCP_INSTRUCTIONS).toMatch(/call add_workout on that program/);
+    expect(byName.get('get_mcp_capability_index')?.annotations?.readOnlyHint).toBe(true);
     expect(byName.get('get_training_context')?.annotations?.readOnlyHint).toBe(true);
     expect(byName.get('preview_historical_equipment_backfill')?.annotations?.readOnlyHint).toBe(
       true,
@@ -92,6 +112,62 @@ describe('GymCoach MCP server', () => {
     );
     expect(byName.get('remove_program_exercise')?.annotations?.destructiveHint).toBe(true);
 
+    const capabilityIndex = await client.callTool({ name: 'get_mcp_capability_index' });
+    const capabilityContent = capabilityIndex.content as Array<{ type: string; text?: string }>;
+    const capabilityText = capabilityContent.find((item) => item.type === 'text');
+    const capabilityResult = (
+      capabilityText?.text ? JSON.parse(capabilityText.text) : null
+    ) as CapabilityIndexResult | null;
+    expect(capabilityResult).toMatchObject({
+      writeAccess: true,
+      capabilities: {
+        allTools: GYMCOACH_MCP_TOOL_NAMES,
+        discovery: { tools: ['get_mcp_capability_index'] },
+        trainingContext: { tools: ['get_training_context'] },
+        exerciseCatalog: { tools: ['list_exercises'] },
+        gyms: {
+          read: ['list_gyms', 'get_gym_inventory', 'get_gym_equipment_image'],
+          write: ['update_gym_free_weights', 'upsert_gym_equipment', 'set_gym_equipment_image'],
+        },
+        equipmentHistory: {
+          read: ['preview_historical_equipment_backfill', 'list_historical_equipment_backfills'],
+          write: ['apply_historical_equipment_backfill', 'undo_historical_equipment_backfill'],
+        },
+        programs: {
+          read: ['list_programs', 'get_program'],
+          write: [
+            'create_program',
+            'update_program_metadata',
+            'add_workout',
+            'add_program_exercise',
+            'update_program_exercise',
+            'remove_program_exercise',
+            'activate_program',
+          ],
+        },
+      },
+    });
+
+    // The index is only useful if it cannot drift: rebuild the tool list from
+    // the groups a client actually receives (not from the exported constant)
+    // and hold it against what the server registers.
+    const { allTools, ...groups } = capabilityResult!.capabilities;
+    const grouped = Object.values(groups).flatMap((group) => [
+      ...(group.tools ?? []).map((name) => ({ name, write: false })),
+      ...(group.read ?? []).map((name) => ({ name, write: false })),
+      ...(group.write ?? []).map((name) => ({ name, write: true })),
+    ]);
+    const groupedNames = grouped.map((entry) => entry.name);
+    expect(groupedNames).toHaveLength(22);
+    // No tool sits in two groups, and none is listed without a group.
+    expect(new Set(groupedNames).size).toBe(groupedNames.length);
+    expect([...allTools].sort()).toEqual([...groupedNames].sort());
+    expect([...groupedNames].sort()).toEqual(tools.tools.map((tool) => tool.name).sort());
+    // A group's read/write label is a promise about the tool's annotation.
+    for (const { name, write } of grouped) {
+      expect(byName.get(name)?.annotations?.readOnlyHint, `${name} readOnlyHint`).toBe(!write);
+    }
+
     const resources = await client.listResources();
     expect(resources.resources.map((resource) => resource.uri)).toContain(
       'gymcoach://instructions/agent',
@@ -101,5 +177,34 @@ describe('GymCoach MCP server', () => {
 
     const instructions = await client.readResource({ uri: 'gymcoach://instructions/agent' });
     expect(instructions.contents[0]).toMatchObject({ text: GYMCOACH_MCP_INSTRUCTIONS });
+    // Write tools are no longer program-only: the rule must name every domain.
+    expect(GYMCOACH_MCP_INSTRUCTIONS).toMatch(
+      /Write tools \(programs, gym inventory, equipment history\) change saved data/,
+    );
+    expect(GYMCOACH_MCP_INSTRUCTIONS).not.toMatch(/Program-writing tools/);
+    expect(GYMCOACH_MCP_INSTRUCTIONS).toMatch(/call get_mcp_capability_index once/);
+  });
+
+  it('tells a read-only connection that the write tools in the index are refused', async () => {
+    const server = createGymCoachMcpServer({
+      principal: { tokenId: 'token-2', userId: 'user-1', canWrite: false },
+      baseUrl: 'https://gymcoach.example',
+    });
+    const client = new Client({ name: 'gymcoach-test', version: '1.0.0' });
+    openServers.push(server);
+    openClients.push(client);
+
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await server.connect(serverTransport);
+    await client.connect(clientTransport);
+
+    const capabilityIndex = await client.callTool({ name: 'get_mcp_capability_index' });
+    expect(capabilityIndex.isError).toBeFalsy();
+    const structured = capabilityIndex.structuredContent as CapabilityIndexResult;
+    expect(structured.writeAccess).toBe(false);
+    expect(structured.writeAccessNote).toMatch(/read-only/);
+    // Same index either way: the flag, not a filtered list, carries the scope.
+    expect(structured.capabilities.allTools).toEqual(GYMCOACH_MCP_TOOL_NAMES);
+    expect(structured.capabilities.programs?.write).toContain('create_program');
   });
 });
