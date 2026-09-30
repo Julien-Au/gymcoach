@@ -130,7 +130,10 @@ export async function getOwnedGymInventory(
 async function buildGymExerciseCoverage(
   userId: string,
   baseUrl: string,
-  gym: { id: string; equipment: Array<{ id: string; exerciseLinks: Array<{ exerciseId: string }> }> },
+  gym: {
+    id: string;
+    equipment: Array<{ id: string; exerciseLinks: Array<{ exerciseId: string }> }>;
+  },
 ) {
   const [configs, exercises] = await Promise.all([
     db.gymExerciseConfig.findMany({
@@ -560,9 +563,7 @@ export function gymEquipmentImageRef(item: {
       readWith: 'get_gym_equipment_image' as const,
     };
   }
-  return item.imageUrl
-    ? { kind: 'external' as const, url: item.imageUrl, mimeType: null }
-    : null;
+  return item.imageUrl ? { kind: 'external' as const, url: item.imageUrl, mimeType: null } : null;
 }
 
 async function requireOwnedGym(userId: string, gymId: string) {
