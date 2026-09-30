@@ -645,6 +645,9 @@ export async function POST(req: Request) {
         //    exercises. Conversations cascade their messages; programs
         //    cascade workouts and program exercises.
         await tx.set.deleteMany({ where: { session: { userId } } });
+        // The restore recreates every set under a new id, so the MCP backfill
+        // audits of the purged sets could never be undone again: drop them.
+        await tx.mcpHistoricalEquipmentBackfillAudit.deleteMany({ where: { userId } });
         await tx.session.deleteMany({ where: { userId } });
         await tx.gym.deleteMany({ where: { userId } });
         await tx.coachSession.deleteMany({ where: { userId } });
