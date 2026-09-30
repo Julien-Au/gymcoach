@@ -430,7 +430,7 @@ export function EditableSetsTable({
                     size="icon"
                     aria-label={t('metrics.open')}
                     title={t('metrics.open')}
-                    className="size-7 text-muted-foreground"
+                    className="-my-2 size-11 text-muted-foreground"
                   >
                     <Pencil className="size-3.5" />
                   </Button>

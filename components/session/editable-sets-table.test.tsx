@@ -63,7 +63,10 @@ describe('EditableSetsTable', () => {
     );
 
     expect(screen.getByTestId('set-metric-header-1RM')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Choose calculated columns' }));
+    const columnPicker = screen.getByRole('button', { name: 'Choose calculated columns' });
+    // 44 px tap target, pulled into the header padding so the row keeps its height.
+    expect(columnPicker).toHaveClass('size-11', '-my-2');
+    await user.click(columnPicker);
     await user.click(screen.getByRole('menuitemcheckbox', { name: 'Volume' }));
 
     expect(screen.getByTestId('set-metric-header-VOLUME')).toBeInTheDocument();
