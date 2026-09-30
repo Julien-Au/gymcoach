@@ -402,7 +402,7 @@ export function createGymCoachMcpServer({ principal, baseUrl }: ServerOptions): 
       description:
         'Finds owned historical sets (finished sessions only) that are missing a physical equipment assignment and returns linked equipment candidates plus prior-use evidence. This tool never writes data and suggestions are not user confirmation.',
       inputSchema: {
-        gymId: databaseIdSchema.optional(),
+        gymId: gymIdSchema.optional(),
         exerciseId: databaseIdSchema.optional(),
         from: isoDateOrDatetime
           .optional()
@@ -456,7 +456,7 @@ export function createGymCoachMcpServer({ principal, baseUrl }: ServerOptions): 
         'Assigns one explicitly confirmed owned gym/exercise/equipment mapping to an exact list of historical sets (finished sessions only) that are still unassigned. Returns an audit ID for safe undo; the ID stays recoverable later through list_historical_equipment_backfills.',
       inputSchema: {
         confirmed: explicitConfirmation,
-        gymId: databaseIdSchema,
+        gymId: gymIdSchema,
         exerciseId: databaseIdSchema,
         equipmentId: databaseIdSchema,
         setIds: z.array(z.string().cuid()).min(1).max(HISTORICAL_EQUIPMENT_BACKFILL_MAX_SETS),
