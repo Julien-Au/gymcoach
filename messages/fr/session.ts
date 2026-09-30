@@ -191,6 +191,22 @@ export const session = {
     chooseReps: 'Choisir les répétitions',
     applyValue: 'Appliquer la valeur',
     repsShort: 'reps',
+    weightEditor: {
+      open: 'Modifier les charges du matériel',
+      title: 'Modifier les charges de {name}',
+      description:
+        'Mettez à jour les charges disponibles sur ce matériel. Les changements sont enregistrés dans cette salle, appliqués aux exercices liés à ce matériel et utilisés immédiatement pendant la séance.',
+      weights: 'Charges disponibles ({unit})',
+      placeholder: '5; 7,5; 10; 12,5',
+      help: 'Séparez les charges par des espaces, des points-virgules ou des retours à la ligne. Une virgule entre deux chiffres est lue comme une décimale (22,5).',
+      save: 'Enregistrer les charges',
+      saved: 'Charges du matériel mises à jour.',
+      saveError: 'Impossible de mettre à jour les charges du matériel.',
+      tooManyWeights: 'Saisissez au maximum 200 charges.',
+      empty: 'Saisissez au moins une charge.',
+      invalidWeight: '« {token} » n’est pas une charge valide.',
+      outOfRange: '« {token} » est hors limites (de 0,1 à 5000 kg).',
+    },
     metrics: {
       open: 'Choisir les colonnes calculées',
       label: 'Colonnes calculées',
@@ -202,7 +218,43 @@ export const session = {
       volumeShort: 'VOL',
     },
   },
+  exerciseMenu: {
+    actions: 'Actions de l’exercice',
+    actionsDescription:
+      'Ces actions modifient votre programme enregistré : elles s’appliquent aussi aux prochaines séances.',
+    replace: 'Remplacer l’exercice',
+    replaceDescription:
+      'Choisissez un autre exercice. Il remplace celui-ci dans votre programme enregistré, pour cette séance et les suivantes.',
+    addExercises: 'Ajouter un exercice',
+    addDescription:
+      'Ajoutez un exercice à la fin de cette séance. Il est enregistré dans votre programme, pour les prochaines séances aussi.',
+    remove: 'Supprimer l’exercice',
+    removeDescription:
+      'Supprimez cet exercice de votre programme enregistré, pour cette séance et les suivantes.',
+    searchExercises: 'Rechercher des exercices',
+    noExercises: 'Aucun exercice correspondant.',
+    replaceConfirm:
+      'L’exercice sera remplacé dans votre programme enregistré : les prochaines séances changent aussi. Le remplacer ?',
+    replaceLoggedWarning:
+      'Les séries déjà enregistrées pendant la séance en cours restent dans votre historique, liées à l’exercice d’origine, mais ne sont plus affichées sur cet écran. Votre programme enregistré change aussi pour les prochaines séances. Le remplacer ?',
+    removeLoggedWarning:
+      'Les séries déjà enregistrées restent dans l’historique, mais ne sont plus affichées sur cet écran. L’exercice est supprimé de votre programme enregistré, pour les prochaines séances aussi.',
+    removeConfirm:
+      'Supprimer cet exercice de votre programme enregistré ? Les prochaines séances changent aussi.',
+    removeLastBlocked:
+      'C’est le seul exercice de la séance : il ne peut pas être supprimé ici. Remplacez-le plutôt.',
+    confirmReplace: 'Remplacer par {name}',
+    cancel: 'Annuler',
+    back: 'Retour',
+    replaced: 'Exercice remplacé.',
+    replaceError: 'Impossible de remplacer l’exercice.',
+    added: 'Exercice ajouté.',
+    addError: 'Impossible d’ajouter l’exercice.',
+    removed: 'Exercice supprimé.',
+    removeError: 'Impossible de supprimer l’exercice.',
+  },
   exerciseCard: {
+    actions: 'Actions de l’exercice',
     notAvailable: 'Indisponible dans cette salle',
     cardioPrescription: '{sets, plural, one {# série} other {# séries}} · Repos {seconds} s',
     strengthPrescription:

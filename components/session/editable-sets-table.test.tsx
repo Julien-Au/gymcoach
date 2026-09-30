@@ -154,9 +154,22 @@ describe('EditableSetsTable', () => {
         readiness={null}
         deloadActive={false}
         unit="KG"
+        gymId="gym-1"
         equipmentOptions={[
-          { id: 'machine-1', name: 'Hack Squat' },
-          { id: 'machine-2', name: 'Pendulum Squat' },
+          {
+            id: 'machine-1',
+            name: 'Hack Squat',
+            equipmentType: 'MACHINE',
+            weightOptions: [20, 40, 60],
+            exerciseLinks: [{ exerciseId: 'exercise-1' }],
+          },
+          {
+            id: 'machine-2',
+            name: 'Pendulum Squat',
+            equipmentType: 'MACHINE',
+            weightOptions: [25, 50, 75],
+            exerciseLinks: [{ exerciseId: 'exercise-1' }],
+          },
         ]}
         onSubmit={onSubmit}
         onDeleteSet={vi.fn()}
@@ -167,13 +180,154 @@ describe('EditableSetsTable', () => {
     expect(screen.getByRole('combobox', { name: /equipment/i })).toHaveTextContent('Hack Squat');
     await user.click(screen.getByRole('combobox', { name: /equipment/i }));
     await user.click(screen.getByRole('option', { name: 'Pendulum Squat' }));
+    expect(screen.getByRole('button', { name: 'Edit equipment weights' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /set 2 weight/i }));
+    expect(screen.getByRole('button', { name: '25 kg' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '50 kg' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '75 kg' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '40 kg' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '50 kg' }));
+    fireEvent.click(screen.getByRole('button', { name: /apply value/i }));
     fireEvent.click(screen.getByRole('button', { name: /confirm set 2/i }));
 
     await waitFor(() =>
       expect(onSubmit).toHaveBeenCalledWith(
-        expect.objectContaining({ gymEquipmentId: 'machine-2' }),
+        expect.objectContaining({ gymEquipmentId: 'machine-2', weight: 50 }),
       ),
     );
+  });
+
+  it('keeps a logged set on its own equipment when another item is selected for the next set', async () => {
+    const user = userEvent.setup();
+    const onUpdateSet = vi.fn().mockResolvedValue(undefined);
+    const loggedSet = {
+      localId: 'local-own-equipment',
+      sessionId: 'session-1',
+      exerciseId: 'exercise-1',
+      gymEquipmentId: 'machine-1',
+      setNumber: 1,
+      weight: 40,
+      reps: 8,
+      rir: 2,
+      notes: null,
+      isWarmup: false,
+      isDropSet: false,
+      status: 'synced',
+      serverId: 'server-own-equipment',
+      syncedAt: 1,
+      attempts: 0,
+      lastError: null,
+      createdAt: 1,
+    } as PendingSet;
+
+    render(
+      <EditableSetsTable
+        programExercise={programExercise}
+        sets={[loggedSet]}
+        lastPerformance={undefined}
+        readiness={null}
+        deloadActive={false}
+        unit="KG"
+        gymId="gym-1"
+        equipmentOptions={[
+          {
+            id: 'machine-1',
+            name: 'Hack Squat',
+            equipmentType: 'MACHINE',
+            weightOptions: [20, 40, 60],
+            exerciseLinks: [{ exerciseId: 'exercise-1' }],
+          },
+          {
+            id: 'machine-2',
+            name: 'Pendulum Squat',
+            equipmentType: 'MACHINE',
+            weightOptions: [25, 50, 75],
+            exerciseLinks: [{ exerciseId: 'exercise-1' }],
+          },
+        ]}
+        onSubmit={vi.fn()}
+        onDeleteSet={vi.fn()}
+        onUpdateSet={onUpdateSet}
+      />,
+    );
+
+    // The next set moves to the other machine; set 1 stays a Hack Squat set.
+    await user.click(screen.getByRole('combobox', { name: /equipment/i }));
+    await user.click(screen.getByRole('option', { name: 'Pendulum Squat' }));
+
+    // An RIR-only edit must not touch the stored weight: 40 is not a Pendulum
+    // Squat load, and snapping to that machine would silently save 50.
+    await user.click(screen.getAllByRole('combobox', { name: /set 1 reps in reserve/i })[0]!);
+    await user.click(screen.getByRole('option', { name: '1' }));
+    await waitFor(() =>
+      expect(onUpdateSet).toHaveBeenCalledWith(loggedSet, { weight: 40, reps: 8, rir: 1 }),
+    );
+    expect(onUpdateSet.mock.calls[0]![0].gymEquipmentId).toBe('machine-1');
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /set 1 weight/i })).not.toBeDisabled(),
+    );
+
+    // A weight edit offers and snaps to the loads of the set's own machine.
+    fireEvent.click(screen.getByRole('button', { name: /set 1 weight/i }));
+    expect(screen.getByRole('button', { name: '20 kg' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '60 kg' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '25 kg' })).not.toBeInTheDocument();
+    fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '55' } });
+    fireEvent.click(screen.getByRole('button', { name: /apply value/i }));
+    await waitFor(() =>
+      expect(onUpdateSet).toHaveBeenLastCalledWith(loggedSet, { weight: 60, reps: 8, rir: 2 }),
+    );
+  });
+
+  it('follows the selected machine in the picker for a barbell exercise, without a plate preview', async () => {
+    const user = userEvent.setup();
+    render(
+      <EditableSetsTable
+        programExercise={programExercise}
+        sets={[]}
+        lastPerformance={{
+          sessionStartedAt: '2026-07-01T10:00:00.000Z',
+          sets: [{ weight: 60, reps: 8, rir: 2 }],
+          maxWeight: 60,
+          repsAtMaxWeight: 8,
+          cardio: null,
+        }}
+        readiness={null}
+        deloadActive={false}
+        unit="KG"
+        gymId="gym-1"
+        loadConstraints={{
+          equipmentType: 'BARBELL',
+          barWeights: [20],
+          plateWeights: [20, 10, 5, 2.5, 1.25],
+        }}
+        equipmentOptions={[
+          {
+            id: 'machine-2',
+            name: 'Pendulum Squat',
+            equipmentType: 'MACHINE',
+            weightOptions: [25, 50, 75],
+            exerciseLinks: [{ exerciseId: 'exercise-1' }],
+          },
+        ]}
+        onSubmit={vi.fn()}
+        onDeleteSet={vi.fn()}
+        onUpdateSet={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    // On the bar: the barbell loading preview is shown.
+    fireEvent.click(screen.getByRole('button', { name: /set 1 weight/i }));
+    expect(screen.getByTestId('barbell-side-diagram')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /apply value/i }));
+
+    // On the machine: its loads are offered and there are no plates to show.
+    await user.click(screen.getByRole('combobox', { name: /equipment/i }));
+    await user.click(screen.getByRole('option', { name: 'Pendulum Squat' }));
+    fireEvent.click(screen.getByRole('button', { name: /set 1 weight/i }));
+    expect(screen.getByRole('button', { name: '25 kg' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '75 kg' })).toBeInTheDocument();
+    expect(screen.queryByTestId('barbell-side-diagram')).not.toBeInTheDocument();
   });
   it('keeps canonical kg values when selecting a displayed lb option', async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
@@ -197,16 +351,67 @@ describe('EditableSetsTable', () => {
       />,
     );
 
+    // The draft is prefilled with 100 kg (220.46 lb); pick a different option so
+    // the assertion can only pass when the tap and Apply really went through.
     fireEvent.click(screen.getByRole('button', { name: /weight/i }));
-    fireEvent.click(screen.getByRole('button', { name: /220\.46 lb/i }));
+    expect(screen.getByRole('button', { name: /220\.46 lb/i })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    fireEvent.click(screen.getByRole('button', { name: /225\.97 lb/i }));
+    fireEvent.click(screen.getByRole('button', { name: /apply value/i }));
+    expect(screen.getByRole('button', { name: /set 1 weight/i })).toHaveTextContent('225.97');
     fireEvent.click(screen.getByRole('button', { name: /confirm set 1/i }));
 
     await waitFor(() =>
       expect(onSubmit).toHaveBeenCalledWith(
-        expect.objectContaining({ weight: 100, reps: 10, rir: 2 }),
+        expect.objectContaining({ weight: 102.5, reps: 10, rir: 2 }),
       ),
     );
   });
+
+  it.each([
+    { label: 'above the option range', weight: 220 },
+    { label: 'off the option grid', weight: 73 },
+  ])(
+    'opens a logged set $label on its exact weight and keeps it on a plain Apply',
+    async ({ weight }) => {
+      const loggedSet = {
+        localId: 'local-exact',
+        sessionId: 'session-1',
+        exerciseId: 'exercise-1',
+        setNumber: 1,
+        weight,
+        reps: 5,
+        rir: 1,
+        status: 'synced',
+        serverId: 'server-exact',
+        createdAt: 1,
+      } as never;
+      const onUpdateSet = vi.fn().mockResolvedValue(undefined);
+      render(
+        <EditableSetsTable
+          programExercise={programExercise}
+          sets={[loggedSet]}
+          lastPerformance={undefined}
+          readiness={null}
+          deloadActive={false}
+          unit="KG"
+          onSubmit={vi.fn()}
+          onDeleteSet={vi.fn()}
+          onUpdateSet={onUpdateSet}
+        />,
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: /set 1 weight/i }));
+      expect(screen.getByRole('spinbutton')).toHaveValue(weight);
+      fireEvent.click(screen.getByRole('button', { name: /apply value/i }));
+
+      await waitFor(() =>
+        expect(onUpdateSet).toHaveBeenCalledWith(loggedSet, { weight, reps: 5, rir: 1 }),
+      );
+    },
+  );
 
   it('parks an unconfirmed draft per exercise and restores it when the lifter comes back', async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
@@ -239,6 +444,47 @@ describe('EditableSetsTable', () => {
     fireEvent.click(screen.getByRole('button', { name: /confirm set 1/i }));
     await waitFor(() =>
       expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ weight: 100 })),
+    );
+  });
+
+  it('re-seeds the draft when the same program row is replaced by another exercise', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    const perf = (weight: number) => ({
+      sessionStartedAt: '2026-06-01T12:00:00.000Z',
+      sets: [{ weight, reps: 8, rir: 2 }],
+      maxWeight: weight,
+      repsAtMaxWeight: 8,
+      cardio: null,
+    });
+    // An in-session replace keeps the row id and swaps the exercise.
+    const replaced = {
+      ...(programExercise as Record<string, unknown>),
+      exerciseId: 'exercise-2',
+      exercise: { id: 'exercise-2', name: 'Incline Dumbbell Press', category: 'COMPOUND' },
+    } as never;
+    const props = {
+      sets: [],
+      readiness: null,
+      deloadActive: false,
+      unit: 'KG' as const,
+      onSubmit,
+      onDeleteSet: vi.fn(),
+      onUpdateSet: vi.fn().mockResolvedValue(undefined),
+    };
+    const view = render(
+      <EditableSetsTable
+        programExercise={programExercise}
+        lastPerformance={perf(100)}
+        {...props}
+      />,
+    );
+    view.rerender(
+      <EditableSetsTable programExercise={replaced} lastPerformance={perf(30)} {...props} />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /confirm set 1/i }));
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ weight: 30, reps: 8 })),
     );
   });
 

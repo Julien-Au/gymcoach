@@ -185,6 +185,22 @@ export const session = {
     chooseReps: 'Choose repetitions',
     applyValue: 'Apply value',
     repsShort: 'reps',
+    weightEditor: {
+      open: 'Edit equipment weights',
+      title: 'Edit {name} weights',
+      description:
+        'Update the discrete loads available on this equipment. Changes are saved to this gym, applied to the exercises linked to this equipment and used immediately in this workout.',
+      weights: 'Available weights ({unit})',
+      placeholder: '5; 7.5; 10; 12.5',
+      help: 'Separate weights with spaces, semicolons or new lines. A comma between two digits is read as a decimal separator (22,5 is 22.5).',
+      save: 'Save weights',
+      saved: 'Equipment weights updated.',
+      saveError: 'Could not update equipment weights.',
+      tooManyWeights: 'Enter at most 200 weights.',
+      empty: 'Enter at least one weight.',
+      invalidWeight: '“{token}” is not a valid weight.',
+      outOfRange: '“{token}” is outside the allowed range (0.1 to 5000 kg).',
+    },
     metrics: {
       open: 'Choose calculated columns',
       label: 'Calculated columns',
@@ -196,7 +212,42 @@ export const session = {
       volumeShort: 'VOL',
     },
   },
+  exerciseMenu: {
+    actions: 'Exercise actions',
+    actionsDescription:
+      'These actions change your saved program, so they also apply to future sessions of this workout.',
+    replace: 'Replace exercise',
+    replaceDescription:
+      'Choose another exercise. It replaces this one in your saved program, for this and future sessions.',
+    addExercises: 'Add exercise',
+    addDescription:
+      'Add an exercise to the end of this workout. It is saved to your program for future sessions too.',
+    remove: 'Remove exercise',
+    removeDescription:
+      'Remove this exercise from your saved program, for this and future sessions.',
+    searchExercises: 'Search exercises',
+    noExercises: 'No matching exercises.',
+    replaceConfirm:
+      'This replaces the exercise in your saved program, so future sessions change too. Replace it?',
+    replaceLoggedWarning:
+      'Sets already logged in this session stay in your history under the original exercise, but they are no longer shown on this screen. Your saved program changes for future sessions too. Replace it?',
+    removeLoggedWarning:
+      'Sets already logged remain in history, but they are no longer shown on this screen. The exercise is removed from your saved program, for future sessions too.',
+    removeConfirm: 'Remove this exercise from your saved program? Future sessions change too.',
+    removeLastBlocked:
+      'This is the only exercise in the workout, so it cannot be removed here. Replace it instead.',
+    confirmReplace: 'Replace with {name}',
+    cancel: 'Cancel',
+    back: 'Back',
+    replaced: 'Exercise replaced.',
+    replaceError: 'Could not replace the exercise.',
+    added: 'Exercise added.',
+    addError: 'Could not add the exercise.',
+    removed: 'Exercise removed.',
+    removeError: 'Could not remove the exercise.',
+  },
   exerciseCard: {
+    actions: 'Exercise actions',
     notAvailable: 'Not available in this gym',
     cardioPrescription: '{sets, plural, one {# set} other {# sets}} · Rest {seconds}s',
     strengthPrescription:

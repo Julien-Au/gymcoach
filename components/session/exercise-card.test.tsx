@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
 import type { Exercise, ProgramExercise } from '@/lib/prisma-client';
 import { READINESS_RECENCY_HOURS, type ReadinessSignal } from '@/lib/progression';
 import { ExerciseCard } from './exercise-card';
@@ -84,6 +84,54 @@ describe('ExerciseCard mobile title layout', () => {
       'w-max',
       'whitespace-nowrap',
     );
+  });
+});
+
+describe('ExerciseCard actions button', () => {
+  it('is a full tap target next to the scrollable title', () => {
+    render(
+      <ExerciseCard
+        programExercise={pe}
+        lastPerformance={lastPerf}
+        readiness={null}
+        deloadActive={false}
+        unit="KG"
+        onOpenMenu={() => undefined}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Exercise actions' })).toHaveClass(
+      'min-h-tap',
+      'min-w-tap',
+      'shrink-0',
+    );
+    expect(screen.getByTestId('exercise-title-scroll')).toHaveClass('min-w-0', 'flex-1');
+  });
+
+  it('stays in the header but disabled while the menu is unavailable', () => {
+    const onOpenMenu = vi.fn();
+    const props = {
+      programExercise: pe,
+      lastPerformance: lastPerf,
+      readiness: null,
+      deloadActive: false,
+      unit: 'KG' as const,
+      onOpenMenu,
+    };
+    const view = render(<ExerciseCard {...props} menuDisabled />);
+
+    // Same box as in input mode, so the header height does not change.
+    const resting = screen.getByRole('button', { name: 'Exercise actions' });
+    expect(resting).toBeDisabled();
+    expect(resting).toHaveClass('min-h-tap', 'min-w-tap');
+    fireEvent.click(resting);
+    expect(onOpenMenu).not.toHaveBeenCalled();
+
+    view.rerender(<ExerciseCard {...props} />);
+    const active = screen.getByRole('button', { name: 'Exercise actions' });
+    expect(active).toBeEnabled();
+    fireEvent.click(active);
+    expect(onOpenMenu).toHaveBeenCalledOnce();
   });
 });
 
