@@ -219,6 +219,22 @@ describe('GymCoach MCP gym inventory', () => {
       }),
     ]);
 
+    // External URLs are not an MCP input: the argument is dropped by the tool
+    // schema, so the call has no image action and nothing is stored.
+    const externalUrl = await client.callTool({
+      name: 'set_gym_equipment_image',
+      arguments: {
+        confirmed: true,
+        equipmentId: savedEquipment.id,
+        imageUrl: 'https://images.example/press.png?leak=1',
+      },
+    });
+    expect(externalUrl.isError).toBe(true);
+    expect(JSON.stringify(externalUrl.content)).toContain('clear or imageBase64');
+    expect(
+      await db.gymEquipment.findUniqueOrThrow({ where: { id: savedEquipment.id } }),
+    ).toMatchObject({ imageUrl: null, imageMimeType: 'image/png' });
+
     const cleared = await client.callTool({
       name: 'set_gym_equipment_image',
       arguments: { confirmed: true, equipmentId: savedEquipment.id, clear: true },

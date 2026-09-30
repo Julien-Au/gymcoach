@@ -63,6 +63,9 @@ describe('GymCoach MCP server', () => {
     expect(byName.get('set_gym_equipment_image')?.inputSchema).toMatchObject({
       required: expect.arrayContaining(['confirmed', 'equipmentId']),
     });
+    expect(
+      Object.keys(byName.get('set_gym_equipment_image')?.inputSchema.properties ?? {}),
+    ).not.toContain('imageUrl');
     // add_workout: an agent asked to "add a cardio day" used to have only
     // create_program (a whole new, inactive program) or add_program_exercise.
     expect(byName.has('add_workout')).toBe(true);

@@ -52,13 +52,6 @@ const gymIdSchema = z
   .max(120)
   .describe('Opaque GymCoach gym ID returned by list_gyms.');
 
-const httpsImageUrl = z
-  .string()
-  .trim()
-  .url()
-  .max(2048)
-  .refine((value) => value.startsWith('https://'), 'Equipment image URL must use HTTPS.');
-
 function result(data: Record<string, unknown>) {
   return {
     content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }],
@@ -161,7 +154,7 @@ export function createGymCoachMcpServer({ principal, baseUrl }: ServerOptions): 
     {
       title: 'Get a gym-equipment image',
       description:
-        'Returns a saved uploaded equipment image as MCP image content, or the approved external HTTPS image URL. Use this when visual comparison is needed.',
+        'Returns a saved uploaded equipment image as MCP image content, or the external HTTPS image URL the trainee saved in GymCoach. Use this when visual comparison is needed.',
       inputSchema: {
         equipmentId: z.string().cuid(),
       },
@@ -260,12 +253,11 @@ export function createGymCoachMcpServer({ principal, baseUrl }: ServerOptions): 
     {
       title: 'Set a gym-equipment image',
       description:
-        'Sets or clears a physical equipment image after confirmation. Use one of: an approved HTTPS URL, or JPEG/PNG/WebP base64 (raw or data URL) for durable database storage.',
+        'Sets or clears a physical equipment image after confirmation. Use exactly one of: clear, or JPEG/PNG/WebP base64 (raw with mimeType, or a data URL) stored in the GymCoach database. External image URLs are not accepted through MCP.',
       inputSchema: {
         confirmed: explicitConfirmation,
         equipmentId: z.string().cuid(),
         clear: z.literal(true).optional(),
-        imageUrl: httpsImageUrl.optional(),
         imageBase64: z.string().max(7_100_000).optional(),
         mimeType: z.enum(GYM_EQUIPMENT_IMAGE_MIME_TYPES).optional(),
       },
@@ -278,6 +270,11 @@ export function createGymCoachMcpServer({ principal, baseUrl }: ServerOptions): 
     },
     async ({ equipmentId, confirmed: _confirmed, ...input }) => {
       requireWrite(principal);
+      // Uploaded bytes or clear only: an external URL written by an agent would be
+      // handed back to every later MCP client, so that mode stays web-UI only.
+      if ((input.clear === true) === (input.imageBase64 != null)) {
+        throw new Error('Choose exactly one image action: clear or imageBase64.');
+      }
       const equipment = await setOwnedGymEquipmentImage(principal.userId, equipmentId, input);
       const image = equipment.imageMimeType
         ? {
