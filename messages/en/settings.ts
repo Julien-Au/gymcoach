@@ -153,7 +153,7 @@ export const settings = {
     createError: 'Could not create the MCP connection.',
     writeAccess: 'Allow changes to saved data',
     writeAccessDescription:
-      'ChatGPT may create and edit programs and update workout history data, such as the equipment recorded on past sets, after showing the action for confirmation.',
+      'ChatGPT may create and edit programs, update your gym inventory (free weights, equipment and its photos) and update workout history data, such as the equipment recorded on past sets, after showing the action for confirmation.',
     readyTitle: 'ChatGPT connector URL is ready',
     readyDescription:
       'Copy it now. The secret part is shown only once. In ChatGPT choose no authentication because the URL already contains a private token.',

@@ -2,15 +2,16 @@
 
 GymCoach exposes a Streamable HTTP MCP endpoint at `/mcp`. It lets external AI
 agents read the trainee context and, with an explicitly write-enabled token,
-change saved data: create or edit training programs and backfill the equipment
+change saved data: create or edit training programs, maintain the gym
+inventory (free weights, equipment and its images) and backfill the equipment
 recorded on past workout sets.
 
 ## Connect ChatGPT
 
 1. Sign in to GymCoach and open **Settings -> ChatGPT and MCP**.
 2. Create a connection. Leave write access ("Allow changes to saved data")
-   enabled only when ChatGPT should be allowed to change saved programs and
-   workout history data.
+   enabled only when ChatGPT should be allowed to change saved programs, the
+   gym inventory and workout history data.
 3. Copy the connector URL immediately. Its secret token is shown only once.
 4. In ChatGPT Developer Mode, create a custom connector and paste the URL.
 5. Select **No authentication**. The private query token in the URL is the
@@ -23,8 +24,8 @@ The public URL must use HTTPS. A local or LAN URL is not suitable for ChatGPT.
 - Raw tokens are never stored; PostgreSQL contains only their SHA-256 hashes.
 - Tokens belong to one GymCoach user and can be revoked from Settings.
 - Read-only tokens cannot call any write tool. A write-enabled token can call
-  every write tool listed below - program changes and workout history changes
-  alike; there is no narrower scope.
+  every write tool listed below - program changes, gym inventory changes and
+  workout history changes alike; there is no narrower scope.
 - Every write tool requires an explicit `confirmed: true` argument and is
   annotated as changing saved data.
 - The agent never receives direct database, filesystem or shell access.

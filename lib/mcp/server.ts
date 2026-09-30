@@ -250,7 +250,7 @@ export function createGymCoachMcpServer({ principal, baseUrl }: ServerOptions): 
     {
       title: 'Add or update physical gym equipment',
       description:
-        'Creates or updates a physical machine, station or accessory in a gym. Link exercise IDs to make those exercises available and apply machine/cable weight options. Without equipmentId, an item with the same name in the gym is overwritten; supplied fields and exercise links replace the saved ones, and the result includes the previous values.',
+        'Creates or updates a physical machine, station or accessory in a gym. Link exercise IDs to make those exercises available and apply machine/cable weight options. Without equipmentId, an item with the same name in the gym is overwritten; supplied fields and exercise links replace the saved ones. The result includes the previous values of the equipment item and its exercise links only, not the per-exercise gym configuration (availability and weight options) that the upsert also rewrites.',
       inputSchema: {
         confirmed: explicitConfirmation,
         gymId: gymIdSchema,
