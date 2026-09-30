@@ -104,22 +104,12 @@ async function getOwnedProgram(userId: string, programId?: string) {
   return program.id;
 }
 
-export const GYMCOACH_MCP_TOOL_NAMES = [
-  'get_mcp_capability_index',
-  'get_training_context',
-  'list_exercises',
-  'list_programs',
-  'get_program',
-  'create_program',
-  'update_program_metadata',
-  'add_program_exercise',
-  'update_program_exercise',
-  'remove_program_exercise',
-  'activate_program',
-] as const;
-
-const MCP_CAPABILITY_INDEX = {
-  allTools: GYMCOACH_MCP_TOOL_NAMES,
+// Task-oriented index of every registered tool, and the single source of the
+// tool list: GYMCOACH_MCP_TOOL_NAMES is flattened from these groups, and the
+// unit test pins it to what the server registers. A tool added without an
+// index entry (or an entry without a tool) fails the gate instead of leaving a
+// client with a stale index.
+const MCP_CAPABILITY_GROUPS = {
   discovery: {
     tools: ['get_mcp_capability_index'],
     note: 'Prefer one complete tools/list. Use this fallback once when the client cannot expose it.',
@@ -130,11 +120,20 @@ const MCP_CAPABILITY_INDEX = {
   exerciseCatalog: {
     tools: ['list_exercises'],
   },
+  gyms: {
+    read: ['list_gyms', 'get_gym_inventory', 'get_gym_equipment_image'],
+    write: ['update_gym_free_weights', 'upsert_gym_equipment', 'set_gym_equipment_image'],
+  },
+  equipmentHistory: {
+    read: ['preview_historical_equipment_backfill', 'list_historical_equipment_backfills'],
+    write: ['apply_historical_equipment_backfill', 'undo_historical_equipment_backfill'],
+  },
   programs: {
     read: ['list_programs', 'get_program'],
     write: [
       'create_program',
       'update_program_metadata',
+      'add_workout',
       'add_program_exercise',
       'update_program_exercise',
       'remove_program_exercise',
@@ -142,6 +141,15 @@ const MCP_CAPABILITY_INDEX = {
     ],
   },
 } as const;
+
+export const GYMCOACH_MCP_TOOL_NAMES = Object.values(MCP_CAPABILITY_GROUPS).flatMap((group) =>
+  'tools' in group ? [...group.tools] : [...group.read, ...group.write],
+);
+
+const MCP_CAPABILITY_INDEX = {
+  allTools: GYMCOACH_MCP_TOOL_NAMES,
+  ...MCP_CAPABILITY_GROUPS,
+};
 
 export function createGymCoachMcpServer({ principal, baseUrl }: ServerOptions): McpServer {
   const server = new McpServer(

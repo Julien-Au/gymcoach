@@ -7,6 +7,16 @@ import {
   GYMCOACH_MCP_TOOL_NAMES,
 } from './server';
 
+interface CapabilityGroup {
+  tools?: string[];
+  read?: string[];
+  write?: string[];
+}
+
+interface CapabilityIndexResult {
+  capabilities: { allTools: string[] } & Record<string, CapabilityGroup>;
+}
+
 const openServers: Array<ReturnType<typeof createGymCoachMcpServer>> = [];
 const openClients: Client[] = [];
 
@@ -103,17 +113,29 @@ describe('GymCoach MCP server', () => {
     const capabilityIndex = await client.callTool({ name: 'get_mcp_capability_index' });
     const capabilityContent = capabilityIndex.content as Array<{ type: string; text?: string }>;
     const capabilityText = capabilityContent.find((item) => item.type === 'text');
-    expect(capabilityText?.text ? JSON.parse(capabilityText.text) : null).toMatchObject({
+    const capabilityResult = (
+      capabilityText?.text ? JSON.parse(capabilityText.text) : null
+    ) as CapabilityIndexResult | null;
+    expect(capabilityResult).toMatchObject({
       capabilities: {
         allTools: GYMCOACH_MCP_TOOL_NAMES,
         discovery: { tools: ['get_mcp_capability_index'] },
         trainingContext: { tools: ['get_training_context'] },
         exerciseCatalog: { tools: ['list_exercises'] },
+        gyms: {
+          read: ['list_gyms', 'get_gym_inventory', 'get_gym_equipment_image'],
+          write: ['update_gym_free_weights', 'upsert_gym_equipment', 'set_gym_equipment_image'],
+        },
+        equipmentHistory: {
+          read: ['preview_historical_equipment_backfill', 'list_historical_equipment_backfills'],
+          write: ['apply_historical_equipment_backfill', 'undo_historical_equipment_backfill'],
+        },
         programs: {
           read: ['list_programs', 'get_program'],
           write: [
             'create_program',
             'update_program_metadata',
+            'add_workout',
             'add_program_exercise',
             'update_program_exercise',
             'remove_program_exercise',
@@ -122,6 +144,26 @@ describe('GymCoach MCP server', () => {
         },
       },
     });
+
+    // The index is only useful if it cannot drift: rebuild the tool list from
+    // the groups a client actually receives (not from the exported constant)
+    // and hold it against what the server registers.
+    const { allTools, ...groups } = capabilityResult!.capabilities;
+    const grouped = Object.values(groups).flatMap((group) => [
+      ...(group.tools ?? []).map((name) => ({ name, write: false })),
+      ...(group.read ?? []).map((name) => ({ name, write: false })),
+      ...(group.write ?? []).map((name) => ({ name, write: true })),
+    ]);
+    const groupedNames = grouped.map((entry) => entry.name);
+    expect(groupedNames).toHaveLength(22);
+    // No tool sits in two groups, and none is listed without a group.
+    expect(new Set(groupedNames).size).toBe(groupedNames.length);
+    expect([...allTools].sort()).toEqual([...groupedNames].sort());
+    expect([...groupedNames].sort()).toEqual(tools.tools.map((tool) => tool.name).sort());
+    // A group's read/write label is a promise about the tool's annotation.
+    for (const { name, write } of grouped) {
+      expect(byName.get(name)?.annotations?.readOnlyHint, `${name} readOnlyHint`).toBe(!write);
+    }
 
     const resources = await client.listResources();
     expect(resources.resources.map((resource) => resource.uri)).toContain(
