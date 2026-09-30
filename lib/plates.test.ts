@@ -145,6 +145,14 @@ describe('computePlateLoad', () => {
     expect(load.achievedWeight).toBe(20);
   });
 
+  it('prefers reaching the target over under-loading when both miss by the same amount', () => {
+    // 15 kg bar = 15 (2.5 under); 20 kg bar = 20 (2.5 over).
+    const load = computeBestPlateLoad(17.5, [15, 20], [5], 20);
+
+    expect(load.barWeight).toBe(20);
+    expect(load.achievedWeight).toBe(20);
+  });
+
   it('breaks a tie between equally close loads with the lighter bar', () => {
     // Both bars reach 60 exactly: 10 + 2x25 and 20 + 2x20.
     const exactTie = computeBestPlateLoad(60, [20, 10], [25, 20], 20);

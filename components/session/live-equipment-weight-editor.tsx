@@ -152,13 +152,13 @@ export function LiveEquipmentWeightEditor({
           <p id="live-equipment-weights-help" className="text-xs text-muted-foreground">
             {t('help')}
           </p>
-          <p
-            id="live-equipment-weights-status"
-            aria-live="polite"
-            className={`min-h-5 text-sm ${problem ? 'text-destructive' : 'text-muted-foreground'}`}
-          >
-            {problem ?? preview}
-          </p>
+          {/* Only a problem is announced: the preview changes on every keystroke. */}
+          <div id="live-equipment-weights-status" className="min-h-5 text-sm">
+            <p aria-live="polite" className="text-destructive">
+              {problem}
+            </p>
+            {problem == null && preview ? <p className="text-muted-foreground">{preview}</p> : null}
+          </div>
         </div>
         <Button type="button" onClick={save} disabled={saving || !parsed.ok} className="w-full">
           {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}

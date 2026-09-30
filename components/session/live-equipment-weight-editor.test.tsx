@@ -279,9 +279,15 @@ describe('LiveEquipmentWeightEditor', () => {
     fireEvent.change(input, { target: { value: '60 20; 20 22,5' } });
     expect(screen.getByText('Will save: 20; 22.5; 60 kg')).toBeInTheDocument();
 
+    // The preview changes on every keystroke, so it must not sit in a live region.
+    expect(screen.getByText('Will save: 20; 22.5; 60 kg').closest('[aria-live]')).toBeNull();
+
     fireEvent.change(input, { target: { value: '20 ,5' } });
     expect(screen.queryByText(/Will save/)).not.toBeInTheDocument();
-    expect(screen.getByText('“,5” is not a valid weight.')).toBeInTheDocument();
+    const problem = screen.getByText('“,5” is not a valid weight.');
+    expect(problem).toBeInTheDocument();
+    // A problem is announced.
+    expect(problem.closest('[aria-live="polite"]')).not.toBeNull();
   });
 
   it('previews in the display unit', () => {
