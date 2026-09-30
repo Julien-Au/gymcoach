@@ -88,6 +88,50 @@ describe('GymCoach MCP gym inventory', () => {
     );
   });
 
+  it('accepts legacy non-cuid ids for gyms, equipment and exercises, like the REST routes', async () => {
+    const user = await db.user.create({
+      data: { email: 'mcp-inventory-legacy@test.dev', passwordHash: 'x' },
+    });
+    const gym = await db.gym.create({
+      data: { id: 'gym_legacy_ids', userId: user.id, name: 'Legacy gym' },
+    });
+    const exercise = await db.exercise.create({
+      data: {
+        id: 'exercise_legacy_row',
+        userId: user.id,
+        name: 'Seated Row',
+        muscleGroup: 'BACK',
+        category: 'COMPOUND',
+        equipmentType: 'MACHINE',
+      },
+    });
+    const equipment = await db.gymEquipment.create({
+      data: { id: 'equipment_legacy_row', gymId: gym.id, name: 'Row', equipmentType: 'MACHINE' },
+    });
+    const client = await connect(user.id, true);
+
+    const updated = await client.callTool({
+      name: 'upsert_gym_equipment',
+      arguments: {
+        confirmed: true,
+        gymId: gym.id,
+        equipmentId: equipment.id,
+        name: 'Row',
+        equipmentType: 'MACHINE',
+        exerciseIds: [exercise.id],
+      },
+    });
+    expect(updated.isError).not.toBe(true);
+    expect(await db.gymEquipmentExercise.count({ where: { equipmentId: equipment.id } })).toBe(1);
+
+    // Reaches the owned-equipment lookup instead of failing id validation.
+    const image = await client.callTool({
+      name: 'get_gym_equipment_image',
+      arguments: { equipmentId: equipment.id },
+    });
+    expect(JSON.stringify(image.content)).toContain('Gym equipment image not found');
+  });
+
   it('updates free weights, adds linked equipment and exchanges uploaded images', async () => {
     const user = await db.user.create({
       data: { email: 'mcp-inventory-write@test.dev', passwordHash: 'x' },

@@ -22,6 +22,7 @@ import {
 } from '@/lib/schemas/program-generation';
 import { programInputSchema } from '@/lib/schemas/program';
 import { gymWeightListSchema } from '@/lib/schemas/gym';
+import { databaseIdSchema } from '@/lib/schemas/gym-equipment';
 import {
   EquipmentType,
   ExerciseCategory,
@@ -48,12 +49,11 @@ const explicitConfirmation = z
   .literal(true)
   .describe('Set to true only after the trainee explicitly confirmed this saved-data change.');
 
-const gymIdSchema = z
-  .string()
-  .trim()
-  .min(1)
-  .max(120)
-  .describe('Opaque GymCoach gym ID returned by list_gyms.');
+// Same opaque id shape the REST routes accept (legacy ids are not cuids).
+const gymIdSchema = databaseIdSchema.describe('Opaque GymCoach gym ID returned by list_gyms.');
+const equipmentIdSchema = databaseIdSchema.describe(
+  'Opaque GymCoach equipment ID returned by get_gym_inventory.',
+);
 
 function result(data: Record<string, unknown>) {
   return {
@@ -169,7 +169,7 @@ export function createGymCoachMcpServer({ principal, baseUrl }: ServerOptions): 
       description:
         'Returns a saved uploaded equipment image as MCP image content, or the external HTTPS image URL the trainee saved in GymCoach. Use this when visual comparison is needed.',
       inputSchema: {
-        equipmentId: z.string().cuid(),
+        equipmentId: equipmentIdSchema,
       },
       annotations: { readOnlyHint: true, openWorldHint: false, idempotentHint: true },
     },
@@ -236,7 +236,7 @@ export function createGymCoachMcpServer({ principal, baseUrl }: ServerOptions): 
       inputSchema: {
         confirmed: explicitConfirmation,
         gymId: gymIdSchema,
-        equipmentId: z.string().cuid().optional(),
+        equipmentId: equipmentIdSchema.optional(),
         name: z.string().trim().min(1).max(120),
         equipmentType: z.nativeEnum(EquipmentType),
         description: z.string().trim().max(4000).nullable().optional(),
@@ -244,7 +244,7 @@ export function createGymCoachMcpServer({ principal, baseUrl }: ServerOptions): 
         modelName: z.string().trim().max(120).nullable().optional(),
         quantity: z.number().int().min(1).max(100).optional(),
         weightOptions: gymWeightListSchema.optional(),
-        exerciseIds: z.array(z.string().cuid()).max(100).optional(),
+        exerciseIds: z.array(databaseIdSchema).max(100).optional(),
         markExercisesAvailable: z.boolean().optional(),
       },
       annotations: {
@@ -272,7 +272,7 @@ export function createGymCoachMcpServer({ principal, baseUrl }: ServerOptions): 
         'Sets or clears a physical equipment image after confirmation. Use exactly one of: clear, or JPEG/PNG/WebP base64 (raw with mimeType, or a data URL) stored in the GymCoach database. External image URLs are not accepted through MCP.',
       inputSchema: {
         confirmed: explicitConfirmation,
-        equipmentId: z.string().cuid(),
+        equipmentId: equipmentIdSchema,
         clear: z.literal(true).optional(),
         imageBase64: z.string().max(7_100_000).optional(),
         mimeType: z.enum(GYM_EQUIPMENT_IMAGE_MIME_TYPES).optional(),
