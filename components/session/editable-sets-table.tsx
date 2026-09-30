@@ -587,6 +587,7 @@ export function EditableSetsTable({
               ? roundWeight(toDisplayWeight(editingSet?.draft.weight ?? draft.weight, unit), 1)
               : (editingSet?.draft.weight ?? draft.weight)
         }
+        canonicalValue={picker === 'reps' ? undefined : (editingSet?.draft.weight ?? draft.weight)}
         options={picker === 'reps' ? repPickerOptions : weightPickerOptions}
         unit={unit}
         loadConstraints={loadConstraints}
