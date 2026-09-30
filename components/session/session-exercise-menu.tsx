@@ -12,6 +12,12 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/compone
 import { Input } from '@/components/ui/input';
 
 type SessionProgramExercise = ProgramExercise & { exercise: Exercise };
+// The catalog fields this menu reads. The session page selects exactly these,
+// so the rest of each exercise row (notes, owner id) stays on the server.
+export type SessionCatalogExercise = Pick<
+  Exercise,
+  'id' | 'name' | 'muscleGroup' | 'category' | 'usesBodyweight' | 'defaultRestSec'
+>;
 type View = 'actions' | 'replace' | 'add' | 'removeConfirm';
 
 interface Props {
@@ -19,7 +25,7 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   programExercise: SessionProgramExercise;
   programExercises: SessionProgramExercise[];
-  catalog: Exercise[];
+  catalog: SessionCatalogExercise[];
   loggedSetCount: number;
   onChanged: (options?: {
     selectProgramExerciseId?: string;
@@ -43,7 +49,10 @@ function additionPayload(exercise: Pick<Exercise, 'id' | 'category' | 'defaultRe
   };
 }
 
-function replacementPayload(programExercise: SessionProgramExercise, exercise: Exercise) {
+function replacementPayload(
+  programExercise: SessionProgramExercise,
+  exercise: SessionCatalogExercise,
+) {
   // Strength targets make no sense for cardio and the other way round, so a
   // swap across that line starts from the new exercise's defaults.
   const sameKind =
@@ -87,7 +96,7 @@ export function SessionExerciseMenu({
   const [view, setView] = useState<View>('actions');
   const [query, setQuery] = useState('');
   const [busy, setBusy] = useState(false);
-  const [pendingReplacement, setPendingReplacement] = useState<Exercise | null>(null);
+  const [pendingReplacement, setPendingReplacement] = useState<SessionCatalogExercise | null>(null);
   // `busy` disables the buttons on the next render; the ref closes the gap
   // for a second call that arrives before that render.
   const inFlight = useRef(false);
@@ -146,7 +155,7 @@ export function SessionExerciseMenu({
     setPendingReplacement(null);
   }
 
-  async function replaceExercise(exercise: Exercise) {
+  async function replaceExercise(exercise: SessionCatalogExercise) {
     if (inFlight.current) return;
     inFlight.current = true;
     setBusy(true);
@@ -176,11 +185,11 @@ export function SessionExerciseMenu({
 
   // A replace rewrites the saved program row, so it always asks first; the
   // wording depends on whether sets were already logged on the old exercise.
-  function requestReplacement(exercise: Exercise) {
+  function requestReplacement(exercise: SessionCatalogExercise) {
     setPendingReplacement(exercise);
   }
 
-  async function addExercise(exercise: Exercise) {
+  async function addExercise(exercise: SessionCatalogExercise) {
     if (inFlight.current) return;
     inFlight.current = true;
     setBusy(true);

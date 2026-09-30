@@ -50,7 +50,10 @@ import {
 } from '@/lib/sync';
 import { hydrateFromServerSets } from '@/lib/sync-hydration';
 import { ExerciseCard } from '@/components/session/exercise-card';
-import { SessionExerciseMenu } from '@/components/session/session-exercise-menu';
+import {
+  SessionExerciseMenu,
+  type SessionCatalogExercise,
+} from '@/components/session/session-exercise-menu';
 import { SetsList } from '@/components/session/sets-list';
 import { EditableSetsTable } from '@/components/session/editable-sets-table';
 import { SetInput } from '@/components/session/set-input';
@@ -107,7 +110,7 @@ type SessionRunnerProps = {
   deloadActive: boolean;
   unit: WeightUnit;
   initialProgramExerciseId?: string;
-  catalog: Exercise[];
+  catalog: SessionCatalogExercise[];
 };
 
 type Mode =

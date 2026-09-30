@@ -48,28 +48,40 @@ export default async function SessionRunPage(props: Props) {
     where: { id: auth.userId },
     select: { unit: true, deloadUntil: true, bodyweight: true },
   });
-  const [lastPerformances, user, latestCheckin, returnRecommendations, catalog] = await Promise.all([
-    getLastPerformances(auth.userId, exerciseIds, session.id),
-    userPromise,
-    db.readinessCheckin.findFirst({
-      where: { userId: auth.userId },
-      orderBy: { createdAt: 'desc' },
-    }),
-    userPromise.then((resolvedUser) =>
-      getReturnToTrainingRecommendations({
-        userId: auth.userId,
-        programExercises: session.workout!.exercises,
-        excludeSessionId: session.id,
-        now: session.startedAt,
-        bodyweight: resolvedUser?.bodyweight ?? null,
-        gym: session.gym,
+  const [lastPerformances, user, latestCheckin, returnRecommendations, catalog] = await Promise.all(
+    [
+      getLastPerformances(auth.userId, exerciseIds, session.id),
+      userPromise,
+      db.readinessCheckin.findFirst({
+        where: { userId: auth.userId },
+        orderBy: { createdAt: 'desc' },
       }),
-    ),
-    db.exercise.findMany({
-      where: { userId: auth.userId },
-      orderBy: [{ muscleGroup: 'asc' }, { name: 'asc' }],
-    }),
-  ]);
+      userPromise.then((resolvedUser) =>
+        getReturnToTrainingRecommendations({
+          userId: auth.userId,
+          programExercises: session.workout!.exercises,
+          excludeSessionId: session.id,
+          now: session.startedAt,
+          bodyweight: resolvedUser?.bodyweight ?? null,
+          gym: session.gym,
+        }),
+      ),
+      // Catalog for the in-session exercise menu: only the fields it reads
+      // (SessionCatalogExercise), not the whole row.
+      db.exercise.findMany({
+        where: { userId: auth.userId },
+        orderBy: [{ muscleGroup: 'asc' }, { name: 'asc' }],
+        select: {
+          id: true,
+          name: true,
+          muscleGroup: true,
+          category: true,
+          usesBodyweight: true,
+          defaultRestSec: true,
+        },
+      }),
+    ],
+  );
 
   const lastPerfRecord: Record<string, SerializedLastPerformance> = {};
   for (const [k, v] of lastPerformances) {
