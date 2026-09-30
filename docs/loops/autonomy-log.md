@@ -2819,11 +2819,11 @@ picker), #365 (in-session equipment weight editing), #366 (barbell loading diagr
 (table metric columns), #368 (MCP gym inventory) and #369 (MCP capability index). Six of them
 touch a hard-block path: `lib/mcp/**` (#362, #368, #369), `prisma/schema.prisma` plus a
 migration (#362), and `messages/**` (#363, #365, #367). Today the operator wrote, in session,
-that there were many new PRs from SHAREN and that he left the loop to handle them end to end.
+that there were many new PRs from SHAREN and delegated handling them end to end to the loop.
 That was taken as the explicit in-session authorization for **this wave**, hard-block PRs
 included - the same precedent as 2026-09-14, and the same caveat: **the policy did not change**,
-hard-block paths are still human-merge-only, and the loop's authority for the seven non-vetted
-merges is that sentence and nothing else.
+hard-block paths are still human-merge-only, and the loop's authority for the seven merges
+outside the automatic path is that sentence and nothing else.
 
 **The missed commitment, stated plainly.** `10-external-contributions.md` promises a full
 structured verdict on an external PR within 72 h. These PRs got none until today: the
