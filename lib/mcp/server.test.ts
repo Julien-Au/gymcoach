@@ -66,6 +66,10 @@ describe('GymCoach MCP server', () => {
     expect(
       Object.keys(byName.get('set_gym_equipment_image')?.inputSchema.properties ?? {}),
     ).not.toContain('imageUrl');
+    // An empty upload is refused by the schema, before the handler runs.
+    expect(byName.get('set_gym_equipment_image')?.inputSchema.properties).toMatchObject({
+      imageBase64: { minLength: 1 },
+    });
     expect(byName.has('preview_historical_equipment_backfill')).toBe(true);
     expect(byName.has('apply_historical_equipment_backfill')).toBe(true);
     expect(byName.has('undo_historical_equipment_backfill')).toBe(true);

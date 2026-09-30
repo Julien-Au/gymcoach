@@ -472,15 +472,17 @@ export async function setOwnedGymEquipmentImage(
     throw new ApiError(400, 'Choose exactly one image action: clear, imageUrl, or imageBase64.');
   }
 
-  const decoded = input.imageBase64
-    ? decodeGymEquipmentImage(input.imageBase64, input.mimeType)
-    : null;
+  // `!= null`, like the mode count above: an empty string is a (bad) upload, and
+  // decodeGymEquipmentImage rejects it with a 400 instead of leaving `decoded`
+  // null for the branch below.
+  const decoded =
+    input.imageBase64 != null ? decodeGymEquipmentImage(input.imageBase64, input.mimeType) : null;
 
   const data = input.clear
     ? { imageUrl: null, imageData: null, imageMimeType: null }
-    : input.imageUrl
-      ? { imageUrl: input.imageUrl, imageData: null, imageMimeType: null }
-      : { imageUrl: null, imageData: decoded!.bytes, imageMimeType: decoded!.mimeType };
+    : decoded
+      ? { imageUrl: null, imageData: decoded.bytes, imageMimeType: decoded.mimeType }
+      : { imageUrl: input.imageUrl, imageData: null, imageMimeType: null };
 
   return db.gymEquipment.update({
     where: { id: equipment.id },

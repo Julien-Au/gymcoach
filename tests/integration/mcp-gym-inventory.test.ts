@@ -3,6 +3,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { afterEach, describe, expect, it } from 'vitest';
 import { db } from '@/lib/db';
+import { setOwnedGymEquipmentImage } from '@/lib/gym-equipment';
 import { createGymCoachMcpServer } from '@/lib/mcp/server';
 
 const servers: Array<ReturnType<typeof createGymCoachMcpServer>> = [];
@@ -137,6 +138,65 @@ describe('GymCoach MCP gym inventory', () => {
     expect((await db.gym.findUniqueOrThrow({ where: { id: gym.id } })).dumbbellWeights).toEqual([
       10, 20,
     ]);
+  });
+
+  it('rejects an empty image upload with a clean error, at the tool schema and in the helper', async () => {
+    const user = await db.user.create({
+      data: { email: 'mcp-inventory-empty-image@test.dev', passwordHash: 'x' },
+    });
+    const gym = await db.gym.create({ data: { userId: user.id, name: 'Empty image gym' } });
+    const equipment = await db.gymEquipment.create({
+      data: {
+        gymId: gym.id,
+        name: 'Pictured press',
+        equipmentType: 'MACHINE',
+        imageData: new Uint8Array(PNG),
+        imageMimeType: 'image/png',
+      },
+    });
+    const expectImageKept = async () => {
+      const row = await db.gymEquipment.findUniqueOrThrow({ where: { id: equipment.id } });
+      expect(row.imageMimeType).toBe('image/png');
+      expect(Buffer.from(row.imageData ?? []).equals(PNG)).toBe(true);
+    };
+    const client = await connect(user.id, true);
+
+    // An empty string used to pass the schema and the one-mode check, then crash
+    // on a null decode and surface the raw TypeError text to the client.
+    const empty = await client.callTool({
+      name: 'set_gym_equipment_image',
+      arguments: {
+        confirmed: true,
+        equipmentId: equipment.id,
+        imageBase64: '',
+        mimeType: 'image/png',
+      },
+    });
+    expect(empty.isError).toBe(true);
+    expect(JSON.stringify(empty.content)).toContain('imageBase64');
+    expect(JSON.stringify(empty.content)).not.toContain('Cannot read properties');
+    await expectImageKept();
+
+    // Whitespace passes the schema and is refused by the decoder.
+    const blank = await client.callTool({
+      name: 'set_gym_equipment_image',
+      arguments: {
+        confirmed: true,
+        equipmentId: equipment.id,
+        imageBase64: '   ',
+        mimeType: 'image/png',
+      },
+    });
+    expect(blank.isError).toBe(true);
+    expect(JSON.stringify(blank.content)).toContain('Uploaded equipment image is empty.');
+    await expectImageKept();
+
+    // The helper is also the REST path: an empty upload is a 400 there too, not a
+    // null dereference.
+    await expect(
+      setOwnedGymEquipmentImage(user.id, equipment.id, { imageBase64: '', mimeType: 'image/png' }),
+    ).rejects.toMatchObject({ status: 400, message: 'Uploaded equipment image is empty.' });
+    await expectImageKept();
   });
 
   it('refuses every gym write on a read-only token and without the confirmed literal', async () => {

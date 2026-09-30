@@ -292,7 +292,7 @@ export function createGymCoachMcpServer({ principal, baseUrl }: ServerOptions): 
         confirmed: explicitConfirmation,
         equipmentId: equipmentIdSchema,
         clear: z.literal(true).optional(),
-        imageBase64: z.string().max(7_100_000).optional(),
+        imageBase64: z.string().min(1).max(7_100_000).optional(),
         mimeType: z.enum(GYM_EQUIPMENT_IMAGE_MIME_TYPES).optional(),
       },
       annotations: {
@@ -302,14 +302,21 @@ export function createGymCoachMcpServer({ principal, baseUrl }: ServerOptions): 
         openWorldHint: false,
       },
     },
-    async ({ equipmentId, confirmed: _confirmed, ...input }) => {
+    async ({ equipmentId, clear, imageBase64, mimeType }) => {
       requireWrite(principal);
       // Uploaded bytes or clear only: an external URL written by an agent would be
       // handed back to every later MCP client, so that mode stays web-UI only.
-      if ((input.clear === true) === (input.imageBase64 != null)) {
+      if ((clear === true) === (imageBase64 != null)) {
         throw new Error('Choose exactly one image action: clear or imageBase64.');
       }
-      const equipment = await setOwnedGymEquipmentImage(principal.userId, equipmentId, input);
+      // Named fields, not the parsed input spread: the lib helper still accepts
+      // imageUrl for the web UI, and a field added to this schema later must not
+      // reach it by accident.
+      const equipment = await setOwnedGymEquipmentImage(principal.userId, equipmentId, {
+        clear,
+        imageBase64,
+        mimeType,
+      });
       const image = gymEquipmentImageRef(equipment);
       return result({ ok: true, equipment: { ...equipment, image } });
     },
