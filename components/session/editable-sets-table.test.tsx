@@ -187,11 +187,12 @@ describe('EditableSetsTable', () => {
     expect(screen.getByRole('button', { name: '75 kg' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '40 kg' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '50 kg' }));
+    fireEvent.click(screen.getByRole('button', { name: /apply value/i }));
     fireEvent.click(screen.getByRole('button', { name: /confirm set 2/i }));
 
     await waitFor(() =>
       expect(onSubmit).toHaveBeenCalledWith(
-        expect.objectContaining({ gymEquipmentId: 'machine-2' }),
+        expect.objectContaining({ gymEquipmentId: 'machine-2', weight: 50 }),
       ),
     );
   });
