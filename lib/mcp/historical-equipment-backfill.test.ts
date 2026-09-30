@@ -11,6 +11,7 @@ vi.mock('@/lib/db', () => ({
 import { db } from '@/lib/db';
 import {
   applyHistoricalEquipmentBackfill,
+  parseHistoricalDateBound,
   previewHistoricalEquipmentBackfill,
   undoHistoricalEquipmentBackfill,
 } from '@/lib/mcp/historical-equipment-backfill';
@@ -118,6 +119,51 @@ describe('historical equipment backfill preview', () => {
     });
     expect(result.groups[0]?.suggestionIsConfirmation).toBe(false);
   });
+
+  it('only looks at finished sessions and never returns more sets than one apply accepts', async () => {
+    findSets.mockResolvedValueOnce([] as never);
+
+    const result = await previewHistoricalEquipmentBackfill('user-1', { limit: 2000 });
+
+    expect(result.limit).toBe(500);
+    expect(findSets).toHaveBeenCalledWith(
+      expect.objectContaining({
+        take: 501,
+        where: expect.objectContaining({
+          gymEquipmentId: null,
+          session: { userId: 'user-1', finishedAt: { not: null } },
+        }),
+      }),
+    );
+  });
+
+  it('rejects a date range whose start is after its end before querying', async () => {
+    await expect(
+      previewHistoricalEquipmentBackfill('user-1', {
+        from: new Date('2026-09-01T00:00:00.000Z'),
+        to: new Date('2026-08-01T00:00:00.000Z'),
+      }),
+    ).rejects.toThrow('from to be before to');
+    expect(findSets).not.toHaveBeenCalled();
+  });
+});
+
+describe('historical equipment backfill date bounds', () => {
+  it('keeps datetimes exact and makes a date-only upper bound cover the whole UTC day', () => {
+    expect(parseHistoricalDateBound('2026-08-31T18:30:00+02:00', 'to').toISOString()).toBe(
+      '2026-08-31T16:30:00.000Z',
+    );
+    expect(parseHistoricalDateBound('2026-08-31', 'from').toISOString()).toBe(
+      '2026-08-31T00:00:00.000Z',
+    );
+    expect(parseHistoricalDateBound('2026-08-31', 'to').toISOString()).toBe(
+      '2026-08-31T23:59:59.999Z',
+    );
+  });
+
+  it('rejects a value that is not a real date', () => {
+    expect(() => parseHistoricalDateBound('not-a-date', 'from')).toThrow('ISO dates');
+  });
 });
 
 describe('historical equipment backfill apply', () => {
@@ -179,7 +225,7 @@ describe('historical equipment backfill apply', () => {
           id: { in: ['set-1', 'set-2'] },
           exerciseId: 'exercise-row',
           gymEquipmentId: null,
-          session: { userId: 'user-1', gymId: 'gym-xfit' },
+          session: { userId: 'user-1', gymId: 'gym-xfit', finishedAt: { not: null } },
         }),
         data: expect.objectContaining({
           gymEquipmentId: 'cable-a',

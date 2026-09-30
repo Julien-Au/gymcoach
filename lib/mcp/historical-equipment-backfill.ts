@@ -2,6 +2,27 @@ import { db } from '@/lib/db';
 import { resolveSetEquipmentSnapshot } from '@/lib/set-equipment';
 import { Prisma } from '@/prisma/generated/client';
 
+// One apply call takes at most this many sets, so a preview never returns more
+// than a single apply can consume.
+export const HISTORICAL_EQUIPMENT_BACKFILL_MAX_SETS = 500;
+export const HISTORICAL_EQUIPMENT_BACKFILL_AUDIT_LIST_LIMIT = 50;
+
+const ISO_DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+
+// Converts a validated ISO date or datetime string into a filter bound. A
+// date-only upper bound covers that whole UTC day, so "to: 2026-08-31" still
+// includes sessions started during the 31st.
+export function parseHistoricalDateBound(value: string, bound: 'from' | 'to'): Date {
+  const date =
+    ISO_DATE_ONLY.test(value) && bound === 'to'
+      ? new Date(value + 'T23:59:59.999Z')
+      : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    throw new Error('Historical equipment backfill dates must be ISO dates or datetimes.');
+  }
+  return date;
+}
+
 export interface HistoricalEquipmentGapQuery {
   gymId?: string;
   exerciseId?: string;
@@ -14,7 +35,16 @@ export async function previewHistoricalEquipmentBackfill(
   userId: string,
   input: HistoricalEquipmentGapQuery,
 ) {
-  const limit = Math.max(1, Math.min(input.limit ?? 500, 2000));
+  if (input.from && input.to && input.from.getTime() > input.to.getTime()) {
+    throw new Error('Historical equipment backfill preview requires from to be before to.');
+  }
+  const limit = Math.max(
+    1,
+    Math.min(
+      input.limit ?? HISTORICAL_EQUIPMENT_BACKFILL_MAX_SETS,
+      HISTORICAL_EQUIPMENT_BACKFILL_MAX_SETS,
+    ),
+  );
   const dateFilter =
     input.from || input.to
       ? {
@@ -29,8 +59,11 @@ export async function previewHistoricalEquipmentBackfill(
     where: {
       gymEquipmentId: null,
       ...(input.exerciseId ? { exerciseId: input.exerciseId } : {}),
+      // Historical means finished: a session still in progress is owned by the
+      // live runner, which keeps its own local copy of the sets.
       session: {
         userId,
+        finishedAt: { not: null },
         ...(input.gymId ? { gymId: input.gymId } : {}),
         ...dateFilter,
       },
@@ -218,7 +251,7 @@ export async function applyHistoricalEquipmentBackfill(
   }
 
   const setIds = [...new Set(input.setIds)];
-  if (setIds.length === 0 || setIds.length > 500) {
+  if (setIds.length === 0 || setIds.length > HISTORICAL_EQUIPMENT_BACKFILL_MAX_SETS) {
     throw new Error('Historical equipment backfill requires between 1 and 500 unique set IDs.');
   }
 
@@ -240,13 +273,13 @@ export async function applyHistoricalEquipmentBackfill(
         id: { in: setIds },
         exerciseId: input.exerciseId,
         gymEquipmentId: null,
-        session: { userId, gymId: input.gymId },
+        session: { userId, gymId: input.gymId, finishedAt: { not: null } },
       },
       select: { id: true },
     });
     if (eligibleSets.length !== setIds.length) {
       throw new Error(
-        'Backfill aborted: every requested set must still be owned, belong to the exact gym/exercise mapping, and have no equipment assignment.',
+        'Backfill aborted: every requested set must still be owned, belong to a finished session of the exact gym/exercise mapping, and have no equipment assignment.',
       );
     }
 
@@ -255,7 +288,7 @@ export async function applyHistoricalEquipmentBackfill(
         id: { in: setIds },
         exerciseId: input.exerciseId,
         gymEquipmentId: null,
-        session: { userId, gymId: input.gymId },
+        session: { userId, gymId: input.gymId, finishedAt: { not: null } },
       },
       data: equipmentSnapshot,
     });
@@ -292,6 +325,49 @@ export async function applyHistoricalEquipmentBackfill(
       equipmentSnapshot,
     };
   });
+}
+
+// Read-only listing of the caller's backfill audits, newest first, so an undo
+// stays reachable after the conversation that applied the backfill is gone.
+// Returns set counts rather than the full set ID arrays.
+export async function listHistoricalEquipmentBackfills(userId: string, limit?: number) {
+  const take = Math.max(
+    1,
+    Math.min(
+      limit ?? HISTORICAL_EQUIPMENT_BACKFILL_AUDIT_LIST_LIMIT,
+      HISTORICAL_EQUIPMENT_BACKFILL_AUDIT_LIST_LIMIT,
+    ),
+  );
+  const audits = await db.mcpHistoricalEquipmentBackfillAudit.findMany({
+    where: { userId },
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    take,
+    select: {
+      id: true,
+      gymId: true,
+      exerciseId: true,
+      equipmentId: true,
+      setIds: true,
+      equipmentSnapshot: true,
+      createdAt: true,
+      undoneAt: true,
+    },
+  });
+
+  return {
+    ok: true as const,
+    limit: take,
+    backfills: audits.map((audit) => ({
+      auditId: audit.id,
+      createdAt: audit.createdAt,
+      undoneAt: audit.undoneAt,
+      gymId: audit.gymId,
+      exerciseId: audit.exerciseId,
+      equipmentId: audit.equipmentId,
+      equipmentName: auditEquipmentName(audit.equipmentSnapshot),
+      setCount: audit.setIds.length,
+    })),
+  };
 }
 
 export interface UndoHistoricalEquipmentBackfillInput {
@@ -407,6 +483,12 @@ function parseAuditEquipmentSnapshot(value: Prisma.JsonValue) {
     equipmentNameSnapshot,
     equipmentLoadSnapshot: equipmentLoadSnapshot as Prisma.InputJsonValue,
   };
+}
+
+function auditEquipmentName(value: Prisma.JsonValue): string | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const name = value.equipmentNameSnapshot;
+  return typeof name === 'string' ? name : null;
 }
 
 function pairKey(gymId: string | null, exerciseId: string) {
