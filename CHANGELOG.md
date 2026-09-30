@@ -9,6 +9,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- In-session exercise actions: the exercise card of a live session has an
+  actions menu to replace the current exercise with another one from the same
+  muscle group, add an exercise, or remove one, without leaving the session.
+  These actions edit the saved program, not just today's workout, and the menu
+  says so; a replace always asks for confirmation. Superset members now switch
+  before the rest period starts. Community contribution by @SHAREN (#363).
+- Gym-aware weight picker: the weight and reps fields of the live logger open a
+  drum-style picker limited to the loads your gym's equipment can actually make.
+  A selection stays pending until you press Apply, the picker opens on the exact
+  stored value (an off-grid weight is not rounded just by opening it), the
+  pending load is previewed on a barbell diagram, and manual decimal entry is
+  still available. Community contribution by @SHAREN (#364); a follow-up in #383
+  stops a wheel nudge from rewriting an off-grid value to the nearest row.
+- Edit a machine's selectable weights from the live session: when the current
+  exercise is linked to a gym equipment item, its weight list can be corrected
+  in place. A decimal comma is accepted, invalid entries are named instead of
+  dropped, and sets you already logged keep the constraints of their own
+  equipment rather than those of the item selected for new sets. Community
+  contribution by @SHAREN (#365); a follow-up in #383 refuses a token that
+  starts with a comma and previews the list that will be saved.
+- Metric columns in the live sets table: a column picker shows estimated 1RM,
+  estimated 10RM or volume, and volume can sit next to either rep-max estimate.
+  The choice is remembered in the browser. Community contribution by @SHAREN
+  (#367).
+- MCP equipment backfill for past workouts: tools to preview, apply, list and
+  undo the assignment of a gym equipment item to historical sets of finished
+  sessions that have none. An apply never overwrites an existing assignment,
+  covers up to 500 sets, and writes a durable, per-user audit record that the
+  undo checks before reverting (a new table and migration). Community
+  contribution by @SHAREN (#362).
+- MCP gym inventory tools: list your gyms, read a gym's full inventory, read an
+  equipment image, update the shared free weights, add or update an equipment
+  item, and set or clear its image. Tools that overwrite return the previous
+  values. Over MCP an image can only be uploaded as bytes (JPEG, PNG or WebP) or
+  cleared; the external image URL mode stays available in the app's own API
+  only. Community contribution by @SHAREN (#368).
+- MCP capability index: `get_mcp_capability_index` is a read-only tool that
+  lists the connector's 22 tools grouped by task, for clients that cannot list
+  tools themselves, and says whether the connection has write access. Community
+  contribution by @SHAREN (#369).
 - Calendar view on the history page: sessions are laid out on a month grid you
   can page through, with a day's sessions listed under it and a program filter
   on top. Days are bucketed in your own timezone (the browser sends its IANA
@@ -357,6 +397,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The plate calculator in the live session draws the per-side load as a
+  barbell diagram, and in a gym with several bars it chooses the closest
+  achievable load across them. Community contribution by @SHAREN
+  (#366); a follow-up in #383 ranks the bars on the distance to the target
+  first.
+- MCP write access is worded for what it covers. The Settings toggle is now
+  "Allow changes to saved data", and its description and
+  `docs/chatgpt-mcp.md` name the three kinds of data a write-enabled
+  connection can change: programs, gym inventory and workout history. A
+  write-enabled token still covers all of them; separate write scopes are
+  tracked in #375. The connector documentation lists 10 read tools and 12
+  write tools.
 - Return-to-training now loads its recent and long-term history windows on
   separate budgets. The read fetches the long-term anchor pool (8 sessions) plus
   the recent window (up to 14 sessions) and splits them, so sessions logged

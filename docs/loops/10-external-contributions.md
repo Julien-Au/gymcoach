@@ -66,9 +66,21 @@ and runs the default green-gate tier (prisma generate + lint + typecheck +
 unit + build) inside `node:22-bookworm` with `--network none`, `--user
 $(id -u):$(id -g)`, `HOME=/tmp/home`, no `.env`, no `~/.config/gh`, no
 `~/.ssh`, and the host `node_modules` mounted read-only. Integration and E2E
-are **not** in it - there is no database and no browser in the container, so
-those tiers stay CI-only, which is where the pinned-SHA pass-3 result comes
-from anyway. `scripts/container-run.sh <worktree> <command...>` is the one-off
+are **not** in it - there is no database and no browser in the container. The
+integration tier has its own script:
+`scripts/container-integration.sh <worktree> <db-suffix> [vitest file filters...]`
+runs `prisma migrate deploy` and the integration Vitest config in the same
+`node:22-bookworm` image, with `--user`, no `.env`, no credential mounts and npm
+offline, on an `--internal` docker network whose only other member is a
+throwaway Postgres on tmpfs - no route to the host or the internet. Each run
+gets a fresh database (named by the suffix, so two worktrees tested side by side
+never share tables), and it runs with **one** Vitest worker: forcing the unit
+tier's cap of 6 overrides the integration config's `fileParallelism: false`, and
+the files then truncate each other's tables and fail on foreign keys.
+`scripts/container-integration.sh down` removes the database container and the
+network afterwards (**L33**). E2E stays CI-only (no browser in the container),
+and the pinned-SHA pass-3 result still comes from CI whatever ran locally.
+`scripts/container-run.sh <worktree> <command...>` is the one-off
 companion (prettier, a single vitest file) with the same isolation and the
 worktree bind-mounted read-write. Three gotchas are baked into both scripts and
 are worth knowing when a run behaves oddly: with `--network none`, npm must be
@@ -155,6 +167,20 @@ pins the same way: GitHub refuses the merge if the head has moved. If `main`
 moved under the PR in a way that touches the same files, re-run pass 2 on the
 new merge result.
 
+Pass 3 is per pinned SHA, and stacks do not change that. Never merge the second
+PR of a stack before the first has its own green CI on its own pinned SHA, even
+when the second's green run covered a superset tree (**L32**). Stacking a PR on a
+reviewed-but-unmerged sibling saves a CI cycle, but once the sibling lands
+through `main`'s own merge commit, a branch that received it through the
+sibling's **branch** has a criss-cross history: local `git merge` may resolve it
+cleanly while GitHub reports the PR as conflicting, never starts its CI, and
+refuses the pinned merge call with HTTP 405. Merge `origin/main` into the
+stacked branch (no hand edits), re-gate, and push before asking for CI; a stack
+whose pushed head contains the first PR's exact head and merges in order does
+not hit this (**L31**). A red run is rerun only when the failed step is the
+image pull; any other failed step is a real failure and is read, not rerun
+(**L35**).
+
 **Outcomes by tier**:
 
 - **Vetted contributor**, all passes clean, tests included, no hard-block
@@ -177,7 +203,7 @@ A fixup is allowed at the vetted tier only (service commitment: credit is
 preserved, so fixups are pushed to the contributor's branch with
 `git push https://github.com/<author>/<repo>.git HEAD:<branch>` and the PR is
 merged with a **merge commit** pinned to the reviewed SHA, keeping the
-contributor's authorship in `git log`). Two rules govern it:
+contributor's authorship in `git log`). Four rules govern it:
 
 1. **Check the head SHA before writing a line of fixup.** A contributor who
    answers a structured verdict within hours makes the fixup tick redundant,
@@ -198,7 +224,18 @@ contributor's authorship in `git log`). Two rules govern it:
    is cheap and it pays: across the 2026-09-14 wave it ran eight times and
    caught two real follow-ups the first fixup had missed - the chained
    `X-Forwarded-Host` on #353 and the un-zoned session detail page on #351
-   (**L29**).
+   (**L29**). Ask the fixup tick for a mutation check of its own new tests
+   (revert the fix, confirm they fail, report it): it turns the delta
+   reviewer's "would this test fail without the fix?" into a fact to check
+   rather than a question to reason about (**L36**).
+3. **Bound the rounds.** A MINOR finding raised by a second-round delta review
+   on a contributor branch goes to a maintainer follow-up PR (the loop's own
+   code, gated on the host) instead of a third container round on the fork.
+   The contributor PR merges on the reviewed SHA; the follow-up is filed and
+   linked (**L34**; the 2026-09-30 wave's #382 / #383).
+4. **Say the merge order up front.** When PRs of one wave overlap, the
+   contributor-facing verdict states the order they will be merged in, so the
+   contributor does not rebase against a sequence nobody announced (**L36**).
 
 ## External issues (adoption pipeline)
 
