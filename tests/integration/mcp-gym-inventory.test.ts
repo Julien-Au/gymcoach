@@ -140,6 +140,58 @@ describe('GymCoach MCP gym inventory', () => {
     ]);
   });
 
+  it('keeps a foreign equipment item out of an upsert addressed through a gym the caller owns', async () => {
+    const owner = await db.user.create({
+      data: { email: 'mcp-inventory-victim@test.dev', passwordHash: 'x' },
+    });
+    const caller = await db.user.create({
+      data: { email: 'mcp-inventory-caller@test.dev', passwordHash: 'x' },
+    });
+    const ownerGym = await db.gym.create({ data: { userId: owner.id, name: 'Victim gym' } });
+    const callerGym = await db.gym.create({ data: { userId: caller.id, name: 'Caller gym' } });
+    const foreign = await db.gymEquipment.create({
+      data: {
+        gymId: ownerGym.id,
+        name: 'Victim leg press',
+        equipmentType: 'MACHINE',
+        description: 'victim-only description',
+        manufacturer: 'VictimCo',
+        weightOptions: [40, 60],
+      },
+    });
+    const client = await connect(caller.id, true);
+
+    // The gym is the caller's own, so the gym ownership check passes; only the
+    // equipment lookup scoped to that gym keeps the foreign row out of `previous`.
+    const upsert = await client.callTool({
+      name: 'upsert_gym_equipment',
+      arguments: {
+        confirmed: true,
+        gymId: callerGym.id,
+        equipmentId: foreign.id,
+        name: 'Hijacked',
+        equipmentType: 'MACHINE',
+        weightOptions: [5],
+      },
+    });
+    expect(upsert.isError).toBe(true);
+    const text = JSON.stringify(upsert);
+    expect(text).toContain('Gym equipment not found');
+    expect(text).not.toContain('previous');
+    expect(text).not.toContain('Victim leg press');
+    expect(text).not.toContain('victim-only description');
+    expect(text).not.toContain('VictimCo');
+
+    expect(await db.gymEquipment.findUniqueOrThrow({ where: { id: foreign.id } })).toMatchObject({
+      gymId: ownerGym.id,
+      name: 'Victim leg press',
+      description: 'victim-only description',
+      manufacturer: 'VictimCo',
+      weightOptions: [40, 60],
+    });
+    expect(await db.gymEquipment.count({ where: { gymId: callerGym.id } })).toBe(0);
+  });
+
   it('rejects an empty image upload with a clean error, at the tool schema and in the helper', async () => {
     const user = await db.user.create({
       data: { email: 'mcp-inventory-empty-image@test.dev', passwordHash: 'x' },
