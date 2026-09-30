@@ -131,12 +131,10 @@ export function SessionExerciseMenu({
     }
   }
 
+  // A replace rewrites the saved program row, so it always asks first; the
+  // wording depends on whether sets were already logged on the old exercise.
   function requestReplacement(exercise: Exercise) {
-    if (loggedSetCount > 0) {
-      setPendingReplacement(exercise);
-      return;
-    }
-    void replaceExercise(exercise);
+    setPendingReplacement(exercise);
   }
 
   async function addExercise(exercise: Exercise) {
@@ -277,7 +275,9 @@ export function SessionExerciseMenu({
 
         {(view === 'replace' || view === 'add') && pendingReplacement ? (
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">{t('replaceLoggedWarning')}</p>
+            <p className="text-sm text-muted-foreground">
+              {loggedSetCount > 0 ? t('replaceLoggedWarning') : t('replaceConfirm')}
+            </p>
             <div className="flex justify-end gap-2">
               <Button
                 type="button"

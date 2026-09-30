@@ -130,6 +130,7 @@ describe('SessionExerciseMenu', () => {
     renderMenu(0, onChanged);
     fireEvent.click(screen.getByRole('button', { name: 'Replace exercise' }));
     fireEvent.click(screen.getByRole('button', { name: 'Incline Press' }));
+    fireEvent.click(screen.getByRole('button', { name: /replace with incline press/i }));
     await waitFor(() => expect(fetch).toHaveBeenCalledOnce());
     const [url, init] = vi.mocked(fetch).mock.calls[0]!;
     expect(url).toBe('/api/program-exercises/pe-bench');
@@ -151,6 +152,18 @@ describe('SessionExerciseMenu', () => {
     expect(screen.getByText(/already logged/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /replace with incline press/i }));
     await waitFor(() => expect(fetch).toHaveBeenCalledOnce());
+  });
+
+  it('asks for confirmation before replacing even when nothing is logged yet', async () => {
+    renderMenu(0);
+    fireEvent.click(screen.getByRole('button', { name: 'Replace exercise' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Incline Press' }));
+    expect(fetch).not.toHaveBeenCalled();
+    expect(screen.queryByText(/already logged/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/future sessions change too/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(fetch).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Incline Press' })).toBeInTheDocument();
   });
 
   it('adds only exercises that are not already in the workout', async () => {

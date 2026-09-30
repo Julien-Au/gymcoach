@@ -704,7 +704,7 @@ export function SessionRunner({
           programExercise={currentPE}
           programExercises={programExercises}
           catalog={catalog}
-          loggedSetCount={currentSets.filter((set) => !set.isWarmup).length}
+          loggedSetCount={currentSets.length}
           onChanged={(options) => {
             setExerciseMenuOpen(false);
             if (options?.selectProgramExerciseId) {
