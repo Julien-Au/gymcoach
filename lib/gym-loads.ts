@@ -9,6 +9,25 @@ export interface GymLoadConstraints {
   weightOptions?: number[];
 }
 
+// Item types whose saved weight options describe a real stack, in the same
+// sense gymWeightOptions reads them below.
+const STACK_BEARING_EQUIPMENT_TYPES: readonly EquipmentType[] = ['MACHINE', 'CABLE', 'OTHER'];
+
+// Whether a physical item's stack may be copied onto an exercise's saved load
+// options. The item has to carry a stack at all, and the exercise's own type
+// decides whether that stack applies to it. OTHER is the default equipment
+// type rather than a deliberate choice, so an OTHER exercise linked to a
+// machine or cable item keeps its own load options instead of silently
+// inheriting the item's stack (issue #348).
+export function itemStackAppliesToExercise(
+  exerciseEquipmentType: EquipmentType,
+  itemEquipmentType: EquipmentType,
+): boolean {
+  if (!STACK_BEARING_EQUIPMENT_TYPES.includes(itemEquipmentType)) return false;
+  if (exerciseEquipmentType === 'MACHINE' || exerciseEquipmentType === 'CABLE') return true;
+  return exerciseEquipmentType === 'OTHER' && itemEquipmentType === 'OTHER';
+}
+
 export function gymWeightOptions(
   constraints: GymLoadConstraints | null | undefined,
   referenceWeight: number,

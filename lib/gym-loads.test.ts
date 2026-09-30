@@ -4,6 +4,7 @@ import {
   gymWeightOptions,
   constrainGymWeightAtOrBelow,
   constructibleBarbellWeights,
+  itemStackAppliesToExercise,
 } from '@/lib/gym-loads';
 
 describe('saved gym load constraints', () => {
@@ -79,5 +80,38 @@ describe('saved gym load constraints', () => {
 
   it('falls back to the calculated load when no inventory is configured', () => {
     expect(constrainGymWeight(17.5, 20, { equipmentType: 'DUMBBELL' })).toBe(17.5);
+  });
+});
+
+describe('item stack inheritance', () => {
+  it('does not copy a machine or cable stack onto an OTHER exercise (#348)', () => {
+    // OTHER is the default equipment type, so an AI-generated exercise such as
+    // a landmine press must not inherit a linked cable station's stack.
+    expect(itemStackAppliesToExercise('OTHER', 'CABLE')).toBe(false);
+    expect(itemStackAppliesToExercise('OTHER', 'MACHINE')).toBe(false);
+  });
+
+  it('copies a stack onto a machine or cable exercise', () => {
+    expect(itemStackAppliesToExercise('MACHINE', 'MACHINE')).toBe(true);
+    expect(itemStackAppliesToExercise('CABLE', 'CABLE')).toBe(true);
+    expect(itemStackAppliesToExercise('MACHINE', 'CABLE')).toBe(true);
+    expect(itemStackAppliesToExercise('CABLE', 'OTHER')).toBe(true);
+  });
+
+  it('keeps OTHER-to-OTHER inheritance, where the rack is the inventory', () => {
+    expect(itemStackAppliesToExercise('OTHER', 'OTHER')).toBe(true);
+  });
+
+  it('never copies a stack onto an exercise that loads itself', () => {
+    expect(itemStackAppliesToExercise('DUMBBELL', 'MACHINE')).toBe(false);
+    expect(itemStackAppliesToExercise('BARBELL', 'CABLE')).toBe(false);
+    expect(itemStackAppliesToExercise('BODYWEIGHT', 'MACHINE')).toBe(false);
+    expect(itemStackAppliesToExercise('CARDIO', 'OTHER')).toBe(false);
+  });
+
+  it('ignores items that carry no stack', () => {
+    expect(itemStackAppliesToExercise('MACHINE', 'DUMBBELL')).toBe(false);
+    expect(itemStackAppliesToExercise('MACHINE', 'BARBELL')).toBe(false);
+    expect(itemStackAppliesToExercise('OTHER', 'BODYWEIGHT')).toBe(false);
   });
 });
