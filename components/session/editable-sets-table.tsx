@@ -184,8 +184,10 @@ export function EditableSetsTable({
         : '',
     );
     // Re-seed when the active exercise or logged working-set count changes.
+    // exerciseId is part of the key because an in-session replace keeps the
+    // program row id: the draft of the old exercise must not carry over.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [programExercise.id, workingSets.length]);
+  }, [programExercise.id, programExercise.exerciseId, workingSets.length]);
 
   useEffect(() => {
     if (gymEquipmentId && !equipmentOptions.some((equipment) => equipment.id === gymEquipmentId)) {

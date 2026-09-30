@@ -187,6 +187,47 @@ describe('EditableSetsTable', () => {
     );
   });
 
+  it('re-seeds the draft when the same program row is replaced by another exercise', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    const perf = (weight: number) => ({
+      sessionStartedAt: '2026-06-01T12:00:00.000Z',
+      sets: [{ weight, reps: 8, rir: 2 }],
+      maxWeight: weight,
+      repsAtMaxWeight: 8,
+      cardio: null,
+    });
+    // An in-session replace keeps the row id and swaps the exercise.
+    const replaced = {
+      ...(programExercise as Record<string, unknown>),
+      exerciseId: 'exercise-2',
+      exercise: { id: 'exercise-2', name: 'Incline Dumbbell Press', category: 'COMPOUND' },
+    } as never;
+    const props = {
+      sets: [],
+      readiness: null,
+      deloadActive: false,
+      unit: 'KG' as const,
+      onSubmit,
+      onDeleteSet: vi.fn(),
+      onUpdateSet: vi.fn().mockResolvedValue(undefined),
+    };
+    const view = render(
+      <EditableSetsTable
+        programExercise={programExercise}
+        lastPerformance={perf(100)}
+        {...props}
+      />,
+    );
+    view.rerender(
+      <EditableSetsTable programExercise={replaced} lastPerformance={perf(30)} {...props} />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /confirm set 1/i }));
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ weight: 30, reps: 8 })),
+    );
+  });
+
   it('drops a parked draft once a set was logged on that exercise in between', async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     const otherExercise = {

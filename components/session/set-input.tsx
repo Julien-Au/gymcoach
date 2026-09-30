@@ -116,7 +116,8 @@ export function SetInput({
   const [aiHint, setAiHint] = useState<string | null>(null);
   const [gymEquipmentId, setGymEquipmentId] = useState('');
 
-  // Re-init when the exercise changes or a set changes.
+  // Re-init when the exercise changes or a set changes. exerciseId is part of
+  // the key because an in-session replace keeps the program row id.
   useEffect(() => {
     setForm(
       computeInitial(
@@ -140,7 +141,7 @@ export function SetInput({
         : '',
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [programExercise.id, existingSets.length]);
+  }, [programExercise.id, programExercise.exerciseId, existingSets.length]);
 
   // A selected machine the gym no longer offers (issue #326: the server dropped
   // it from a saved set and the runner withdrew it) must not be resent.
@@ -689,7 +690,10 @@ function computeInitial(
         loadConstraints,
       );
       weight = ordinary.weight ?? lastPerf.maxWeight;
-      if (returnRecommendation.weightCeiling != null && weight > returnRecommendation.weightCeiling) {
+      if (
+        returnRecommendation.weightCeiling != null &&
+        weight > returnRecommendation.weightCeiling
+      ) {
         weight = constrainGymWeightAtOrBelow(returnRecommendation.weightCeiling, loadConstraints);
       }
     }
