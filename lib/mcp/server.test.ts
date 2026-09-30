@@ -34,11 +34,70 @@ describe('GymCoach MCP server', () => {
     expect(tools.tools.map((tool) => tool.name).sort()).toEqual(
       [...GYMCOACH_MCP_TOOL_NAMES].sort(),
     );
+    expect(byName.has('list_gyms')).toBe(true);
+    expect(byName.has('get_gym_inventory')).toBe(true);
+    expect(byName.has('get_gym_equipment_image')).toBe(true);
+    expect(byName.has('update_gym_free_weights')).toBe(true);
+    expect(byName.has('upsert_gym_equipment')).toBe(true);
+    expect(byName.has('set_gym_equipment_image')).toBe(true);
     expect(byName.has('get_training_context')).toBe(true);
     expect(byName.has('create_program')).toBe(true);
     expect(byName.has('update_program_exercise')).toBe(true);
+    expect(byName.get('list_gyms')?.annotations?.readOnlyHint).toBe(true);
+    expect(byName.get('get_gym_inventory')?.annotations?.readOnlyHint).toBe(true);
+    expect(byName.get('get_gym_equipment_image')?.annotations?.readOnlyHint).toBe(true);
+    for (const name of [
+      'update_gym_free_weights',
+      'upsert_gym_equipment',
+      'set_gym_equipment_image',
+    ]) {
+      // These overwrite whole lists, item fields, exercise links or image bytes
+      // with no undo, so clients that gate their confirmation UI on the hint
+      // must be told to ask.
+      expect(byName.get(name)?.annotations).toMatchObject({
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: true,
+        openWorldHint: false,
+      });
+    }
+    expect(byName.get('upsert_gym_equipment')?.inputSchema).toMatchObject({
+      required: expect.arrayContaining(['confirmed', 'gymId', 'name', 'equipmentType']),
+    });
+    expect(byName.get('update_gym_free_weights')?.inputSchema).toMatchObject({
+      required: expect.arrayContaining(['confirmed']),
+    });
+    expect(byName.get('set_gym_equipment_image')?.inputSchema).toMatchObject({
+      required: expect.arrayContaining(['confirmed', 'equipmentId']),
+    });
+    expect(
+      Object.keys(byName.get('set_gym_equipment_image')?.inputSchema.properties ?? {}),
+    ).not.toContain('imageUrl');
+    // An empty upload is refused by the schema, before the handler runs.
+    expect(byName.get('set_gym_equipment_image')?.inputSchema.properties).toMatchObject({
+      imageBase64: { minLength: 1 },
+    });
+    expect(byName.has('preview_historical_equipment_backfill')).toBe(true);
+    expect(byName.has('apply_historical_equipment_backfill')).toBe(true);
+    expect(byName.has('undo_historical_equipment_backfill')).toBe(true);
+    expect(byName.get('list_historical_equipment_backfills')?.annotations?.readOnlyHint).toBe(true);
+    // add_workout: an agent asked to "add a cardio day" used to have only
+    // create_program (a whole new, inactive program) or add_program_exercise.
+    expect(byName.has('add_workout')).toBe(true);
+    expect(byName.get('add_workout')?.annotations?.readOnlyHint).toBe(false);
+    expect(byName.get('add_workout')?.annotations?.destructiveHint).toBe(false);
+    expect(GYMCOACH_MCP_INSTRUCTIONS).toMatch(/call add_workout on that program/);
     expect(byName.get('get_mcp_capability_index')?.annotations?.readOnlyHint).toBe(true);
     expect(byName.get('get_training_context')?.annotations?.readOnlyHint).toBe(true);
+    expect(byName.get('preview_historical_equipment_backfill')?.annotations?.readOnlyHint).toBe(
+      true,
+    );
+    expect(byName.get('apply_historical_equipment_backfill')?.annotations?.readOnlyHint).toBe(
+      false,
+    );
+    expect(byName.get('undo_historical_equipment_backfill')?.annotations?.destructiveHint).toBe(
+      true,
+    );
     expect(byName.get('remove_program_exercise')?.annotations?.destructiveHint).toBe(true);
 
     const capabilityIndex = await client.callTool({ name: 'get_mcp_capability_index' });

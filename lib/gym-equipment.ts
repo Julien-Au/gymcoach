@@ -1,6 +1,7 @@
 import { Buffer } from 'node:buffer';
 import { ApiError } from '@/lib/api';
 import { db } from '@/lib/db';
+import { getExerciseMedia } from '@/lib/exercise-media';
 import type { EquipmentType } from '@/lib/prisma-client';
 
 export const GYM_EQUIPMENT_IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
@@ -57,6 +58,201 @@ const equipmentSelection = {
     },
   },
 } as const;
+
+export async function listOwnedGyms(userId: string) {
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: { activeGymId: true },
+  });
+  const gyms = await db.gym.findMany({
+    where: { userId },
+    orderBy: { name: 'asc' },
+    select: {
+      id: true,
+      name: true,
+      updatedAt: true,
+      _count: { select: { equipment: true, exerciseConfigs: true, sessions: true } },
+    },
+  });
+  return {
+    activeGymId: user?.activeGymId ?? null,
+    gyms: gyms.map((gym) => ({ ...gym, isActive: gym.id === user?.activeGymId })),
+  };
+}
+
+export async function getOwnedGymInventory(
+  userId: string,
+  baseUrl: string,
+  gymId?: string,
+  options: { includeExerciseCoverage?: boolean } = {},
+) {
+  const gym = await resolveOwnedGym(userId, gymId);
+  const details = await db.gym.findUnique({
+    where: { id: gym.id },
+    include: { equipment: { orderBy: { name: 'asc' }, select: equipmentSelection } },
+  });
+  if (!details) throw new ApiError(404, 'Gym not found.');
+
+  // Per-exercise coverage lists every exercise of the trainee with media URLs,
+  // an unbounded payload, so it is computed only when the caller asks for it.
+  const exerciseCoverage = options.includeExerciseCoverage
+    ? await buildGymExerciseCoverage(userId, baseUrl, details)
+    : undefined;
+
+  return {
+    gym: {
+      id: details.id,
+      name: details.name,
+      sharedFreeWeights: {
+        dumbbellWeightsKg: details.dumbbellWeights,
+        plateWeightsKg: details.plateWeights,
+        barWeightsKg: details.barWeights,
+      },
+      equipment: details.equipment.map((item) => ({
+        ...item,
+        image: gymEquipmentImageRef(item),
+        exerciseLinks: item.exerciseLinks.map((link) => link.exercise),
+      })),
+      ...(exerciseCoverage ? { exerciseCoverage } : {}),
+      updatedAt: details.updatedAt,
+    },
+    workflow: {
+      comparePhotosAndNarrationAgainst: ['gym.equipment', 'gym.sharedFreeWeights'],
+      addPhysicalItemWith: 'upsert_gym_equipment',
+      updateSharedWeightsWith: 'update_gym_free_weights',
+      attachImageWith: 'set_gym_equipment_image',
+      readEquipmentImageWith: 'get_gym_equipment_image',
+      note: 'Physical equipment and exercises are separate records; link equipment to exercise IDs so machine/cable load options constrain program design. Uploaded equipment images carry no URL: read them with get_gym_equipment_image.',
+    },
+  };
+}
+
+async function buildGymExerciseCoverage(
+  userId: string,
+  baseUrl: string,
+  gym: {
+    id: string;
+    equipment: Array<{ id: string; exerciseLinks: Array<{ exerciseId: string }> }>;
+  },
+) {
+  const [configs, exercises] = await Promise.all([
+    db.gymExerciseConfig.findMany({
+      where: { gymId: gym.id },
+      select: { exerciseId: true, isAvailable: true, weightOptions: true },
+    }),
+    db.exercise.findMany({
+      where: { userId },
+      orderBy: { name: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        muscleGroup: true,
+        category: true,
+        equipmentType: true,
+        usesBodyweight: true,
+        notes: true,
+      },
+    }),
+  ]);
+
+  const configByExercise = new Map(configs.map((config) => [config.exerciseId, config]));
+  const equipmentIdsByExercise = new Map<string, string[]>();
+  for (const item of gym.equipment) {
+    for (const link of item.exerciseLinks) {
+      const ids = equipmentIdsByExercise.get(link.exerciseId) ?? [];
+      ids.push(item.id);
+      equipmentIdsByExercise.set(link.exerciseId, ids);
+    }
+  }
+
+  return exercises.map((exercise) => {
+    const config = configByExercise.get(exercise.id);
+    const media = getExerciseMedia(exercise.name);
+    return {
+      ...exercise,
+      configured: config != null,
+      isAvailable: config?.isAvailable ?? true,
+      weightOptionsKg: config?.weightOptions ?? [],
+      equipmentIds: equipmentIdsByExercise.get(exercise.id) ?? [],
+      builtInMedia: media
+        ? {
+            frames: media.frames.map((frame) => new URL(frame, baseUrl).toString()),
+            approximate: media.approximate,
+            source: media.source,
+          }
+        : null,
+    };
+  });
+}
+
+export async function updateOwnedGymFreeWeights(
+  userId: string,
+  gymId: string | undefined,
+  patch: {
+    dumbbellWeights?: number[];
+    plateWeights?: number[];
+    barWeights?: number[];
+  },
+) {
+  const gym = await resolveOwnedGym(userId, gymId);
+  if (
+    patch.dumbbellWeights === undefined &&
+    patch.plateWeights === undefined &&
+    patch.barWeights === undefined
+  ) {
+    throw new ApiError(400, 'Provide at least one free-weight inventory list.');
+  }
+  // The update replaces whole lists, so hand back what was there before: the
+  // caller can show the change or restore it.
+  const previous = await db.gym.findUniqueOrThrow({
+    where: { id: gym.id },
+    select: { dumbbellWeights: true, plateWeights: true, barWeights: true },
+  });
+  const updated = await db.gym.update({
+    where: { id: gym.id },
+    data: patch,
+    select: {
+      id: true,
+      name: true,
+      dumbbellWeights: true,
+      plateWeights: true,
+      barWeights: true,
+      updatedAt: true,
+    },
+  });
+  return { gym: updated, previous };
+}
+
+// The item an upsert with this input would overwrite, or null when it would
+// create one. Mirrors the target resolution of upsertOwnedGymEquipment (by id
+// inside the gym, else by case-insensitive name) so an agent-driven overwrite
+// can report the values it replaced.
+export async function findOwnedGymEquipmentUpsertTarget(
+  userId: string,
+  gymId: string,
+  input: Pick<UpsertGymEquipmentInput, 'equipmentId' | 'name'>,
+) {
+  await requireOwnedGym(userId, gymId);
+  const target = await db.gymEquipment.findFirst({
+    where: input.equipmentId
+      ? { id: input.equipmentId, gymId }
+      : { gymId, name: { equals: input.name, mode: 'insensitive' } },
+    select: {
+      id: true,
+      name: true,
+      equipmentType: true,
+      description: true,
+      manufacturer: true,
+      modelName: true,
+      quantity: true,
+      weightOptions: true,
+      exerciseLinks: { select: { exerciseId: true } },
+    },
+  });
+  if (!target) return null;
+  const { exerciseLinks, ...fields } = target;
+  return { ...fields, exerciseIds: exerciseLinks.map((link) => link.exerciseId) };
+}
 
 export async function listOwnedGymEquipment(userId: string, gymId: string) {
   await requireOwnedGym(userId, gymId);
@@ -276,15 +472,17 @@ export async function setOwnedGymEquipmentImage(
     throw new ApiError(400, 'Choose exactly one image action: clear, imageUrl, or imageBase64.');
   }
 
-  const decoded = input.imageBase64
-    ? decodeGymEquipmentImage(input.imageBase64, input.mimeType)
-    : null;
+  // `!= null`, like the mode count above: an empty string is a (bad) upload, and
+  // decodeGymEquipmentImage rejects it with a 400 instead of leaving `decoded`
+  // null for the branch below.
+  const decoded =
+    input.imageBase64 != null ? decodeGymEquipmentImage(input.imageBase64, input.mimeType) : null;
 
   const data = input.clear
     ? { imageUrl: null, imageData: null, imageMimeType: null }
-    : input.imageUrl
-      ? { imageUrl: input.imageUrl, imageData: null, imageMimeType: null }
-      : { imageUrl: null, imageData: decoded!.bytes, imageMimeType: decoded!.mimeType };
+    : decoded
+      ? { imageUrl: null, imageData: decoded.bytes, imageMimeType: decoded.mimeType }
+      : { imageUrl: input.imageUrl, imageData: null, imageMimeType: null };
 
   return db.gymEquipment.update({
     where: { id: equipment.id },
@@ -329,6 +527,45 @@ export function decodeGymEquipmentImage(
   const bytes = new Uint8Array(new ArrayBuffer(buffer.length));
   bytes.set(buffer);
   return { bytes, mimeType };
+}
+
+async function resolveOwnedGym(userId: string, gymId?: string) {
+  const resolvedId =
+    gymId ??
+    (
+      await db.user.findUnique({
+        where: { id: userId },
+        select: { activeGymId: true },
+      })
+    )?.activeGymId;
+  if (!resolvedId) {
+    throw new ApiError(400, 'No active gym. Provide gymId or activate a gym first.');
+  }
+  const gym = await db.gym.findFirst({
+    where: { id: resolvedId, userId },
+    select: { id: true, name: true },
+  });
+  if (!gym) throw new ApiError(404, 'Gym not found.');
+  return gym;
+}
+
+// How MCP results describe an item's image. Uploaded bytes are served to the web
+// app by a cookie-authenticated route an MCP client cannot fetch, so no URL is
+// advertised for them: the client reads them with get_gym_equipment_image.
+export function gymEquipmentImageRef(item: {
+  imageUrl: string | null;
+  imageMimeType: string | null;
+  updatedAt: Date;
+}) {
+  if (item.imageMimeType) {
+    return {
+      kind: 'uploaded' as const,
+      mimeType: item.imageMimeType,
+      updatedAt: item.updatedAt,
+      readWith: 'get_gym_equipment_image' as const,
+    };
+  }
+  return item.imageUrl ? { kind: 'external' as const, url: item.imageUrl, mimeType: null } : null;
 }
 
 async function requireOwnedGym(userId: string, gymId: string) {

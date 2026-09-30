@@ -6,6 +6,7 @@ import {
   dailyConditioning,
   effectiveWeight,
   estimate1RM,
+  estimateRepMax,
   exerciseProgress,
   isoWeekKey,
   isoWeekStart,
@@ -52,6 +53,30 @@ describe('estimate1RM (Epley)', () => {
   });
   it('returns 0 for zero reps', () => {
     expect(estimate1RM(80, 0)).toBe(0);
+  });
+});
+
+describe('estimateRepMax (Epley inverse)', () => {
+  it('derives the load for a target rep count from the estimated 1RM', () => {
+    // 100 kg x 10 -> e1RM 133.33 -> 10RM 100, 5RM 114.29.
+    expect(estimateRepMax(100, 10, 10)).toBeCloseTo(100, 6);
+    expect(estimateRepMax(100, 10, 5)).toBeCloseTo(114.286, 2);
+    expect(estimateRepMax(80, 5, 10)).toBeCloseTo(70, 6);
+  });
+  it('maps a set back to its own weight at its own rep count', () => {
+    expect(estimateRepMax(62.5, 8, 8)).toBeCloseTo(62.5, 6);
+  });
+  it('stays consistent with estimate1RM', () => {
+    expect(estimateRepMax(90, 6, 10) * (1 + 10 / 30)).toBeCloseTo(
+      estimate1RM(90, 6),
+      6,
+    );
+  });
+  it('returns 0 for bodyweight, zero reps or a non-positive target', () => {
+    expect(estimateRepMax(0, 12, 10)).toBe(0);
+    expect(estimateRepMax(80, 0, 10)).toBe(0);
+    expect(estimateRepMax(80, 8, 0)).toBe(0);
+    expect(estimateRepMax(80, 8, -5)).toBe(0);
   });
 });
 

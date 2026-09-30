@@ -154,9 +154,9 @@ export const settings = {
     create: 'Créer la connexion',
     created: 'Connexion MCP créée.',
     createError: 'Impossible de créer la connexion MCP.',
-    writeAccess: 'Autoriser les modifications de programme',
+    writeAccess: 'Autoriser les modifications des données enregistrées',
     writeAccessDescription:
-      'ChatGPT pourra créer des programmes et modifier les cibles d’exercices après avoir montré l’action pour confirmation.',
+      'ChatGPT pourra créer et modifier des programmes, mettre à jour l’inventaire de votre salle (poids libres, équipements et leurs photos) et des données de l’historique d’entraînement, comme l’équipement enregistré sur des séries passées, après avoir montré l’action pour confirmation.',
     readyTitle: 'L’URL du connecteur ChatGPT est prête',
     readyDescription:
       'Copiez-la maintenant. La partie secrète n’est affichée qu’une seule fois. Dans ChatGPT, choisissez « sans authentification » car l’URL contient déjà un jeton privé.',

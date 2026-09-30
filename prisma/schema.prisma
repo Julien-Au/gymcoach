@@ -52,6 +52,7 @@ model User {
   progressPhotos    ProgressPhoto[]
   gyms              Gym[]              @relation("GymOwner")
   mcpAccessTokens   McpAccessToken[]
+  mcpBackfillAudits McpHistoricalEquipmentBackfillAudit[]
   activeGymId       String?
   activeGym         Gym?               @relation("ActiveGym", fields: [activeGymId], references: [id], onDelete: SetNull)
 }
@@ -69,6 +70,26 @@ model McpAccessToken {
   createdAt   DateTime  @default(now())
   lastUsedAt  DateTime?
   revokedAt   DateTime?
+
+  @@index([userId, createdAt])
+}
+
+// Audit trail of MCP historical-equipment backfills: one row per confirmed
+// apply, kept so a backfill can be listed and undone later. Gym, exercise,
+// equipment and set references are plain scalar IDs on purpose - the audit must
+// survive their deletion. Only the owning user is a real relation, so the rows
+// go away with the account.
+model McpHistoricalEquipmentBackfillAudit {
+  id                String    @id @default(cuid())
+  userId            String
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gymId             String
+  exerciseId        String
+  equipmentId       String
+  setIds            String[]
+  equipmentSnapshot Json
+  createdAt         DateTime  @default(now())
+  undoneAt          DateTime?
 
   @@index([userId, createdAt])
 }
