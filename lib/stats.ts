@@ -70,6 +70,19 @@ export function estimate1RM(weight: number, reps: number): number {
   return weight * (1 + reps / 30);
 }
 
+// Estimated load for `targetReps` reps, from one performed set: the Epley
+// formula inverted around estimate1RM, so a set maps back to its own weight
+// when targetReps equals its reps. Returns 0 when there is nothing to
+// estimate from (no load, no reps) or no target.
+export function estimateRepMax(
+  weight: number,
+  reps: number,
+  targetReps: number,
+): number {
+  if (targetReps <= 0) return 0;
+  return estimate1RM(weight, reps) / (1 + targetReps / 30);
+}
+
 // Best estimated 1RM over a list of sets (warmups and drop sets included
 // since they are technically valid for estimating strength). Cardio sets
 // are skipped: they have no load to estimate from.

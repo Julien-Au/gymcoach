@@ -14,13 +14,19 @@ import type { IntraSetRecommendation } from '@/lib/intra-set-autoregulation';
 import type { GymLoadConstraints } from '@/lib/gym-loads';
 import { constrainGymWeight, gymWeightOptions } from '@/lib/gym-loads';
 import { suggestNextWeight, type ReadinessSignal } from '@/lib/progression';
-import { estimate1RM } from '@/lib/stats';
+import { estimate1RM, estimateRepMax } from '@/lib/stats';
+import {
+  loadPreferences,
+  savePreferences,
+  SET_TABLE_METRICS,
+  setTableMetricEnabled,
+  type SetTableMetric,
+} from '@/lib/preferences';
 import { formatWeight, fromDisplayWeight, roundWeight, toDisplayWeight } from '@/lib/units';
 import { detectPRs, type PRType } from '@/lib/records';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { SetValuePicker } from '@/components/session/set-value-picker';
 import {
   Select,
   SelectContent,
@@ -28,6 +34,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface Props {
   programExercise: ProgramExercise & { exercise: Exercise };
@@ -62,6 +75,17 @@ interface DraftSet {
   weight: number;
   reps: number;
   rir: number | null;
+}
+
+const SINGLE_METRIC_GRID_COLUMNS = 'grid-cols-[2.5rem_minmax(5rem,1fr)_4.5rem_4rem_5rem_3.25rem]';
+const DUAL_METRIC_GRID_COLUMNS =
+  'grid-cols-[2.25rem_minmax(4.5rem,1fr)_4rem_3.75rem_4.5rem_4.5rem_3rem]';
+
+function metricValue(metric: SetTableMetric, draft: DraftSet): number {
+  if (metric === 'VOLUME') return draft.weight * draft.reps;
+  return metric === '10RM'
+    ? estimateRepMax(draft.weight, draft.reps, 10)
+    : estimate1RM(draft.weight, draft.reps);
 }
 
 function initialDraft(
@@ -129,6 +153,7 @@ export function EditableSetsTable({
   const t = useTranslations('session.editableSets');
   const inputT = useTranslations('session.input');
   const locale = useLocale();
+  const [metrics, setMetrics] = useState<SetTableMetric[]>(['1RM']);
   const [draft, setDraft] = useState<DraftSet>(() =>
     initialDraft(programExercise, sets, lastPerformance, readiness, deloadActive, loadConstraints),
   );
@@ -136,7 +161,6 @@ export function EditableSetsTable({
   const [editingSet, setEditingSet] = useState<{ set: PendingSet; draft: DraftSet } | null>(null);
   const [updatingSetId, setUpdatingSetId] = useState<string | null>(null);
   const [picker, setPicker] = useState<'weight' | 'reps' | null>(null);
-  const [manualValue, setManualValue] = useState('');
   const [appliedRecommendationKey, setAppliedRecommendationKey] = useState<string | null>(null);
   const [gymEquipmentId, setGymEquipmentId] = useState('');
   const [weightEditorOpen, setWeightEditorOpen] = useState(false);
@@ -152,6 +176,37 @@ export function EditableSetsTable({
     () => priorSets.map((set) => ({ ...set, isWarmup: false })),
     [priorSets],
   );
+
+  useEffect(() => {
+    setMetrics(loadPreferences().setTableMetrics);
+  }, []);
+
+  function metricLabel(metric: SetTableMetric, short = false) {
+    if (metric === '1RM') return t(short ? 'metrics.oneRmShort' : 'metrics.oneRm');
+    if (metric === '10RM') return t(short ? 'metrics.tenRmShort' : 'metrics.tenRm');
+    return t(short ? 'metrics.volumeShort' : 'metrics.volume');
+  }
+
+  function updateMetric(metric: SetTableMetric, enabled: boolean) {
+    const next = setTableMetricEnabled(metrics, metric, enabled);
+    if (next.length === metrics.length && next.every((value, index) => value === metrics[index])) {
+      return;
+    }
+    const prefs = loadPreferences();
+    savePreferences({ ...prefs, setTableMetrics: next });
+    setMetrics(next);
+  }
+
+  function formatMetric(metric: SetTableMetric, values: DraftSet): string {
+    const value = metricValue(metric, values);
+    if (value <= 0) return '-';
+    return formatWeight(value, unit, {
+      decimals: 1,
+      group: false,
+      locale,
+      withUnit: metric !== 'VOLUME',
+    });
+  }
 
   function prsFor(set: PendingSet, index: number): PRType[] {
     const earlierThisSession = workingSets
@@ -193,8 +248,10 @@ export function EditableSetsTable({
         : '',
     );
     // Re-seed when the active exercise or logged working-set count changes.
+    // exerciseId is part of the key because an in-session replace keeps the
+    // program row id: the draft of the old exercise must not carry over.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [programExercise.id, workingSets.length]);
+  }, [programExercise.id, programExercise.exerciseId, workingSets.length]);
 
   useEffect(() => {
     if (gymEquipmentId && !equipmentOptions.some((equipment) => equipment.id === gymEquipmentId)) {
@@ -229,7 +286,7 @@ export function EditableSetsTable({
     locale,
     withUnit: false,
   });
-  const rmValue = estimate1RM(draft.weight, draft.reps);
+  const gridColumns = metrics.length > 1 ? DUAL_METRIC_GRID_COLUMNS : SINGLE_METRIC_GRID_COLUMNS;
   const availableWeights = useMemo(() => {
     const constrained = gymWeightOptions(effectiveLoadConstraints, draft.weight);
     if (constrained.length > 0) return constrained;
@@ -237,18 +294,21 @@ export function EditableSetsTable({
     return Array.from({ length: 81 }, (_, index) => +(index * step).toFixed(2));
   }, [draft.weight, effectiveLoadConstraints, programExercise.exercise.category]);
   const repOptions = useMemo(() => Array.from({ length: 30 }, (_, index) => index + 1), []);
-  // Labels are formatted once per option list, not on every keystroke render:
-  // toLocaleString builds a formatter per call, and the picker lists 81 rows.
-  const weightLabels = useMemo(
+  const weightPickerOptions = useMemo(
     () =>
-      new Map(
-        availableWeights.map((value) => [
-          value,
-          formatWeight(value, unit, { decimals: 2, group: false, locale, withUnit: false }),
-        ]),
-      ),
-    [availableWeights, unit, locale],
+      availableWeights.map((weight) => ({
+        value: unit === 'LB' ? roundWeight(toDisplayWeight(weight, unit), 2) : weight,
+        canonicalValue: weight,
+        label: formatWeight(weight, unit, {
+          decimals: 2,
+          group: false,
+          locale,
+          withUnit: false,
+        }),
+      })),
+    [availableWeights, locale, unit],
   );
+  const repPickerOptions = useMemo(() => repOptions.map((value) => ({ value })), [repOptions]);
   const recommendationKey = recommendation
     ? `${recommendation.weight}:${recommendation.reps}:${recommendation.rir}`
     : null;
@@ -264,24 +324,12 @@ export function EditableSetsTable({
   }
 
   function openPicker(kind: 'weight' | 'reps', set?: PendingSet) {
-    const source = set
-      ? editingSet?.set.localId === set.localId
-        ? editingSet.draft
-        : { weight: set.weight, reps: set.reps, rir: set.rir }
-      : draft;
     if (set && editingSet?.set.localId !== set.localId) {
-      setEditingSet({ set, draft: source });
+      setEditingSet({ set, draft: { weight: set.weight, reps: set.reps, rir: set.rir } });
     } else if (!set) {
       setEditingSet(null);
     }
     setPicker(kind);
-    setManualValue(
-      kind === 'weight'
-        ? String(
-            unit === 'LB' ? roundWeight(toDisplayWeight(source.weight, unit), 1) : source.weight,
-          )
-        : String(source.reps),
-    );
   }
 
   function chooseValue(value: number, canonicalWeight?: number) {
@@ -404,13 +452,49 @@ export function EditableSetsTable({
       )}
       <div data-testid="editable-sets-scroll" className="overflow-x-auto overscroll-x-contain">
         <div data-testid="editable-sets-grid" className="min-w-[31rem]">
-          <div className="grid grid-cols-[2.5rem_minmax(5rem,1fr)_4.5rem_4rem_5rem_3.25rem] items-center gap-1 border-b border-border bg-muted/30 px-2 py-2 text-center text-[0.6875rem] font-medium uppercase text-muted-foreground">
+          <div
+            data-testid="editable-sets-header"
+            className={`grid ${gridColumns} items-center gap-1 border-b border-border bg-muted/30 px-2 py-2 text-center text-[0.6875rem] font-medium uppercase text-muted-foreground`}
+          >
             <span>#</span>
             <span>{unit}</span>
             <span>REPS</span>
             <span>RIR</span>
-            <span>1RM</span>
-            <span aria-hidden />
+            {metrics.map((metric) => (
+              <span key={metric} data-testid={`set-metric-header-${metric}`}>
+                {metricLabel(metric, true)}
+              </span>
+            ))}
+            <span className="flex items-center justify-center">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label={t('metrics.open')}
+                    title={t('metrics.open')}
+                    className="-my-2 size-11 text-muted-foreground"
+                  >
+                    <Pencil className="size-3.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>{t('metrics.label')}</DropdownMenuLabel>
+                  {SET_TABLE_METRICS.map((metric) => (
+                    <DropdownMenuCheckboxItem
+                      key={metric}
+                      checked={metrics.includes(metric)}
+                      disabled={metrics.length === 1 && metrics[0] === metric}
+                      onSelect={(event) => event.preventDefault()}
+                      onCheckedChange={(checked) => updateMetric(metric, checked === true)}
+                    >
+                      {metricLabel(metric)}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </span>
           </div>
 
           {workingSets.map((set, setIndex) => {
@@ -422,7 +506,7 @@ export function EditableSetsTable({
             return (
               <div
                 key={set.localId}
-                className="grid grid-cols-[2.5rem_minmax(5rem,1fr)_4.5rem_4rem_5rem_3.25rem] items-center gap-1 border-b border-border px-2 py-2 text-center text-sm tabular-nums"
+                className={`grid ${gridColumns} items-center gap-1 border-b border-border px-2 py-2 text-center text-sm tabular-nums`}
               >
                 <span className="text-muted-foreground">{set.setNumber}</span>
                 <div className="flex min-w-0 flex-col items-center gap-1">
@@ -482,13 +566,15 @@ export function EditableSetsTable({
                     ))}
                   </SelectContent>
                 </Select>
-                <span className="text-muted-foreground">
-                  {formatWeight(estimate1RM(rowDraft.weight, rowDraft.reps), unit, {
-                    decimals: 1,
-                    group: false,
-                    locale,
-                  })}
-                </span>
+                {metrics.map((metric) => (
+                  <span
+                    key={metric}
+                    data-testid={`completed-set-${set.setNumber}-metric-${metric}`}
+                    className="text-muted-foreground"
+                  >
+                    {formatMetric(metric, rowDraft)}
+                  </span>
+                ))}
                 <span className="flex items-center justify-center">
                   {isUpdating ? (
                     <Loader2 className="size-4 animate-spin" />
@@ -517,7 +603,9 @@ export function EditableSetsTable({
             );
           })}
 
-          <div className="grid grid-cols-[2.5rem_minmax(5rem,1fr)_4.5rem_4rem_5rem_3.25rem] items-center gap-1 border-b border-border bg-primary/5 px-2 py-2">
+          <div
+            className={`grid ${gridColumns} items-center gap-1 border-b border-border bg-primary/5 px-2 py-2`}
+          >
             {recommendation ? (
               <button
                 type="button"
@@ -582,11 +670,15 @@ export function EditableSetsTable({
                 ))}
               </SelectContent>
             </Select>
-            <span className="text-center text-sm font-medium tabular-nums text-muted-foreground">
-              {rmValue > 0
-                ? formatWeight(rmValue, unit, { decimals: 1, group: false, locale })
-                : '-'}
-            </span>
+            {metrics.map((metric) => (
+              <span
+                key={metric}
+                data-testid={`active-set-metric-${metric}`}
+                className="text-center text-sm font-medium tabular-nums text-muted-foreground"
+              >
+                {formatMetric(metric, draft)}
+              </span>
+            ))}
             <Button
               type="button"
               size="icon"
@@ -609,7 +701,7 @@ export function EditableSetsTable({
             return (
               <div
                 key={`upcoming-${rowNumber}`}
-                className="grid grid-cols-[2.5rem_minmax(5rem,1fr)_4.5rem_4rem_5rem_3.25rem] items-center gap-1 border-b border-border px-2 py-3 text-center text-sm text-muted-foreground last:border-b-0"
+                className={`grid ${gridColumns} items-center gap-1 border-b border-border px-2 py-3 text-center text-sm text-muted-foreground last:border-b-0`}
               >
                 <span>{rowNumber}</span>
                 <span>
@@ -624,15 +716,17 @@ export function EditableSetsTable({
                 </span>
                 <span>{previous?.reps ?? '-'}</span>
                 <span>{previous?.rir ?? '-'}</span>
-                <span>
-                  {previous
-                    ? formatWeight(estimate1RM(previous.weight, previous.reps), unit, {
-                        decimals: 1,
-                        group: false,
-                        locale,
-                      })
-                    : '-'}
-                </span>
+                {metrics.map((metric) => (
+                  <span key={metric}>
+                    {previous
+                      ? formatMetric(metric, {
+                          weight: previous.weight,
+                          reps: previous.reps,
+                          rir: previous.rir,
+                        })
+                      : '-'}
+                  </span>
+                ))}
                 <span />
               </div>
             );
@@ -640,64 +734,23 @@ export function EditableSetsTable({
         </div>
       </div>
 
-      <Dialog open={picker != null} onOpenChange={(open) => !open && setPicker(null)}>
-        <DialogContent
-          aria-describedby={undefined}
-          className="bottom-0 left-0 top-auto max-h-[82vh] w-full max-w-none translate-x-0 translate-y-0 gap-3 rounded-t-lg border-x-0 border-b-0 p-4 sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-lg sm:border"
-        >
-          <DialogTitle>
-            {picker === 'weight' ? t('chooseWeight', { unit }) : t('chooseReps')}
-          </DialogTitle>
-          <div className="flex gap-2">
-            <Input
-              autoFocus
-              type="number"
-              inputMode={picker === 'weight' ? 'decimal' : 'numeric'}
-              step={picker === 'weight' ? '0.1' : '1'}
-              min="0"
-              value={manualValue}
-              onChange={(event) => setManualValue(event.target.value)}
-              className="h-12 text-center text-xl font-semibold tabular-nums"
-            />
-            <Button
-              type="button"
-              size="icon"
-              className="size-12 shrink-0"
-              onClick={() => chooseValue(Number(manualValue) || 0)}
-              aria-label={t('applyValue')}
-            >
-              <Check className="size-6" />
-            </Button>
-          </div>
-          <div className="max-h-[55vh] space-y-2 overflow-y-auto overscroll-contain py-1">
-            {(picker === 'weight' ? availableWeights : repOptions).map((value) => {
-              const shown =
-                picker === 'weight'
-                  ? unit === 'LB'
-                    ? roundWeight(toDisplayWeight(value, unit), 1)
-                    : value
-                  : value;
-              const label =
-                picker === 'weight' ? (weightLabels.get(value) ?? String(shown)) : String(value);
-              const activeDraft = editingSet?.draft ?? draft;
-              const selected =
-                picker === 'weight' ? value === activeDraft.weight : value === activeDraft.reps;
-              return (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => chooseValue(shown, picker === 'weight' ? value : undefined)}
-                  className={`flex h-16 w-full items-center justify-center rounded-md border text-xl font-semibold tabular-nums ${
-                    selected ? 'border-primary bg-primary/10' : 'border-border bg-muted/40'
-                  }`}
-                >
-                  {label} {picker === 'weight' ? unit.toLowerCase() : t('repsShort')}
-                </button>
-              );
-            })}
-          </div>
-        </DialogContent>
-      </Dialog>
+      <SetValuePicker
+        open={picker != null}
+        kind={picker ?? 'weight'}
+        value={
+          picker === 'reps'
+            ? (editingSet?.draft.reps ?? draft.reps)
+            : unit === 'LB'
+              ? roundWeight(toDisplayWeight(editingSet?.draft.weight ?? draft.weight, unit), 1)
+              : (editingSet?.draft.weight ?? draft.weight)
+        }
+        canonicalValue={picker === 'reps' ? undefined : (editingSet?.draft.weight ?? draft.weight)}
+        options={picker === 'reps' ? repPickerOptions : weightPickerOptions}
+        unit={unit}
+        loadConstraints={loadConstraints}
+        onClose={() => setPicker(null)}
+        onChoose={chooseValue}
+      />
     </section>
   );
 }

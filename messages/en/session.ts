@@ -197,8 +197,53 @@ export const session = {
       saveError: 'Could not update equipment weights.',
       tooManyWeights: 'Enter at most 200 weights.',
     },
+    metrics: {
+      open: 'Choose calculated columns',
+      label: 'Calculated columns',
+      oneRm: 'Estimated 1RM',
+      tenRm: 'Estimated 10RM',
+      volume: 'Volume',
+      oneRmShort: '1RM',
+      tenRmShort: '10RM',
+      volumeShort: 'VOL',
+    },
+  },
+  exerciseMenu: {
+    actions: 'Exercise actions',
+    actionsDescription:
+      'These actions change your saved program, so they also apply to future sessions of this workout.',
+    replace: 'Replace exercise',
+    replaceDescription:
+      'Choose another exercise. It replaces this one in your saved program, for this and future sessions.',
+    addExercises: 'Add exercise',
+    addDescription:
+      'Add an exercise to the end of this workout. It is saved to your program for future sessions too.',
+    remove: 'Remove exercise',
+    removeDescription:
+      'Remove this exercise from your saved program, for this and future sessions.',
+    searchExercises: 'Search exercises',
+    noExercises: 'No matching exercises.',
+    replaceConfirm:
+      'This replaces the exercise in your saved program, so future sessions change too. Replace it?',
+    replaceLoggedWarning:
+      'Sets already logged in this session stay in your history under the original exercise, but they are no longer shown on this screen. Your saved program changes for future sessions too. Replace it?',
+    removeLoggedWarning:
+      'Sets already logged remain in history, but they are no longer shown on this screen. The exercise is removed from your saved program, for future sessions too.',
+    removeConfirm: 'Remove this exercise from your saved program? Future sessions change too.',
+    removeLastBlocked:
+      'This is the only exercise in the workout, so it cannot be removed here. Replace it instead.',
+    confirmReplace: 'Replace with {name}',
+    cancel: 'Cancel',
+    back: 'Back',
+    replaced: 'Exercise replaced.',
+    replaceError: 'Could not replace the exercise.',
+    added: 'Exercise added.',
+    addError: 'Could not add the exercise.',
+    removed: 'Exercise removed.',
+    removeError: 'Could not remove the exercise.',
   },
   exerciseCard: {
+    actions: 'Exercise actions',
     notAvailable: 'Not available in this gym',
     cardioPrescription: '{sets, plural, one {# set} other {# sets}} · Rest {seconds}s',
     strengthPrescription:

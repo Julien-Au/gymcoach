@@ -13,8 +13,8 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { computePlateLoad } from '@/lib/plates';
+import { BarbellSideDiagram } from '@/components/session/barbell-side-diagram';
+import { computeBestPlateLoad } from '@/lib/plates';
 import { plateConfigForUnit } from '@/lib/preferences';
 import { roundWeight, toDisplayWeight, unitLabel } from '@/lib/units';
 
@@ -45,14 +45,7 @@ export function PlateCalculator({ weightKg, unit, barWeightsKg, plateWeightsKg }
       ? plateWeightsKg.map((weight) => roundWeight(toDisplayWeight(weight, unit), 2))
       : fallback.plates;
     const target = roundWeight(toDisplayWeight(weightKg, unit), 2);
-    const candidates = bars.map((barWeight) => computePlateLoad(target, barWeight, plates));
-    const result =
-      candidates.sort(
-        (a, b) =>
-          Number(b.exact) - Number(a.exact) ||
-          a.remainder - b.remainder ||
-          b.achievedWeight - a.achievedWeight,
-      )[0] ?? computePlateLoad(target, fallback.barWeight, plates);
+    const result = computeBestPlateLoad(target, bars, plates, fallback.barWeight);
     return { target, ...result };
   }, [barWeightsKg, open, plateWeightsKg, weightKg, unit]);
 
@@ -86,13 +79,13 @@ export function PlateCalculator({ weightKg, unit, barWeightsKg, plateWeightsKg }
         {result && (
           <div className="space-y-4">
             {result.perSide.length > 0 ? (
-              <div className="flex flex-wrap gap-2" aria-label={t('platesPerSide')}>
-                {result.perSide.map((g) => (
-                  <Badge key={g.plate} variant="secondary" className="text-base font-semibold">
-                    {g.count} x {g.plate} {label}
-                  </Badge>
-                ))}
-              </div>
+              <BarbellSideDiagram load={result} unitLabel={label} platesLabel={t('platesPerSide')}>
+                <p className="mt-1 text-center text-xs text-muted-foreground">
+                  {result.perSide
+                    .map((group) => String(group.count) + ' x ' + String(group.plate) + ' ' + label)
+                    .join(' + ')}
+                </p>
+              </BarbellSideDiagram>
             ) : (
               <p className="text-sm text-muted-foreground">{t('barOnly')}</p>
             )}

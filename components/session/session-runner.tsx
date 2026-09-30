@@ -51,6 +51,10 @@ import {
 } from '@/lib/sync';
 import { hydrateFromServerSets } from '@/lib/sync-hydration';
 import { ExerciseCard } from '@/components/session/exercise-card';
+import {
+  SessionExerciseMenu,
+  type SessionCatalogExercise,
+} from '@/components/session/session-exercise-menu';
 import { SetsList } from '@/components/session/sets-list';
 import { EditableSetsTable } from '@/components/session/editable-sets-table';
 import type { LiveEquipmentOption } from '@/components/session/live-equipment-weight-editor';
@@ -110,11 +114,18 @@ type SessionRunnerProps = {
   deloadActive: boolean;
   unit: WeightUnit;
   initialProgramExerciseId?: string;
+  catalog: SessionCatalogExercise[];
 };
 
 type Mode =
   | { kind: 'input' }
-  | { kind: 'rest'; endsAt: number; totalSec: number; nextExerciseIdx: number | null }
+  | {
+      kind: 'rest';
+      endsAt: number;
+      totalSec: number;
+      nextExerciseIdx: number | null;
+      navigatedImmediately: boolean;
+    }
   | { kind: 'summary' };
 
 export function SessionRunner({
@@ -125,6 +136,7 @@ export function SessionRunner({
   deloadActive,
   unit,
   initialProgramExerciseId,
+  catalog,
 }: SessionRunnerProps) {
   const t = useTranslations('session');
   const exerciseName = useExerciseName();
@@ -161,9 +173,18 @@ export function SessionRunner({
 
   const initialExerciseIndex = selectedExerciseIndex(programExercises, initialProgramExerciseId);
   const [hydrated, setHydrated] = useState(false);
-  const [currentIdx, setCurrentIdx] = useState(initialExerciseIndex);
+  const [selectedIdx, setSelectedIdx] = useState(initialExerciseIndex);
+  // Removing an exercise shortens the list one render before the pending
+  // selection below lands. Clamp instead of showing the empty state for that
+  // pass: it would unmount the sets table and drop its parked drafts.
+  const currentIdx = Math.min(selectedIdx, Math.max(programExercises.length - 1, 0));
+  const [pendingExerciseSelection, setPendingExerciseSelection] = useState<{
+    selectProgramExerciseId: string;
+    removedProgramExerciseId?: string;
+  } | null>(null);
   const [mode, setMode] = useState<Mode>({ kind: 'input' });
   const [closing, setClosing] = useState(false);
+  const [exerciseMenuOpen, setExerciseMenuOpen] = useState(false);
   // Readiness auto-regulation can be turned off in settings (issue #61). The
   // preference lives in localStorage, so it is read after mount; until then we
   // assume the default (on) so the first render matches the server output.
@@ -171,6 +192,37 @@ export function SessionRunner({
 
   const currentPE = programExercises[currentIdx];
   const currentTarget = effectiveProgramExercises[currentIdx];
+
+  // Write the clamp back. If a pending selection never lands (failed refresh,
+  // target row gone), an index left past the end would make a later add jump
+  // the view to the new row.
+  useEffect(() => {
+    if (selectedIdx !== currentIdx) setSelectedIdx(currentIdx);
+  }, [selectedIdx, currentIdx]);
+
+  useEffect(() => {
+    if (!pendingExerciseSelection) return;
+    if (
+      pendingExerciseSelection.removedProgramExerciseId &&
+      programExercises.some((item) => item.id === pendingExerciseSelection.removedProgramExerciseId)
+    ) {
+      return;
+    }
+    const refreshedIndex = programExercises.findIndex(
+      (item) => item.id === pendingExerciseSelection.selectProgramExerciseId,
+    );
+    const target = programExercises[refreshedIndex];
+    if (!target) return;
+    // Same two steps as selectExercise: the URL keeps naming the selected
+    // row, so a reload does not fall back to the first exercise.
+    setSelectedIdx(refreshedIndex);
+    window.history.replaceState(
+      window.history.state,
+      '',
+      sessionExercisePath(session.id, target.id),
+    );
+    setPendingExerciseSelection(null);
+  }, [pendingExerciseSelection, programExercises, session.id]);
 
   // When auto-regulation is off, the readiness signal is dropped entirely, so
   // the suggestion falls back to pure programmed progression (pre-#55 behavior).
@@ -413,11 +465,18 @@ export function SessionRunner({
     const transition = isSupersetTransitionRest(supersetView, currentIdx, nextIdx);
     const restSec = transition ? SUPERSET_TRANSITION_REST_SEC : currentTarget.restSec;
 
+    // For a same-superset transition, show the next exercise immediately so
+    // the lifter can get into position while the short transition rest runs.
+    // The timer still keeps input locked until it ends or is skipped.
+    const navigatedImmediately = transition && nextIdx != null;
+    if (navigatedImmediately) selectExercise(nextIdx);
+
     setMode({
       kind: 'rest',
       endsAt: Date.now() + restSec * 1000,
       totalSec: restSec,
       nextExerciseIdx: nextIdx,
+      navigatedImmediately,
     });
   }
 
@@ -528,20 +587,20 @@ export function SessionRunner({
   function selectExercise(index: number) {
     const next = programExercises[index];
     if (!next) return;
-    setCurrentIdx(index);
+    setSelectedIdx(index);
     window.history.replaceState(window.history.state, '', sessionExercisePath(session.id, next.id));
   }
 
   function handleRestEnd() {
     vibrate(VIBRATION_PATTERNS.restEnd);
-    if (mode.kind === 'rest' && mode.nextExerciseIdx != null) {
+    if (mode.kind === 'rest' && !mode.navigatedImmediately && mode.nextExerciseIdx != null) {
       selectExercise(mode.nextExerciseIdx);
     }
     setMode({ kind: 'input' });
   }
 
   function handleSkipRest() {
-    if (mode.kind === 'rest' && mode.nextExerciseIdx != null) {
+    if (mode.kind === 'rest' && !mode.navigatedImmediately && mode.nextExerciseIdx != null) {
       selectExercise(mode.nextExerciseIdx);
     }
     setMode({ kind: 'input' });
@@ -606,6 +665,10 @@ export function SessionRunner({
         : currentSets.filter((set) => !set.isWarmup).length < currentTarget.targetSets
           ? currentTarget
           : null
+      : null;
+  const restNextLabel =
+    mode.kind === 'rest' && !mode.navigatedImmediately && restNextPe
+      ? exerciseName(restNextPe.exercise.name)
       : null;
   const restRecommendation =
     mode.kind === 'rest' && restNextPe ? recommendationFor(restNextPe, mode.endsAt) : null;
@@ -675,6 +738,26 @@ export function SessionRunner({
           unit={unit}
           gymName={session.gym?.name ?? null}
           loadConstraints={loadConstraintsFor(currentPE)}
+          onOpenMenu={() => setExerciseMenuOpen(true)}
+          menuDisabled={mode.kind !== 'input'}
+        />
+        <SessionExerciseMenu
+          open={exerciseMenuOpen}
+          onOpenChange={setExerciseMenuOpen}
+          programExercise={currentPE}
+          programExercises={programExercises}
+          catalog={catalog}
+          loggedSetCount={currentSets.length}
+          onChanged={(options) => {
+            setExerciseMenuOpen(false);
+            if (options?.selectProgramExerciseId) {
+              setPendingExerciseSelection({
+                selectProgramExerciseId: options.selectProgramExerciseId,
+                removedProgramExerciseId: options.removedProgramExerciseId,
+              });
+            }
+            router.refresh();
+          }}
         />
         <ReturnToTrainingNotice
           recommendation={currentReturnRecommendation}
@@ -739,7 +822,7 @@ export function SessionRunner({
           <RestTimer
             endsAt={mode.endsAt}
             totalSec={mode.totalSec}
-            nextLabel={restNextPe ? exerciseName(restNextPe.exercise.name) : null}
+            nextLabel={restNextLabel}
             recommendation={restRecommendation}
             unit={unit}
             onEnd={handleRestEnd}

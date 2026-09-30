@@ -457,6 +457,43 @@ describe('SetInput AI parse', () => {
     expect(screen.getByRole('combobox')).toHaveValue('machine-1');
   });
 
+  it('re-seeds the form when the same program row is replaced by another exercise', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    const perf = (weight: number) => ({
+      sessionStartedAt: '2026-06-01T12:00:00.000Z',
+      sets: [{ weight, reps: 8, rir: 2 }],
+      maxWeight: weight,
+      repsAtMaxWeight: 8,
+      cardio: null,
+    });
+    const props = {
+      existingSets: [],
+      readiness: null,
+      deloadActive: false,
+      unit: 'KG' as const,
+      onSubmit,
+    };
+    const { rerender } = render(
+      <SetInput {...props} programExercise={pe} lastPerformance={perf(100)} />,
+    );
+    // An in-session replace keeps the row id and swaps the exercise.
+    rerender(
+      <SetInput
+        {...props}
+        programExercise={{
+          ...pe,
+          exerciseId: 'e2',
+          exercise: { ...exo, id: 'e2', name: 'Goblet Squat', equipmentType: 'DUMBBELL' },
+        }}
+        lastPerformance={perf(30)}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: /log the set/i }));
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ weight: 30, reps: 8 }));
+  });
+
   it('clears a selected machine the gym no longer offers (issue #326)', async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn().mockResolvedValue(undefined);
