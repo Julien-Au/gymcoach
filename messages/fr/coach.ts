@@ -30,6 +30,8 @@ export const coach = {
       'Une question en pleine séance ? Demandez conseil sur votre prochaine série, une charge qui semble anormale ou un changement d’exercice.',
     empty:
       'Posez vos questions : sortir d’un plateau, volume d’entraînement, progression, récupération ou adaptation à une blessure.',
+    advisory:
+      'Le chat conseille mais ne modifie pas vos données. Appliquez les changements vous-même depuis la page Programmes ou depuis le débrief hebdomadaire.',
   },
   context: {
     title: 'Ce que voit votre coach',
