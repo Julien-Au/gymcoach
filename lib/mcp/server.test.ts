@@ -27,9 +27,49 @@ describe('GymCoach MCP server', () => {
 
     const tools = await client.listTools();
     const byName = new Map(tools.tools.map((tool) => [tool.name, tool]));
+    expect(byName.has('list_gyms')).toBe(true);
+    expect(byName.has('get_gym_inventory')).toBe(true);
+    expect(byName.has('get_gym_equipment_image')).toBe(true);
+    expect(byName.has('update_gym_free_weights')).toBe(true);
+    expect(byName.has('upsert_gym_equipment')).toBe(true);
+    expect(byName.has('set_gym_equipment_image')).toBe(true);
     expect(byName.has('get_training_context')).toBe(true);
     expect(byName.has('create_program')).toBe(true);
     expect(byName.has('update_program_exercise')).toBe(true);
+    expect(byName.get('list_gyms')?.annotations?.readOnlyHint).toBe(true);
+    expect(byName.get('get_gym_inventory')?.annotations?.readOnlyHint).toBe(true);
+    expect(byName.get('get_gym_equipment_image')?.annotations?.readOnlyHint).toBe(true);
+    for (const name of [
+      'update_gym_free_weights',
+      'upsert_gym_equipment',
+      'set_gym_equipment_image',
+    ]) {
+      // These overwrite whole lists, item fields, exercise links or image bytes
+      // with no undo, so clients that gate their confirmation UI on the hint
+      // must be told to ask.
+      expect(byName.get(name)?.annotations).toMatchObject({
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: true,
+        openWorldHint: false,
+      });
+    }
+    expect(byName.get('upsert_gym_equipment')?.inputSchema).toMatchObject({
+      required: expect.arrayContaining(['confirmed', 'gymId', 'name', 'equipmentType']),
+    });
+    expect(byName.get('update_gym_free_weights')?.inputSchema).toMatchObject({
+      required: expect.arrayContaining(['confirmed']),
+    });
+    expect(byName.get('set_gym_equipment_image')?.inputSchema).toMatchObject({
+      required: expect.arrayContaining(['confirmed', 'equipmentId']),
+    });
+    expect(
+      Object.keys(byName.get('set_gym_equipment_image')?.inputSchema.properties ?? {}),
+    ).not.toContain('imageUrl');
+    // An empty upload is refused by the schema, before the handler runs.
+    expect(byName.get('set_gym_equipment_image')?.inputSchema.properties).toMatchObject({
+      imageBase64: { minLength: 1 },
+    });
     expect(byName.has('preview_historical_equipment_backfill')).toBe(true);
     expect(byName.has('apply_historical_equipment_backfill')).toBe(true);
     expect(byName.has('undo_historical_equipment_backfill')).toBe(true);

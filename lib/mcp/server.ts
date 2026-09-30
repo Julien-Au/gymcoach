@@ -1,7 +1,19 @@
+import { Buffer } from 'node:buffer';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { db } from '@/lib/db';
 import { buildCoachPayload } from '@/lib/coach';
+import {
+  GYM_EQUIPMENT_IMAGE_MIME_TYPES,
+  findOwnedGymEquipmentUpsertTarget,
+  getOwnedGymEquipmentImage,
+  getOwnedGymInventory,
+  gymEquipmentImageRef,
+  listOwnedGyms,
+  setOwnedGymEquipmentImage,
+  updateOwnedGymFreeWeights,
+  upsertOwnedGymEquipment,
+} from '@/lib/gym-equipment';
 import { addWorkoutToProgram, buildProgramFromGenerated } from '@/lib/program-generation';
 import {
   generatedExerciseSchema,
@@ -9,6 +21,8 @@ import {
   generatedWorkoutSchema,
 } from '@/lib/schemas/program-generation';
 import { programInputSchema } from '@/lib/schemas/program';
+import { gymWeightListSchema } from '@/lib/schemas/gym';
+import { databaseIdSchema } from '@/lib/schemas/gym-equipment';
 import {
   EquipmentType,
   ExerciseCategory,
@@ -25,11 +39,13 @@ import {
   previewHistoricalEquipmentBackfill,
   undoHistoricalEquipmentBackfill,
 } from '@/lib/mcp/historical-equipment-backfill';
-import { databaseIdSchema } from '@/lib/schemas/gym-equipment';
+import { Prisma } from '@/prisma/generated/client';
 
 export const GYMCOACH_MCP_INSTRUCTIONS = `GymCoach stores the trainee's profile, gyms, equipment, programs, workout history, sets, RIR, goals and recovery signals.
 
 Use read tools before making recommendations. Ground every recommendation in returned GymCoach data and never invent completed sets, available equipment, records or injuries. Respect the active gym's equipment constraints. Use the trainee's language.
+
+Before changing gym inventory, read the saved gym first, explain the proposed additions or corrections, and require explicit confirmation. Do not guess machine identity, exercise links or selectable weights from ambiguous information.
 
 Program-writing tools change saved data. Explain the proposed change before calling a write tool. Newly created programs are inactive so the trainee can review them. Activate a program only when the trainee explicitly asks. To add a session (for example a cardio day) to the program the trainee already follows, call add_workout on that program rather than creating a new program. Never delete or remove a program exercise without explicit confirmation.`;
 
@@ -41,6 +57,12 @@ interface ServerOptions {
 const explicitConfirmation = z
   .literal(true)
   .describe('Set to true only after the trainee explicitly confirmed this saved-data change.');
+
+// Same opaque id shape the REST routes accept (legacy ids are not cuids).
+const gymIdSchema = databaseIdSchema.describe('Opaque GymCoach gym ID returned by list_gyms.');
+const equipmentIdSchema = databaseIdSchema.describe(
+  'Opaque GymCoach equipment ID returned by get_gym_inventory.',
+);
 
 // Strict ISO 8601 calendar date (2026-08-31) or datetime with an offset
 // (2026-08-31T18:00:00Z). Anything else - null, a number, free text - is
@@ -60,6 +82,16 @@ function requireWrite(principal: McpPrincipal) {
       'This GymCoach MCP token is read-only. Create a write-enabled token in Settings.',
     );
   }
+}
+
+// A thrown error reaches the MCP client as its bare message. A unique-constraint
+// violation would leak the raw Prisma invocation text, so give it the same clean
+// wording the REST layer uses for a 409 (lib/api.ts handleApiError).
+function rethrowUniqueConflict(err: unknown): never {
+  if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+    throw new Error('Conflict: an entry with this value already exists.');
+  }
+  throw err;
 }
 
 async function getOwnedProgram(userId: string, programId?: string) {
@@ -117,6 +149,177 @@ export function createGymCoachMcpServer({ principal, baseUrl }: ServerOptions): 
         },
       ],
     }),
+  );
+
+  server.registerTool(
+    'list_gyms',
+    {
+      title: 'List gyms',
+      description:
+        'Lists saved gyms, identifies the active gym and reports physical-equipment/config counts.',
+      annotations: { readOnlyHint: true, openWorldHint: false, idempotentHint: true },
+    },
+    async () => result(await listOwnedGyms(principal.userId)),
+  );
+
+  server.registerTool(
+    'get_gym_inventory',
+    {
+      title: 'Get complete gym inventory',
+      description:
+        'Returns shared dumbbells, plates and bars and every saved physical equipment item with descriptions/images/exercise links. Omit gymId to read the active gym. Set includeExerciseCoverage to true to also get availability and weight options for every exercise of the trainee (a large payload; request it only when needed).',
+      inputSchema: {
+        gymId: gymIdSchema.optional(),
+        includeExerciseCoverage: z.boolean().default(false),
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false, idempotentHint: true },
+    },
+    async ({ gymId, includeExerciseCoverage }) =>
+      result(
+        await getOwnedGymInventory(principal.userId, baseUrl, gymId, { includeExerciseCoverage }),
+      ),
+  );
+
+  server.registerTool(
+    'get_gym_equipment_image',
+    {
+      title: 'Get a gym-equipment image',
+      description:
+        'Returns a saved uploaded equipment image as MCP image content, or the external HTTPS image URL the trainee saved in GymCoach. Use this when visual comparison is needed.',
+      inputSchema: {
+        equipmentId: equipmentIdSchema,
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false, idempotentHint: true },
+    },
+    async ({ equipmentId }) => {
+      const saved = await getOwnedGymEquipmentImage(principal.userId, equipmentId);
+      if (saved.kind === 'uploaded') {
+        const metadata = {
+          equipmentId,
+          image: {
+            kind: saved.kind,
+            mimeType: saved.mimeType,
+            updatedAt: saved.updatedAt,
+          },
+        };
+        return {
+          content: [
+            { type: 'text' as const, text: JSON.stringify(metadata, null, 2) },
+            {
+              type: 'image' as const,
+              data: Buffer.from(saved.bytes).toString('base64'),
+              mimeType: saved.mimeType,
+            },
+          ],
+          structuredContent: metadata,
+        };
+      }
+      return result({ equipmentId, image: saved });
+    },
+  );
+
+  server.registerTool(
+    'update_gym_free_weights',
+    {
+      title: 'Update gym free-weight inventory',
+      description:
+        'Replaces any supplied dumbbell, plate or bar lists in kg after the trainee confirms the inventory change. Omitted lists remain unchanged. The result includes the previous lists.',
+      inputSchema: {
+        confirmed: explicitConfirmation,
+        gymId: gymIdSchema.optional(),
+        dumbbellWeights: gymWeightListSchema.optional(),
+        plateWeights: gymWeightListSchema.optional(),
+        barWeights: gymWeightListSchema.optional(),
+      },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async ({ gymId, confirmed: _confirmed, ...patch }) => {
+      requireWrite(principal);
+      const { gym, previous } = await updateOwnedGymFreeWeights(principal.userId, gymId, patch);
+      return result({ ok: true, gym, previous });
+    },
+  );
+
+  server.registerTool(
+    'upsert_gym_equipment',
+    {
+      title: 'Add or update physical gym equipment',
+      description:
+        'Creates or updates a physical machine, station or accessory in a gym. Link exercise IDs to make those exercises available and apply machine/cable weight options. Without equipmentId, an item with the same name in the gym is overwritten; supplied fields and exercise links replace the saved ones. The result includes the previous values of the equipment item and its exercise links only, not the per-exercise gym configuration (availability and weight options) that the upsert also rewrites.',
+      inputSchema: {
+        confirmed: explicitConfirmation,
+        gymId: gymIdSchema,
+        equipmentId: equipmentIdSchema.optional(),
+        name: z.string().trim().min(1).max(120),
+        equipmentType: z.nativeEnum(EquipmentType),
+        description: z.string().trim().max(4000).nullable().optional(),
+        manufacturer: z.string().trim().max(120).nullable().optional(),
+        modelName: z.string().trim().max(120).nullable().optional(),
+        quantity: z.number().int().min(1).max(100).optional(),
+        weightOptions: gymWeightListSchema.optional(),
+        exerciseIds: z.array(databaseIdSchema).max(100).optional(),
+        markExercisesAvailable: z.boolean().optional(),
+      },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async ({ gymId, confirmed: _confirmed, ...input }) => {
+      requireWrite(principal);
+      const previous = await findOwnedGymEquipmentUpsertTarget(principal.userId, gymId, input);
+      const saved = await upsertOwnedGymEquipment(principal.userId, gymId, input).catch(
+        rethrowUniqueConflict,
+      );
+      return result({ ok: true, ...saved, previous });
+    },
+  );
+
+  server.registerTool(
+    'set_gym_equipment_image',
+    {
+      title: 'Set a gym-equipment image',
+      description:
+        'Sets or clears a physical equipment image after confirmation. Use exactly one of: clear, or JPEG/PNG/WebP base64 (raw with mimeType, or a data URL) stored in the GymCoach database. External image URLs are not accepted through MCP.',
+      inputSchema: {
+        confirmed: explicitConfirmation,
+        equipmentId: equipmentIdSchema,
+        clear: z.literal(true).optional(),
+        imageBase64: z.string().min(1).max(7_100_000).optional(),
+        mimeType: z.enum(GYM_EQUIPMENT_IMAGE_MIME_TYPES).optional(),
+      },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async ({ equipmentId, clear, imageBase64, mimeType }) => {
+      requireWrite(principal);
+      // Uploaded bytes or clear only: an external URL written by an agent would be
+      // handed back to every later MCP client, so that mode stays web-UI only.
+      if ((clear === true) === (imageBase64 != null)) {
+        throw new Error('Choose exactly one image action: clear or imageBase64.');
+      }
+      // Named fields, not the parsed input spread: the lib helper still accepts
+      // imageUrl for the web UI, and a field added to this schema later must not
+      // reach it by accident.
+      const equipment = await setOwnedGymEquipmentImage(principal.userId, equipmentId, {
+        clear,
+        imageBase64,
+        mimeType,
+      });
+      const image = gymEquipmentImageRef(equipment);
+      return result({ ok: true, equipment: { ...equipment, image } });
+    },
   );
 
   server.registerTool(
@@ -199,7 +402,7 @@ export function createGymCoachMcpServer({ principal, baseUrl }: ServerOptions): 
       description:
         'Finds owned historical sets (finished sessions only) that are missing a physical equipment assignment and returns linked equipment candidates plus prior-use evidence. This tool never writes data and suggestions are not user confirmation.',
       inputSchema: {
-        gymId: databaseIdSchema.optional(),
+        gymId: gymIdSchema.optional(),
         exerciseId: databaseIdSchema.optional(),
         from: isoDateOrDatetime
           .optional()
@@ -253,7 +456,7 @@ export function createGymCoachMcpServer({ principal, baseUrl }: ServerOptions): 
         'Assigns one explicitly confirmed owned gym/exercise/equipment mapping to an exact list of historical sets (finished sessions only) that are still unassigned. Returns an audit ID for safe undo; the ID stays recoverable later through list_historical_equipment_backfills.',
       inputSchema: {
         confirmed: explicitConfirmation,
-        gymId: databaseIdSchema,
+        gymId: gymIdSchema,
         exerciseId: databaseIdSchema,
         equipmentId: databaseIdSchema,
         setIds: z.array(z.string().cuid()).min(1).max(HISTORICAL_EQUIPMENT_BACKFILL_MAX_SETS),
