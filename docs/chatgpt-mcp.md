@@ -48,11 +48,20 @@ Read tools:
 
 - `get_training_context`
 - `list_exercises`
+- `list_gyms`
+- `get_gym_inventory` (shared free weights and physical equipment; per-exercise
+  coverage only with `includeExerciseCoverage: true`)
+- `get_gym_equipment_image`
 - `list_programs`
 - `get_program`
 
 Write tools:
 
+- `update_gym_free_weights` (replaces the supplied lists; returns the previous ones)
+- `upsert_gym_equipment` (overwrites an existing item's fields and exercise links;
+  returns the previous values)
+- `set_gym_equipment_image` (uploaded JPEG/PNG/WebP bytes or clear; external image
+  URLs are not accepted through MCP)
 - `create_program`
 - `update_program_metadata`
 - `add_workout` (append a session, cardio included, to an existing program)
