@@ -119,7 +119,9 @@ export async function previewHistoricalEquipmentBackfill(
           where: {
             gymEquipmentId: { not: null },
             exerciseId: { in: exerciseIds },
-            session: { userId, gymId: { in: gymIds } },
+            // Same rule as the gap query: only finished sessions count as
+            // history, so a set being logged right now is not evidence yet.
+            session: { userId, gymId: { in: gymIds }, finishedAt: { not: null } },
           },
           _count: { _all: true },
         })

@@ -118,6 +118,19 @@ describe('historical equipment backfill preview', () => {
       reason: 'MOST_USED_ASSIGNED_HISTORY',
     });
     expect(result.groups[0]?.suggestionIsConfirmation).toBe(false);
+    // The evidence behind the suggestion is historical too: finished sessions only.
+    expect(groupSets).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          gymEquipmentId: { not: null },
+          session: {
+            userId: 'user-1',
+            gymId: { in: ['gym-xfit'] },
+            finishedAt: { not: null },
+          },
+        }),
+      }),
+    );
   });
 
   it('only looks at finished sessions and never returns more sets than one apply accepts', async () => {
