@@ -88,6 +88,118 @@ describe('GymCoach MCP gym inventory', () => {
     );
   });
 
+  it('keeps image tools and free-weight writes inside the owner boundary', async () => {
+    const owner = await db.user.create({
+      data: { email: 'mcp-inventory-owner@test.dev', passwordHash: 'x' },
+    });
+    const intruder = await db.user.create({
+      data: { email: 'mcp-inventory-intruder@test.dev', passwordHash: 'x' },
+    });
+    const gym = await db.gym.create({
+      data: { userId: owner.id, name: 'Owner gym', dumbbellWeights: [10, 20] },
+    });
+    const equipment = await db.gymEquipment.create({
+      data: {
+        gymId: gym.id,
+        name: 'Owner press',
+        equipmentType: 'MACHINE',
+        imageData: new Uint8Array(PNG),
+        imageMimeType: 'image/png',
+      },
+    });
+    const client = await connect(intruder.id, true);
+
+    const foreignImageRead = await client.callTool({
+      name: 'get_gym_equipment_image',
+      arguments: { equipmentId: equipment.id },
+    });
+    expect(foreignImageRead.isError).toBe(true);
+    expect(JSON.stringify(foreignImageRead.content)).toContain('Gym equipment not found');
+    expect(JSON.stringify(foreignImageRead.content)).not.toContain(PNG.toString('base64'));
+
+    const foreignImageWrite = await client.callTool({
+      name: 'set_gym_equipment_image',
+      arguments: { confirmed: true, equipmentId: equipment.id, clear: true },
+    });
+    expect(foreignImageWrite.isError).toBe(true);
+    expect(JSON.stringify(foreignImageWrite.content)).toContain('Gym equipment not found');
+
+    const foreignWeights = await client.callTool({
+      name: 'update_gym_free_weights',
+      arguments: { confirmed: true, gymId: gym.id, dumbbellWeights: [99] },
+    });
+    expect(foreignWeights.isError).toBe(true);
+    expect(JSON.stringify(foreignWeights.content)).toContain('Gym not found');
+
+    expect(await db.gymEquipment.findUniqueOrThrow({ where: { id: equipment.id } })).toMatchObject({
+      imageMimeType: 'image/png',
+    });
+    expect((await db.gym.findUniqueOrThrow({ where: { id: gym.id } })).dumbbellWeights).toEqual([
+      10, 20,
+    ]);
+  });
+
+  it('refuses every gym write on a read-only token and without the confirmed literal', async () => {
+    const user = await db.user.create({
+      data: { email: 'mcp-inventory-gates@test.dev', passwordHash: 'x' },
+    });
+    const gym = await db.gym.create({
+      data: { userId: user.id, name: 'Gated gym', dumbbellWeights: [10, 20] },
+    });
+    const equipment = await db.gymEquipment.create({
+      data: {
+        gymId: gym.id,
+        name: 'Gated press',
+        equipmentType: 'MACHINE',
+        imageData: new Uint8Array(PNG),
+        imageMimeType: 'image/png',
+      },
+    });
+    const writes = [
+      { name: 'update_gym_free_weights', arguments: { gymId: gym.id, dumbbellWeights: [99] } },
+      {
+        name: 'upsert_gym_equipment',
+        arguments: { gymId: gym.id, name: 'New machine', equipmentType: 'MACHINE' },
+      },
+      { name: 'set_gym_equipment_image', arguments: { equipmentId: equipment.id, clear: true } },
+    ];
+    const expectUnchanged = async () => {
+      expect((await db.gym.findUniqueOrThrow({ where: { id: gym.id } })).dumbbellWeights).toEqual([
+        10, 20,
+      ]);
+      expect(await db.gymEquipment.count({ where: { gymId: gym.id } })).toBe(1);
+      expect(
+        await db.gymEquipment.findUniqueOrThrow({ where: { id: equipment.id } }),
+      ).toMatchObject({ imageMimeType: 'image/png' });
+    };
+
+    const readOnly = await connect(user.id, false);
+    for (const write of writes) {
+      const denied = await readOnly.callTool({
+        name: write.name,
+        arguments: { confirmed: true, ...write.arguments },
+      });
+      expect(denied.isError, write.name).toBe(true);
+      expect(JSON.stringify(denied.content), write.name).toContain('read-only');
+    }
+    await expectUnchanged();
+
+    // confirmed is the literal true, not a boolean: false and a missing value are
+    // both rejected by the tool schema before the handler runs.
+    const writable = await connect(user.id, true);
+    for (const write of writes) {
+      for (const confirmation of [{ confirmed: false }, {}]) {
+        const unconfirmed = await writable.callTool({
+          name: write.name,
+          arguments: { ...confirmation, ...write.arguments },
+        });
+        expect(unconfirmed.isError, write.name).toBe(true);
+        expect(JSON.stringify(unconfirmed.content), write.name).toContain('confirmed');
+      }
+    }
+    await expectUnchanged();
+  });
+
   it('accepts legacy non-cuid ids for gyms, equipment and exercises, like the REST routes', async () => {
     const user = await db.user.create({
       data: { email: 'mcp-inventory-legacy@test.dev', passwordHash: 'x' },
@@ -100,7 +212,7 @@ describe('GymCoach MCP gym inventory', () => {
         id: 'exercise_legacy_row',
         userId: user.id,
         name: 'Seated Row',
-        muscleGroup: 'BACK',
+        muscleGroup: 'BACK_THICKNESS',
         category: 'COMPOUND',
         equipmentType: 'MACHINE',
       },
@@ -171,7 +283,11 @@ describe('GymCoach MCP gym inventory', () => {
     });
     expect(reweighted.structuredContent).toMatchObject({
       gym: { dumbbellWeights: [12, 14], plateWeights: [1.25, 2.5, 20], barWeights: [20] },
-      previous: { dumbbellWeights: [10, 15.5, 19], plateWeights: [1.25, 2.5, 20], barWeights: [20] },
+      previous: {
+        dumbbellWeights: [10, 15.5, 19],
+        plateWeights: [1.25, 2.5, 20],
+        barWeights: [20],
+      },
     });
 
     const upserted = await client.callTool({
@@ -322,7 +438,7 @@ describe('GymCoach MCP gym inventory', () => {
         exerciseLinks: [expect.objectContaining({ id: exercise.id })],
       }),
     ]);
-    expect(inventoryData.gym.equipment[0].image).not.toHaveProperty('url');
+    expect(inventoryData.gym.equipment[0]?.image).not.toHaveProperty('url');
     // Per-exercise coverage is unbounded, so it is opt-in.
     expect(inventoryData.gym).not.toHaveProperty('exerciseCoverage');
 
