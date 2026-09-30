@@ -212,6 +212,12 @@ export function createGymCoachMcpServer({ principal, baseUrl }: ServerOptions): 
       result({
         discoveryRule:
           'Prefer one complete tools/list. If unavailable, call get_mcp_capability_index once, then use exact names. Stop repeated synonym probing.',
+        // Same flag requireWrite checks: the index is served to read-only
+        // connections too, and they must not plan around tools they cannot call.
+        writeAccess: principal.canWrite,
+        writeAccessNote: principal.canWrite
+          ? 'This connection can call the tools listed under "write". Each one still requires confirmed: true after the trainee agreed to the change.'
+          : 'This connection is read-only: every tool listed under "write" is refused. Do not plan around them; tell the trainee a write-enabled connection from Settings is needed for changes.',
         capabilities: MCP_CAPABILITY_INDEX,
       }),
   );

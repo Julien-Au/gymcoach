@@ -14,6 +14,8 @@ interface CapabilityGroup {
 }
 
 interface CapabilityIndexResult {
+  writeAccess: boolean;
+  writeAccessNote: string;
   capabilities: { allTools: string[] } & Record<string, CapabilityGroup>;
 }
 
@@ -117,6 +119,7 @@ describe('GymCoach MCP server', () => {
       capabilityText?.text ? JSON.parse(capabilityText.text) : null
     ) as CapabilityIndexResult | null;
     expect(capabilityResult).toMatchObject({
+      writeAccess: true,
       capabilities: {
         allTools: GYMCOACH_MCP_TOOL_NAMES,
         discovery: { tools: ['get_mcp_capability_index'] },
@@ -174,5 +177,28 @@ describe('GymCoach MCP server', () => {
 
     const instructions = await client.readResource({ uri: 'gymcoach://instructions/agent' });
     expect(instructions.contents[0]).toMatchObject({ text: GYMCOACH_MCP_INSTRUCTIONS });
+  });
+
+  it('tells a read-only connection that the write tools in the index are refused', async () => {
+    const server = createGymCoachMcpServer({
+      principal: { tokenId: 'token-2', userId: 'user-1', canWrite: false },
+      baseUrl: 'https://gymcoach.example',
+    });
+    const client = new Client({ name: 'gymcoach-test', version: '1.0.0' });
+    openServers.push(server);
+    openClients.push(client);
+
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await server.connect(serverTransport);
+    await client.connect(clientTransport);
+
+    const capabilityIndex = await client.callTool({ name: 'get_mcp_capability_index' });
+    expect(capabilityIndex.isError).toBeFalsy();
+    const structured = capabilityIndex.structuredContent as CapabilityIndexResult;
+    expect(structured.writeAccess).toBe(false);
+    expect(structured.writeAccessNote).toMatch(/read-only/);
+    // Same index either way: the flag, not a filtered list, carries the scope.
+    expect(structured.capabilities.allTools).toEqual(GYMCOACH_MCP_TOOL_NAMES);
+    expect(structured.capabilities.programs?.write).toContain('create_program');
   });
 });
