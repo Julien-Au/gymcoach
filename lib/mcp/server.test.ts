@@ -177,6 +177,12 @@ describe('GymCoach MCP server', () => {
 
     const instructions = await client.readResource({ uri: 'gymcoach://instructions/agent' });
     expect(instructions.contents[0]).toMatchObject({ text: GYMCOACH_MCP_INSTRUCTIONS });
+    // Write tools are no longer program-only: the rule must name every domain.
+    expect(GYMCOACH_MCP_INSTRUCTIONS).toMatch(
+      /Write tools \(programs, gym inventory, equipment history\) change saved data/,
+    );
+    expect(GYMCOACH_MCP_INSTRUCTIONS).not.toMatch(/Program-writing tools/);
+    expect(GYMCOACH_MCP_INSTRUCTIONS).toMatch(/call get_mcp_capability_index once/);
   });
 
   it('tells a read-only connection that the write tools in the index are refused', async () => {
