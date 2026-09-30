@@ -51,6 +51,8 @@ Prompts:
 
 Read tools:
 
+- `get_mcp_capability_index` (exact tool names grouped by task, for clients that
+  cannot list tools; also says whether the connection has write access)
 - `get_training_context`
 - `list_exercises`
 - `list_gyms`
@@ -68,7 +70,8 @@ Write tools:
 
 - `update_gym_free_weights` (replaces the supplied lists; returns the previous ones)
 - `upsert_gym_equipment` (overwrites an existing item's fields and exercise links;
-  returns the previous values)
+  returns the previous values of the item and its exercise links only, not the
+  per-exercise gym configuration it also rewrites)
 - `set_gym_equipment_image` (uploaded JPEG/PNG/WebP bytes or clear; external image
   URLs are not accepted through MCP)
 - `create_program`
