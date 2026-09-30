@@ -185,6 +185,22 @@ export const session = {
     chooseReps: 'Choose repetitions',
     applyValue: 'Apply value',
     repsShort: 'reps',
+    weightEditor: {
+      open: 'Edit equipment weights',
+      title: 'Edit {name} weights',
+      description:
+        'Update the discrete loads available on this equipment. Changes are saved to this gym, applied to the exercises linked to this equipment and used immediately in this workout.',
+      weights: 'Available weights ({unit})',
+      placeholder: '5; 7.5; 10; 12.5',
+      help: 'Separate weights with spaces, semicolons or new lines. A comma between two digits is read as a decimal separator (22,5 is 22.5).',
+      save: 'Save weights',
+      saved: 'Equipment weights updated.',
+      saveError: 'Could not update equipment weights.',
+      tooManyWeights: 'Enter at most 200 weights.',
+      empty: 'Enter at least one weight.',
+      invalidWeight: '“{token}” is not a valid weight.',
+      outOfRange: '“{token}” is outside the allowed range (0.1 to 5000 kg).',
+    },
     metrics: {
       open: 'Choose calculated columns',
       label: 'Calculated columns',

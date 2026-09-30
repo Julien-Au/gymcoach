@@ -18,8 +18,18 @@ type MenuProps = {
   }) => void;
 };
 type CardProps = { onOpenMenu?: () => void; menuDisabled?: boolean };
+type EquipmentOption = {
+  id: string;
+  name: string;
+  equipmentType: string;
+  weightOptions: number[];
+  exerciseLinks: { exerciseId: string }[];
+};
 type TableProps = {
   programExercise: { id: string };
+  equipmentOptions?: EquipmentOption[];
+  loadConstraints?: { weightOptions?: number[] } | null;
+  onEquipmentWeightsUpdated?: (equipment: EquipmentOption) => void;
   onSubmit: (values: Record<string, unknown>) => Promise<void>;
 };
 
@@ -153,12 +163,16 @@ function row(
 
 type RunnerProps = ComponentProps<typeof SessionRunner>;
 
-function runner(rows: Array<ProgramExercise & { exercise: Exercise }>, initial?: string) {
+function runner(
+  rows: Array<ProgramExercise & { exercise: Exercise }>,
+  initial?: string,
+  gym: unknown = null,
+) {
   const session = {
     id: 's1',
     workout: { id: 'w', name: 'Push', program: null, exercises: rows },
     sets: [],
-    gym: null,
+    gym,
   } as unknown as RunnerProps['session'];
   return (
     <SessionRunner
@@ -286,5 +300,61 @@ describe('SessionRunner superset transition', () => {
     );
     expect(screen.getByTestId('sets-table')).toHaveTextContent('pe-a2');
     expect(replaceState).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('SessionRunner live equipment weights', () => {
+  // A gym whose one machine is linked to the bench row, as the session page sends it.
+  function gym(weightOptions: number[], name = 'Chest Press') {
+    return {
+      id: 'g1',
+      name: 'Home',
+      dumbbellWeights: [],
+      plateWeights: [],
+      barWeights: [],
+      exerciseConfigs: [{ exerciseId: 'bench', isAvailable: true, weightOptions }],
+      equipment: [
+        {
+          id: 'm1',
+          name,
+          equipmentType: 'MACHINE',
+          weightOptions,
+          exerciseLinks: [{ exerciseId: 'bench' }],
+        },
+      ],
+    };
+  }
+
+  it('shows a weight edit at once, keeps it across re-renders and follows the server after a refresh', async () => {
+    const element = runner([row('bench', 1)], undefined, gym([20, 40]));
+    const view = await renderRunner(element);
+    expect(table().equipmentOptions).toEqual([
+      expect.objectContaining({ id: 'm1', weightOptions: [20, 40] }),
+    ]);
+    expect(table().loadConstraints?.weightOptions).toEqual([20, 40]);
+
+    act(() => {
+      table().onEquipmentWeightsUpdated?.({
+        id: 'm1',
+        name: 'Chest Press',
+        equipmentType: 'MACHINE',
+        weightOptions: [25, 50],
+        exerciseLinks: [{ exerciseId: 'bench' }],
+      });
+    });
+    expect(table().equipmentOptions?.[0]?.weightOptions).toEqual([25, 50]);
+    expect(table().loadConstraints?.weightOptions).toEqual([25, 50]);
+
+    // Same props, new render: the edit is still shown.
+    view.rerender(element);
+    expect(table().equipmentOptions?.[0]?.weightOptions).toEqual([25, 50]);
+    expect(table().loadConstraints?.weightOptions).toEqual([25, 50]);
+
+    // router.refresh delivers a new server snapshot: it wins over the local copy.
+    view.rerender(runner([row('bench', 1)], undefined, gym([30, 60], 'Chest Press v2')));
+    expect(table().equipmentOptions).toEqual([
+      expect.objectContaining({ id: 'm1', name: 'Chest Press v2', weightOptions: [30, 60] }),
+    ]);
+    expect(table().loadConstraints?.weightOptions).toEqual([30, 60]);
   });
 });

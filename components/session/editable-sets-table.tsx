@@ -6,6 +6,10 @@ import { useLocale, useTranslations } from 'next-intl';
 import type { Exercise, ProgramExercise, WeightUnit } from '@/lib/prisma-client';
 import type { PendingSet } from '@/lib/indexeddb';
 import type { SerializedLastPerformance } from '@/components/session/session-runner';
+import {
+  LiveEquipmentWeightEditor,
+  type LiveEquipmentOption,
+} from '@/components/session/live-equipment-weight-editor';
 import type { IntraSetRecommendation } from '@/lib/intra-set-autoregulation';
 import type { GymLoadConstraints } from '@/lib/gym-loads';
 import { constrainGymWeight, gymWeightOptions } from '@/lib/gym-loads';
@@ -47,7 +51,8 @@ interface Props {
   unit: WeightUnit;
   recommendation?: IntraSetRecommendation | null;
   loadConstraints?: GymLoadConstraints | null;
-  equipmentOptions?: { id: string; name: string }[];
+  gymId?: string | null;
+  equipmentOptions?: LiveEquipmentOption[];
   priorSets?: { weight: number; reps: number }[];
   disabled?: boolean;
   onSubmit: (values: {
@@ -61,6 +66,7 @@ interface Props {
     notes: null;
     gymEquipmentId?: string | null;
   }) => Promise<void>;
+  onEquipmentWeightsUpdated?: (equipment: LiveEquipmentOption) => void;
   onDeleteSet: (set: PendingSet) => Promise<boolean | void> | boolean | void;
   onUpdateSet: (set: PendingSet, values: DraftSet) => Promise<void>;
 }
@@ -80,6 +86,21 @@ function metricValue(metric: SetTableMetric, draft: DraftSet): number {
   return metric === '10RM'
     ? estimateRepMax(draft.weight, draft.reps, 10)
     : estimate1RM(draft.weight, draft.reps);
+}
+
+// Machines, cables and "other" items carry their own discrete loads: on those
+// the physical item, not the exercise's gym configuration, decides which
+// weights exist. Free-weight items keep the exercise's own constraints.
+function equipmentLoadConstraints(
+  base: GymLoadConstraints | null,
+  equipment: LiveEquipmentOption | undefined,
+): GymLoadConstraints | null {
+  if (!equipment || !['MACHINE', 'CABLE', 'OTHER'].includes(equipment.equipmentType)) return base;
+  return {
+    ...(base ?? {}),
+    equipmentType: equipment.equipmentType,
+    weightOptions: equipment.weightOptions,
+  };
 }
 
 function initialDraft(
@@ -135,10 +156,12 @@ export function EditableSetsTable({
   unit,
   recommendation = null,
   loadConstraints = null,
+  gymId = null,
   equipmentOptions = [],
   priorSets = [],
   disabled = false,
   onSubmit,
+  onEquipmentWeightsUpdated,
   onDeleteSet,
   onUpdateSet,
 }: Props) {
@@ -155,6 +178,7 @@ export function EditableSetsTable({
   const [picker, setPicker] = useState<'weight' | 'reps' | null>(null);
   const [appliedRecommendationKey, setAppliedRecommendationKey] = useState<string | null>(null);
   const [gymEquipmentId, setGymEquipmentId] = useState('');
+  const [weightEditorOpen, setWeightEditorOpen] = useState(false);
   const workingSets = useMemo(() => sets.filter((set) => !set.isWarmup), [sets]);
   const latestWorkingSetId = workingSets.at(-1)?.localId ?? null;
   // The exercise strip lets the lifter jump between exercises mid-entry. An
@@ -250,6 +274,38 @@ export function EditableSetsTable({
     }
   }, [equipmentOptions, gymEquipmentId]);
 
+  const selectedEquipment = equipmentOptions.find((equipment) => equipment.id === gymEquipmentId);
+  const usesSelectedEquipmentWeights =
+    selectedEquipment != null &&
+    ['MACHINE', 'CABLE', 'OTHER'].includes(selectedEquipment.equipmentType);
+  const canEditSelectedEquipment = gymId != null && usesSelectedEquipmentWeights;
+  const effectiveLoadConstraints = useMemo(
+    () => equipmentLoadConstraints(loadConstraints, selectedEquipment),
+    [loadConstraints, selectedEquipment],
+  );
+  // A logged set is constrained by the equipment it was logged on, which is
+  // not necessarily the one currently selected for the next set.
+  function loadConstraintsForSet(set: PendingSet): GymLoadConstraints | null {
+    return equipmentLoadConstraints(
+      loadConstraints,
+      equipmentOptions.find((equipment) => equipment.id === set.gymEquipmentId),
+    );
+  }
+  // The picker edits either a logged row or the next set: its options and its
+  // plate preview follow the equipment of the row it was opened for.
+  const editedSet = editingSet?.set ?? null;
+  const pickerLoadConstraints = useMemo(
+    () =>
+      editedSet
+        ? equipmentLoadConstraints(
+            loadConstraints,
+            equipmentOptions.find((equipment) => equipment.id === editedSet.gymEquipmentId),
+          )
+        : effectiveLoadConstraints,
+    [editedSet, effectiveLoadConstraints, equipmentOptions, loadConstraints],
+  );
+  const pickerReferenceWeight = editingSet?.draft.weight ?? draft.weight;
+
   const currentNumber = workingSets.length + 1;
   const totalRows = Math.max(programExercise.targetSets, currentNumber);
   // Same formatting as the confirmed rows, so a picked value reads identically
@@ -262,11 +318,11 @@ export function EditableSetsTable({
   });
   const gridColumns = metrics.length > 1 ? DUAL_METRIC_GRID_COLUMNS : SINGLE_METRIC_GRID_COLUMNS;
   const availableWeights = useMemo(() => {
-    const constrained = gymWeightOptions(loadConstraints, draft.weight);
+    const constrained = gymWeightOptions(pickerLoadConstraints, pickerReferenceWeight);
     if (constrained.length > 0) return constrained;
     const step = programExercise.exercise.category === 'ISOLATION' ? 1 : 2.5;
     return Array.from({ length: 81 }, (_, index) => +(index * step).toFixed(2));
-  }, [draft.weight, loadConstraints, programExercise.exercise.category]);
+  }, [pickerLoadConstraints, pickerReferenceWeight, programExercise.exercise.category]);
   const repOptions = useMemo(() => Array.from({ length: 30 }, (_, index) => index + 1), []);
   const weightPickerOptions = useMemo(
     () =>
@@ -325,10 +381,19 @@ export function EditableSetsTable({
   async function persistEditedSet(set: PendingSet, nextDraft: DraftSet) {
     if (disabled || updatingSetId === set.localId || nextDraft.reps <= 0 || nextDraft.weight < 0)
       return;
-    const normalized = {
-      ...nextDraft,
-      weight: constrainGymWeight(nextDraft.weight, nextDraft.weight, loadConstraints),
-    };
+    // Only a weight the lifter actually changed is snapped, and against the
+    // set's own equipment. An edit of reps or RIR leaves the stored weight as is.
+    const normalized =
+      nextDraft.weight === set.weight
+        ? nextDraft
+        : {
+            ...nextDraft,
+            weight: constrainGymWeight(
+              nextDraft.weight,
+              nextDraft.weight,
+              loadConstraintsForSet(set),
+            ),
+          };
     setEditingSet({ set, draft: normalized });
     setUpdatingSetId(set.localId);
     try {
@@ -354,7 +419,7 @@ export function EditableSetsTable({
     setSubmitting(true);
     try {
       await onSubmit({
-        weight: constrainGymWeight(draft.weight, draft.weight, loadConstraints),
+        weight: constrainGymWeight(draft.weight, draft.weight, effectiveLoadConstraints),
         reps: draft.reps,
         rir: draft.rir,
         durationSec: null,
@@ -379,24 +444,50 @@ export function EditableSetsTable({
           >
             {inputT('equipment')}
           </label>
-          <Select
-            value={gymEquipmentId || 'none'}
-            disabled={disabled}
-            onValueChange={(value) => setGymEquipmentId(value === 'none' ? '' : value)}
-          >
-            <SelectTrigger id="inline-gym-equipment" className="h-10">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">{inputT('equipmentNone')}</SelectItem>
-              {equipmentOptions.map((equipment) => (
-                <SelectItem key={equipment.id} value={equipment.id}>
-                  {equipment.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex gap-2">
+            <Select
+              value={gymEquipmentId || 'none'}
+              disabled={disabled}
+              onValueChange={(value) => setGymEquipmentId(value === 'none' ? '' : value)}
+            >
+              <SelectTrigger id="inline-gym-equipment" className="h-10 flex-1">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">{inputT('equipmentNone')}</SelectItem>
+                {equipmentOptions.map((equipment) => (
+                  <SelectItem key={equipment.id} value={equipment.id}>
+                    {equipment.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {canEditSelectedEquipment && (
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                disabled={disabled}
+                onClick={() => setWeightEditorOpen(true)}
+                aria-label={t('weightEditor.open')}
+                title={t('weightEditor.open')}
+                className="size-10 shrink-0"
+              >
+                <Pencil className="size-4" />
+              </Button>
+            )}
+          </div>
         </div>
+      )}
+      {gymId && selectedEquipment && canEditSelectedEquipment && (
+        <LiveEquipmentWeightEditor
+          open={weightEditorOpen}
+          gymId={gymId}
+          equipment={selectedEquipment}
+          unit={unit}
+          onOpenChange={setWeightEditorOpen}
+          onSaved={(equipment) => onEquipmentWeightsUpdated?.(equipment)}
+        />
       )}
       <div data-testid="editable-sets-scroll" className="overflow-x-auto overscroll-x-contain">
         <div data-testid="editable-sets-grid" className="min-w-[31rem]">
@@ -695,7 +786,7 @@ export function EditableSetsTable({
         canonicalValue={picker === 'reps' ? undefined : (editingSet?.draft.weight ?? draft.weight)}
         options={picker === 'reps' ? repPickerOptions : weightPickerOptions}
         unit={unit}
-        loadConstraints={loadConstraints}
+        loadConstraints={pickerLoadConstraints}
         onClose={() => setPicker(null)}
         onChoose={chooseValue}
       />
