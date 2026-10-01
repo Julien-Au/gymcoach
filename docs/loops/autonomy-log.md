@@ -6,6 +6,38 @@ by the charter in [`07-autonomy.md`](07-autonomy.md).
 
 ---
 
+## 2026-10-01 - First PR from @Retsumdk (#385, closes #348): unvetted tier, merged under operator authorization
+
+**Context.** A new external contributor opened #385 against the `good first issue` #348
+(OTHER-typed exercises silently inherited a linked item's weight stack). Unvetted tier, so
+the execution gate applied in full: nothing from the branch ran on the host, CI was the only
+executor. CI sat in `action_required` (GitHub's first-contributor approval); the loop
+approved the run, which is the designated sandbox.
+
+**Passes.** Pass 1: 3 files (`lib/gym-equipment.ts`, `lib/gym-loads.ts`, its test), no
+hard-block path, head pinned at `6983952`. Pass 2: four independent lenses (backdoor /
+egress, test-weakening, correctness and conventions, threat model), each handed the concrete
+questions the diff raised (does the `exercises` select carry `equipmentType`, which
+integration fixtures omit a type and therefore default to OTHER, what does the
+`equipmentTypeChanged ? []` branch do per transition). Unanimous: no blocker. Lens (b)
+verified the contributor's claim that every integration fixture through the sync path pairs
+matching types. Lens (c) found the one real MINOR: the type-change wipe now fires for
+exercises the stack never applied to. Pass 3: all five CI jobs green on the pinned SHA.
+
+**Merge.** The operator authorized the merge in session ("if it helps, merge it"), as for
+#341-#343; squash pinned with `gh api -X PUT .../merge -f sha=` so authorship is kept.
+Verdict posted as a PR comment; the four MINORs went to maintainer follow-up #386 per the
+bounded-rounds rule (**L34**), not to a fixup round on the fork. README thanks and
+CHANGELOG credit in this PR.
+
+**Challenged.** Nothing non-unanimous. The contributor's "no backfill of existing rows"
+decision was accepted as stated and parked in #386 rather than asked of them.
+
+**One metric.** 1 external PR, 1 merged, 0 host executions of contributor code, 4 lenses,
+1 follow-up issue.
+
+---
+
 ## 2026-06-16 - Three display-only slices: exercise cue in the logger, weekly frequency, e1RM loading table (#224/#225/#226)
 
 **Context.** Maintainer tick, three additive DISPLAY-ONLY product slices, serialized by ascending
