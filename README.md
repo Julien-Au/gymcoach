@@ -453,6 +453,10 @@ Notable changes are tracked in the [CHANGELOG](CHANGELOG.md).
   (#364), in-session exercise actions (#363), in-session equipment weight
   editing (#365), and three MCP additions: the audited equipment backfill
   (#362), the gym inventory tools (#368) and the capability index (#369).
+- [@Retsumdk](https://github.com/Retsumdk) - fixed the silent weight-stack
+  inheritance of OTHER-typed exercises linked to a machine or cable item
+  (#385), a clean first contribution with a precise write-up of what it does
+  not touch.
 - [@shaurya703](https://github.com/shaurya703) - picked up three of the loop's
   own follow-up issues within hours of their filing and turned each into a
   clean PR, including the persisted dropped-equipment notice (#342).

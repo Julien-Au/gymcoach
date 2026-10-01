@@ -486,6 +486,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A gym equipment item's weight stack is no longer copied onto every linked
+  exercise regardless of the exercise's own equipment type. OTHER is the
+  default exercise type, so an AI-generated or imported exercise linked to a
+  cable or machine item silently inherited its stack and the session stepper
+  then snapped to stack values. The copy is now gated on the exercise's type
+  (`itemStackAppliesToExercise`): machine and cable exercises inherit, OTHER
+  inherits only from an OTHER item, self-loading types never do. Already
+  saved options are left alone. Community contribution by @Retsumdk (#385);
+  review follow-ups are tracked in #386.
 - Installed PWA clients no longer serve a stale bundle after a deploy: when a
   replacement service worker takes over, the open tab reloads onto the new
   version instead of waiting for the app to be closed and reopened. The reload
