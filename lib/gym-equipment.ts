@@ -2,6 +2,7 @@ import { Buffer } from 'node:buffer';
 import { ApiError } from '@/lib/api';
 import { db } from '@/lib/db';
 import { getExerciseMedia } from '@/lib/exercise-media';
+import { itemStackAppliesToExercise } from '@/lib/gym-loads';
 import type { EquipmentType } from '@/lib/prisma-client';
 
 export const GYM_EQUIPMENT_IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
@@ -376,8 +377,14 @@ export async function upsertOwnedGymEquipment(
     // directly, while current upstream screens immediately see linked exercises
     // as available and retain their machine/cable load options.
     if (input.markExercisesAvailable !== false && shouldSyncExerciseConfigs) {
-      const useItemWeights = ['MACHINE', 'CABLE', 'OTHER'].includes(input.equipmentType);
       for (const exercise of exercises) {
+        // The item's stack is copied onto the exercise only when the two are
+        // compatible, so an OTHER exercise linked to a machine or cable item
+        // keeps its own load options instead of inheriting the item's stack.
+        const useItemWeights = itemStackAppliesToExercise(
+          exercise.equipmentType,
+          input.equipmentType,
+        );
         await tx.gymExerciseConfig.upsert({
           where: { gymId_exerciseId: { gymId, exerciseId: exercise.id } },
           update: {
