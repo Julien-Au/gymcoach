@@ -1,0 +1,75 @@
+# ============================================================
+# GymCoach - self-host in one command
+# ============================================================
+# Runs the prebuilt image from GHCR (no clone, no build) next to Postgres.
+# Migrations are applied on every start (a no-op when there is nothing new).
+#
+#   mkdir gymcoach && cd gymcoach
+#   curl -fsSLo docker-compose.yml \
+#     https://raw.githubusercontent.com/Julien-Au/gymcoach/main/docker-compose.selfhost.yml
+#   printf 'JWT_SECRET=%s\nPOSTGRES_PASSWORD=%s\n' \
+#     "$(openssl rand -base64 48)" "$(openssl rand -hex 16)" > .env
+#   docker compose up -d
+#
+# Then open http://localhost:3000 and create your account.
+#
+# Optional settings go in the same .env file:
+#   GYMCOACH_PORT=3000              host port
+#   SESSION_COOKIE_SECURE=false     needed to log in over plain HTTP from another
+#                                   machine (e.g. http://192.168.1.10:3000);
+#                                   keep the default behind an HTTPS proxy
+#   NEXTAUTH_URL=https://gym.example.com   your public URL
+#   LLM_PROVIDER=anthropic | openrouter | demo
+#   ANTHROPIC_API_KEY=...  or  OPENROUTER_API_KEY=... + OPENROUTER_MODEL=...
+# Without an AI key GymCoach is a plain tracker; the coach screens say so.
+#
+# Back up the two named volumes: the database and the uploaded photos.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: gymcoach
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: gymcoach
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U gymcoach -d gymcoach']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    image: ghcr.io/julien-au/gymcoach:latest
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://gymcoach:${POSTGRES_PASSWORD}@db:5432/gymcoach
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env (openssl rand -base64 48)}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-}
+      LLM_PROVIDER: ${LLM_PROVIDER:-anthropic}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-}
+      OPENROUTER_APP_NAME: GymCoach
+      MCP_PUBLIC_URL: ${MCP_PUBLIC_URL:-}
+      NODE_ENV: production
+      UPLOADS_DIR: /app/uploads
+    volumes:
+      - uploads:/app/uploads
+    # The Prisma CLI is invoked through its bundle: the .bin shim loses its
+    # .wasm files when the image COPY dereferences the symlink.
+    command: >
+      sh -c "node node_modules/prisma/build/index.js migrate deploy && node server.js"
+    ports:
+      - '${GYMCOACH_PORT:-3000}:3000'
+
+volumes:
+  postgres-data:
+  uploads:

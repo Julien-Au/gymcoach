@@ -1,10 +1,10 @@
 # ============================================================
 # GymCoach - Dockerfile production multi-stage
 # ============================================================
-# Stages : deps -> builder -> prod-deps -> runner
-# Utilise `output: 'standalone'` de next.config.js, complete par un node_modules
-# de production complet (le client Prisma 7 + sa CLI de migration tirent une
-# fermeture de dependances que le tracing standalone ne capture pas).
+# Stages: deps -> builder -> prod-deps -> runner
+# Uses `output: 'standalone'` from next.config.js, completed by a full production
+# node_modules (the Prisma 7 client and its migration CLI pull a dependency
+# closure that standalone tracing does not capture).
 
 # ---- Stage 1: deps (full install for the build) ----
 FROM node:22-alpine AS deps
@@ -32,7 +32,7 @@ ENV NEXT_PUBLIC_DEMO_MODE=$NEXT_PUBLIC_DEMO_MODE \
     NEXT_PUBLIC_DEMO_EMAIL=$NEXT_PUBLIC_DEMO_EMAIL \
     NEXT_PUBLIC_DEMO_PASSWORD=$NEXT_PUBLIC_DEMO_PASSWORD
 
-# Generation du client Prisma puis build Next.js
+# Generate the Prisma client, then build Next.js
 RUN npx prisma generate
 RUN npm run build
 
@@ -58,7 +58,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# User non-root pour la securite
+# Non-root user, for security
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
