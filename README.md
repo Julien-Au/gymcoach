@@ -8,11 +8,11 @@ Log every set, see what is working, and get weekly coaching from Claude or any
 OpenRouter model - on your own server, with your own key. Free, open source, no
 subscription.
 
-[![GitHub stars](https://img.shields.io/github/stars/Julien-Au/gymcoach?style=for-the-badge&logo=github&color=24292f)](https://github.com/Julien-Au/gymcoach/stargazers)
-[![Release](https://img.shields.io/github/v/release/Julien-Au/gymcoach?style=for-the-badge&color=2563eb)](https://github.com/Julien-Au/gymcoach/releases)
+[![GitHub stars](https://img.shields.io/github/stars/gymcoach-app/gymcoach?style=for-the-badge&logo=github&color=24292f)](https://github.com/gymcoach-app/gymcoach/stargazers)
+[![Release](https://img.shields.io/github/v/release/gymcoach-app/gymcoach?style=for-the-badge&color=2563eb)](https://github.com/gymcoach-app/gymcoach/releases)
 [![Docker image](https://img.shields.io/badge/docker-ghcr.io-0db7ed?style=for-the-badge&logo=docker&logoColor=white)](#self-host-in-one-minute)
 
-[![CI](https://github.com/Julien-Au/gymcoach/actions/workflows/ci.yml/badge.svg)](https://github.com/Julien-Au/gymcoach/actions/workflows/ci.yml)
+[![CI](https://github.com/gymcoach-app/gymcoach/actions/workflows/ci.yml/badge.svg)](https://github.com/gymcoach-app/gymcoach/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
@@ -24,10 +24,10 @@ subscription.
 </div>
 
 <p align="center">
-  <video src="https://github.com/Julien-Au/gymcoach/raw/main/docs/brag-launch.mp4" poster="docs/brag-poster.jpg" controls muted loop playsinline width="720"></video>
+  <video src="https://github.com/gymcoach-app/gymcoach/raw/main/docs/brag-launch.mp4" poster="docs/brag-poster.jpg" controls muted loop playsinline width="720"></video>
 </p>
 <p align="center">
-  <a href="https://github.com/Julien-Au/gymcoach/raw/main/docs/brag-launch.mp4"><b>▶ Watch the 20-second launch video</b></a>
+  <a href="https://github.com/gymcoach-app/gymcoach/raw/main/docs/brag-launch.mp4"><b>▶ Watch the 20-second launch video</b></a>
   &nbsp;&middot;&nbsp; an AI coach, built by an AI
 </p>
 
@@ -69,7 +69,7 @@ migrations run on start.
 ```bash
 mkdir gymcoach && cd gymcoach
 curl -fsSLo docker-compose.yml \
-  https://raw.githubusercontent.com/Julien-Au/gymcoach/main/docker-compose.selfhost.yml
+  https://raw.githubusercontent.com/gymcoach-app/gymcoach/main/docker-compose.selfhost.yml
 printf 'JWT_SECRET=%s\nPOSTGRES_PASSWORD=%s\n' \
   "$(openssl rand -base64 48)" "$(openssl rand -hex 16)" > .env
 docker compose up -d
@@ -410,12 +410,17 @@ GHCR, so you can pull instead of building on your own hardware, and registry
 watchers (Watchtower, Diun) have digests to compare (a commit whose CI fails
 is never published):
 
-- `ghcr.io/julien-au/gymcoach:latest` - moving tag, follows `main`
-- `ghcr.io/julien-au/gymcoach:sha-<short>` - immutable, one per commit
+- `ghcr.io/gymcoach-app/gymcoach:latest` - moving tag, follows `main`
+- `ghcr.io/gymcoach-app/gymcoach:sha-<short>` - immutable, one per commit
+
+The project moved to the `gymcoach-app` organization on 2026-10-05. Images
+published before that live at `ghcr.io/julien-au/gymcoach` and no longer
+receive updates: point an existing install at `ghcr.io/gymcoach-app/gymcoach`
+(nothing else changes, your volumes are kept).
 
 `docker-compose.selfhost.yml` uses it out of the box. With
 `docker-compose.prod.yml`, replace the `build:` block of the `app` service with
-`image: ghcr.io/julien-au/gymcoach:latest` (that file keeps `build:` as its
+`image: ghcr.io/gymcoach-app/gymcoach:latest` (that file keeps `build:` as its
 default so existing setups and forks keep working unchanged).
 
 ### Deploying a public demo instance
