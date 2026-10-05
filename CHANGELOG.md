@@ -7,8 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-05
+
+First tagged release: everything shipped since the open-source bootstrap on
+2026-05-26.
+
 ### Added
 
+- One-command self-hosting: `docker-compose.selfhost.yml` runs the prebuilt
+  GHCR image next to Postgres and applies migrations on start, so a new
+  instance needs no clone and no build. The README leads with it.
 - In-session exercise actions: the exercise card of a live session has an
   actions menu to replace the current exercise with another one from the same
   muscle group, add an exercise, or remove one, without leaving the session.
@@ -621,4 +629,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Session cookies are now `Secure` by default in production; self-hosting over
   plain HTTP requires an explicit `SESSION_COOKIE_SECURE=false` opt-out.
 
-[Unreleased]: https://github.com/Julien-Au/gymcoach/commits/main
+[Unreleased]: https://github.com/Julien-Au/gymcoach/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/Julien-Au/gymcoach/releases/tag/v1.0.0

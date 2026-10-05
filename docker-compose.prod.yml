@@ -1,11 +1,12 @@
 # ============================================================
 # GymCoach - Compose PROD
 # ============================================================
-# Stack complète : Next.js + Postgres.
-# Nginx reverse proxy + Certbot HTTPS sont déjà en place sur le VPS,
-# donc l'app expose seulement 127.0.0.1:3000 (proxypass Nginx).
+# Full stack built from source: Next.js + Postgres.
+# Meant to sit behind an HTTPS reverse proxy (Nginx, Caddy, Traefik), so the
+# app only listens on 127.0.0.1. For the prebuilt image, see
+# docker-compose.selfhost.yml instead.
 #
-# Usage :
+# Usage:
 #   docker compose -f docker-compose.prod.yml up -d --build
 
 services:
@@ -60,15 +61,15 @@ services:
       UPLOADS_DIR: /app/uploads
     volumes:
       - uploads:/app/uploads
-    # Applique les migrations Prisma puis lance Next.js standalone.
-    # `migrate deploy` est idempotent : sans nouvelle migration, c'est un no-op.
-    # On invoque le bundle Prisma directement (le shim .bin perd ses .wasm
-    # quand COPY déréférence le symlink).
+    # Applies the Prisma migrations, then starts the Next.js standalone server.
+    # `migrate deploy` is idempotent: with no new migration it is a no-op.
+    # The Prisma bundle is invoked directly (the .bin shim loses its .wasm
+    # files when COPY dereferences the symlink).
     command: >
       sh -c "node node_modules/prisma/build/index.js migrate deploy && node server.js"
     ports:
-      # Bind local uniquement, Nginx fait le reverse proxy en frontal.
-      # Port hôte 3010 (3000 est pris par lead-radar sur le VPS partagé).
+      # Loopback only: the reverse proxy in front terminates HTTPS.
+      # Host port 3010 (3000 is taken on the shared host this file came from).
       - '127.0.0.1:3010:3000'
 
   # Run-once demo seeder (public demo only): resets the demo account to the

@@ -1,16 +1,27 @@
+<div align="center">
+
 # GymCoach
 
-Open source, self hosted training tracker with a built in AI coach. Log your sessions, track your progress, and get evidence based weekly debriefs and program suggestions from the LLM of your choice (Anthropic Claude or any OpenRouter model).
+**The self-hosted workout tracker with an AI coach that actually knows your training.**
+
+Log every set, see what is working, and get weekly coaching from Claude or any
+OpenRouter model - on your own server, with your own key. Free, open source, no
+subscription.
+
+[![GitHub stars](https://img.shields.io/github/stars/Julien-Au/gymcoach?style=for-the-badge&logo=github&color=24292f)](https://github.com/Julien-Au/gymcoach/stargazers)
+[![Release](https://img.shields.io/github/v/release/Julien-Au/gymcoach?style=for-the-badge&color=2563eb)](https://github.com/Julien-Au/gymcoach/releases)
+[![Docker image](https://img.shields.io/badge/docker-ghcr.io-0db7ed?style=for-the-badge&logo=docker&logoColor=white)](#self-host-in-one-minute)
 
 [![CI](https://github.com/Julien-Au/gymcoach/actions/workflows/ci.yml/badge.svg)](https://github.com/Julien-Au/gymcoach/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
-[![Built with Next.js](https://img.shields.io/badge/Next.js-15-black.svg)](https://nextjs.org)
 
-<p align="center">
-  <a href="https://demo-gymcoach.mesureprivee.com"><b>▶ Try the live demo</b></a>
-  &nbsp;&middot;&nbsp; login <code>demo@gymcoach.app</code> / <code>gymcoachdemo</code>
-</p>
+[**▶ Live demo**](https://demo-gymcoach.mesureprivee.com) (login `demo@gymcoach.app` / `gymcoachdemo`) ·
+[Self-host in one minute](#self-host-in-one-minute) ·
+[Features](#features) ·
+[How this repo maintains itself](#this-repo-largely-maintains-itself)
+
+</div>
 
 <p align="center">
   <video src="https://github.com/Julien-Au/gymcoach/raw/main/docs/brag-launch.mp4" poster="docs/brag-poster.jpg" controls muted loop playsinline width="720"></video>
@@ -20,26 +31,61 @@ Open source, self hosted training tracker with a built in AI coach. Log your ses
   &nbsp;&middot;&nbsp; an AI coach, built by an AI
 </p>
 
-<p align="center">
-  <img src="docs/screenshots/session.gif" width="280" alt="Logging a session in GymCoach" />
-</p>
+<table align="center">
+<tr>
+<td align="center"><img src="docs/screenshots/session.gif" width="200" alt="Logging a session"><br><sub><b>Fast logging</b> · offline-first</sub></td>
+<td align="center"><img src="docs/screenshots/home.png" width="200" alt="Dashboard"><br><sub><b>Dashboard</b> · the one signal that matters today</sub></td>
+<td align="center"><img src="docs/screenshots/progress.png" width="200" alt="Progress charts"><br><sub><b>Progress</b> · e1RM, volume, muscle map</sub></td>
+<td align="center"><img src="docs/screenshots/program-generator.png" width="200" alt="AI program generator"><br><sub><b>AI programs</b> · from one sentence</sub></td>
+</tr>
+</table>
 
-<p align="center">
-  <img src="docs/screenshots/home.png" width="23%" alt="Dashboard" />
-  <img src="docs/screenshots/progress.png" width="23%" alt="Progress charts" />
-  <img src="docs/screenshots/program-generator.png" width="23%" alt="AI program generator" />
-  <img src="docs/screenshots/catalog.png" width="23%" alt="Exercise catalog" />
-</p>
+## Why GymCoach
 
-> Why GymCoach? It is the only workout tracker you self-host that brings your
-> own LLM. Log your training, see your progress, and get a coach that actually
-> knows your data: weekly debriefs, a streaming chat, and full programs
-> generated from a sentence. Your data stays in your database; the AI runs on
-> your Anthropic or OpenRouter key.
+Looking for a self-hosted alternative to Strong, Hevy or Fitbod? GymCoach is a
+complete training tracker you run yourself, plus something self-hosted trackers
+rarely have: an AI coach grounded in your own numbers, running on the LLM key
+you choose.
 
-> Status: actively developed. Multi-user, provider-agnostic (Anthropic or
-> OpenRouter), with a unit / integration / E2E test suite and deep AI
-> integration.
+|                                                            | GymCoach | Typical cloud app | Typical self-hosted tracker |
+| ---------------------------------------------------------- | :------: | :---------------: | :-------------------------: |
+| Your data in your own database                             |    ✅    |        ❌         |             ✅              |
+| AI coach that reads your sessions and explains why         |    ✅    |  💰 subscription  |             ❌              |
+| Established programs as written (5/3/1, GZCLP, nSuns, PPL) |    ✅    |      partial      |           partial           |
+| Cardio from watch files (FIT, TCX, GPX), no cloud account  |    ✅    |        ❌         |             ❌              |
+| Offline-first logging, installable (PWA)                   |    ✅    |        ✅         |           varies            |
+| Full export, nothing paywalled                             |    ✅    |      varies       |             ✅              |
+| ChatGPT / MCP connector                                    |    ✅    |        ❌         |             ❌              |
+
+With no AI key set, GymCoach is still a clean, fast tracker. Add a key later to
+turn on the coach, the chat and program generation.
+
+## Self-host in one minute
+
+All you need is Docker on an x86_64 host (arm64 images are tracked in #411).
+The prebuilt image is pulled from GHCR, so there is no clone and no build;
+migrations run on start.
+
+```bash
+mkdir gymcoach && cd gymcoach
+curl -fsSLo docker-compose.yml \
+  https://raw.githubusercontent.com/Julien-Au/gymcoach/main/docker-compose.selfhost.yml
+printf 'JWT_SECRET=%s\nPOSTGRES_PASSWORD=%s\n' \
+  "$(openssl rand -base64 48)" "$(openssl rand -hex 16)" > .env
+docker compose up -d
+```
+
+Open <http://localhost:3000> and create your account. To turn the coach on, add
+`ANTHROPIC_API_KEY=...` (or `LLM_PROVIDER=openrouter` with `OPENROUTER_API_KEY`
+and `OPENROUTER_MODEL`) to `.env` and run `docker compose up -d` again. Every
+option is documented at the top of
+[`docker-compose.selfhost.yml`](docker-compose.selfhost.yml); reaching the app
+over plain HTTP from another machine needs `SESSION_COOKIE_SECURE=false` (Safari
+may need it even on localhost). Run the `printf` line only once and keep `.env`
+with your backups: it holds the database password.
+
+If GymCoach is useful to you, **a ⭐ on the repo is the best way to help other
+lifters find it.**
 
 ## This repo largely maintains itself
 
@@ -192,7 +238,7 @@ on your own key - all self-hosted.
 - AI: pluggable LLM provider (Anthropic SDK or OpenRouter)
 - Infra: Docker and Docker Compose
 
-## Why
+## Principles
 
 A few beliefs shaped GymCoach:
 
@@ -244,7 +290,7 @@ The AI layer:
 - Docker and Docker Compose
 - npm
 
-## Quick start (local dev)
+## Development setup
 
 Recommended setup: Postgres in Docker, Next.js running locally for hot reload.
 
@@ -343,7 +389,12 @@ build and E2E on every push and pull request.
 
 ## Deployment
 
-A production stack is provided through `docker-compose.prod.yml` (app + Postgres). Put it behind a reverse proxy (Nginx, Caddy, Traefik) for HTTPS.
+The simplest path is [Self-host in one minute](#self-host-in-one-minute):
+`docker-compose.selfhost.yml` runs the prebuilt image and applies migrations on
+start. Put it behind a reverse proxy (Nginx, Caddy, Traefik) for HTTPS and set
+`MCP_PUBLIC_URL` to your public URL so MCP connector links point at it.
+
+To build from source instead, `docker-compose.prod.yml` builds the image locally (app + Postgres):
 
 ```bash
 cp .env.example .env
@@ -362,10 +413,10 @@ is never published):
 - `ghcr.io/julien-au/gymcoach:latest` - moving tag, follows `main`
 - `ghcr.io/julien-au/gymcoach:sha-<short>` - immutable, one per commit
 
-To use it, replace the `build:` block of the `app` service in
-`docker-compose.prod.yml` with `image: ghcr.io/julien-au/gymcoach:latest`
-(the compose file keeps `build:` as its default so existing setups and forks
-keep working unchanged).
+`docker-compose.selfhost.yml` uses it out of the box. With
+`docker-compose.prod.yml`, replace the `build:` block of the `app` service with
+`image: ghcr.io/julien-au/gymcoach:latest` (that file keeps `build:` as its
+default so existing setups and forks keep working unchanged).
 
 ### Deploying a public demo instance
 
