@@ -17,8 +17,7 @@ const STACK_BEARING_EQUIPMENT_TYPES: readonly EquipmentType[] = ['MACHINE', 'CAB
 // options. The item has to carry a stack at all, and the exercise's own type
 // decides whether that stack applies to it. OTHER is the default equipment
 // type rather than a deliberate choice, so an OTHER exercise linked to a
-// machine or cable item keeps its own load options instead of silently
-// inheriting the item's stack (issue #348).
+// machine or cable item never inherits the item's stack (issue #348).
 export function itemStackAppliesToExercise(
   exerciseEquipmentType: EquipmentType,
   itemEquipmentType: EquipmentType,
@@ -26,6 +25,23 @@ export function itemStackAppliesToExercise(
   if (!STACK_BEARING_EQUIPMENT_TYPES.includes(itemEquipmentType)) return false;
   if (exerciseEquipmentType === 'MACHINE' || exerciseEquipmentType === 'CABLE') return true;
   return exerciseEquipmentType === 'OTHER' && itemEquipmentType === 'OTHER';
+}
+
+// Whether a stack the item had been copying onto an exercise stops applying
+// when the item is written with a new type. Only that transition clears the
+// options the exercise holds; a type change the stack never applied under
+// leaves deliberate load options alone, which is the kettlebell-rack case of
+// #324 (issue #386).
+export function itemStackStopsApplying(
+  exerciseEquipmentType: EquipmentType,
+  previousItemEquipmentType: EquipmentType | null | undefined,
+  nextItemEquipmentType: EquipmentType,
+): boolean {
+  if (previousItemEquipmentType == null) return false;
+  return (
+    itemStackAppliesToExercise(exerciseEquipmentType, previousItemEquipmentType) &&
+    !itemStackAppliesToExercise(exerciseEquipmentType, nextItemEquipmentType)
+  );
 }
 
 export function gymWeightOptions(

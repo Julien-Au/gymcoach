@@ -168,6 +168,107 @@ describe('gym equipment REST API', () => {
     expect(await db.gymEquipment.count({ where: { id: equipmentId } })).toBe(0);
   });
 
+  it("keeps an OTHER exercise's own load options across a linked item type change (#386)", async () => {
+    const { user, gym } = await seedUser('stack-transition');
+    const otherExercise = await db.exercise.create({
+      data: {
+        userId: user.id,
+        name: 'Landmine press',
+        muscleGroup: 'SHOULDERS_FRONT',
+        category: 'COMPOUND',
+        equipmentType: 'OTHER',
+      },
+    });
+    const machineExercise = await db.exercise.create({
+      data: {
+        userId: user.id,
+        name: 'Chest press',
+        muscleGroup: 'CHEST',
+        category: 'COMPOUND',
+        equipmentType: 'MACHINE',
+      },
+    });
+    mockUserId.mockResolvedValue(user.id);
+
+    // A cable station carries a stack and links both exercises.
+    const createdResponse = await createEquipment(
+      request(`http://test.local/api/gyms/${gym.id}/equipment`, 'POST', {
+        name: 'Cable crossover',
+        equipmentType: 'CABLE',
+        weightOptions: [12, 16, 20, 24],
+        exerciseIds: [otherExercise.id, machineExercise.id],
+      }),
+      params(gym.id),
+    );
+    expect(createdResponse.status).toBe(201);
+    const equipmentId = (await createdResponse.json()).equipment.id as string;
+
+    // The machine exercise inherits the stack; the OTHER exercise never does.
+    const machineConfig = await db.gymExerciseConfig.findUnique({
+      where: { gymId_exerciseId: { gymId: gym.id, exerciseId: machineExercise.id } },
+    });
+    expect(machineConfig).toMatchObject({ isAvailable: true, weightOptions: [12, 16, 20, 24] });
+    const otherConfig = await db.gymExerciseConfig.findUnique({
+      where: { gymId_exerciseId: { gymId: gym.id, exerciseId: otherExercise.id } },
+    });
+    expect(otherConfig).toMatchObject({ isAvailable: true, weightOptions: [] });
+
+    // The trainee sets their own load options for the landmine press through
+    // the gym config form.
+    await db.gymExerciseConfig.update({
+      where: { gymId_exerciseId: { gymId: gym.id, exerciseId: otherExercise.id } },
+      data: { weightOptions: [5, 10] },
+    });
+
+    // The station moves CABLE -> MACHINE with the same stack. That stack applied
+    // to neither type for the OTHER exercise, so its options survive the write
+    // (the wipe that issue #386 tightens), while the machine exercise keeps the
+    // stack because it still applies.
+    const retypedResponse = await updateEquipment(
+      request(`http://test.local/api/gym-equipment/${equipmentId}`, 'PUT', {
+        name: 'Cable crossover',
+        equipmentType: 'MACHINE',
+        weightOptions: [12, 16, 20, 24],
+        exerciseIds: [otherExercise.id, machineExercise.id],
+      }),
+      params(equipmentId),
+    );
+    expect(retypedResponse.status).toBe(200);
+    expect(
+      await db.gymExerciseConfig.findUnique({
+        where: { gymId_exerciseId: { gymId: gym.id, exerciseId: otherExercise.id } },
+      }),
+    ).toMatchObject({ weightOptions: [5, 10] });
+    expect(
+      await db.gymExerciseConfig.findUnique({
+        where: { gymId_exerciseId: { gymId: gym.id, exerciseId: machineExercise.id } },
+      }),
+    ).toMatchObject({ weightOptions: [12, 16, 20, 24] });
+
+    // The station stops carrying a stack at all. The inherited stack is cleared
+    // from the machine exercise, and the OTHER exercise still keeps its own.
+    const unstackedResponse = await updateEquipment(
+      request(`http://test.local/api/gym-equipment/${equipmentId}`, 'PUT', {
+        name: 'Cable crossover',
+        equipmentType: 'DUMBBELL',
+        weightOptions: [12, 16, 20, 24],
+        exerciseIds: [otherExercise.id, machineExercise.id],
+      }),
+      params(equipmentId),
+    );
+    expect(unstackedResponse.status).toBe(200);
+    expect(
+      await db.gymExerciseConfig.findUnique({
+        where: { gymId_exerciseId: { gymId: gym.id, exerciseId: machineExercise.id } },
+      }),
+    ).toMatchObject({ weightOptions: [] });
+    expect(
+      await db.gymExerciseConfig.findUnique({
+        where: { gymId_exerciseId: { gymId: gym.id, exerciseId: otherExercise.id } },
+      }),
+    ).toMatchObject({ weightOptions: [5, 10] });
+  });
+
   it('rejects an invalid gym route id before the domain query', async () => {
     const { user } = await seedUser('invalid-route-id');
     mockUserId.mockResolvedValue(user.id);
