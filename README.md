@@ -43,27 +43,28 @@ subscription.
 ## Why GymCoach
 
 Looking for a self-hosted alternative to Strong, Hevy or Fitbod? GymCoach is a
-complete training tracker you run yourself, plus something no other self-hosted
-tracker has: an AI coach grounded in your own numbers, running on the LLM key
+complete training tracker you run yourself, plus something self-hosted trackers
+rarely have: an AI coach grounded in your own numbers, running on the LLM key
 you choose.
 
-|                                                    | GymCoach | Typical cloud app | Typical self-hosted tracker |
-| -------------------------------------------------- | :------: | :---------------: | :-------------------------: |
-| Your data in your own database                     |    ✅    |        ❌         |             ✅              |
-| AI coach that reads your sessions and explains why |    ✅    |  💰 subscription  |             ❌              |
-| Established programs as written (5/3/1, GZCLP, nSuns, PPL) | ✅ |     partial      |           partial           |
-| Cardio from watch files (FIT, TCX, GPX), no cloud account |  ✅  |        ❌         |             ❌              |
-| Offline-first logging, installable (PWA)           |    ✅    |        ✅         |           varies            |
-| Full export, nothing paywalled                     |    ✅    |      varies       |             ✅              |
-| ChatGPT / Claude connector over MCP                |    ✅    |        ❌         |             ❌              |
+|                                                            | GymCoach | Typical cloud app | Typical self-hosted tracker |
+| ---------------------------------------------------------- | :------: | :---------------: | :-------------------------: |
+| Your data in your own database                             |    ✅    |        ❌         |             ✅              |
+| AI coach that reads your sessions and explains why         |    ✅    |  💰 subscription  |             ❌              |
+| Established programs as written (5/3/1, GZCLP, nSuns, PPL) |    ✅    |      partial      |           partial           |
+| Cardio from watch files (FIT, TCX, GPX), no cloud account  |    ✅    |        ❌         |             ❌              |
+| Offline-first logging, installable (PWA)                   |    ✅    |        ✅         |           varies            |
+| Full export, nothing paywalled                             |    ✅    |      varies       |             ✅              |
+| ChatGPT / MCP connector                                    |    ✅    |        ❌         |             ❌              |
 
-With no AI key set, GymCoach is still a clean, fast tracker. Add a key later and
-the coach screens light up.
+With no AI key set, GymCoach is still a clean, fast tracker. Add a key later to
+turn on the coach, the chat and program generation.
 
 ## Self-host in one minute
 
-All you need is Docker. The prebuilt image is pulled from GHCR, so there is no
-clone and no build; migrations run on start.
+All you need is Docker on an x86_64 host (arm64 images are tracked in #411).
+The prebuilt image is pulled from GHCR, so there is no clone and no build;
+migrations run on start.
 
 ```bash
 mkdir gymcoach && cd gymcoach
@@ -79,7 +80,9 @@ Open <http://localhost:3000> and create your account. To turn the coach on, add
 and `OPENROUTER_MODEL`) to `.env` and run `docker compose up -d` again. Every
 option is documented at the top of
 [`docker-compose.selfhost.yml`](docker-compose.selfhost.yml); reaching the app
-over plain HTTP from another machine needs `SESSION_COOKIE_SECURE=false`.
+over plain HTTP from another machine needs `SESSION_COOKIE_SECURE=false` (Safari
+may need it even on localhost). Run the `printf` line only once and keep `.env`
+with your backups: it holds the database password.
 
 If GymCoach is useful to you, **a ⭐ on the repo is the best way to help other
 lifters find it.**
@@ -389,7 +392,7 @@ build and E2E on every push and pull request.
 The simplest path is [Self-host in one minute](#self-host-in-one-minute):
 `docker-compose.selfhost.yml` runs the prebuilt image and applies migrations on
 start. Put it behind a reverse proxy (Nginx, Caddy, Traefik) for HTTPS and set
-`NEXTAUTH_URL` to your public URL.
+`MCP_PUBLIC_URL` to your public URL so MCP connector links point at it.
 
 To build from source instead, `docker-compose.prod.yml` builds the image locally (app + Postgres):
 

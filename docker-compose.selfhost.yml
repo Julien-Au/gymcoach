@@ -2,6 +2,7 @@
 # GymCoach - self-host in one command
 # ============================================================
 # Runs the prebuilt image from GHCR (no clone, no build) next to Postgres.
+# The image is linux/amd64 for now (arm64 is tracked in issue #411).
 # Migrations are applied on every start (a no-op when there is nothing new).
 #
 #   mkdir gymcoach && cd gymcoach
@@ -11,17 +12,21 @@
 #     "$(openssl rand -base64 48)" "$(openssl rand -hex 16)" > .env
 #   docker compose up -d
 #
-# Then open http://localhost:3000 and create your account.
+# Run the printf line once: it writes the database password, and rewriting
+# it later locks the app out of the existing database. Keep .env with your
+# backups. Then open http://localhost:3000 and create your account.
 #
 # Optional settings go in the same .env file:
 #   GYMCOACH_PORT=3000              host port
 #   SESSION_COOKIE_SECURE=false     needed to log in over plain HTTP from another
 #                                   machine (e.g. http://192.168.1.10:3000);
 #                                   keep the default behind an HTTPS proxy
-#   NEXTAUTH_URL=https://gym.example.com   your public URL
+#   MCP_PUBLIC_URL=https://gym.example.com   public URL used in MCP connector links
+#   MCP_ALLOWED_ORIGINS / MCP_ALLOWED_HOSTS  optional MCP hardening (see .env.example)
 #   LLM_PROVIDER=anthropic | openrouter | demo
 #   ANTHROPIC_API_KEY=...  or  OPENROUTER_API_KEY=... + OPENROUTER_MODEL=...
-# Without an AI key GymCoach is a plain tracker; the coach screens say so.
+# Without an AI key GymCoach is a plain tracker; the coach and chat screens
+# say so.
 #
 # Back up the two named volumes: the database and the uploaded photos.
 
@@ -50,7 +55,6 @@ services:
     environment:
       DATABASE_URL: postgresql://gymcoach:${POSTGRES_PASSWORD}@db:5432/gymcoach
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env (openssl rand -base64 48)}
-      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
       SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-}
       LLM_PROVIDER: ${LLM_PROVIDER:-anthropic}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
@@ -58,7 +62,10 @@ services:
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
       OPENROUTER_MODEL: ${OPENROUTER_MODEL:-}
       OPENROUTER_APP_NAME: GymCoach
+      OPENROUTER_APP_URL: ${OPENROUTER_APP_URL:-https://github.com/Julien-Au/gymcoach}
       MCP_PUBLIC_URL: ${MCP_PUBLIC_URL:-}
+      MCP_ALLOWED_ORIGINS: ${MCP_ALLOWED_ORIGINS:-}
+      MCP_ALLOWED_HOSTS: ${MCP_ALLOWED_HOSTS:-}
       NODE_ENV: production
       UPLOADS_DIR: /app/uploads
     volumes:
