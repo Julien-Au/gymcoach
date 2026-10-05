@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The repository moved to the `gymcoach-app` GitHub organization. The image is
+  now published as `ghcr.io/gymcoach-app/gymcoach`; the old
+  `ghcr.io/julien-au/gymcoach` path no longer receives updates. Old GitHub
+  URLs redirect.
+
 ## [1.0.0] - 2026-10-05
 
 First tagged release: everything shipped since the open-source bootstrap on
@@ -124,7 +131,7 @@ First tagged release: everything shipped since the open-source bootstrap on
   saved program is not rewritten, and you can always log what you actually did.
   Community contribution by @SHAREN (#311).
 - Prebuilt production Docker image: every push to `main` publishes
-  `ghcr.io/julien-au/gymcoach` (`latest` plus an immutable `sha-<short>` tag,
+  `ghcr.io/gymcoach-app/gymcoach` (`latest` plus an immutable `sha-<short>` tag,
   linux/amd64) from the same Dockerfile the PR smoke test already validates, so
   self-hosting no longer requires a local build. `docker-compose.prod.yml` still
   builds from source by default, so existing setups are unchanged; the README
@@ -629,5 +636,5 @@ First tagged release: everything shipped since the open-source bootstrap on
 - Session cookies are now `Secure` by default in production; self-hosting over
   plain HTTP requires an explicit `SESSION_COOKIE_SECURE=false` opt-out.
 
-[Unreleased]: https://github.com/Julien-Au/gymcoach/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/Julien-Au/gymcoach/releases/tag/v1.0.0
+[Unreleased]: https://github.com/gymcoach-app/gymcoach/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/gymcoach-app/gymcoach/releases/tag/v1.0.0

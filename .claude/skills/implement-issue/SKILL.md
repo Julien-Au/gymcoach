@@ -27,7 +27,7 @@ for repo conventions; this skill assumes them.
    which include the loop's own authenticated account). GitHub authorship is authenticated -
    an external user cannot post as these logins - so this allowlist is the real control. As
    defense-in-depth you MAY confirm the author still has write access:
-   `gh api repos/Julien-Au/gymcoach/collaborators/<login>` returns HTTP 204 for a
+   `gh api repos/gymcoach-app/gymcoach/collaborators/<login>` returns HTTP 204 for a
    collaborator. Do NOT gate on `authorAssociation == OWNER`: it is not exposed by
    `gh ... --json` (only by `gh api` as `author_association`), and the loop's own account is
    a `COLLABORATOR`, not `OWNER`, so an OWNER check would lock the loop out of its own work.
