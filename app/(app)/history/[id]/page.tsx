@@ -18,6 +18,8 @@ import {
   sumCardioWorkingSets,
 } from '@/lib/cardio';
 import { formatWeight } from '@/lib/units';
+import { formatWorkoutText } from '@/lib/workout-text';
+import { CopyWorkoutButton } from '@/components/history/copy-workout-button';
 import { DeleteSessionButton } from '@/components/history/delete-session-button';
 import { ActivityTrackChart } from '@/components/history/activity-track-chart';
 import { TrackDecoupling } from '@/components/history/track-decoupling';
@@ -46,6 +48,7 @@ function buildBackHref(params: { month?: string; day?: string; programId?: strin
 export default async function HistorySessionPage(props: Params) {
   const t = await getTranslations('history');
   const detail = await getTranslations('history.detail');
+  const copyT = await getTranslations('history.copy');
   const exerciseT = await getTranslations('exercises');
   const locale = await getLocale();
   const format = await getFormatter();
@@ -126,18 +129,62 @@ export default async function HistorySessionPage(props: Params) {
     session.finishedAt && session.startedAt
       ? Math.round((session.finishedAt.getTime() - session.startedAt.getTime()) / 60000)
       : null;
+  const sessionTitle = session.workout?.name
+    ? getTrainingDisplayName(session.workout.name, locale)
+    : t('freeSession');
+  // "Copy as text" (issue #405) recaps a FINISHED session only, like the TCX
+  // export: an in-progress session is not a log worth pasting yet.
+  const workoutText =
+    session.finishedAt != null && exerciseOrder.length > 0
+      ? formatWorkoutText(
+          {
+            title: sessionTitle,
+            date: format.dateTime(session.startedAt, {
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric',
+              timeZone,
+            }),
+            notes: session.notes,
+            exercises: exerciseOrder.flatMap((exerciseId) => {
+              const entry = setsByExercise.get(exerciseId);
+              if (!entry) return [];
+              return [
+                {
+                  name: getExerciseDisplayName(entry.exercise.name, locale),
+                  isCardio: entry.exercise.category === 'CARDIO',
+                  usesBodyweight: entry.exercise.usesBodyweight,
+                  sets: entry.sets,
+                },
+              ];
+            }),
+          },
+          {
+            unit,
+            locale,
+            labels: {
+              warmup: copyT('warmup'),
+              dropSet: copyT('dropSet'),
+              bodyweight: detail('bodyweight'),
+              setNote: (number) => detail('setNote', { number }),
+              notes: copyT('notes'),
+            },
+          },
+        )
+      : null;
 
   return (
     <main className="flex-1 px-4 py-6">
       <div className="mx-auto flex max-w-2xl flex-col gap-4">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <Button asChild variant="ghost" size="sm" className="-ml-2">
             <Link href={buildBackHref(searchParams)}>
               <ArrowLeft className="size-4" />
               <span className="ml-1">{t('title')}</span>
             </Link>
           </Button>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {workoutText && <CopyWorkoutButton text={workoutText} />}
             {hasCardio && (
               <Button asChild variant="outline" size="sm">
                 <a href={`/api/cardio/tcx?sessionId=${session.id}`} download>
@@ -158,11 +205,7 @@ export default async function HistorySessionPage(props: Params) {
 
         <Card>
           <CardHeader className="pb-3">
-            <h1 className="text-2xl font-bold tracking-tight">
-              {session.workout?.name
-                ? getTrainingDisplayName(session.workout.name, locale)
-                : t('freeSession')}
-            </h1>
+            <h1 className="text-2xl font-bold tracking-tight">{sessionTitle}</h1>
             <div className="mt-1 flex flex-wrap gap-1.5">
               {session.program && (
                 <Badge variant="secondary">

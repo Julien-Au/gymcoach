@@ -54,6 +54,14 @@ export const history = {
     heartRate: 'FC',
     chartMinutes: '{value} min',
   },
+  copy: {
+    button: 'Copier en texte',
+    copied: 'Séance copiée.',
+    error: 'Impossible de copier la séance.',
+    warmup: 'échauffement',
+    dropSet: 'dégressive',
+    notes: 'Notes :',
+  },
   delete: {
     button: 'Supprimer',
     title: 'Supprimer cette séance ?',
