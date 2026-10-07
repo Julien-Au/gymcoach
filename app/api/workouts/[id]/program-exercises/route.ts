@@ -33,6 +33,21 @@ export async function POST(req: Request, props: Params) {
       throw new ApiError(400, 'Invalid exercise.');
     }
 
+    // Refuse an exercise the workout already contains (issue #379). The
+    // in-session menu and the program editor prevent the duplicate client-side
+    // only, so a double submit or a direct API call used to add a second row
+    // for the same exercise. A Set carries only an exerciseId (no
+    // ProgramExercise reference), so the live runner shares one set pool
+    // between the two rows and each reads the other's sets. Enforced here so
+    // the API matches what the UI already prevents.
+    const duplicate = await db.programExercise.findFirst({
+      where: { workoutId: params.id, exerciseId: data.exerciseId },
+      select: { id: true },
+    });
+    if (duplicate) {
+      throw new ApiError(409, 'That exercise is already in this workout.');
+    }
+
     const last = await db.programExercise.findFirst({
       where: { workoutId: params.id },
       orderBy: { order: 'desc' },
