@@ -318,6 +318,11 @@ edit arriving in a PR is itself on the hard-block list.
 - `SHAREN` - vetted by the operator 2026-07-22 after the five-PR localization/
   autoregulation/gyms/media/MCP stack (#272-#276) was reviewed and merged with
   a human in the loop.
+- `Retsumdk` - vetted by the operator 2026-10-07 after two clean merged PRs
+  (#385, #420). The operator's condition, in session: every PR is still checked
+  for security problems and attacks. Vetted status never skips the passes: the
+  backdoor/egress and threat-model lenses run on every PR, and any security
+  finding means no merge.
 
 ## What this policy is not
 
