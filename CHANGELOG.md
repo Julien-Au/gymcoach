@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Rest timer controls: a running rest can be paused and resumed, and adjusted
+  by -15 s or +15 s (replacing the single +30 s button). An optional device
+  setting, off by default, flashes the screen when a rest ends; with reduced
+  motion it shows a single static colour change instead (#421, closes #393).
+- Copy a finished workout as text: the session detail page in the history has
+  a "Copy as text" button that puts a plain-text recap (exercises, sets, notes)
+  on the clipboard for a chat or a training log. It falls back to a hidden
+  textarea copy where the Clipboard API is unavailable, such as a self-hosted
+  instance reached over plain http (#422, closes #405).
+
+### Fixed
+
+- Editing a gym equipment item no longer wipes the load options of linked
+  exercises on any type change: they are cleared only when the item's stack
+  had applied to the exercise and stops applying under the new type. Existing
+  configs are not backfilled, because a stored config does not record whether
+  its options were inherited. Community contribution by @Retsumdk (#420,
+  closes #386).
+
 ### Changed
 
 - The repository moved to the `gymcoach-app` GitHub organization. The image is

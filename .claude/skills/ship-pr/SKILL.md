@@ -37,10 +37,14 @@ changes on.
      stacked fork PRs; on a `gh` without that flag, such as this host's 2.4.0, the same pin
      is `gh api -X PUT repos/<owner>/<repo>/pulls/<n>/merge -f sha=<sha> -f merge_method=merge`).
      Local gate runs and fixups are permitted at this tier only.
-   - Anyone else: do NOT auto-merge and do NOT execute their code locally (CI is the only
-     executor - no `verify.sh`, no `npm ci` on their branch, even in a worktree). Run the
-     read-only review of step 4 (diff as data), post the structured verdict as a PR
-     comment, and stop - no CI-fixing (step 3), no fixup commits, no merge.
+   - Anyone else: do NOT execute their code locally (CI is the only executor - no
+     `verify.sh`, no `npm ci` on their branch, even in a worktree). Run the read-only
+     review of step 4 (diff as data) and post the structured verdict as a PR comment - no
+     CI-fixing (step 3), no fixup commits. Under the operator's 2026-10-07 standing
+     delegation, merge it on the pinned SHA (same command as the vetted tier) only when
+     the same full sequence is clean - no hard-block path, every lens clean with no
+     blocking/major/security finding, green CI on the recorded SHA - and the PR adds
+     value; anything short of that, stop after the verdict, no merge.
    Also skip if: draft, `state != OPEN`, `reviewDecision == CHANGES_REQUESTED`, or not
    targeting `main`. Report why it was skipped.
 
@@ -110,10 +114,11 @@ changes on.
 
 - Never `gh pr merge` while any required check is red or pending.
 - Never merge a draft, a `CHANGES_REQUESTED` PR, or one not targeting `main`.
-- Never auto-merge a PR from an author outside the maintainer allowlist or the vetted
-  contributors list, even on green CI, and never execute an unvetted author's code
-  locally; a vetted contributor's fork PR merges only through the full pass sequence in
-  `docs/loops/10-external-contributions.md` (the public-repo trust boundary).
+- Never execute an unvetted author's code locally. An external fork PR (vetted or, since
+  the operator's 2026-10-07 standing delegation, unvetted) merges only through the full
+  pass sequence in `docs/loops/10-external-contributions.md` (no hard-block path, every
+  lens clean, green CI on the pinned SHA, and it adds value); anything short of that is a
+  verdict comment, never a merge, even on green CI (the public-repo trust boundary).
 - A red at the integration job's *Initialize containers* step (`Docker pull failed`) is
   transient infra, not a regression: re-run the run (`gh run rerun <id>`) before assuming
   the change broke anything. Acknowledge which step actually failed before re-planning
