@@ -7,6 +7,7 @@ import {
   setTableMetricEnabled,
   isVibrationEnabled,
   isRestTimerSoundEnabled,
+  isRestEndFlashEnabled,
   isReadinessAutoRegulationEnabled,
   plateConfigForUnit,
 } from './preferences';
@@ -93,6 +94,16 @@ describe('preferences', () => {
     savePreferences({ ...DEFAULT_PREFERENCES, vibration: false, restTimerSound: true });
     expect(isVibrationEnabled()).toBe(false);
     expect(isRestTimerSoundEnabled()).toBe(true);
+  });
+
+  it('keeps the end-of-rest flash off unless it was turned on (issue #393)', () => {
+    expect(DEFAULT_PREFERENCES.restEndFlash).toBe(false);
+    expect(isRestEndFlashEnabled()).toBe(false);
+    // Preferences saved before the setting existed load with it off.
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ vibration: false }));
+    expect(loadPreferences().restEndFlash).toBe(false);
+    savePreferences({ ...DEFAULT_PREFERENCES, restEndFlash: true });
+    expect(isRestEndFlashEnabled()).toBe(true);
   });
 
   it('returns the plate config for the active unit', () => {

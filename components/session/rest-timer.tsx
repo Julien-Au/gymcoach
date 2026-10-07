@@ -2,9 +2,10 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import { FastForward, Plus } from 'lucide-react';
+import { FastForward, Minus, Pause, Play, Plus } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { REST_ADJUST_STEP_MS, restRemainingMs } from '@/lib/rest-timer';
 import { playRestEndBeep } from '@/lib/sound';
 import { formatWeight } from '@/lib/units';
 import type { WeightUnit } from '@/lib/prisma-client';
@@ -12,24 +13,32 @@ import type { IntraSetRecommendation } from '@/lib/intra-set-autoregulation';
 
 interface Props {
   endsAt: number;
+  // Milliseconds left when the rest was paused; null (or omitted) while it runs.
+  pausedRemainingMs?: number | null;
   totalSec: number;
   nextLabel: string | null | undefined;
   recommendation?: IntraSetRecommendation | null;
   unit: WeightUnit;
   onEnd: () => void;
   onSkip: () => void;
-  onAdd30: () => void;
+  onPause: () => void;
+  onResume: () => void;
+  // Signed change of the remaining time, in milliseconds (issue #393).
+  onAdjust: (deltaMs: number) => void;
 }
 
 export function RestTimer({
   endsAt,
+  pausedRemainingMs = null,
   totalSec,
   nextLabel,
   recommendation = null,
   unit,
   onEnd,
   onSkip,
-  onAdd30,
+  onPause,
+  onResume,
+  onAdjust,
 }: Props) {
   const t = useTranslations('session.rest');
   const autoT = useTranslations('session.autoregulation');
@@ -43,24 +52,28 @@ export function RestTimer({
     return () => clearInterval(id);
   }, [endsAt]);
 
+  const paused = pausedRemainingMs != null;
+
   // Detect reaching 0: trigger onEnd ONCE and play the beep if the preference
-  // allows it.
+  // allows it. A paused rest never ends on its own, even at zero.
   useEffect(() => {
-    if (!endedRef.current && now >= endsAt) {
+    if (!paused && !endedRef.current && now >= endsAt) {
       endedRef.current = true;
       playRestEndBeep();
       onEnd();
     }
-  }, [now, endsAt, onEnd]);
+  }, [now, endsAt, paused, onEnd]);
 
-  const remainingMs = Math.max(0, endsAt - now);
+  const remainingMs = restRemainingMs({ endsAt, pausedRemainingMs }, now);
   const remainingSec = Math.ceil(remainingMs / 1000);
   const progress = Math.min(100, (remainingMs / (totalSec * 1000)) * 100);
 
   return (
     <Card>
       <CardContent className="flex flex-col items-center gap-4 py-8">
-        <p className="text-xs uppercase tracking-wider text-muted-foreground">{t('title')}</p>
+        <p className="text-xs uppercase tracking-wider text-muted-foreground">
+          {paused ? t('pausedTitle') : t('title')}
+        </p>
 
         <div className="relative">
           <p className="text-7xl font-bold tabular-nums">
@@ -102,15 +115,38 @@ export function RestTimer({
         )}
 
         <div className="flex w-full max-w-sm gap-2">
-          <Button variant="outline" onClick={onAdd30} className="min-h-tap flex-1">
-            <Plus className="size-4" />
-            <span className="ml-1">{t('addThirty')}</span>
+          <Button
+            variant="outline"
+            onClick={() => onAdjust(-REST_ADJUST_STEP_MS)}
+            disabled={remainingMs <= 0}
+            aria-label={t('removeFifteenLabel')}
+            className="min-h-tap flex-1"
+          >
+            <Minus className="size-4" />
+            <span className="ml-1">{t('fifteen')}</span>
           </Button>
-          <Button variant="default" onClick={onSkip} className="min-h-tap flex-1">
-            <FastForward className="size-4" />
-            <span className="ml-1">{t('skip')}</span>
+          <Button
+            variant="outline"
+            onClick={paused ? onResume : onPause}
+            className="min-h-tap flex-1"
+          >
+            {paused ? <Play className="size-4" /> : <Pause className="size-4" />}
+            <span className="ml-1">{paused ? t('resume') : t('pause')}</span>
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => onAdjust(REST_ADJUST_STEP_MS)}
+            aria-label={t('addFifteenLabel')}
+            className="min-h-tap flex-1"
+          >
+            <Plus className="size-4" />
+            <span className="ml-1">{t('fifteen')}</span>
           </Button>
         </div>
+        <Button variant="default" onClick={onSkip} className="min-h-tap w-full max-w-sm">
+          <FastForward className="size-4" />
+          <span className="ml-1">{t('skip')}</span>
+        </Button>
       </CardContent>
     </Card>
   );

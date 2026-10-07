@@ -40,7 +40,12 @@ export const session = {
     title: 'Отдых',
     seconds: 'с',
     next: 'Далее: {name}',
-    addThirty: '30 с',
+    fifteen: '15 с',
+    addFifteenLabel: 'Добавить 15 секунд',
+    removeFifteenLabel: 'Убрать 15 секунд',
+    pause: 'Пауза',
+    resume: 'Продолжить',
+    pausedTitle: 'Отдых на паузе',
     skip: 'Пропустить',
   },
   autoregulation: {

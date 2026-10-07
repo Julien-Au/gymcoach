@@ -11,6 +11,9 @@ export type SetTableMetric = (typeof SET_TABLE_METRICS)[number];
 export interface UserPreferences {
   vibration: boolean;
   restTimerSound: boolean;
+  // Flash the screen when a rest runs out (issue #393), for a gym too loud for
+  // the beep. Off by default; reduced motion gets a static colour instead.
+  restEndFlash: boolean;
   // Auto-regulation (issue #61). When on (default), a recent readiness/soreness
   // check-in can make the deterministic next-weight suggestion more conservative
   // (hold the load or step it down). When off, readiness is ignored entirely and
@@ -31,6 +34,7 @@ export interface UserPreferences {
 export const DEFAULT_PREFERENCES: UserPreferences = {
   vibration: true,
   restTimerSound: false,
+  restEndFlash: false,
   readinessAutoRegulation: true,
   setTableMetrics: ['1RM'],
   barWeightKg: 20,
@@ -109,6 +113,10 @@ export function isVibrationEnabled(): boolean {
 
 export function isRestTimerSoundEnabled(): boolean {
   return loadPreferences().restTimerSound;
+}
+
+export function isRestEndFlashEnabled(): boolean {
+  return loadPreferences().restEndFlash === true;
 }
 
 // Whether a recent readiness/soreness check-in is allowed to adjust the

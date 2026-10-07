@@ -11,6 +11,9 @@ export const settings = {
   vibrationDescription: 'À l’enregistrement d’une série et en fin de minuteur.',
   timerSound: 'Bip de fin de minuteur',
   timerSoundDescription: 'Joue un bref bip à 880 Hz à la fin du repos.',
+  restFlash: 'Faire clignoter l’écran à la fin du repos',
+  restFlashDescription:
+    'Fait clignoter l’écran à la fin du repos, pour une salle bruyante. Avec les animations réduites, l’écran change de couleur sans clignoter.',
   readiness: 'Laisser la forme/les courbatures ajuster mes charges suggérées',
   readinessDescription:
     'Activé, un bilan de forme récent peut maintenir ou baisser la charge suggérée. Désactivé, les suggestions suivent la progression programmée pure.',

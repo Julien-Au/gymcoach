@@ -40,7 +40,8 @@ import {
   nextNavIndex,
   SUPERSET_TRANSITION_REST_SEC,
 } from '@/lib/supersets';
-import { isReadinessAutoRegulationEnabled } from '@/lib/preferences';
+import { isReadinessAutoRegulationEnabled, isRestEndFlashEnabled } from '@/lib/preferences';
+import { adjustRest, pauseRest, resumeRest } from '@/lib/rest-timer';
 import {
   bindAutoSync,
   drainDroppedEquipment,
@@ -60,6 +61,7 @@ import { EditableSetsTable } from '@/components/session/editable-sets-table';
 import type { LiveEquipmentOption } from '@/components/session/live-equipment-weight-editor';
 import { SetInput } from '@/components/session/set-input';
 import { RestTimer } from '@/components/session/rest-timer';
+import { RestEndFlash } from '@/components/session/rest-end-flash';
 import { SessionSummary } from '@/components/session/session-summary';
 import { ReturnToTrainingNotice } from '@/components/session/return-to-training-notice';
 import { SessionExerciseStrip } from '@/components/session/session-exercise-strip';
@@ -129,6 +131,8 @@ type Mode =
   | {
       kind: 'rest';
       endsAt: number;
+      // Set while the rest is paused (issue #393); see lib/rest-timer.ts.
+      pausedRemainingMs: number | null;
       totalSec: number;
       nextExerciseIdx: number | null;
       navigatedImmediately: boolean;
@@ -207,6 +211,8 @@ export function SessionRunner({
     removedProgramExerciseId?: string;
   } | null>(null);
   const [mode, setMode] = useState<Mode>({ kind: 'input' });
+  // Bumped each time a rest runs out with the flash preference on (issue #393).
+  const [restFlashCount, setRestFlashCount] = useState(0);
   const [closing, setClosing] = useState(false);
   const [exerciseMenuOpen, setExerciseMenuOpen] = useState(false);
   // Readiness auto-regulation can be turned off in settings (issue #61). The
@@ -505,6 +511,7 @@ export function SessionRunner({
     setMode({
       kind: 'rest',
       endsAt: Date.now() + restSec * 1000,
+      pausedRemainingMs: null,
       totalSec: restSec,
       nextExerciseIdx: nextIdx,
       navigatedImmediately,
@@ -624,6 +631,7 @@ export function SessionRunner({
 
   function handleRestEnd() {
     vibrate(VIBRATION_PATTERNS.restEnd);
+    if (isRestEndFlashEnabled()) setRestFlashCount((count) => count + 1);
     if (mode.kind === 'rest' && !mode.navigatedImmediately && mode.nextExerciseIdx != null) {
       selectExercise(mode.nextExerciseIdx);
     }
@@ -637,9 +645,19 @@ export function SessionRunner({
     setMode({ kind: 'input' });
   }
 
-  function handleAdd30s() {
+  function handlePauseRest() {
     if (mode.kind !== 'rest') return;
-    setMode({ ...mode, endsAt: mode.endsAt + 30_000 });
+    setMode(pauseRest(mode, Date.now()));
+  }
+
+  function handleResumeRest() {
+    if (mode.kind !== 'rest') return;
+    setMode(resumeRest(mode, Date.now()));
+  }
+
+  function handleAdjustRest(deltaMs: number) {
+    if (mode.kind !== 'rest') return;
+    setMode(adjustRest(mode, deltaMs, Date.now()));
   }
 
   function goPrev() {
@@ -702,10 +720,18 @@ export function SessionRunner({
       ? exerciseName(restNextPe.exercise.name)
       : null;
   const restRecommendation =
-    mode.kind === 'rest' && restNextPe ? recommendationFor(restNextPe, mode.endsAt) : null;
+    mode.kind === 'rest' && restNextPe
+      ? // A paused rest has not used its remaining time yet, so the recovery the
+        // recommendation assumes runs until now plus what is left.
+        recommendationFor(
+          restNextPe,
+          mode.pausedRemainingMs != null ? Date.now() + mode.pausedRemainingMs : mode.endsAt,
+        )
+      : null;
 
   return (
     <main className="flex flex-1 flex-col">
+      <RestEndFlash count={restFlashCount} />
       {/* Sticky header with progress and exit button */}
       <div className="sticky top-[97px] z-10 border-b border-border bg-background/95 px-4 py-3 backdrop-blur">
         <div className="flex items-center justify-between gap-3">
@@ -852,13 +878,16 @@ export function SessionRunner({
         ) : (
           <RestTimer
             endsAt={mode.endsAt}
+            pausedRemainingMs={mode.pausedRemainingMs}
             totalSec={mode.totalSec}
             nextLabel={restNextLabel}
             recommendation={restRecommendation}
             unit={unit}
             onEnd={handleRestEnd}
             onSkip={handleSkipRest}
-            onAdd30={handleAdd30s}
+            onPause={handlePauseRest}
+            onResume={handleResumeRest}
+            onAdjust={handleAdjustRest}
           />
         )}
 

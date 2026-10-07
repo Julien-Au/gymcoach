@@ -3,7 +3,16 @@
 import { useEffect, useState } from 'react';
 import { useTheme } from 'next-themes';
 import { useTranslations } from 'next-intl';
-import { Activity, Languages, Moon, Smartphone, Sun, Volume2, Monitor } from 'lucide-react';
+import {
+  Activity,
+  Languages,
+  Moon,
+  Smartphone,
+  Sun,
+  Volume2,
+  Monitor,
+  Zap,
+} from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
@@ -104,6 +113,14 @@ export function SettingsClient() {
             description={t('timerSoundDescription')}
             checked={prefs.restTimerSound}
             onChange={(v) => update('restTimerSound', v)}
+            disabled={!hydrated}
+          />
+          <PrefRow
+            icon={<Zap className="size-4" />}
+            label={t('restFlash')}
+            description={t('restFlashDescription')}
+            checked={prefs.restEndFlash}
+            onChange={(v) => update('restEndFlash', v)}
             disabled={!hydrated}
           />
           <PrefRow

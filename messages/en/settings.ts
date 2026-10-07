@@ -8,6 +8,9 @@ export const settings = {
   vibrationDescription: 'Set logging and end of timer.',
   timerSound: 'End of timer beep',
   timerSoundDescription: 'Plays a short 880 Hz beep at the end of the rest.',
+  restFlash: 'Flash the screen when rest is over',
+  restFlashDescription:
+    'Blinks the screen at the end of the rest, for a loud gym. With reduced motion on, the screen changes colour without blinking.',
   readiness: 'Let readiness/soreness adjust my suggested weights',
   readinessDescription:
     'When on, a recent readiness check-in can hold or lower the suggested load. When off, suggestions follow pure programmed progression.',
