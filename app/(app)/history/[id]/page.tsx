@@ -176,14 +176,14 @@ export default async function HistorySessionPage(props: Params) {
   return (
     <main className="flex-1 px-4 py-6">
       <div className="mx-auto flex max-w-2xl flex-col gap-4">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <Button asChild variant="ghost" size="sm" className="-ml-2">
             <Link href={buildBackHref(searchParams)}>
               <ArrowLeft className="size-4" />
               <span className="ml-1">{t('title')}</span>
             </Link>
           </Button>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             {workoutText && <CopyWorkoutButton text={workoutText} />}
             {hasCardio && (
               <Button asChild variant="outline" size="sm">

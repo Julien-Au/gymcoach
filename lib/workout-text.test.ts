@@ -121,13 +121,14 @@ describe('formatWorkoutText (issue #405)', () => {
             sets: [
               set({ weight: 0, reps: 0, durationSec: 600, isWarmup: true }),
               set({ weight: 0, reps: 0, durationSec: 1530, distanceM: 5000 }),
+              set({ weight: 0, reps: 0 }),
             ],
           },
         ],
       },
       kg,
     );
-    expect(text).toContain('Running: 10:00 (warm-up), 25:30 · 5 km');
+    expect(text).toContain('Running: 10:00 (warm-up), 25:30 · 5 km, -');
   });
 
   it('appends set notes under their exercise and the session notes last', () => {

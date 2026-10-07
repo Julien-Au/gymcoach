@@ -67,10 +67,13 @@ function formatSet(
   exercise: WorkoutTextExercise,
   options: WorkoutTextOptions,
 ): string {
-  const body =
-    exercise.isCardio && set.durationSec != null
+  // A cardio set saved without a duration reads as "-", as in the page's
+  // cardio table, rather than as a "BW x 0" strength set.
+  const body = exercise.isCardio
+    ? set.durationSec != null
       ? formatCardioSet(set.durationSec, set.distanceM)
-      : `${formatLoad(set, exercise.usesBodyweight, options)} x ${set.reps}`;
+      : '-'
+    : `${formatLoad(set, exercise.usesBodyweight, options)} x ${set.reps}`;
   const kind = set.isWarmup
     ? options.labels.warmup
     : set.isDropSet

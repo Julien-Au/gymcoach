@@ -13,19 +13,28 @@ interface Props {
 // reached over plain http on a LAN is not; the hidden-textarea copy still
 // works there (issue #405).
 function legacyCopy(text: string): boolean {
+  // Selecting the textarea moves focus to it; give it back afterwards so a
+  // keyboard or screen-reader user stays on the button.
+  const previousFocus =
+    document.activeElement instanceof HTMLElement ? document.activeElement : null;
   const area = document.createElement('textarea');
   area.value = text;
   area.setAttribute('readonly', '');
   area.style.position = 'fixed';
+  area.style.top = '0';
+  area.style.left = '0';
   area.style.opacity = '0';
   document.body.appendChild(area);
   area.select();
+  // iOS Safari ignores select() on a readonly textarea.
+  area.setSelectionRange(0, text.length);
   try {
     return document.execCommand('copy');
   } catch {
     return false;
   } finally {
     document.body.removeChild(area);
+    previousFocus?.focus();
   }
 }
 
