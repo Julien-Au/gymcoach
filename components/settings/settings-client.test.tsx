@@ -32,4 +32,15 @@ describe('SettingsClient', () => {
     expect(stored.vibration).toBe(!DEFAULT_PREFERENCES.vibration);
     expect(stored.platesLb).toEqual([45, 25]);
   });
+
+  it('persists the end-of-rest flash setting (issue #393)', async () => {
+    const user = userEvent.setup();
+    render(<SettingsClient />);
+    const flash = await screen.findByRole('switch', { name: /flash the screen/i });
+    expect(flash).toHaveAttribute('aria-checked', 'false');
+
+    await user.click(flash);
+
+    expect(loadPreferences().restEndFlash).toBe(true);
+  });
 });

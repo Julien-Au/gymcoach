@@ -40,7 +40,12 @@ export const session = {
     title: 'Repos',
     seconds: 's',
     next: 'Suivant : {name}',
-    addThirty: '30 s',
+    fifteen: '15 s',
+    addFifteenLabel: 'Ajouter 15 secondes',
+    removeFifteenLabel: 'Retirer 15 secondes',
+    pause: 'Pause',
+    resume: 'Reprendre',
+    pausedTitle: 'Repos en pause',
     skip: 'Passer',
   },
   autoregulation: {

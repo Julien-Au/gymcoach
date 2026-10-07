@@ -72,3 +72,29 @@
     color: black !important;
   }
 }
+
+/* End-of-rest screen flash (issue #393): three blinks, or a single static
+   colour change for people who asked the system for reduced motion. */
+@keyframes rest-end-flash {
+  0%,
+  33%,
+  66% {
+    opacity: 0.85;
+  }
+  16%,
+  50%,
+  83%,
+  100% {
+    opacity: 0;
+  }
+}
+.rest-end-flash {
+  opacity: 0;
+  animation: rest-end-flash 1.5s linear forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rest-end-flash {
+    animation: none;
+    opacity: 0.4;
+  }
+}
