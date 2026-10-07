@@ -2,7 +2,7 @@ import { Buffer } from 'node:buffer';
 import { ApiError } from '@/lib/api';
 import { db } from '@/lib/db';
 import { getExerciseMedia } from '@/lib/exercise-media';
-import { itemStackAppliesToExercise } from '@/lib/gym-loads';
+import { itemStackAppliesToExercise, itemStackStopsApplying } from '@/lib/gym-loads';
 import type { EquipmentType } from '@/lib/prisma-client';
 
 export const GYM_EQUIPMENT_IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
@@ -379,10 +379,17 @@ export async function upsertOwnedGymEquipment(
     if (input.markExercisesAvailable !== false && shouldSyncExerciseConfigs) {
       for (const exercise of exercises) {
         // The item's stack is copied onto the exercise only when the two are
-        // compatible, so an OTHER exercise linked to a machine or cable item
-        // keeps its own load options instead of inheriting the item's stack.
+        // compatible, and it is cleared only when a stack that applied under
+        // the item's previous type stops applying. An OTHER exercise linked to
+        // a machine or cable item therefore keeps its own load options, even
+        // across an item type change that never applied to it (#386).
         const useItemWeights = itemStackAppliesToExercise(
           exercise.equipmentType,
+          input.equipmentType,
+        );
+        const clearInheritedWeights = itemStackStopsApplying(
+          exercise.equipmentType,
+          current?.equipmentType,
           input.equipmentType,
         );
         await tx.gymExerciseConfig.upsert({
@@ -391,7 +398,7 @@ export async function upsertOwnedGymEquipment(
             isAvailable: true,
             ...(useItemWeights
               ? { weightOptions: effectiveWeightOptions }
-              : equipmentTypeChanged
+              : clearInheritedWeights
                 ? { weightOptions: [] }
                 : {}),
           },

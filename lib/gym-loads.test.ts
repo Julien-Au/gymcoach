@@ -5,6 +5,7 @@ import {
   constrainGymWeightAtOrBelow,
   constructibleBarbellWeights,
   itemStackAppliesToExercise,
+  itemStackStopsApplying,
 } from '@/lib/gym-loads';
 
 describe('saved gym load constraints', () => {
@@ -113,5 +114,35 @@ describe('item stack inheritance', () => {
     expect(itemStackAppliesToExercise('MACHINE', 'DUMBBELL')).toBe(false);
     expect(itemStackAppliesToExercise('MACHINE', 'BARBELL')).toBe(false);
     expect(itemStackAppliesToExercise('OTHER', 'BODYWEIGHT')).toBe(false);
+  });
+  it('stops applying when a stack the exercise inherited is taken away (#386)', () => {
+    // A machine exercise holds the item's stack through a MACHINE -> CABLE
+    // move, because the stack still applies to it under either type...
+    expect(itemStackStopsApplying('MACHINE', 'MACHINE', 'CABLE')).toBe(false);
+    expect(itemStackStopsApplying('CABLE', 'CABLE', 'MACHINE')).toBe(false);
+    // ...and loses it when the item stops carrying a stack at all.
+    expect(itemStackStopsApplying('MACHINE', 'CABLE', 'DUMBBELL')).toBe(true);
+    expect(itemStackStopsApplying('CABLE', 'MACHINE', 'BARBELL')).toBe(true);
+    expect(itemStackStopsApplying('MACHINE', 'OTHER', 'BODYWEIGHT')).toBe(true);
+    // OTHER-to-OTHER inheritance ends the same way when the rack item moves on.
+    expect(itemStackStopsApplying('OTHER', 'OTHER', 'MACHINE')).toBe(true);
+  });
+
+  it('keeps deliberate load options across a type change that never applied (#386)', () => {
+    // The kettlebell-rack case of #324: an OTHER exercise linked to a station
+    // item that moves MACHINE -> CABLE keeps the options a trainee set through
+    // the gym config form, because the stack applied under neither type.
+    expect(itemStackStopsApplying('OTHER', 'MACHINE', 'CABLE')).toBe(false);
+    expect(itemStackStopsApplying('OTHER', 'CABLE', 'MACHINE')).toBe(false);
+    expect(itemStackStopsApplying('OTHER', 'CABLE', 'OTHER')).toBe(false);
+  });
+
+  it('never clears options on an exercise that never inherited a stack', () => {
+    expect(itemStackStopsApplying('DUMBBELL', 'CABLE', 'MACHINE')).toBe(false);
+    expect(itemStackStopsApplying('BARBELL', 'MACHINE', 'CABLE')).toBe(false);
+    expect(itemStackStopsApplying('BODYWEIGHT', 'OTHER', 'CABLE')).toBe(false);
+    // A brand new item has no previous type to transition from.
+    expect(itemStackStopsApplying('OTHER', null, 'CABLE')).toBe(false);
+    expect(itemStackStopsApplying('OTHER', undefined, 'MACHINE')).toBe(false);
   });
 });
