@@ -3031,3 +3031,11 @@ added the name.
 **Media.** No captured page (home, progress, generator, catalog) changed, so no re-shoot. The
 recorded session clip, already stale since 2026-09-30, now also lacks the new rest timer
 controls.
+
+### 2026-10-07 - Retsumdk added to the vetted list
+
+The operator accepted the promotion proposed in the write-up above ("oui"), with one
+condition: every PR is still checked for security problems and attacks. The name was
+added to `docs/loops/10-external-contributions.md` by the loop on that explicit human
+grant. Nothing about the passes changes: the egress and threat-model lenses run on every
+Retsumdk PR, a security finding blocks the merge, and hard-block paths stay human-only.
