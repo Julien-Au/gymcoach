@@ -742,3 +742,31 @@ policy and `ship-pr` edits that graduate them, the CHANGELOG and README.
 **Carry forward:** #375-#381 (filed this wave), #383 open, #357, #348, #320, #300-#304, the
 MCP half of #331. **Media:** no captured page changed, no re-shoot; the recorded session clip
 is now stale against the picker, actions menu, metric columns and barbell diagram.
+
+---
+
+## 2026-10-07 - rest timer controls, copy as text, and the first unvetted PR the loop merged on its own
+
+Merged: **#420** (@Retsumdk, unvetted, gym-loads fix), **#421** (rest timer pause, -15/+15 s,
+end-of-rest flash), **#422** (copy a finished workout as text). In this PR: your 2026-10-07
+standing delegation, written into the trust policy.
+
+**Read first:**
+
+1. **This PR's policy edit.** `docs/loops/10-external-contributions.md` (the top, the trust
+   tiers and "Outcomes by tier"), plus the aligned lines in `CLAUDE.md`, `07-autonomy.md`,
+   `CONTRIBUTING.md` and `.claude/skills/ship-pr/SKILL.md`. Check that it says what you meant:
+   the loop now merges an unvetted PR only when all three passes are clean and it adds value;
+   hard-block paths and any blocking, major or security finding still stop at a verdict. It is
+   the widest change to the loop's authority since 2026-08-27.
+2. **#420 - the first merge you did not click.** `gh pr diff 420`. Small and core
+   (`itemStackStopsApplying` in `lib/gym-loads.ts`, its call in `upsertOwnedGymEquipment`).
+   Read it as a spot check of the new path, not because it looks wrong. No backfill: configs
+   already cleared by the old rule stay cleared, because nothing records whether an option list
+   was inherited.
+
+**Decide:** whether to add `Retsumdk` to the vetted list (proposed in `autonomy-log.md`; two
+clean merged PRs, #385 and #420).
+
+**Trust the gate (lower risk):** #421 and #422 (additive UI, a device-local setting, a pure text
+formatter, each fixed up after one skeptic review), the CHANGELOG and README lines.

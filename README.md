@@ -113,6 +113,8 @@ on your own key - all self-hosted.
   quick entry (`100x8@9`) and natural-language entry parsed by the AI.
 - **In-logger tools** - a rest timer, a plate-loading calculator that draws the
   per-side load on a barbell, and a warm-up ramp calculator, right where you log.
+- **Rest timer controls** - pause, -15/+15 s, and an optional screen flash when
+  the rest ends.
 - **A weight picker that knows your gym** - the weight and reps fields open a
   drum-style picker limited to the loads your equipment can actually make, with
   a barbell preview of the pending load; nothing changes until you press Apply,
@@ -168,6 +170,8 @@ on your own key - all self-hosted.
   trained, open a day's sessions, and filter by program. Days are bucketed in
   your own timezone, not the server's
   ([example](docs/screenshots/history.png)).
+- **Copy a workout as text** - one tap puts a finished session's recap on the
+  clipboard, ready to paste into a chat or a training log.
 - **Auto-regulation** - stalled-lift detection and a deload recommendation from
   your stalls and readiness, with a one-tap planned deload that lightens loads
   10% until it expires.

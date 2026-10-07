@@ -2971,3 +2971,63 @@ exercise), #379 (server-side duplicate exercise check), #380 (weights-only equip
 live-session screen changed a lot - weight picker, actions menu, metric columns, barbell
 diagram - so the recorded session clip is now stale, on top of the clip debt already logged on
 2026-09-14.
+
+## 2026-10-07 - three merges at the per-run cap, and the first unvetted-tier merge the loop decided on its own
+
+**Context.** One external PR and two loop-authored features shipped: **#420** by @Retsumdk
+(unvetted tier, closes #386: clear an exercise's inherited load options only when the gym
+item's stack stops applying to it), **#421** (closes #393: rest timer pause and resume, -15/+15 s
+replacing +30 s, an optional end-of-rest screen flash) and **#422** (closes #405: copy a finished
+workout as text). Three merges is the per-run cap; the run stopped there.
+
+**The delegation.** During the run the operator wrote, in session: "Si il présente aucun risque
+et un intérêt, je veux que tu choisisses de merge, ne me demande pas." ("If it presents no risk
+and is worth having, I want you to decide to merge it; do not ask me.") Unlike the 2026-09-14
+and 2026-09-30 authorizations, this one is **standing**, not scoped to a wave, so it is now
+policy: `10-external-contributions.md` records it, and `CLAUDE.md`, `07-autonomy.md`,
+`CONTRIBUTING.md` and the `ship-pr` skill are aligned with it in this PR. The loop now merges an
+external PR, unvetted tier included, when pass 1 (no hard-block path, injection screen clean),
+pass 2 (every lens clean, no blocking or major finding) and pass 3 (green CI on the pinned SHA)
+succeed and the PR adds value. Unchanged: unvetted code is never executed on the host; a
+hard-block path or any blocking, major or security finding means verdict only (or a
+maintainer-tier follow-up), never a merge; the vetted list is granted by a human only. It is
+still a review process, not a security guarantee.
+
+**#420, the first merge under it.** Pass 1: `lib/gym-equipment.ts`, `lib/gym-loads.ts`, a unit
+test and an integration test - no hard-block path, nothing in the diff or the PR text tried to
+steer the loop. Pass 2: four lenses (egress, test integrity, correctness and conventions, threat
+model), nothing blocking; the only nits were on the PR body (em-dashes, no `Closes` line). Pass
+3: green CI on head `cd3e6ef`. The verdict comment, posted before the instruction, still said a
+maintainer would click merge; after the operator's sentence the loop squash-merged it itself,
+pinned to that SHA, with no human click. The fix adds `itemStackStopsApplying`, so a type change
+the stack never applied under leaves deliberate load options alone (the kettlebell-rack case of
+#324). The contributor declined a backfill of configs already cleared by the old rule, and the
+loop agreed: `GymExerciseConfig` records no provenance, so a backfill cannot tell an inherited
+option list from a deliberate one.
+
+**#421 and #422, loop-authored.** One Opus skeptic each; only minor findings, all fixed on the
+branch before merge. #421: the next-set recommendation shown during a paused rest now assumes
+the recovery runs until now plus the time left, and a fixed sleep in the superset E2E spec was
+removed in favor of waiting on the condition. #422: focus returns to
+the button after the hidden-textarea fallback, the fallback selects correctly on iOS Safari, and
+a cardio set without a value renders a dash.
+
+**Green gate.** Zero host executions of contributor code: #420 was read on the host and tested
+by CI only. #421, #422 and this docs PR passed `bash scripts/verify.sh` on the host
+(loop-authored).
+
+**One metric.** 3 PRs merged, 0 abandoned, 0 reverted (1 external, 2 loop-authored); 1 fixup
+round each on #421 and #422, none on #420. Token spend per tick was not recorded for this
+write-up.
+
+**Promotion proposal (for the human, not applied).** @Retsumdk now has two clean merged PRs:
+#385 (four lenses unanimous, minor findings only, which went to follow-up #386) and #420 (which
+closed that follow-up, four clean lenses, no fixup). The loop proposes adding `Retsumdk` to the
+vetted list in `10-external-contributions.md`. Only a human edits that list; the loop has not
+added the name.
+
+**Lessons.** None new: the run hit no failure mode the playbook does not already cover.
+
+**Media.** No captured page (home, progress, generator, catalog) changed, so no re-shoot. The
+recorded session clip, already stale since 2026-09-30, now also lacks the new rest timer
+controls.

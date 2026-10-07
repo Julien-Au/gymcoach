@@ -97,8 +97,11 @@ operator gives you in-session.
   full autonomy as before. **Vetted contributors** (human-granted list in that file) may
   have fork PRs auto-merged, but only after the mechanical surface gate, the multi-lens
   adversarial review, and green CI on the pinned SHA, and never on a hard-block path.
-  **Unvetted authors** get fast triage, a real review, and a public structured verdict -
-  and are never auto-merged and never executed locally.
+  **Unvetted authors** get fast triage, a real review, and a public structured verdict, and
+  are never executed locally. Since the operator's 2026-10-07 standing delegation the loop
+  merges an unvetted PR itself when the same three passes are clean and the PR adds value;
+  a hard-block path or any blocking, major or security finding still means verdict only,
+  never a merge.
 - **The execution gate.** CI is the only executor of unvetted code. Never run
   `verify.sh`, `npm ci`/`install`, or any build/test command locally on an unvetted PR's
   code, even in a worktree - test files and executable configs run during the gate with

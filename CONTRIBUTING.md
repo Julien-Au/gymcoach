@@ -11,13 +11,14 @@ handled.
 This project is maintained day to day by an AI agent under a public charter
 (`docs/loops/`). So that you know exactly what to expect:
 
-- **An AI reviews your PR; a human merges it.** New external PRs get a triage
+- **An AI reviews your PR, and may merge it.** New external PRs get a triage
   response within about a day and a full structured review verdict within 72
   hours: a mechanical surface check, an adversarial multi-lens code review,
-  and a read of CI. The final merge click for new contributors is always made
-  by a human maintainer. Contributors with an established track record can be
-  granted vetted status, after which green, reviewed PRs may be merged by the
-  agent.
+  and a read of CI. When all three are clean, the PR touches none of the paths
+  below and it adds value, the agent may merge it on its own; otherwise the
+  verdict says what a human maintainer still has to decide. Contributors with
+  an established track record can be granted vetted status (by a human), after
+  which the agent may also push small fixups to their branch.
 - **Your code is executed by CI** (GitHub Actions, ephemeral, no secrets) when
   you open a PR. Outside CI, external code is only ever executed in an
   isolated, credential-free container - never directly on a maintainer
