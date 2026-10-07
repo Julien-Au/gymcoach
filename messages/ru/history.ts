@@ -55,6 +55,14 @@ export const history = {
     heartRate: 'Пульс',
     chartMinutes: '{value} мин',
   },
+  copy: {
+    button: 'Скопировать текстом',
+    copied: 'Тренировка скопирована.',
+    error: 'Не удалось скопировать тренировку.',
+    warmup: 'разминка',
+    dropSet: 'дроп-сет',
+    notes: 'Заметки:',
+  },
   delete: {
     button: 'Удалить',
     title: 'Удалить тренировку?',

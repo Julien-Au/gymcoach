@@ -51,6 +51,14 @@ export const history = {
     heartRate: 'HR',
     chartMinutes: '{value} min',
   },
+  copy: {
+    button: 'Copy as text',
+    copied: 'Workout copied.',
+    error: 'Could not copy the workout.',
+    warmup: 'warm-up',
+    dropSet: 'drop set',
+    notes: 'Notes:',
+  },
   delete: {
     button: 'Delete',
     title: 'Delete this session?',
