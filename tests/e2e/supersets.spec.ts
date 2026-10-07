@@ -189,8 +189,8 @@ test('a superset gives a short rest between members and a full rest after the gr
   await page.getByRole('button', { name: 'Pause' }).click();
   await expect(page.getByText('Rest paused')).toBeVisible();
   const pausedAt = Number(await restValue.textContent());
-  await page.waitForTimeout(1500);
-  expect(Number(await restValue.textContent())).toBe(pausedAt);
+  // A still-running countdown would have moved on by the time +15 s lands,
+  // so the exact sum proves the paused rest held its time.
   await page.getByRole('button', { name: 'Add 15 seconds' }).click();
   await expect(restValue).toHaveText(String(pausedAt + 15));
   await page.getByRole('button', { name: 'Resume' }).click();

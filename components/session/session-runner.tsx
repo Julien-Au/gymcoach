@@ -720,7 +720,14 @@ export function SessionRunner({
       ? exerciseName(restNextPe.exercise.name)
       : null;
   const restRecommendation =
-    mode.kind === 'rest' && restNextPe ? recommendationFor(restNextPe, mode.endsAt) : null;
+    mode.kind === 'rest' && restNextPe
+      ? // A paused rest has not used its remaining time yet, so the recovery the
+        // recommendation assumes runs until now plus what is left.
+        recommendationFor(
+          restNextPe,
+          mode.pausedRemainingMs != null ? Date.now() + mode.pausedRemainingMs : mode.endsAt,
+        )
+      : null;
 
   return (
     <main className="flex flex-1 flex-col">
