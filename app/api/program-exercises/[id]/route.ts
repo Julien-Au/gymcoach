@@ -20,7 +20,7 @@ export async function PUT(req: Request, props: Params) {
     // the status code, not the security boundary.
     const owned = await db.programExercise.findFirst({
       where: { id: params.id, workout: { program: { userId } } },
-      select: { id: true, workoutId: true },
+      select: { id: true, workoutId: true, exerciseId: true },
     });
     if (!owned) throw new ApiError(404, 'Program exercise not found.');
 
@@ -35,12 +35,15 @@ export async function PUT(req: Request, props: Params) {
 
     // Replacing a row's exercise with one the workout already holds would
     // create the same duplicate POST refuses (issues #379, #426): the live
-    // runner shares one set pool per exercise. The row itself is excluded so
-    // an edit that keeps its exercise still saves.
-    const duplicate = await db.programExercise.findFirst({
-      where: { workoutId: owned.workoutId, exerciseId: data.exerciseId, id: { not: params.id } },
-      select: { id: true },
-    });
+    // runner shares one set pool per exercise. Only a change of exercise is
+    // checked, so a targets-only edit still saves, including on a row whose
+    // workout already holds a duplicate from before this check.
+    const duplicate =
+      data.exerciseId !== owned.exerciseId &&
+      (await db.programExercise.findFirst({
+        where: { workoutId: owned.workoutId, exerciseId: data.exerciseId, id: { not: params.id } },
+        select: { id: true },
+      }));
     if (duplicate) {
       throw new ApiError(409, 'That exercise is already in this workout.');
     }

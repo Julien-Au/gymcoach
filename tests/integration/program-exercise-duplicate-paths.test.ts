@@ -86,6 +86,22 @@ describe('PUT /api/program-exercises/[id] (issue #426)', () => {
     );
   });
 
+  it('still saves a targets-only edit on a workout that already holds a duplicate', async () => {
+    // Rows written before the duplicate checks existed may share an exercise;
+    // editing one of them without changing its exercise must not be refused.
+    const { user, bench, benchRow, workout } = await seed('put-legacy-dup@test.dev');
+    await db.programExercise.create({
+      data: { workoutId: workout.id, exerciseId: bench.id, order: 3, ...targets },
+    });
+    mockUserId.mockResolvedValue(user.id);
+
+    const res = await put(benchRow.id, { exerciseId: bench.id, ...targets, targetSets: 4 });
+    expect(res.status).toBe(200);
+    expect((await db.programExercise.findUnique({ where: { id: benchRow.id } }))?.targetSets).toBe(
+      4,
+    );
+  });
+
   it('still replaces with an exercise the workout does not hold', async () => {
     const { user, squat, rowRow } = await seed('put-new@test.dev');
     mockUserId.mockResolvedValue(user.id);
