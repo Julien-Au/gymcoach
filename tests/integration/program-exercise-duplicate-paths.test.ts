@@ -178,40 +178,32 @@ describe('MCP add_program_exercise (issue #426)', () => {
 });
 
 describe('program generation (issue #426)', () => {
-  it('keeps only the first occurrence of an exercise named twice in one workout', async () => {
+  it('keeps a deliberate repeat of an exercise in one workout', async () => {
+    // Templates such as 5/3/1 Boring But Big program the main lift twice in
+    // one workout (the 5/3/1 sets, then the 5x10), so generation keeps every
+    // row; only the hand-edit paths refuse a duplicate.
     const user = await db.user.create({ data: { email: 'gen-dup@test.dev', passwordHash: 'x' } });
     const programId = await buildProgramFromGenerated(user.id, {
       name: 'Generated',
       phase: 'Base',
       workouts: [
         {
-          name: 'Push',
+          name: 'Press day',
           dayOfWeek: 1,
           exercises: [
-            { name: 'Bench', ...generatedTargets, targetSets: 4 },
-            { name: 'Dips', ...generatedTargets },
-            { name: 'Bench', ...generatedTargets, targetSets: 2 },
+            { name: 'Bench', ...generatedTargets, targetSets: 3 },
+            { name: 'Bench', ...generatedTargets, targetSets: 5 },
+            { name: 'Row', ...generatedTargets },
           ],
-        },
-        {
-          name: 'Push B',
-          dayOfWeek: 4,
-          exercises: [{ name: 'Bench', ...generatedTargets }],
         },
       ],
     });
 
-    const workouts = await db.workout.findMany({
+    const workout = await db.workout.findFirstOrThrow({
       where: { programId },
-      orderBy: { order: 'asc' },
       include: { exercises: { orderBy: { order: 'asc' }, include: { exercise: true } } },
     });
-    const push = workouts[0]!;
-    expect(push.exercises.map((pe) => pe.exercise.name)).toEqual(['Bench', 'Dips']);
-    // The first occurrence wins, and the order stays contiguous.
-    expect(push.exercises[0]!.targetSets).toBe(4);
-    expect(push.exercises.map((pe) => pe.order)).toEqual([1, 2]);
-    // The same exercise in another workout is untouched.
-    expect(workouts[1]!.exercises.map((pe) => pe.exercise.name)).toEqual(['Bench']);
+    expect(workout.exercises.map((pe) => pe.exercise.name)).toEqual(['Bench', 'Bench', 'Row']);
+    expect(workout.exercises.map((pe) => pe.targetSets)).toEqual([3, 5, 3]);
   });
 });

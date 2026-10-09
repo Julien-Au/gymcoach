@@ -130,10 +130,6 @@ async function createGeneratedWorkout(
   });
 
   let exerciseOrder = 1;
-  // A model can name the same exercise twice in one workout. Keep the first
-  // occurrence: two rows for one exercise would share one set pool in the
-  // live runner (issue #426).
-  const placedExerciseIds = new Set<string>();
   for (const ex of w.exercises) {
     const exercise = await tx.exercise.upsert({
       where: { userId_name: { userId, name: ex.name } },
@@ -149,9 +145,6 @@ async function createGeneratedWorkout(
         defaultRestSec: ex.restSec,
       },
     });
-
-    if (placedExerciseIds.has(exercise.id)) continue;
-    placedExerciseIds.add(exercise.id);
 
     const autoregDefaults = defaultIntraSetConfig(exercise);
     await tx.programExercise.create({
