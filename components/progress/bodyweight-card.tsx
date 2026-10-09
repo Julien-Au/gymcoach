@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useFormatter, useLocale, useTranslations } from 'next-intl';
 import { toast } from 'sonner';
-import { ArrowDownRight, ArrowUpRight, Scale, Trash2 } from 'lucide-react';
+import { Scale, Trash2 } from 'lucide-react';
 import {
   CartesianGrid,
   Line,
@@ -110,13 +110,6 @@ export function BodyweightCard({ entries, unit, goalKg = null, listLimit = 5 }: 
       ? bodyweightGoalStatus(oldest.weightKg, latest.weightKg, goalKg)
       : null;
   const goalBounds = goalBoundsInUnit(unit);
-  // The weight's own movement over the window, for the arrow next to the gap.
-  const TrendIcon =
-    latest && oldest && latest.weightKg !== oldest.weightKg
-      ? latest.weightKg > oldest.weightKg
-        ? ArrowUpRight
-        : ArrowDownRight
-      : null;
 
   async function saveGoal(nextGoalKg: number | null) {
     setBusy(true);
@@ -216,18 +209,16 @@ export function BodyweightCard({ entries, unit, goalKg = null, listLimit = 5 }: 
                 data-tone={goalStatus.tone}
                 className={cn('font-medium', TONE_CLASS[goalStatus.tone])}
               >
-                {!goalStatus.reached && TrendIcon && goalStatus.tone !== 'neutral' && (
-                  <TrendIcon className="mr-0.5 inline size-4 align-text-bottom" aria-hidden />
-                )}
                 {goalStatus.reached
                   ? t('goalReached')
                   : t(goalStatus.direction === 'lose' ? 'goalToLose' : 'goalToGain', {
                       weight: formatWeight(goalStatus.remainingKg, unit, { locale }),
                     })}
-                {/* The colour is not the only signal of the trend (WCAG 1.4.1). */}
+                {/* The colour is not the only signal of the trend (WCAG 1.4.1). The
+                    words say it, not an arrow: when the weight crosses the goal, its
+                    movement and the trend toward the goal point opposite ways. */}
                 {!goalStatus.reached && goalStatus.tone !== 'neutral' && (
-                  <span className="sr-only">
-                    {' '}
+                  <span className="ml-1 font-normal">
                     {goalStatus.tone === 'good' ? t('goalTowards') : t('goalAway')}
                   </span>
                 )}

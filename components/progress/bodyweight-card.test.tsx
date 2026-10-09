@@ -88,7 +88,7 @@ describe('BodyweightCard', () => {
   });
 
   describe('bodyweight goal (issue #398)', () => {
-    it('shows the goal and colours the delta by the direction of the goal', () => {
+    it('shows the goal and colours the delta by the distance to the goal', () => {
       // The window went 80 -> 81.2 kg: good toward a higher goal...
       const { unmount } = render(<BodyweightCard entries={entries} unit="KG" goalKg={84} />);
       expect(screen.getByText(/goal: 84 kg/i)).toBeInTheDocument();
@@ -105,6 +105,16 @@ describe('BodyweightCard', () => {
       expect(away).toHaveAttribute('data-tone', 'bad');
       expect(away).toHaveTextContent('5.2 kg to lose');
       expect(away).toHaveTextContent('(moving away from your goal)');
+    });
+
+    it('spells out a good trend when the weight crossed the goal', () => {
+      // 80 -> 81.2 kg past a goal of 80.8: the weight went up, the gap is now
+      // "to lose", yet the distance to the goal shrank (0.8 -> 0.4 kg).
+      render(<BodyweightCard entries={entries} unit="KG" goalKg={80.8} />);
+      const delta = screen.getByTestId('bodyweight-goal-delta');
+      expect(delta).toHaveAttribute('data-tone', 'good');
+      expect(delta).toHaveTextContent('0.4 kg to lose');
+      expect(delta).toHaveTextContent('(moving toward your goal)');
     });
 
     it('displays a goal saved in pounds as the same number of pounds', () => {

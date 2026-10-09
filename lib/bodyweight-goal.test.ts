@@ -49,6 +49,14 @@ describe('bodyweightGoalStatus (issue #398)', () => {
     expect(bodyweightGoalStatus(70, 75.8, 76)).toMatchObject({ reached: true, tone: 'good' });
   });
 
+  it('counts exactly the tolerance as reached, and just past it as a gap', () => {
+    expect(bodyweightGoalStatus(85, 78.25, 78)).toMatchObject({ reached: true });
+    expect(bodyweightGoalStatus(85, 78.5, 78)).toMatchObject({
+      reached: false,
+      direction: 'lose',
+    });
+  });
+
   it('is not reached when a bulk goal sits between the window start and the current weight', () => {
     // Cut 85 -> 75, then a bulk goal of 80: 5 kg still to gain, not reached.
     // The window started 5 kg from 80 too, so the trend reads neutral.
