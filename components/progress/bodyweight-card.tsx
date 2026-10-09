@@ -9,6 +9,7 @@ import {
   CartesianGrid,
   Line,
   LineChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -19,6 +20,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { bodyweightGoalStatus, chartDomainWithGoal } from '@/lib/bodyweight-goal';
+import { cn } from '@/lib/utils';
 import {
   formatWeight,
   fromDisplayWeight,
@@ -38,6 +41,8 @@ interface Props {
   // Entries of the trend window, newest first.
   entries: BodyweightEntryView[];
   unit: WeightUnit;
+  // Target bodyweight in kg (issue #398), null when no goal is set.
+  goalKg?: number | null;
   // How many recent entries get a row in the list below the chart.
   listLimit?: number;
 }
@@ -45,13 +50,24 @@ interface Props {
 // Bodyweight trend card (issue #99): quick-add a measurement in the display
 // unit, see the trend over the window, delete bad entries. The profile field
 // in settings keeps working separately (corrections, not measurements).
-export function BodyweightCard({ entries, unit, listLimit = 5 }: Props) {
+// Same bounds as the profile schema's bodyweightGoalKg, in kg.
+const GOAL_MIN_KG = 20;
+const GOAL_MAX_KG = 300;
+
+const TONE_CLASS = {
+  good: 'text-emerald-600 dark:text-emerald-400',
+  bad: 'text-rose-600 dark:text-rose-400',
+  neutral: 'text-muted-foreground',
+} as const;
+
+export function BodyweightCard({ entries, unit, goalKg = null, listLimit = 5 }: Props) {
   const t = useTranslations('progress.bodyweight');
   const common = useTranslations('common');
   const locale = useLocale();
   const format = useFormatter();
   const router = useRouter();
   const [weightField, setWeightField] = useState('');
+  const [goalField, setGoalField] = useState('');
   const [busy, setBusy] = useState(false);
 
   const unitSuffix = unitLabel(unit);
@@ -74,6 +90,52 @@ export function BodyweightCard({ entries, unit, listLimit = 5 }: Props) {
   );
 
   const latest = entries[0];
+  const oldest = entries[entries.length - 1];
+  const goalDisplay = goalKg != null ? roundWeight(toDisplayWeight(goalKg, unit), 1) : null;
+  const yDomain = chartDomainWithGoal(
+    chartData.map((point) => point.weight),
+    goalDisplay,
+  );
+  const goalStatus =
+    goalKg != null && latest && oldest
+      ? bodyweightGoalStatus(oldest.weightKg, latest.weightKg, goalKg)
+      : null;
+
+  async function saveGoal(nextGoalKg: number | null) {
+    setBusy(true);
+    try {
+      const res = await fetch('/api/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bodyweightGoalKg: nextGoalKg }),
+      });
+      if (!res.ok) {
+        toast.error(t('goalError'));
+        return;
+      }
+      toast.success(nextGoalKg == null ? t('goalRemoved') : t('goalSaved'));
+      setGoalField('');
+      router.refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function submitGoal() {
+    const value = parseFloat(goalField);
+    const kg = Number.isFinite(value) ? fromDisplayWeight(value, unit) : NaN;
+    if (!Number.isFinite(kg) || kg < GOAL_MIN_KG || kg > GOAL_MAX_KG) {
+      toast.error(
+        t('goalInvalid', {
+          min: Math.ceil(toDisplayWeight(GOAL_MIN_KG, unit)),
+          max: Math.floor(toDisplayWeight(GOAL_MAX_KG, unit)),
+          unit: unitSuffix,
+        }),
+      );
+      return;
+    }
+    void saveGoal(kg);
+  }
 
   async function addEntry() {
     const weight = parseFloat(weightField);
@@ -131,6 +193,26 @@ export function BodyweightCard({ entries, unit, listLimit = 5 }: Props) {
             </span>
           )}
         </div>
+        {goalKg != null && (
+          <p className="flex flex-wrap items-center gap-x-2 text-sm">
+            <span className="text-muted-foreground">
+              {t('goal', { weight: formatWeight(goalKg, unit, { locale }) })}
+            </span>
+            {goalStatus && (
+              <span
+                data-testid="bodyweight-goal-delta"
+                data-tone={goalStatus.tone}
+                className={cn('font-medium', TONE_CLASS[goalStatus.tone])}
+              >
+                {goalStatus.reached
+                  ? t('goalReached')
+                  : t('goalToGo', {
+                      weight: formatWeight(goalStatus.remainingKg, unit, { locale }),
+                    })}
+              </span>
+            )}
+          </p>
+        )}
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         {/* Quick add, in the display unit */}
@@ -178,7 +260,7 @@ export function BodyweightCard({ entries, unit, listLimit = 5 }: Props) {
                 <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                 <YAxis
                   tick={{ fontSize: 11 }}
-                  domain={['auto', 'auto']}
+                  domain={yDomain ?? ['auto', 'auto']}
                   tickFormatter={(v: number) => String(v)}
                 />
                 <Tooltip
@@ -189,6 +271,19 @@ export function BodyweightCard({ entries, unit, listLimit = 5 }: Props) {
                     fontSize: 12,
                   }}
                 />
+                {goalDisplay != null && (
+                  <ReferenceLine
+                    y={goalDisplay}
+                    stroke="hsl(var(--muted-foreground))"
+                    strokeDasharray="6 4"
+                    label={{
+                      value: t('goalLine'),
+                      position: 'insideTopRight',
+                      fontSize: 11,
+                      fill: 'hsl(var(--muted-foreground))',
+                    }}
+                  />
+                )}
                 <Line
                   type="monotone"
                   dataKey="weight"
@@ -201,6 +296,42 @@ export function BodyweightCard({ entries, unit, listLimit = 5 }: Props) {
             </ResponsiveContainer>
           </div>
         )}
+
+        {/* Goal (issue #398), in the display unit */}
+        <form
+          className="flex flex-wrap items-end gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            submitGoal();
+          }}
+        >
+          <div className="min-w-0 flex-1 space-y-1">
+            <Label htmlFor="bodyweight-goal-input">{t('goalLabel', { unit: unitSuffix })}</Label>
+            <Input
+              id="bodyweight-goal-input"
+              type="number"
+              inputMode="decimal"
+              step="0.1"
+              min="0"
+              placeholder={goalDisplay != null ? String(goalDisplay) : undefined}
+              value={goalField}
+              onChange={(e) => setGoalField(e.target.value)}
+            />
+          </div>
+          <Button type="submit" variant="outline" disabled={busy}>
+            {t('goalSet')}
+          </Button>
+          {goalKg != null && (
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={busy}
+              onClick={() => void saveGoal(null)}
+            >
+              {t('goalRemove')}
+            </Button>
+          )}
+        </form>
 
         {/* Recent entries, deletable */}
         {entries.length > 0 && (

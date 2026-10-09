@@ -69,9 +69,7 @@ describe('BodyweightCard', () => {
     const user = userEvent.setup();
     render(<BodyweightCard entries={entries} unit="KG" />);
 
-    await user.click(
-      screen.getAllByRole('button', { name: /delete entry/i })[0] as HTMLElement,
-    );
+    await user.click(screen.getAllByRole('button', { name: /delete entry/i })[0] as HTMLElement);
 
     const [url, init] = lastFetchCall(fetchMock);
     expect(url).toBe('/api/bodyweight/b2');
@@ -83,5 +81,67 @@ describe('BodyweightCard', () => {
     render(<BodyweightCard entries={entries} unit="LB" />);
     // 80 kg = 176.4 lb.
     expect(screen.getByText(/176.4 lb/)).toBeInTheDocument();
+  });
+
+  describe('bodyweight goal (issue #398)', () => {
+    it('shows the goal and colours the delta by the direction of the goal', () => {
+      // The window went 80 -> 81.2 kg: good toward a higher goal...
+      const { unmount } = render(<BodyweightCard entries={entries} unit="KG" goalKg={84} />);
+      expect(screen.getByText(/goal: 84 kg/i)).toBeInTheDocument();
+      const delta = screen.getByTestId('bodyweight-goal-delta');
+      expect(delta).toHaveTextContent('2.8 kg to go');
+      expect(delta).toHaveAttribute('data-tone', 'good');
+      unmount();
+
+      // ...and bad toward a lower one.
+      render(<BodyweightCard entries={entries} unit="KG" goalKg={76} />);
+      expect(screen.getByTestId('bodyweight-goal-delta')).toHaveAttribute('data-tone', 'bad');
+    });
+
+    it('says when the goal is reached', () => {
+      render(<BodyweightCard entries={entries} unit="KG" goalKg={81} />);
+      expect(screen.getByTestId('bodyweight-goal-delta')).toHaveTextContent('Goal reached');
+    });
+
+    it('saves the goal in kg, converting from the display unit (lb)', async () => {
+      const user = userEvent.setup();
+      render(<BodyweightCard entries={entries} unit="LB" />);
+
+      await user.type(screen.getByLabelText(/goal \(lb\)/i), '165');
+      await user.click(screen.getByRole('button', { name: 'Set goal' }));
+
+      const [url, init] = lastFetchCall(fetchMock);
+      expect(url).toBe('/api/profile');
+      expect(init?.method).toBe('PATCH');
+      const body = JSON.parse(init?.body as string) as { bodyweightGoalKg: number };
+      // 165 lb = 74.84 kg.
+      expect(body.bodyweightGoalKg).toBeCloseTo(74.84, 1);
+      expect(refresh).toHaveBeenCalled();
+    });
+
+    it('rejects a goal outside the bounds without calling the API', async () => {
+      const user = userEvent.setup();
+      render(<BodyweightCard entries={entries} unit="KG" />);
+
+      await user.type(screen.getByLabelText(/goal \(kg\)/i), '5');
+      await user.click(screen.getByRole('button', { name: 'Set goal' }));
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('removes the goal with a null write', async () => {
+      const user = userEvent.setup();
+      render(<BodyweightCard entries={entries} unit="KG" goalKg={76} />);
+
+      await user.click(screen.getByRole('button', { name: 'Remove goal' }));
+      const [url, init] = lastFetchCall(fetchMock);
+      expect(url).toBe('/api/profile');
+      expect(JSON.parse(init?.body as string)).toEqual({ bodyweightGoalKg: null });
+    });
+
+    it('shows no goal line or delta without a goal', () => {
+      render(<BodyweightCard entries={entries} unit="KG" />);
+      expect(screen.queryByTestId('bodyweight-goal-delta')).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Remove goal' })).toBeNull();
+    });
   });
 });

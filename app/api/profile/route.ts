@@ -7,6 +7,7 @@ const PROFILE_SELECT = {
   email: true,
   displayName: true,
   bodyweight: true,
+  bodyweightGoalKg: true,
   sex: true,
   heightCm: true,
   goal: true,
@@ -37,6 +38,9 @@ export async function PATCH(req: Request) {
       data: {
         ...(data.displayName !== undefined ? { displayName: data.displayName } : {}),
         ...(data.bodyweight !== undefined ? { bodyweight: data.bodyweight } : {}),
+        ...(data.bodyweightGoalKg !== undefined
+          ? { bodyweightGoalKg: data.bodyweightGoalKg }
+          : {}),
         ...(data.sex !== undefined ? { sex: data.sex } : {}),
         ...(data.heightCm !== undefined ? { heightCm: data.heightCm } : {}),
         ...(data.goal !== undefined ? { goal: data.goal } : {}),

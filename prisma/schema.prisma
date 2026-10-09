@@ -39,6 +39,9 @@ model User {
   // only and correctable by the user. Null = no note (backward-safe additive
   // column); the set/clear route bounds it to 500 chars.
   coachNote         String?
+  // Target bodyweight in kg (issue #398), drawn as a goal line on the
+  // bodyweight chart. Null = no goal (backward-safe additive column).
+  bodyweightGoalKg  Float?
   createdAt         DateTime           @default(now())
   programs          Program[]
   sessions          Session[]

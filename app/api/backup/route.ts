@@ -43,8 +43,8 @@ import {
 // import below, bump VERSION, and keep older versions importable.
 //
 // Exported models and fields:
-// - User: profile fields (displayName, bodyweight, sex, heightCm, goal,
-//   weeklyFrequency, unit, deloadUntil). email/createdAt ride along for
+// - User: profile fields (displayName, bodyweight, bodyweightGoalKg, sex,
+//   heightCm, goal, weeklyFrequency, unit, deloadUntil). email/createdAt ride along for
 //   reference but are NEVER imported (they identify the importing account).
 // - Exercise: name, muscleGroup, category, defaultRestSec, notes,
 //   usesBodyweight.
@@ -62,7 +62,7 @@ import {
 // - Program.createdAt / Program.updatedAt and Exercise.createdAt (server-side
 //   bookkeeping with no user-facing meaning; reset to the import time).
 
-const VERSION = 5;
+const VERSION = 6;
 
 // Hard cap on the import body size, enforced while reading the stream (the
 // Content-Length header is attacker-controlled). Generous: a decade of daily
@@ -105,6 +105,7 @@ export async function GET() {
           createdAt: true,
           displayName: true,
           bodyweight: true,
+          bodyweightGoalKg: true,
           sex: true,
           heightCm: true,
           goal: true,
@@ -182,6 +183,8 @@ export async function GET() {
       profile: {
         displayName: user.displayName,
         bodyweight: user.bodyweight,
+        // New in v6 (issue #398); absent from older backups.
+        bodyweightGoalKg: user.bodyweightGoalKg,
         sex: user.sex,
         heightCm: user.heightCm,
         goal: user.goal,
@@ -481,6 +484,7 @@ const importSchema = z.object({
     .object({
       displayName: z.string().trim().min(1).max(80).nullable().optional(),
       bodyweight: z.number().min(20).max(300).nullable().optional(),
+      bodyweightGoalKg: z.number().min(20).max(300).nullable().optional(),
       sex: z.nativeEnum(Sex).nullable().optional(),
       heightCm: z.number().int().min(100).max(250).nullable().optional(),
       goal: z.nativeEnum(TrainingGoal).nullable().optional(),
@@ -668,6 +672,9 @@ export async function POST(req: Request) {
             data: {
               ...(p.displayName !== undefined ? { displayName: p.displayName } : {}),
               ...(p.bodyweight !== undefined ? { bodyweight: p.bodyweight } : {}),
+              ...(p.bodyweightGoalKg !== undefined
+                ? { bodyweightGoalKg: p.bodyweightGoalKg }
+                : {}),
               ...(p.sex !== undefined ? { sex: p.sex } : {}),
               ...(p.heightCm !== undefined ? { heightCm: p.heightCm } : {}),
               ...(p.goal !== undefined ? { goal: p.goal } : {}),
