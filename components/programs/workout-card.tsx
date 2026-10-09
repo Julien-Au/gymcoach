@@ -20,6 +20,7 @@ import { ProgramExerciseRow } from '@/components/programs/program-exercise-row';
 import { WorkoutFormDialog } from '@/components/programs/workout-form-dialog';
 import { ProgramExerciseFormDialog } from '@/components/programs/program-exercise-form-dialog';
 import { buildSupersetView, smallestFreeGroup } from '@/lib/supersets';
+import { workoutExerciseChoices } from '@/lib/programs/exercise-choices';
 import { useTrainingName } from '@/components/shared/use-training-name';
 
 const DAY_KEYS = [
@@ -73,6 +74,8 @@ export function WorkoutCard({ workout, catalog }: Props) {
   // Superset pairing (issue #146, slice 1): rows render in presentation order
   // (group members together) with A1/A2 labels derived on read.
   const supersetView = buildSupersetView(workout.exercises);
+  const workoutExerciseIds = workout.exercises.map((pe) => pe.exerciseId);
+  const addChoices = workoutExerciseChoices(catalog, workoutExerciseIds);
 
   async function updateSupersetGroup(
     pe: ProgramExerciseWithExercise,
@@ -192,7 +195,7 @@ export function WorkoutCard({ workout, catalog }: Props) {
                 <li key={pe.id}>
                   <ProgramExerciseRow
                     programExercise={pe}
-                    catalog={catalog}
+                    catalog={workoutExerciseChoices(catalog, workoutExerciseIds, pe.exerciseId)}
                     supersetLabel={supersetView.labels.get(pe.id) ?? null}
                     onPairWithPrevious={
                       index > 0 && !alreadyPairedWithPrevious
@@ -212,7 +215,7 @@ export function WorkoutCard({ workout, catalog }: Props) {
           size="sm"
           onClick={() => setAddExoOpen(true)}
           className="min-h-tap self-start"
-          disabled={catalog.length === 0}
+          disabled={addChoices.length === 0}
         >
           <Plus className="size-4" />
           <span className="ml-2">{exerciseT('add')}</span>
@@ -228,7 +231,7 @@ export function WorkoutCard({ workout, catalog }: Props) {
         onOpenChange={setAddExoOpen}
         mode="create"
         workoutId={workout.id}
-        catalog={catalog}
+        catalog={addChoices}
       />
     </Card>
   );

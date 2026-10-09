@@ -166,7 +166,10 @@ export function SessionExerciseMenu({
           body: JSON.stringify(replacementPayload(programExercise, exercise)),
         },
       );
-      if (!response.ok) throw new Error('replace failed');
+      if (!response.ok) {
+        toast.error(response.status === 409 ? t('duplicate') : t('replaceError'));
+        return;
+      }
       toast.success(t('replaced'));
       onOpenChange(false);
       setView('actions');
@@ -200,7 +203,10 @@ export function SessionExerciseMenu({
           body: JSON.stringify(additionPayload(exercise)),
         },
       );
-      if (!response.ok) throw new Error('add failed');
+      if (!response.ok) {
+        toast.error(response.status === 409 ? t('duplicate') : t('addError'));
+        return;
+      }
       toast.success(t('added'));
       onOpenChange(false);
       setView('actions');

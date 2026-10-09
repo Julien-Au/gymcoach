@@ -73,6 +73,7 @@ export const programs = {
     updated: 'Exercise updated.',
     removed: 'Exercise removed.',
     saveError: 'Could not save the exercise.',
+    duplicate: 'That exercise is already in this workout.',
     removeError: 'Could not remove the exercise.',
     removeConfirm: 'Remove “{name}” from this session?',
     choose: 'Choose from the catalog',

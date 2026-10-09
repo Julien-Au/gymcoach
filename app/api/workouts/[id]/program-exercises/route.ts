@@ -34,12 +34,12 @@ export async function POST(req: Request, props: Params) {
     }
 
     // Refuse an exercise the workout already contains (issue #379). The
-    // in-session menu and the program editor prevent the duplicate client-side
-    // only, so a double submit or a direct API call used to add a second row
-    // for the same exercise. A Set carries only an exerciseId (no
-    // ProgramExercise reference), so the live runner shares one set pool
-    // between the two rows and each reads the other's sets. Enforced here so
-    // the API matches what the UI already prevents.
+    // in-session menu and the program editor hide exercises already in the
+    // workout (#426), but that is a client-side guard only, so a double submit
+    // or a direct API call used to add a second row for the same exercise. A
+    // Set carries only an exerciseId (no ProgramExercise reference), so the
+    // live runner shares one set pool between the two rows and each reads the
+    // other's sets. Enforced here so the API matches what the UI prevents.
     const duplicate = await db.programExercise.findFirst({
       where: { workoutId: params.id, exerciseId: data.exerciseId },
       select: { id: true },

@@ -746,6 +746,14 @@ export function createGymCoachMcpServer({ principal, baseUrl }: ServerOptions): 
             defaultRestSec: input.restSec,
           },
         });
+        // Same rule as the REST routes (issues #379, #426): one row per
+        // exercise in a workout, because the live runner shares one set pool
+        // per exercise.
+        const duplicate = await tx.programExercise.findFirst({
+          where: { workoutId, exerciseId: exercise.id },
+          select: { id: true },
+        });
+        if (duplicate) throw new Error('That exercise is already in this workout.');
         const last = await tx.programExercise.findFirst({
           where: { workoutId },
           orderBy: { order: 'desc' },

@@ -256,6 +256,7 @@ export const session = {
     replaceError: 'Impossible de remplacer l’exercice.',
     added: 'Exercice ajouté.',
     addError: 'Impossible d’ajouter l’exercice.',
+    duplicate: 'Cet exercice est déjà dans cette séance.',
     removed: 'Exercice supprimé.',
     removeError: 'Impossible de supprimer l’exercice.',
   },
