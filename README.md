@@ -176,7 +176,9 @@ on your own key - all self-hosted.
   your stalls and readiness, with a one-tap planned deload that lightens loads
   10% until it expires.
 - **Goals and body comp** - per-exercise goals (weight x reps) with a progress
-  bar, bodyweight tracking, and body measurements - each with a trend.
+  bar, bodyweight tracking with an optional goal weight drawn on the chart
+  (distance left, and whether the trend is moving toward it), and body
+  measurements - each with a trend.
 - **Progress photos** - upload photos alongside your body metrics and compare
   any two side by side. Stored locally on your server, visible only to you.
 - **Home dashboard** - a coach-insight card surfaces the single most important
@@ -516,7 +518,9 @@ Notable changes are tracked in the [CHANGELOG](CHANGELOG.md).
 - [@Retsumdk](https://github.com/Retsumdk) - fixed the silent weight-stack
   inheritance of OTHER-typed exercises linked to a machine or cable item
   (#385), a clean first contribution with a precise write-up of what it does
-  not touch.
+  not touch, then fixed its follow-up (#420) and made the API refuse an
+  exercise already in a workout (#425), the first PR merged under the vetted
+  tier.
 - [@shaurya703](https://github.com/shaurya703) - picked up three of the loop's
   own follow-up issues within hours of their filing and turned each into a
   clean PR, including the persisted dropped-equipment notice (#342).

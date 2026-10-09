@@ -51,6 +51,10 @@ for repo conventions; this skill assumes them.
 3. **Implement.** Make the smallest change that satisfies the issue. Follow
    `CLAUDE.md`: TypeScript strict, Zod for API inputs, reuse `components/ui`
    primitives, English only, regular hyphens (no em/en-dashes).
+   **Before enforcing a uniqueness or "no repeat" rule** (a constraint, a dedupe, a 409),
+   grep the built-in templates, the seed and the demo data for a legitimate repeat (5/3/1
+   Boring But Big repeats the main lift in one workout on purpose), and prefer fixing the
+   consumer that cannot handle the repeat over forbidding it (lesson L37).
 
 4. **Test.** Add or update tests for the change (unit/component colocated as
    `*.test.ts`; integration in `tests/`). A behavior change with no test is not done.

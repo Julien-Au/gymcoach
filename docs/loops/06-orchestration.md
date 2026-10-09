@@ -113,6 +113,10 @@ reverted forward, re-shipped as PR #279).
 - **Until worktree isolation is in place, serialize same-checkout ticks** - never overlap
   two ticks in one tree. This is stricter than the same-file serialization of step 4: any
   two ticks sharing a tree must not overlap, related or not.
+- **Reviewers write git state too (lesson L38).** A review subagent never runs `git
+  checkout`/`git switch` in the main checkout or in another tick's worktree; on 2026-10-09
+  two did, and one detached another tick's `HEAD` mid-work. It reads via `gh pr diff`,
+  `git show <sha>:<path>` and `git diff`, or adds its own `git worktree add` path.
 - **If a commit still lands on `main`, revert forward** (a revert commit restoring `main`'s
   content), never `git push --force` shared history (it is denied anyway), then re-ship the
   work through a proper PR.

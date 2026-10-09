@@ -770,3 +770,32 @@ clean merged PRs, #385 and #420).
 
 **Trust the gate (lower risk):** #421 and #422 (additive UI, a device-local setting, a pure text
 formatter, each fixed up after one skeptic review), the CHANGELOG and README lines.
+
+## 2026-10-09 - the first vetted-tier merge, the duplicate-exercise rule, and a bodyweight goal
+
+Merged: **#425** (@Retsumdk, first PR under the vetted tier, POST refuses a duplicate exercise),
+**#427** (the same rule on PUT replace, MCP add and the program editor), **#428** (bodyweight
+goal line, with a migration). #424 (Retsumdk added to the vetted list) is covered in the
+2026-10-07 digest.
+
+**Read first:**
+
+1. **#428 - schema and backup format.** `gh pr diff 428`. An additive migration
+   (`User.bodyweightGoalKg`, nullable) and backup v6 in `app/api/backup/route.ts`: check that a
+   v5 backup still imports and that the profile route only writes the goal when it is sent.
+   Rollback tag `autonomy-baseline-2026-10-09`.
+2. **#427 - a write rule on four paths, and what it deliberately does not cover.**
+   `gh pr diff 427`. Read the PUT check in `app/api/program-exercises/[id]/route.ts` (it fires
+   only when the exercise changes, so legacy duplicates stay editable) and note that program
+   generation keeps repeats on purpose (5/3/1 BBB). The real bug, one set pool per exercise in
+   the live runner, is still open as #429. Small nit for whoever touches it next: the header
+   comment of `tests/integration/program-exercise-duplicate-paths.test.ts` still says
+   generation "keeps the first occurrence", which the reverted dedupe no longer does.
+3. **#425 - the first vetted-tier merge.** `gh pr diff 425`. Fifteen lines; read it as a spot
+   check that the 409 sits after both ownership checks.
+
+**Process:** L38 - two review subagents ran `git checkout` in shared trees this run. The rule is
+now in `ship-pr` and `06-orchestration.md`; worth a glance that it reads the way you want.
+
+**Trust the gate (lower risk):** the bodyweight card UI and its i18n strings, the editor's
+exercise filter, the CHANGELOG and README lines.

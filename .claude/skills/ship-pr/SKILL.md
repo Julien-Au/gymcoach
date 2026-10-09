@@ -91,6 +91,11 @@ changes on.
    vetted-contributor PRs only, same tier rule and container requirement as step 3; on an
    unvetted PR a defect goes into the verdict comment, never into a fixup commit.
    Cosmetic-only nits do not block a merge.
+   **A reviewer (you or a review subagent) never runs `git checkout`/`git switch` in the
+   main checkout or in a worktree it did not create** - that detaches or moves another
+   tick's `HEAD` mid-work. Read through `gh pr diff <n>`, `git show <sha>:<path>` and
+   `git diff`; when a tree on disk is needed, `git worktree add <scratch-path> <sha>` and
+   remove it afterwards. Say so in every review subagent's prompt (lesson L38).
 
 5. **Merge.** Only if CI is green AND review is clean. Loop-authored PRs:
    `gh pr merge <n> --squash --delete-branch`. Vetted-contributor fork PRs:
