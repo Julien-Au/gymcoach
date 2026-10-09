@@ -249,6 +249,7 @@ export const session = {
     replaceError: 'Could not replace the exercise.',
     added: 'Exercise added.',
     addError: 'Could not add the exercise.',
+    duplicate: 'That exercise is already in this workout.',
     removed: 'Exercise removed.',
     removeError: 'Could not remove the exercise.',
   },

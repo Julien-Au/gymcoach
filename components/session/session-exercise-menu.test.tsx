@@ -3,6 +3,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Exercise, ProgramExercise } from '@/lib/prisma-client';
 import { SessionExerciseMenu } from './session-exercise-menu';
 
+const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
+vi.mock('sonner', () => ({ toast }));
+
 vi.mock('@/components/shared/use-exercise-name', () => ({
   useExerciseName: () => (name: string) => name,
 }));
@@ -353,5 +356,25 @@ describe('SessionExerciseMenu', () => {
       selectProgramExerciseId: 'pe-row',
       removedProgramExerciseId: 'pe-bench',
     });
+  });
+
+  it('names the duplicate when the server refuses an exercise already in the workout (#426)', async () => {
+    vi.mocked(fetch).mockResolvedValue({ ok: false, status: 409 } as Response);
+    const onChanged = vi.fn();
+    renderMenu(0, onChanged);
+    fireEvent.click(screen.getByRole('button', { name: 'Add exercise' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Incline Press' }));
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith('That exercise is already in this workout.'),
+    );
+    expect(onChanged).not.toHaveBeenCalled();
+  });
+
+  it('keeps the generic error for any other failed add', async () => {
+    vi.mocked(fetch).mockResolvedValue({ ok: false, status: 500 } as Response);
+    renderMenu();
+    fireEvent.click(screen.getByRole('button', { name: 'Add exercise' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Incline Press' }));
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Could not add the exercise.'));
   });
 });

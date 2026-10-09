@@ -78,6 +78,7 @@ export const programs = {
     updated: 'Exercice mis à jour.',
     removed: 'Exercice retiré.',
     saveError: 'Impossible d’enregistrer l’exercice.',
+    duplicate: 'Cet exercice est déjà dans cette séance.',
     removeError: 'Impossible de retirer l’exercice.',
     removeConfirm: 'Retirer « {name} » de cette séance ?',
     choose: 'Choisir dans le catalogue',

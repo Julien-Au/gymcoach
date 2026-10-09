@@ -135,7 +135,7 @@ export function ProgramExerciseFormDialog(props: Props) {
       }),
     });
     if (!res.ok) {
-      toast.error(t('saveError'));
+      toast.error(res.status === 409 ? t('duplicate') : t('saveError'));
       return;
     }
     toast.success(props.mode === 'edit' ? t('updated') : t('added'));
