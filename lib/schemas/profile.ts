@@ -13,6 +13,9 @@ export const profileUpdateSchema = z.object({
   // Bodyweight in kg, used to compute the effective tonnage on bodyweight
   // exercises. null reverts to the set.weight-only behavior.
   bodyweight: z.number().min(20, 'Too low').max(300, 'Too high').nullable().optional(),
+  // Target bodyweight in kg (issue #398), drawn as a goal line on the
+  // bodyweight chart. Same bounds as the bodyweight; null clears the goal.
+  bodyweightGoalKg: z.number().min(20, 'Too low').max(300, 'Too high').nullable().optional(),
   sex: z.nativeEnum(Sex).nullable().optional(),
   heightCm: z.number().int().min(100).max(250).nullable().optional(),
   goal: z.nativeEnum(TrainingGoal).nullable().optional(),

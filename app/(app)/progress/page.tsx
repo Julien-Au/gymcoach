@@ -81,7 +81,13 @@ export default async function ProgressPage(
     }),
     db.user.findUnique({
       where: { id: auth.userId },
-      select: { bodyweight: true, unit: true, weeklyFrequency: true, deloadUntil: true },
+      select: {
+        bodyweight: true,
+        bodyweightGoalKg: true,
+        unit: true,
+        weeklyFrequency: true,
+        deloadUntil: true,
+      },
     }),
   ]);
   const bodyweight = user?.bodyweight ?? null;
@@ -472,6 +478,7 @@ export default async function ProgressPage(
             measuredAt: e.measuredAt.toISOString(),
           }))}
           unit={unit}
+          goalKg={user?.bodyweightGoalKg ?? null}
         />
 
         <MeasurementsCard
