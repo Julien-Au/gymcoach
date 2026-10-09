@@ -7,9 +7,9 @@ import { createGymCoachMcpServer } from '@/lib/mcp/server';
 import { buildProgramFromGenerated } from '@/lib/program-generation';
 
 // Issue #426: #425 refused a duplicate exercise on POST only. The live runner
-// shares one set pool per exercise, so every other write path must refuse it
-// too: the PUT that replaces a row's exercise, the MCP add tool, and program
-// generation (which keeps the first occurrence instead of failing).
+// shares one set pool per exercise, so the other hand-edit paths refuse it
+// too: the PUT that replaces a row's exercise and the MCP add tool. Program
+// generation keeps deliberate repeats (5/3/1 Boring But Big, see #429).
 
 vi.mock('@/lib/auth', () => ({ getCurrentUserId: vi.fn() }));
 const mockUserId = vi.mocked(getCurrentUserId);

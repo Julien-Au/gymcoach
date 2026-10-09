@@ -18,8 +18,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   on the clipboard for a chat or a training log. It falls back to a hidden
   textarea copy where the Clipboard API is unavailable, such as a self-hosted
   instance reached over plain http (#422, closes #405).
+- Bodyweight goal: the bodyweight card on the progress page takes an optional
+  goal weight, entered in your unit, and draws it as a dashed line on the
+  chart. The card shows the distance left to lose or gain, "Goal reached"
+  within 0.25 kg, and says in words whether the trend is moving toward or away
+  from the goal. Stored as one nullable column (additive migration); backups
+  move to format v6 and older backups still import (#428, closes #398).
 
 ### Fixed
+
+- A workout can no longer hold the same exercise twice by hand: adding an
+  exercise already in the workout returns 409, both through the REST API and
+  the MCP add tool, and so does replacing a row's exercise with one the
+  workout already holds (a targets-only edit still saves). The program editor
+  now hides exercises already in the workout, as the in-session menu already
+  did, and a refused add or replace shows a translated message. Two rows for one exercise shared
+  one set pool in the live runner. Generated programs and built-in templates
+  still keep a deliberate repeat, such as the main lift of 5/3/1 Boring But
+  Big; logging that repeat as its own block is tracked in #429. The POST check
+  is a community contribution by @Retsumdk (#425, closes #379); the other
+  paths followed in #427 (closes #426).
 
 - Editing a gym equipment item no longer wipes the load options of linked
   exercises on any type change: they are cleared only when the item's stack

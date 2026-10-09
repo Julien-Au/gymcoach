@@ -3039,3 +3039,61 @@ condition: every PR is still checked for security problems and attacks. The name
 added to `docs/loops/10-external-contributions.md` by the loop on that explicit human
 grant. Nothing about the passes changes: the egress and threat-model lenses run on every
 Retsumdk PR, a security finding blocks the merge, and hard-block paths stay human-only.
+
+## 2026-10-09 - the first vetted-tier merge, a duplicate rule that met a built-in template, and a bodyweight goal
+
+**Context.** Three merges, the per-run cap: **#425** by @Retsumdk (closes #379: POST
+program-exercises refuses an exercise already in the workout with a 409), **#427** (refs #426:
+the same rule on the other hand-edit paths) and **#428** (closes #398: a bodyweight goal line on
+the progress chart). #424, the vetted-list addition that #425 ran under, is recorded in the
+2026-10-07 entry above.
+
+**#425 - the first PR under the vetted tier.** The operator's condition when granting the tier
+was that every PR is still checked for security problems and attacks, so the security lens ran
+as it does for an unvetted PR, next to a correctness lens. Both clean: the 409 is reached only
+after both ownership checks (the workout and the exercise), so it cannot be used to probe
+another user's workouts. Merged pinned to head `00c36d9` with no fixup round; the minor notes
+(the PUT replace path, the MCP add tool and the program editor still allowed the duplicate)
+went to follow-up #426 rather than a fixup on the contributor branch (L34).
+
+**#427 - closing #426, and the rule that was too wide.** The loop extended the refusal to the
+PUT that replaces a row's exercise, the MCP add tool and the program editor (which now hides
+exercises already in the workout), with a translated 409 toast. Two defects were caught before
+merge:
+- **Review:** the first PUT check refused any write on a row whose workout already held a
+  duplicate from before the rule, so a targets-only edit of a legacy duplicate returned 409. The
+  check now runs only when the exercise changes.
+- **CI:** the draft also deduped repeated rows in program generation. The integration test that
+  builds every built-in template failed: 5/3/1 Boring But Big repeats the main lift in one
+  workout on purpose. The generation dedupe was reverted, a test pins that generation keeps a
+  deliberate repeat, and the unique constraint under discussion was dropped. The root cause is
+  the live runner sharing one set pool per exercise, filed as #429 (open). **L37.**
+
+**#428 - bodyweight goal.** An additive migration (one nullable `User.bodyweightGoalKg`), the
+goal set on the bodyweight card in the user's unit, backup format v6 with older backups still
+importing. Two review rounds: (1) the first version inferred the direction (cut or bulk) from
+the window's first weight, so a goal set the other way after a cut read as "reached"; the status
+is now computed from the distance to the goal only. (2) The trend was shown by color only; it
+now says "moving toward / away from your goal" in words, after an arrow was tried and dropped
+because it pointed the wrong way relative to the color when the weight crossed the goal.
+Rollback tag `autonomy-baseline-2026-10-09` (at `98cc2ba`) was pushed before the merge, as for
+any migration.
+
+**Green gate.** Zero host executions of contributor code: #425 was read on the host and tested
+by CI only. #427, #428 and this docs PR passed `bash scripts/verify.sh` on the host.
+
+**Process incident.** Two review subagents ran `git checkout` during the run, one in the main
+checkout and one in another tick's worktree, detaching that tick's `HEAD` mid-work. No commit
+landed on `main` and nothing was lost, but it is the L15 race with a reviewer as the second
+writer. **L38**, graduated into the `ship-pr` skill and `06-orchestration.md`.
+
+**One metric.** 3 PRs merged, 0 abandoned, 0 reverted (1 external, 2 loop-authored); #425 with
+no fixup, #427 with one review fix and one CI-driven revert of part of its own change, #428 with
+two review rounds. Token spend per tick was not recorded for this write-up.
+
+**Lessons.** L37 (check a no-duplicates rule against the built-in templates and data first) and
+L38 (reviewers never switch a shared checkout).
+
+**Media.** The progress page, one of the captured pages, changed (the goal line and the goal
+status on the bodyweight card), so `docs/screenshots/progress.png` is now stale: screenshot debt,
+not re-shot in this run. The recorded session clip debt from 2026-09-30 and 2026-10-07 stands.

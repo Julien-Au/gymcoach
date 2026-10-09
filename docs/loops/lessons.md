@@ -603,3 +603,30 @@ Format per entry: trigger/evidence, the lesson (actionable), and **Status** = `g
   order at the top of the contributor-facing verdict whenever PRs overlap.
 - **Status:** graduated -> rules 2 and 4 of "Maintainer fixups on a vetted fork PR" in
   `10-external-contributions.md`.
+
+### L37 - Check a "duplicates are always a bug" assumption against the built-in data before enforcing it
+- **Trigger:** 2026-10-09, #427 (refs #426). After #425 refused a duplicate exercise on POST,
+  the follow-up extended the rule to every write path, program generation included (it
+  deduped repeated rows), and a unique constraint on `(workoutId, exerciseId)` was on the
+  table. CI's integration test that builds every built-in template went red: 5/3/1 Boring
+  But Big programs the main lift twice in one workout on purpose (the 5/3/1 sets, then the
+  5x10). The generation dedupe was reverted, a test now pins that generation keeps a
+  deliberate repeat, the constraint was dropped, and the real cause (the live runner shares
+  one set pool per exercise) was filed as #429. Only the hand-edit paths refuse a duplicate.
+- **Lesson:** before enforcing a uniqueness or "no repeat" rule, grep the built-in templates,
+  the seed and the demo data for a legitimate repeat, and prefer fixing the consumer that
+  cannot handle the repeat over forbidding it. The integration test over every template was
+  the safety net; keep such whole-catalog tests.
+- **Status:** graduated -> step 3 of the `implement-issue` skill.
+
+### L38 - A review subagent never runs `git checkout` in the main checkout or a shared worktree
+- **Trigger:** 2026-10-09. Two review subagents ran `git checkout` to read a PR: one in the
+  main checkout, one in a worktree that belonged to another tick, which detached that tick's
+  `HEAD` mid-work. L15 gave every dev tick its own worktree, but nothing told a reviewer it
+  writes git state too.
+- **Lesson:** a reviewer reads, it does not switch. It reads a PR through `gh pr diff <n>`,
+  `git show <sha>:<path>` and `git diff`, and when it needs a tree on disk it creates its own
+  `git worktree add <scratch-path> <sha>` and removes it afterwards. The orchestrator says so
+  in every review prompt.
+- **Status:** graduated -> step 4 of the `ship-pr` skill and "Concurrent ticks" in
+  `06-orchestration.md`.
