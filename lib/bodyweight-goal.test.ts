@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { bodyweightGoalStatus, chartDomainWithGoal } from '@/lib/bodyweight-goal';
 
 describe('bodyweightGoalStatus (issue #398)', () => {
-  describe('a lower goal (a cut)', () => {
+  describe('a goal below the current weight', () => {
     it('is good when the weight went down toward the goal', () => {
       expect(bodyweightGoalStatus(85, 83, 78)).toEqual({
         direction: 'lose',
@@ -19,18 +19,9 @@ describe('bodyweightGoalStatus (issue #398)', () => {
         tone: 'bad',
       });
     });
-
-    it('is reached once at or below the goal, overshoot included', () => {
-      expect(bodyweightGoalStatus(85, 78.1, 78)).toMatchObject({ reached: true, tone: 'good' });
-      expect(bodyweightGoalStatus(85, 76, 78)).toMatchObject({
-        reached: true,
-        remainingKg: 0,
-        tone: 'good',
-      });
-    });
   });
 
-  describe('a higher goal (a bulk)', () => {
+  describe('a goal above the current weight', () => {
     it('is good when the weight went up toward the goal', () => {
       expect(bodyweightGoalStatus(70, 72, 76)).toEqual({
         direction: 'gain',
@@ -47,10 +38,61 @@ describe('bodyweightGoalStatus (issue #398)', () => {
         tone: 'bad',
       });
     });
+  });
 
-    it('is reached once at or above the goal', () => {
-      expect(bodyweightGoalStatus(70, 77, 76)).toMatchObject({ reached: true, remainingKg: 0 });
+  it('is reached within the tolerance, on either side of the goal', () => {
+    expect(bodyweightGoalStatus(85, 78.1, 78)).toMatchObject({
+      reached: true,
+      remainingKg: 0,
+      tone: 'good',
     });
+    expect(bodyweightGoalStatus(70, 75.8, 76)).toMatchObject({ reached: true, tone: 'good' });
+  });
+
+  it('is not reached when a bulk goal sits between the window start and the current weight', () => {
+    // Cut 85 -> 75, then a bulk goal of 80: 5 kg still to gain, not reached.
+    // The window started 5 kg from 80 too, so the trend reads neutral.
+    expect(bodyweightGoalStatus(85, 75, 80)).toEqual({
+      direction: 'gain',
+      remainingKg: 5,
+      reached: false,
+      tone: 'neutral',
+    });
+    // A goal of 79 is 6 kg from the start and 4 kg from now: closing in.
+    expect(bodyweightGoalStatus(85, 75, 79)).toMatchObject({
+      direction: 'gain',
+      remainingKg: 4,
+      tone: 'good',
+    });
+  });
+
+  it('counts an overshoot past the goal as a gap again, on the other side', () => {
+    // Cut toward 78 and went on to 76: 2 kg back up, which is still closer
+    // to the goal than the 7 kg the window started at, so the trend is good.
+    expect(bodyweightGoalStatus(85, 76, 78)).toMatchObject({
+      direction: 'gain',
+      remainingKg: 2,
+      reached: false,
+      tone: 'good',
+    });
+    // Overshoot that grows over the window reads bad.
+    expect(bodyweightGoalStatus(77.5, 76, 78)).toMatchObject({
+      direction: 'gain',
+      remainingKg: 2,
+      tone: 'bad',
+    });
+  });
+
+  it('reads a maintainer once the window rolled past the overshoot', () => {
+    // Holding just under a 78 kg goal: the window start is no longer above
+    // the goal, and the status only reports the small gap and its trend.
+    expect(bodyweightGoalStatus(77.5, 77.6, 78)).toMatchObject({
+      direction: 'gain',
+      reached: false,
+      tone: 'good',
+    });
+    expect(bodyweightGoalStatus(77.5, 77.6, 78).remainingKg).toBeCloseTo(0.4, 5);
+    expect(bodyweightGoalStatus(77.9, 77.9, 78)).toMatchObject({ reached: true, tone: 'good' });
   });
 
   it('is neutral with no movement yet (a single measurement)', () => {
@@ -58,8 +100,7 @@ describe('bodyweightGoalStatus (issue #398)', () => {
     expect(bodyweightGoalStatus(80, 80, 85)).toMatchObject({ direction: 'gain', tone: 'neutral' });
   });
 
-  it('reads the direction against the current weight when the goal equals the start', () => {
-    // Started on the goal and drifted up: getting back down is the job.
+  it('is bad when the weight drifted off a goal it started on', () => {
     expect(bodyweightGoalStatus(80, 82, 80)).toMatchObject({
       direction: 'lose',
       remainingKg: 2,

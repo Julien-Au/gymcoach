@@ -10,33 +10,34 @@ export type GoalDirection = 'lose' | 'gain';
 export type GoalTone = 'good' | 'bad' | 'neutral';
 
 export interface BodyweightGoalStatus {
+  // Which way the latest weight still has to move to meet the goal.
   direction: GoalDirection;
   // Distance still to cover, always >= 0 (0 once reached).
   remainingKg: number;
   reached: boolean;
-  // good: the trend moved toward the goal over the window; bad: away from it;
-  // neutral: no movement yet (or a single measurement).
+  // good: the distance to the goal shrank over the window (or the goal is
+  // reached); bad: it grew; neutral: unchanged (or a single measurement).
   tone: GoalTone;
 }
 
 // `startKg` is the oldest measurement of the window, `currentKg` the latest.
-// The goal's direction is read against the start, so a cut stays a cut even
-// after the trainee overshoots it: losing toward a lower goal is good, gaining
-// toward a higher one is good, and the reverse is bad.
+// Everything is read from the distance to the goal, never from a direction
+// inferred from the window start: the window start is not where the goal was
+// set, so a bulk goal set after a cut (85 -> 75, goal 80) would otherwise read
+// as a cut already reached. Reached means within the tolerance of the goal,
+// on either side.
 export function bodyweightGoalStatus(
   startKg: number,
   currentKg: number,
   goalKg: number,
 ): BodyweightGoalStatus {
-  const direction: GoalDirection =
-    goalKg < startKg || (goalKg === startKg && goalKg < currentKg) ? 'lose' : 'gain';
-  const gap = direction === 'lose' ? currentKg - goalKg : goalKg - currentKg;
-  const reached = gap <= GOAL_REACHED_TOLERANCE_KG;
-  const change = currentKg - startKg;
-  const towardGoal = direction === 'lose' ? change < 0 : change > 0;
-  const awayFromGoal = direction === 'lose' ? change > 0 : change < 0;
-  const tone: GoalTone = reached || towardGoal ? 'good' : awayFromGoal ? 'bad' : 'neutral';
-  return { direction, remainingKg: reached ? 0 : gap, reached, tone };
+  const distance = Math.abs(currentKg - goalKg);
+  const reached = distance <= GOAL_REACHED_TOLERANCE_KG;
+  const direction: GoalDirection = currentKg > goalKg ? 'lose' : 'gain';
+  const startDistance = Math.abs(startKg - goalKg);
+  const tone: GoalTone =
+    reached || distance < startDistance ? 'good' : distance > startDistance ? 'bad' : 'neutral';
+  return { direction, remainingKg: reached ? 0 : distance, reached, tone };
 }
 
 // Y-axis bounds that keep the dashed goal line on the chart even when the goal

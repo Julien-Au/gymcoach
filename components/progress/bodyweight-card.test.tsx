@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { toast } from 'sonner';
+import { fromDisplayWeight } from '@/lib/units';
 import { BodyweightCard } from './bodyweight-card';
 
 vi.mock('sonner', () => ({
@@ -69,7 +71,9 @@ describe('BodyweightCard', () => {
     const user = userEvent.setup();
     render(<BodyweightCard entries={entries} unit="KG" />);
 
-    await user.click(screen.getAllByRole('button', { name: /delete entry/i })[0] as HTMLElement);
+    await user.click(
+      screen.getAllByRole('button', { name: /delete entry/i })[0] as HTMLElement,
+    );
 
     const [url, init] = lastFetchCall(fetchMock);
     expect(url).toBe('/api/bodyweight/b2');
@@ -89,13 +93,26 @@ describe('BodyweightCard', () => {
       const { unmount } = render(<BodyweightCard entries={entries} unit="KG" goalKg={84} />);
       expect(screen.getByText(/goal: 84 kg/i)).toBeInTheDocument();
       const delta = screen.getByTestId('bodyweight-goal-delta');
-      expect(delta).toHaveTextContent('2.8 kg to go');
+      expect(delta).toHaveTextContent('2.8 kg to gain');
       expect(delta).toHaveAttribute('data-tone', 'good');
+      // The trend is also spelled out, not only coloured.
+      expect(delta).toHaveTextContent('(moving toward your goal)');
       unmount();
 
       // ...and bad toward a lower one.
       render(<BodyweightCard entries={entries} unit="KG" goalKg={76} />);
-      expect(screen.getByTestId('bodyweight-goal-delta')).toHaveAttribute('data-tone', 'bad');
+      const away = screen.getByTestId('bodyweight-goal-delta');
+      expect(away).toHaveAttribute('data-tone', 'bad');
+      expect(away).toHaveTextContent('5.2 kg to lose');
+      expect(away).toHaveTextContent('(moving away from your goal)');
+    });
+
+    it('displays a goal saved in pounds as the same number of pounds', () => {
+      render(
+        <BodyweightCard entries={entries} unit="LB" goalKg={fromDisplayWeight(165, 'LB')} />,
+      );
+      expect(screen.getByText(/goal: 165 lb/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/goal \(lb\)/i)).toHaveAttribute('placeholder', '165');
     });
 
     it('says when the goal is reached', () => {
@@ -126,6 +143,42 @@ describe('BodyweightCard', () => {
       await user.type(screen.getByLabelText(/goal \(kg\)/i), '5');
       await user.click(screen.getByRole('button', { name: 'Set goal' }));
       expect(fetchMock).not.toHaveBeenCalled();
+
+      // Past the native min/max check, the kg check still refuses it.
+      fireEvent.submit(screen.getByLabelText(/goal \(kg\)/i).closest('form') as HTMLFormElement);
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(toast.error).toHaveBeenCalledWith('Enter a goal between 20 and 300 kg.');
+    });
+
+    it('bounds the goal input by the real limits in the display unit', () => {
+      const { unmount } = render(<BodyweightCard entries={entries} unit="KG" />);
+      const kgInput = screen.getByLabelText(/goal \(kg\)/i);
+      expect(kgInput).toHaveAttribute('min', '20');
+      expect(kgInput).toHaveAttribute('max', '300');
+      unmount();
+
+      // 20 kg = 44.09 lb and 300 kg = 661.39 lb, rounded inward to 0.1.
+      render(<BodyweightCard entries={entries} unit="LB" />);
+      const lbInput = screen.getByLabelText(/goal \(lb\)/i);
+      expect(lbInput).toHaveAttribute('min', '44.1');
+      expect(lbInput).toHaveAttribute('max', '661.3');
+    });
+
+    it('shows the error toast when the goal write is refused or the network is down', async () => {
+      const user = userEvent.setup();
+      render(<BodyweightCard entries={entries} unit="KG" />);
+      const input = screen.getByLabelText(/goal \(kg\)/i);
+
+      fetchMock.mockResolvedValueOnce({ ok: false, json: async () => ({}) });
+      await user.type(input, '75');
+      await user.click(screen.getByRole('button', { name: 'Set goal' }));
+      expect(toast.error).toHaveBeenLastCalledWith('Could not save the goal.');
+
+      fetchMock.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+      await user.click(screen.getByRole('button', { name: 'Set goal' }));
+      expect(toast.error).toHaveBeenCalledTimes(2);
+      expect(toast.success).not.toHaveBeenCalled();
+      expect(refresh).not.toHaveBeenCalled();
     });
 
     it('removes the goal with a null write', async () => {

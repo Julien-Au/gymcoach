@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useFormatter, useLocale, useTranslations } from 'next-intl';
 import { toast } from 'sonner';
-import { Scale, Trash2 } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, Scale, Trash2 } from 'lucide-react';
 import {
   CartesianGrid,
   Line,
@@ -54,6 +54,15 @@ interface Props {
 const GOAL_MIN_KG = 20;
 const GOAL_MAX_KG = 300;
 
+// The goal bounds in the display unit, to one decimal and rounded inward, so
+// any value the input and the message allow also passes the kg check.
+function goalBoundsInUnit(unit: WeightUnit): { min: number; max: number } {
+  return {
+    min: Math.ceil(toDisplayWeight(GOAL_MIN_KG, unit) * 10) / 10,
+    max: Math.floor(toDisplayWeight(GOAL_MAX_KG, unit) * 10) / 10,
+  };
+}
+
 const TONE_CLASS = {
   good: 'text-emerald-600 dark:text-emerald-400',
   bad: 'text-rose-600 dark:text-rose-400',
@@ -100,16 +109,25 @@ export function BodyweightCard({ entries, unit, goalKg = null, listLimit = 5 }: 
     goalKg != null && latest && oldest
       ? bodyweightGoalStatus(oldest.weightKg, latest.weightKg, goalKg)
       : null;
+  const goalBounds = goalBoundsInUnit(unit);
+  // The weight's own movement over the window, for the arrow next to the gap.
+  const TrendIcon =
+    latest && oldest && latest.weightKg !== oldest.weightKg
+      ? latest.weightKg > oldest.weightKg
+        ? ArrowUpRight
+        : ArrowDownRight
+      : null;
 
   async function saveGoal(nextGoalKg: number | null) {
     setBusy(true);
     try {
+      // A thrown fetch (offline) gets the same toast as a refused write.
       const res = await fetch('/api/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ bodyweightGoalKg: nextGoalKg }),
-      });
-      if (!res.ok) {
+      }).catch(() => null);
+      if (!res?.ok) {
         toast.error(t('goalError'));
         return;
       }
@@ -125,13 +143,7 @@ export function BodyweightCard({ entries, unit, goalKg = null, listLimit = 5 }: 
     const value = parseFloat(goalField);
     const kg = Number.isFinite(value) ? fromDisplayWeight(value, unit) : NaN;
     if (!Number.isFinite(kg) || kg < GOAL_MIN_KG || kg > GOAL_MAX_KG) {
-      toast.error(
-        t('goalInvalid', {
-          min: Math.ceil(toDisplayWeight(GOAL_MIN_KG, unit)),
-          max: Math.floor(toDisplayWeight(GOAL_MAX_KG, unit)),
-          unit: unitSuffix,
-        }),
-      );
+      toast.error(t('goalInvalid', { ...goalBounds, unit: unitSuffix }));
       return;
     }
     void saveGoal(kg);
@@ -204,11 +216,21 @@ export function BodyweightCard({ entries, unit, goalKg = null, listLimit = 5 }: 
                 data-tone={goalStatus.tone}
                 className={cn('font-medium', TONE_CLASS[goalStatus.tone])}
               >
+                {!goalStatus.reached && TrendIcon && goalStatus.tone !== 'neutral' && (
+                  <TrendIcon className="mr-0.5 inline size-4 align-text-bottom" aria-hidden />
+                )}
                 {goalStatus.reached
                   ? t('goalReached')
-                  : t('goalToGo', {
+                  : t(goalStatus.direction === 'lose' ? 'goalToLose' : 'goalToGain', {
                       weight: formatWeight(goalStatus.remainingKg, unit, { locale }),
                     })}
+                {/* The colour is not the only signal of the trend (WCAG 1.4.1). */}
+                {!goalStatus.reached && goalStatus.tone !== 'neutral' && (
+                  <span className="sr-only">
+                    {' '}
+                    {goalStatus.tone === 'good' ? t('goalTowards') : t('goalAway')}
+                  </span>
+                )}
               </span>
             )}
           </p>
@@ -312,7 +334,8 @@ export function BodyweightCard({ entries, unit, goalKg = null, listLimit = 5 }: 
               type="number"
               inputMode="decimal"
               step="0.1"
-              min="0"
+              min={goalBounds.min}
+              max={goalBounds.max}
               placeholder={goalDisplay != null ? String(goalDisplay) : undefined}
               value={goalField}
               onChange={(e) => setGoalField(e.target.value)}
